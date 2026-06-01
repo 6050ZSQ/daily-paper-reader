@@ -1,0 +1,2312 @@
+Title: A Geometric Perspective on Next-Token Prediction in Large Language Models: Three Emerging Phases
+
+URL Source: https://arxiv.org/pdf/2605.09011v1
+
+Published Time: Tue, 12 May 2026 01:01:04 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# A Geometric Perspective on Next-Token Prediction in Large Language Models: Three Emerging Phases 
+
+Gianfranco Lombardo 
+
+Department of Engineering and Architecture University of Parma Parma, IT 43125 
+
+gianfranco.lombardo@unipr.it 
+
+Giuseppe Trimigno 
+
+Department of Engineering and Architecture University of Parma Parma, IT 43125 
+
+giuseppe.trimigno@unipr.it 
+
+Stefano Cagnoni 
+
+Department of Engineering and Architecture University of Parma Parma, IT 43125 
+
+stefano.cagnoni@unipr.it 
+
+Abstract 
+
+We investigate the geometry of predictive information across the layers of large language models (LLMs). We repurpose representation lenses–learned affine maps trained to predict the next token from intermediate residual streams–as geometric diagnostic tools. Rather than asking what the model predicts at each layer, we ask where predictive information resides and how it evolves across depth. We define at each layer a predictive readout subspace as the dominant k-dimensional singular subspace of such a map on the d-dimensional residual stream (where k
+
+is a resolution parameter), and track its trajectory on the Grassmann manifold as a similarity profile across layers. The profile is well described by unimodal distributions exhibiting a rise, near-plateau, and descent; varying k from 1% to 50% 
+
+of d traces a Pareto frontier between visibility and energy retention, yet the same structure emerges at all scales. Across eight models from two families (Q WEN 2.5 and OLM O2, 1B–32B), we identify three geometric phases. Updates are approxi-mately orthogonal to the residual stream throughout; what distinguishes the phases is their effect on the effective rank, which expands, stabilizes, and concentrates. In the first, Seeding Multiplexing , feed-forward memories and attention layers seed a candidate set in superposition in family-specific proportions, with the final token rising as leading candidate from 20% to 35% of positions across this phase. In the second, Hoisting Overriding , updates override existing subspaces to concen-trate the candidate distribution without expanding the rank. In the third, Focal Convergence , high-energy low-rank updates write the winner into a form aligned with the unembedding direction. Phases 1 and 3 grow slowly with model depth, while Phase 2 expands linearly. The additional capacity of deeper LLMs is largely absorbed by candidate disambiguation, not by seeding or final convergence. 
+
+1 Introduction 
+
+Understanding how large language models process information across layers remains a central prob-lem in mechanistic interpretability. Although the transformer forward pass applies additive updates to a shared residual stream, the roles of individual layers and the structure of the resulting information are still unclear. A key question is geometric: how predictive information for next-token prediction emerges and propagates through depth. A common approach probes this by projecting intermediate             
+
+> Preprint.
+> arXiv:2605.09011v1 [cs.LG] 9 May 2026 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Hit@k  (0 1)
+> Qwen2.5-32B
+> (Representation lens)
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Qwen2.5-32B
+> (LogitLens)
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> OLMo-2-32B
+> (Representation lens)
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> OLMo-2-32B
+> (LogitLens)
+> Hit@1
+> Hit@3
+> Hit@5
+> Hit@10
+
+Figure 1: Examples of Hit@ k achieved by a representation lens and LogitLens across layers. The representation lens recovers the final token early, while the LogitLens remains nearly blind until the final phase, indicating predictive information is present but hidden in superposition. residual states into vocabulary space. The LogitLens [ 14 ] applies the final unembedding directly, but suffers from representational drift : intermediate states are misaligned with the final basis. Superposi-tion [ 6] further implies that predictive features may be present but hidden in overlapping directions. To address this, subsequent work learns affine corrections to realign intermediate representations before projection. TunedLens [ 4] trains per-layer maps via distillation; Jump to Conclusions [ 22 ]learns cross-layer shortcuts; Patchscopes [ 9] unifies these approaches. In all cases, the affine map serves as a decoding tool to reveal what the model predicts at each layer (see Section 2). 
+
+Our approach: lenses as geometric probes. Our approach originates from a key observation: Figure 1 shows layer-wise Hit@ k (how often the final token appears in the top-k at each layer) for the representation lens and the LogitLens on two 32B models (Q WEN 2.5 and OLM O2). The final token ranks among the top candidates from layer 1 ( ≈20% Hit@1 over a ∼100 k vocabulary), while the LogitLens remains nearly blind across both architectures. Consequently, predictive information is present from the earliest layers but hidden in superposition, misaligned with the unembedding direction. LoRA-Lens [ 20 ] shows that only 3–6% of the hidden dimensionality suffices to match full-rank fidelity: the lens reads the predictive signal by projecting onto the low-dimensional subspace where it is concentrated. This leads us to repurpose affine maps as geometric probes : rather than asking what the model predicts at each layer, we ask where predictive information resides in the residual stream and how that location evolves across depth. This paper makes two main contributions: 
+
+(a) A framework for tracking predictive geometry across depth. We train affine maps following [ 4] on SlimPajama [ 19 ] (226M tokens) for eight models from two families (Q WEN 2.5 [ 21 ] and OLM O2 [ 15 ], 1B–32B). We decompose each map via SVD and define the predictive readout subspace as the top-k right singular directions acting on the residual stream. We track its trajectory on Gr( k, d ) via a layer-wise similarity profile, revealing structural changes across depth. 
+
+(b) Three emerging geometric phases of next-token prediction. Across models and scales, the similarity profile exhibits a rise, plateau, and descent, defining three phases. We characterize them jointly: (1) Seeding Multiplexing , where candidates are seeded in superposition and rank saturates; 
+
+(2) Hoisting Overriding , where updates concentrate the distribution without expanding rank; and (3) Focal Convergence , where low-rank high-energy updates write the final token. Phases 1 and 3 scale weakly with depth, while Phase 2 grows linearly, indicating that additional capacity is primarily used for candidate disambiguation. 
+
+2 Background and Related Work 
+
+2.1 Background The residual stream and transformer computation. A large language model with L layers processes an input token sequence (x1, . . . , x T ) by maintaining, at each position t, a residual stream 
+
+hℓ ∈ Rd that is updated additively across layers. Each layer ℓ ∈ { 1, . . . , L } applies two sub-modules in sequence, a multi-head self-attention (MHA) sublayer and a feed-forward network (FFN) sublayer, 2both contributing additive updates to the residual stream: 
+
+hℓ = hℓ−1 + ∆ MHA  
+
+> ℓ
+
++ ∆ FFN  
+
+> ℓ
+
+, (1) where ∆MHA  
+
+> ℓ
+
+, ∆FFN  
+
+> ℓ
+
+∈ Rd denote the attention and feed-forward contributions at layer ℓ, each of which may incorporate layer normalization depending on the architecture. The additive structure in Eq. 1 ensures that information is preserved and incrementally refined across depth: each layer writes a residual increment to the shared stream, which accumulates monotonically. The next-token distribution is obtained at the final layer by applying a layer normalization followed by the unembedding matrix WU ∈ R|V |× d:
+
+p(xt+1 | x≤t) = softmax( WU LN( hL)) , (2) where LN( ·) denotes layer normalization. The composition WU ◦ LN defines the model’s final linear readout from the terminal residual state into logit space. 
+
+Representation lenses. 
+
+Alain and Bengio [2] probe intermediate layers with linear readouts to assess decodable information. Building on this, the LogitLens [ 14 ] applies the final readout WU ◦ LN directly to intermediate states 
+
+hℓ, but is limited by representational drift , as intermediate representations may be misaligned with 
+
+WU . Representation lenses address this by learning an affine correction: 
+
+˜hℓ = ( I + Aℓ) hℓ + bℓ, zℓ = WU LN( ˜hℓ), (3) where (Aℓ, b ℓ) are trained to align intermediate predictions with the final output via KL distillation. The identity term ensures the LogitLens is recovered when Aℓ = 0 , making Aℓ the key realignment component. This framework underlies methods such as TunedLens [ 4], Jump to Conclusions [ 22 ], and Patchscopes [9], which differ in scope but share the same affine correction principle. 
+
+2.2 Related Work Mechanistic interpretability and the residual stream. A central line of work in transformer interpretability analyzes components by decomposing the forward pass into circuits over a shared residual stream. Elhage et al. [6] formalize this framework and introduce superposition, where features are encoded in overlapping directions. Isolating predictive information thus requires identifying its low-dimensional structure. Elhage et al. [7] study preferred bases of the residual stream, while causal approaches [ 3 ] intervene on components. In contrast, we analyze how the geometry of predictive information evolves across depth. 
+
+Geometric and linear structure of internal representations. Recent work explores transformer representations exhibit interpretable geometric structure. Park et al. [16] formalize this via the Linear Representation hypothesis, suggesting high-level features are encoded as linear directions in activation space. Empirical results show this structure emerges from the training objective rather than architectural constraints [ 13 ]. Shai et al. [18] provide evidence the residual stream encodes geometric objects corresponding to belief states, reflecting the probabilistic structure of the task. Additionally, Gurnee et al. [10] show transformers construct and manipulate low-dimensional manifolds within the residual stream, motivating our Grassmann manifold trajectory analysis. 
+
+Depth-dependent computation and phase structure. Empirical evidence shows that transformer layers are not functionally homogeneous: Geva et al. [8] demonstrate that feed-forward sublayers act as key-value memories with depth-varying associations, while Meng et al. [12] show that factual knowledge is mainly localized in middle layers. Aghajanyan et al. [1] show that fine-tuning has low intrinsic dimensionality, implying relevant information lies in a low-dimensional subspace, consistent with our finding that predictive directions occupy a small part of the residual stream. Finally, Bruno et al. [5] identify three dynamical phases in a mean-field transformer: an alignment phase with spectral collapse, an intermediate heat phase, and a slow pairing phase. This parallels our three-phase decomposition, though their analysis considers encoder-only models in the large-token limit, while ours focuses on autoregressive decoder-only models and the geometry of predictive correction maps. We compare our results with Bruno et al. [5] findings in the final discussion. 30 25 50            
+
+> Layer
+> 0
+> 20
+> 40
+> 60
+> Layer
+> k=1% - μ=0.68
+> Visibility=0.48
+> 025 50
+> Layer
+> k=3% - μ=0.64
+> Visibility=0.47
+> 025 50
+> Layer
+> k=5% - μ=0.62
+> Visibility=0.45
+> 025 50
+> Layer
+> k=10% - μ=0.60
+> Visibility=0.41
+> 025 50
+> Layer
+> k=15% - μ=0.60
+> Visibility=0.37
+> 025 50
+> Layer
+> k=25% - μ=0.63
+> Visibility=0.31
+> 050
+> Layer
+> k=50% - μ=0.74
+> Visibility=0.19
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+
+Figure 2: Pairwise RSS similarity matrices M(k) for OLM O2-32B at truncation levels k.0.2 0.4 0.6 0.8 1.0                 
+
+> E(k) [mean energy ratio]
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> Visibility(k)  [p95−p5 off-diag sim]
+> k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+> Qwen2.5-1.5B
+> 0.2 0.4 0.6 0.8 1.0
+> E(k) [mean energy ratio]
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 0.40
+> 0.45
+> 0.50
+> k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+> Qwen2.5-32B
+> 0.2 0.4 0.6 0.8 1.0
+> E(k) [mean energy ratio]
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+> OLMo-2-7B
+> 0.4 0.6 0.8 1.0
+> E(k) [mean energy ratio]
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6 k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+> OLMo-2-13B
+
+Figure 3: Examples of Pareto frontier between Visibility@k and E(k). No single k dominates. 
+
+3 Methodology 
+
+3.1 Predictive Readout Subspace and Grassmann trajectory 
+
+A representation lens at layer ℓ is defined by a correction matrix Aℓ ∈ Rd×d and a bias bℓ ∈ Rd.Since the bias only acts as a global translation, we focus on Aℓ, which captures directional corrections to the residual stream. We decompose it via SVD and define the predictive readout subspace from its top singular directions: 
+
+Aℓ = UℓΣℓV ⊤
+
+ℓ , S(k)
+
+ℓ = span 
+
+
+
+V (k)
+
+ℓ
+
+
+
+. (4) Here, the singular values in Σℓ quantify transformation strength along each direction, and the top right singular vectors identify where the lens applies the strongest corrections. Let A(k)
+
+ℓ denote the rank-k truncation of Aℓ, with corresponding corrected state ˜h(k)
+
+ℓ = ( I + A(k)
+
+ℓ ) hℓ + bℓ and prediction 
+
+z(k)
+
+ℓ = WU LN( ˜h(k)
+
+ℓ ). If: 
+
+Ehℓ
+
+h
+
+KL 
+
+
+
+softmax( zℓ) softmax( z(k) 
+
+> ℓ
+
+)
+
+i 
+
+≤ ε (5) 
+
+holds for small ε, the predictive mapping is well-approximated by the projection of hℓ onto S(k)
+
+ℓ .This does not imply that hℓ is itself low-rank, but only that predictive information is compressible under linear readout. Empirically, LoRA-Lens [ 20 ] shows that ranks between 3% and 10% of hidden dimensionality d suffice to match full performance, indicating that a few singular directions dominate. In light of this low-rank approximation, we define the predictive readout subspace S(k)
+
+ℓ as a k-dimensional subspace of Rd, viewed as a point on the Grassmann manifold Gr( k, d ). In such a manifold, relations between subspaces are characterized by principal angles, computed from the singular values of Q⊤AQB, which capture their relative geometry and enable similarity measures. The sequence {S (k)
+
+ℓ }Lℓ=1 defines a trajectory on Gr( k, d ), tracking how the dominant directions of predictive readout shift across the layers. 
+
+Readout Subspace Similarity (RSS). To characterize how the trajectory {S (k)
+
+ℓ } evolves across layers, we measure the alignment between consecutive subspaces on Gr( k, d ) via their principal angles. We adopt a normalized similarity score, the Readout Subspace Similarity (RSS) , defined as the mean cosine of principal angles between S(k)
+
+ℓ and S(k)
+
+ℓ+1 . This yields a score in [0 , 1] with immediate interpretation ( RSS (k)
+
+ℓ = 1 : identical subspaces; RSS (k)
+
+ℓ = 0 : orthogonal subspaces), and is invariant to ∥Aℓ∥F , isolating geometric reorientation from scaling effects. Let Q(k)
+
+ℓ , Q (k)
+
+ℓ+1 ∈ Rd×k
+
+be orthonormal bases for S(k)
+
+ℓ and S(k)
+
+ℓ+1 , obtained via QR decomposition of the respective top-k right 40 10 20 30 40                         
+
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> Qwen2.5-14B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Asym. Gen. Normal R²=0.961
+> Gen. Normal R²=0.955
+> 010 20 30 40
+> Layer
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> Normalized RSS
+> Qwen2.5-14B
+> Breakpoints detection k=15%
+> Readout Subspace Similarity
+> chord 1 (0 → L/2)
+> chord 2 (L/2 → L)
+> b1 = 5.0
+> b2 = 40.0
+> 010 20 30 40
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> OLMo-2-13B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Asym. Gen. Normal R²=0.980
+> Kumaraswamy R²=0.969
+> 010 20 30 40
+> Layer
+> 0.65
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> Normalized RSS
+> OLMo-2-13B
+> Breakpoints detection k=15%
+> Readout Subspace Similarity
+> chord 1 (0 → L/2)
+> chord 2 (L/2 → L)
+> b1 = 10.0
+> b2 = 32.0
+
+Figure 4: Examples of unimodal fits (left) and breakpoint detection (right) on the RSS profile @k=15%. Despite small local deviations, chord-based detection remains robust. Qwen2.5-1.5B 
+
+Qwen2.5-14B 
+
+Qwen2.5-32B 
+
+OLMo-2-1B 
+
+OLMo-2-7B 
+
+OLMo-2-13B 
+
+OLMo-2-32B 
+
+0.5 
+
+0.6 
+
+0.7 
+
+0.8 
+
+0.9 
+
+1.0 
+
+> R²
+> 0.67
+> 0.91
+> 0.90
+> 0.83
+> 0.80
+> 0.88
+> 0.67
+> 0.87
+> 0.94
+> 0.90
+> 0.97
+> 0.81
+> 0.94
+> 0.74
+> 0.97
+> 0.94
+> 0.90
+> 1.00
+> 0.87
+> 0.99
+> 0.75
+> 0.85
+> 0.93
+> 0.95
+> 0.91
+> 0.84
+> 0.96
+> 0.72
+> Beta
+> GN
+> Asym. GN
+> Kum
+
+Figure 5: Distributional fits to RSS profiles {s(k)
+
+ℓ } at k = 50% . High R2 values for unimodal distributions supports the unimodality assumption and the tripartite decomposition. singular vectors. We define: 
+
+RSS (k)
+
+ℓ = 1
+
+k
+
+kX
+
+r=1 
+
+cos θ(ℓ)
+
+r (6) 
+
+where {θ(ℓ)
+
+r }kr=1 are the principal angles between S(k)
+
+ℓ and S(k)
+
+ℓ+1 . Tracking RSS (k)
+
+ℓ across layers yields the similarity profile {RSS (k)
+
+ℓ }L−1
+
+ℓ=1 , a layer-wise characterization of how the predictive readout geometry evolves through the forward pass. 
+
+3.2 Phase boundaries detection Experimental setup. We train representation lenses following the TunedLens formulation [ 4] on SlimPajama [ 19 ] ( 226 M tokens) for eight models from two architecturally distinct families (Q WEN 2.5 and OLM O2, 1B–32B). See Appendix A for the full dataset and training details. For each model, we compute {S (k)
+
+ℓ }Lℓ=1 at truncation levels k ∈ { 1, 3, 5, 10 , 15 , 25 , 35 , 50 }% of d, deriving: (i) the similarity profile {s(k)
+
+ℓ } and (ii) the full pairwise similarity matrix M(k), where M(k)
+
+ij denotes the RSS between subspaces at layers i and j.
+
+Resolution-Scale Analysis and Pareto Frontier. To quantify geometric discriminability at resolution 
+
+k, we define: 
+
+Visibility@k = p95 (M(k)) − p5(M(k)),
+
+where p95 and p5 are the 95th and 5th percentiles of the off-diagonal entries of M(k). This percentile-based spread is robust to outliers: high values indicate well-separated subspaces; low values indicate convergence toward a degenerate configuration. Figure 2 shows the pairwise similarity matrices 
+
+M(k) for OLM O2-32B across all truncation levels, illustrating how Visibility@K decreases as k
+
+increases. Corresponding results for all models are provided in Appendix B. We contrast this with the mean retained spectral energy: 
+
+E(k) = 1
+
+L
+
+LX
+
+ℓ=1 
+
+Pki=1 σ2
+
+ℓ,i 
+
+Pdi=1 σ2
+
+ℓ,i 
+
+which quantifies how much of the lens transformation is captured by the top-k singular directions. Increasing k monotonically improves E(k) but reduces Visibility@k : as k → d, all subspaces 520 30 40 50 60                  
+
+> #Layers
+> 4
+> 6
+> 8
+> 10
+> 12
+> 14
+> 16
+> b1 (layers)
+> 1.5B
+> 14B
+> 32B
+> 1B
+> 7B 13B
+> 32B
+> b1vs depth
+> Qwen ( R2=0.89, slope=0.11)
+> OLMo ( R2=0.97, slope=0.26)
+> 20 30 40 50 60
+> #Layers
+> 10
+> 20
+> 30
+> 40
+> 50
+> b2 (layers)
+> 1.5B
+> 14B
+> 32B
+> 1B
+> 7B
+> 13B
+> 32B
+> b2vs depth
+> Qwen ( R2=1.00, slope=1.00)
+> OLMo ( R2=0.99, slope=0.88)
+> Cross-family ( R2=0.993)
+> 20 30 40 50 60
+> #Layers
+> 6
+> 7
+> 8
+> 9
+> 10
+> 11
+> 12
+> P3 width (layers)
+> 1.5B 14B 32B
+> 1B
+> 7B
+> 13B
+> 32B
+> P3 width vs depth
+> Qwen ( R2=nan, slope=-0.00)
+> OLMo ( R2=0.76, slope=0.11)
+> 20 30 40 50 60
+> #Layers
+> 10
+> 20
+> 30
+> 40
+> 50
+> P2 width (layers)
+> 1.5B
+> 14B
+> 32B
+> 1B
+> 7B
+> 13B
+> 32B
+> P2 width vs depth
+> Qwen ( R2=1.00, slope=0.89)
+> OLMo ( R2=0.99, slope=0.62)
+> Cross-family ( R2=0.912)
+
+Figure 6: Scaling structure of the three phases across model depths. From left to right: ˆb1 vs depth, 
+
+ˆb2 vs depth, Phase 3 width vs depth, and Phase 2 width vs depth. OLMo-1B 
+
+> OLMo-7B
+> OLMo-13B
+> OLMo-32B
+> Qwen-1.5B
+> Qwen-7B
+> Qwen-14B
+> Qwen-32B
+> 0
+> 1
+> 2
+> 3
+> 4
+> FFN  / MHA
+
+Phase P1 
+
+Phase P2 
+
+Phase P3 
+
+Figure 7: ∥∆FFN 
+
+ℓ ∥/∥∆MHA 
+
+ℓ ∥ ratio across phases per model. coincide with Rd and pairwise similarity collapses to 1. This defines a Pareto trade-off between fidelity and discriminability, making k a resolution parameter . As shown in Figure 3 (see Appendix C for all models), intermediate values k ∈ { 5% , 10% , 15% } balance spectral energy and geometric contrast, while smaller k are noisier and larger k oversmooth. Our phase detection therefore aggregates results across this regime. Robustness to other k values is discussed in Section 4. 
+
+Unimodality Assumption. RSS profiles s(k)
+
+ℓ exhibit a broad, plateau-like unimodal shape across models and resolutions (Figure 4; Appendix D). This suggests they can be described by a rise, near-plateau, and descent, motivating a three-region decomposition and a two-breakpoint model. To validate this assumption, we fit four parametric families across models and k: Beta, generalized normal (GNorm), asymmetric GNorm (AGNorm), and Kumaraswamy. GNorm and AGNorm enforce unimodality, while Beta and Kumaraswamy allow more flexible shapes. If the latter do not consistently improve fit, this supports the adequacy of the unimodal assumption. Results are reported in Section 4. 
+
+Breakpoints detection. Given the unimodal similarity profile {s(k)
+
+ℓ }L−1
+
+ℓ=1 , we identify two breakpoints 
+
+b1 < b 2 that partition depth into three phases via a two-stage Kneedle criterion [ 17 ], applied separately to each half of the profile. This chord-based method is assumption-light, avoids derivatives, and is robust to local deviations from unimodality (Figure 4), as it relies on global geometry. All computations use a Gaussian-smoothed profile with σ = 2 (formal procedure in Appendix D). The midpoint split follows from unimodality, placing one transition in each half. Breakpoint estimates may vary by 1–3 layers across values of k due to residual noise. We aggregate over the intermediate regime k ∈ { 5% , 10% , 15% } using the mode, or the median when all three estimates are distinct. 
+
+3.3 Functional Interpretation Setup 
+
+To characterize phase behavior, we collect residual stream activations using a held-out validation subset of SlimPajama [ 19 ] (16M tokens across six domains: CommonCrawl, C4, ArXiv, GitHub, StackExchange, Wikipedia). Using validation data prevents evaluation on optimized data, ensuring metrics reflect intrinsic model computation rather than artifacts of lens training, and avoids spurious correlations. The multi-domain mix further reduces domain bias. Activations are collected in batches: for each layer ℓ and token t we record h(t)
+
+ℓ ∈ Rd and the total update ∆(t)
+
+ℓ = ∆ MHA ,(t)
+
+ℓ + ∆ FFN ,(t)
+
+ℓ .Metrics are averaged over tokens and batches. We compute four measures: (i) effective rank of hidden states, (ii) mean | cos(∆ ℓ, h ℓ−1)|, (iii) lens Hit@ k, and (iv) the norm ratio |∆FFN 
+
+ℓ |/|∆MHA 
+
+ℓ |.60 25 50 75 100                                         
+
+> Layer depth (%)
+> Qwen2.5-1.5B (27L)
+> Qwen2.5-7B (27L)
+> Qwen2.5-14B (47L)
+> Qwen2.5-32B (63L)
+> OLMo-2-1B (15L)
+> OLMo-2-7B (31L)
+> OLMo-2-13B (39L)
+> OLMo-2-32B (63L)
+> =1.8% =3.9%
+> =0.5% =1.8%
+> =1.0% =1.0%
+> =0.8% =0.5%
+> =0.5% =0.5%
+> =3.1% =1.1%
+> =2.7% =0.8%
+> =0.8% =2.9%
+> b(end of P1)
+> b(start of P3)
+> consensus
+> 025 50 75 100
+> Layer depth (%)
+> 4L 16L 7L
+> Qwen2.5-1.5B (27L)
+> b1=15% b2=74%
+> 4L 16L 7L
+> Qwen2.5-7B (27L)
+> b1=15% b2=74%
+> 5L 35L 7L
+> Qwen2.5-14B (47L)
+> b1=11% b2=85%
+> 8L 48L 7L
+> Qwen2.5-32B (63L)
+> b1=13% b2=89%
+> 4L 5L 6L
+> OLMo-2-1B (15L)
+> b1=27% b2=60%
+> 9L 17L 5L
+> OLMo-2-7B (31L)
+> b1=29% b2=84%
+> 9L 23L 7L
+> OLMo-2-13B (39L)
+> b1=23% b2=82%
+> 17L 35L 11L
+> OLMo-2-32B (63L)
+> b1=27% b2=83%
+> P1:19.8±6.9% P2:59.0±12.4% P3:21.2±8.6%
+> Phase 1
+> Phase 2
+> Phase 3
+
+Figure 8: Left: breakpoint robustness for all eight models across all subspace resolutions k ∈{1% , .., 50% }. Right: consensus phase decomposition with depth-normalized layers. 5 10                  
+
+> Layer
+> 1000
+> 1100
+> 1200
+> 1300
+> 1400
+> 1500
+> eff\_rank ( )
+> P1 P2 P3
+> OLMo-1B
+> eff\_rank ()
+> 020 40 60
+> Layer
+> 500
+> 1000
+> 1500
+> 2000
+> 2500
+> eff\_rank ( )
+> P1 P2 P3
+> OLMo-32B
+> 010 20
+> Layer
+> 2000
+> 2200
+> 2400
+> 2600
+> 2800
+> eff\_rank ( )
+> P1 P2 P3
+> Qwen-7B
+> 020 40 60
+> Layer
+> 1000
+> 1500
+> 2000
+> eff\_rank ( )
+> P1 P2 P3
+> Qwen-32B
+> 5.0
+> 7.5
+> 10.0
+> 12.5
+> 15.0
+> 10
+> 20
+> 30
+> 50
+> 100
+> 150
+> 0
+> 200
+> 400
+> 600
+
+Figure 9: Rank of the total update ∆ℓ (solid) and its norm (dashed). All models in Appendix E. 
+
+4 Results 
+
+4.1 Phase detection Validation of the Unimodality Assumption. We report the distributional fits from Section 3 as validation of the unimodality assumption. Across models and k, fits achieve high R2 (≥ 0.9 for most models, minimum 0.75; Figure 5), showing profiles are well captured by simple unimodal forms. This holds across all k: small k yields noisier profiles, while large k flattens them, reducing geometric contrast (Figure 2), yet unimodal fits remain strong even at k = 50% . Importantly, more flexible families (Beta, Kumaraswamy) do not outperform unimodal ones (GNorm, AGNorm). When performance is similar, extra flexibility is unused; when unimodal fits are better, no additional structure is present. In both cases, RSS profiles are well described as unimodal, exhibiting a rise, plateau, and descent, supporting the two-breakpoint, three-phase model. 
+
+Phase Identification and Robustness. Applying the consensus procedure across eight models, we identify two breakpoints ˆb1, ˆb2 partitioning the RSS into three phases (Figure 8). Boundaries are consistent across architectures. On average, Phase 1 spans 19 .8% ± 6.9% , Phase 2 59 .0% ± 12 .4% ,and Phase 3 21 .2% ± 8.6% , with the intermediate phase dominating. Comparing with breakpoints at out-of-regime k ∈ 1% , 3% , 25% , 35% , 50% shows tightly concentrated estimates ( σ ≤ 3.9% ;Figure 8), indicating stable boundaries. This supports that the tripartite structure reflects intrinsic geometric organization rather than artifacts of k or the detection method. 
+
+Scaling Laws of Phase Boundaries. Figure 6 shows how ˆb1, ˆb2, and phase widths scale with depth the number of layers L. The onset of Phase 3 ( ˆb2) scales linearly with L (Qwen: R2 = 1 .00 , slope 
+
+= 1 .00 ; OLMo: R2 = 0 .99 , slope = 0 .88 ; cross-family R2 = 0 .993 ). Phase 2 width follows a similar trend (Qwen: R2 = 1 .00 , slope = 0 .89 ; OLMo: R2 = 0 .99 , slope = 0 .62 ; cross-family 
+
+R2 = 0 .912 ), indicating proportional expansion with depth. In contrast, ˆb1 shows a slower scaling (Qwen: R2 = 0 .89 , slope = 0 .11 ; OLMo: R2 = 0 .97 , slope = 0 .26 ), suggesting Phase 1 occupies a 70 10 20 30                        
+
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> OLMo-7B
+> 010 20 30 40
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> OLMo-13B
+> 0510 15 20 25
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> Qwen-1.5B
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> Qwen-32B
+> Phase P1 Phase P2 Phase P3 Breakpoints
+
+Figure 10: RSS profiles s(k=15%) 
+
+ℓ for all eight models across the two architectural families, with consensus breakpoints ˆb1 and ˆb2 indicated. All models in Appendix E. 0.0 0.2 0.4 0.6 0.8 1.0          
+
+> Normalised depth
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Hit@1 and Hit@5
+> P1 P2 P3
+> Qwen-1.5B
+> Qwen-7B
+> Qwen-14B
+> Qwen-32B
+> OLMo-1B
+> OLMo-7B
+> OLMo-13B
+> OLMo-32B
+> hit@5 (dashed)
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Normalised depth
+> 0.8
+> 1.0
+> 1.2
+> 1.4
+> 1.6
+> 1.8
+> 2.0
+> Hit@5 / Hit@1
+> P1 P2 P3
+> Qwen-1.5B
+> Qwen-7B
+> Qwen-14B
+> Qwen-32B
+> OLMo-1B
+> OLMo-7B
+> OLMo-13B
+> OLMo-32B
+
+Figure 11: Left: Hit@1 (solid) and Hit@5 (dashed) across normalised depth. Right: Hit@5/Hit@1 ratio. Both metrics evolve continuously across all three phases, reflecting a disambiguation process. nearly fixed number of layers. Phase 3 width is also almost constant (Qwen: slope = 0 .00 ; OLMo: 
+
+= 0 .11 ). Overall, as depth increases, Phase 2 expands while Phases 1 and 3 remain roughly constant. 
+
+4.2 Geometric Characterization of the Three Phases 
+
+Figure 10 shows RSS profiles with consensus breakpoints. Phase 1 exhibits increasing alignment as predictive geometry stabilises, Phase 2 maintains a near-plateau, and Phase 3 shows a decline as the predictive subspace reorients toward the unembedding direction. Figure 11 overlays representation lens accuracy: Hit@1 increases monotonically while Hit@5/Hit@1 decreases smoothly across all phases (8/8 models). Already at layer 1, Hit@1 is ≈ 0.28 –0.33 and Hit@5/Hit@1 ≈ 2.0, indicating the final token is among the top candidates from the earliest layers but not yet dominant. 
+
+A general property: near-orthogonality of updates. Layer updates ∆ℓ are nearly orthogonal to the residual stream hℓ−1 throughout (Figure 12), consistent with superposition [ 6], so phases differ in their geometric effect on the predictive subspace rather than in their alignment with it. 
+
+| cos(∆ ℓ, h ℓ−1)| is lowest in Phase 2 (7/8 models) and highest in Phase 3 (8/8 models), yielding a consistent anti-correlation with the RSS profile visible in Figure 12. 
+
+Effective rank of hidden states. Figure 13 shows effective rank increasing through Phase 1, peaking near ˆb1, and stabilising in Phase 2. Q WEN 2.5-1.5B is an exception, showing a modest Phase 2 dip (≈ 80 dimensions), which we attribute to its constrained capacity ( d = 1536 , 27 layers). Figure 9 shows update rank peaking in Phase 2 (8/8 models) and declining in Phase 3 (7/8), while ∥∆ℓ∥ grows monotonically with sharp acceleration in Phase 3 (up to 10 ×), indicating concentration on fewer high-energy directions. 
+
+FFN/MHA update norm ratio. Figure 7 shows ∥∆FFN 
+
+ℓ ∥/∥∆MHA 
+
+ℓ ∥ across phases. In Phase 1, families differ: Q WEN 2.5 is FFN-dominated (ratio 2.4–3.2) while OLM O2 shows more balanced updates due to its parallel design [ 15 ], yet both converge to the same geometry at ˆb1. Contributions are more balanced in Phase 2, and FFN dominates across both families in Phase 3, suggesting activation of distributed memories to write the final prediction into the residual stream. 
+
+4.3 Functional Interpretation of the Three Phases 
+
+The metrics jointly reveal a three-phase functional organization of the forward pass with distinct geometric and predictive signatures, which we now interpret and name. 80 10 20 30                   
+
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> OLMo-7B
+> RSS@k15
+> |cos( ,h)|
+> 010 20 30
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> OLMo-13B
+> 010 20
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> Qwen-1.5B
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> Qwen-32B
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> |cos(  , h 1)|
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> |cos(  , h 1)|
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> |cos(  , h 1)|
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> |cos(  , h 1)|
+
+Figure 12: RSS profile s(k=15%)  
+
+> ℓ
+
+(solid, left axis) and | cos(∆ ℓ, h ℓ−1)| (dashed red, right axis). High RSS ↔ low cosine (Phase 2); low RSS ↔ high cosine (Phase 3). See Appendix E for all models. 0 10 20 30                       
+
+> Layer
+> 1000
+> 1500
+> 2000
+> eff_rank (H )
+> P1 P2 P3
+> OLMo-13B
+> 0510 15 20 25
+> Layer
+> 1050
+> 1100
+> 1150
+> eff_rank (H )
+> P1 P2 P3
+> Qwen-1.5B
+> 0510 15 20 25
+> Layer
+> 2000
+> 2200
+> 2400
+> 2600
+> eff_rank (H )
+> P1 P2 P3
+> Qwen-7B
+> 010 20 30 40
+> Layer
+> 1250
+> 1500
+> 1750
+> 2000
+> 2250
+> eff_rank (H )
+> P1 P2 P3
+> Qwen-14B
+
+Figure 13: Average effective rank of hidden states across 16M tokens. All models in Appendix E. 
+
+Phase 1 – Seeding Multiplexing . Nearly orthogonal updates add new directions, driving Hℓ to peak rank while the predictive subspace reorients (rising RSS); the lens recovers the final token among several candidates (Hit@5/Hit@1 ≈ 1.74 –1.87 ), though LogitLens remains ineffective (Hit@1 ≈ 0.01 ), indicating superposed representations. The breakpoint ˆb1 scales weakly with depth (slope ≤ 0.26 ), suggesting a fixed cost. Despite architectural differences (FFN-dominant in QWEN 2.5, attention-comparable in OLM O2), both reach the same geometry. We interpret this phase as Seeding Multiplexing : candidates are seeded in the residual stream and encoded in superposition until representational capacity saturates. 
+
+Phase 2 – Hoisting Overriding . Hidden-state rank is stable and | cos(∆ ℓ, h ℓ−1)| is minimal (7/8 models), indicating maximally orthogonal updates when the predictive subspace is most stable. Hit@1 rises to ≈ 0.56 and Hit@5/Hit@1 decreases, showing progressive concentration, while LogitLens remains low ( ≈ 0.03 –0.10 ), implying disambiguation within the subspace without explicit decoding. FFN and MHA contributions are balanced. We interpret this phase as Hoisting Overriding : one candidate is progressively lifted above the others ( hoisting ) by overriding competing subspaces (overriding ), without altering the established predictive geometry. 
+
+Phase 3 – Focal Convergence . | cos(∆ ℓ, h ℓ−1)| is maximal (8/8), the rank of ∆ℓ decreases (7/8), and update norms grow sharply (up to 10 ×), concentrating on few high-energy directions within the predictive subspace. The Hit@5/Hit@1 ratio drops ( ≈ 1.2–1.5) while LogitLens Hit@1 rises (≈ 0.30 –0.50 ), approaching the representation lens, indicating the final token is directly readable. FFN dominates across all models. We interpret this phase as Focal Convergence : updates concentrate on a single target and the candidate distribution collapses to a dominant prediction. 
+
+5 Discussion 
+
+Comparison with Mean-Field Theory. The tripartite structure of Bruno et al. [5] for encoder-only models aligns with ours for decoder-only ones: alignment matches Phase 1 (rank saturation and subspace stabilisation), heat parallels Phase 2 (stable subspace with orthogonal, concentrating updates), and pairing contrasts with Phase 3, which is abrupt and directional. This reflect dependence on the model’s objective since encoder-only models does not generate tokens. This agreement suggests a robust structural property in transformer architectures. 
+
+Conclusions. We propose a geometric framework for analyzing next-token prediction, using repre-sentation lenses as diagnostic tools. By decomposing the correction matrix via SVD and tracking the predictive subspace on the Grassmann manifold, we identify a consistent three-phase structure across models: Seeding Multiplexing , Hoisting Overriding , and Focal Convergence . As depth increases, Phase 2 expands while Phases 1 and 3 remain roughly constant, indicating that additional capacity is primarily used for candidate disambiguation. 9Limitations. Our analysis is restricted to two decoder-only families with dense attention and standard residual connections; extension to MoE, state-space, or non-residual architectures is left to future work. Phase interpretations are based on correlational evidence without causal interventions; activation patching or causal mediation analyses could provide stronger mechanistic grounding. The analysis was conducted using the SlimPajama; validation on additional corpora is left to future work. 
+
+References 
+
+[1] Armen Aghajanyan, Sonal Gupta, and Luke Zettlemoyer. Intrinsic dimensionality explains the effectiveness of language model fine-tuning. In Chengqing Zong, Fei Xia, Wenjie Li, and Roberto Navigli, editors, Proceedings of the 59th Annual Meeting of the Associ-ation for Computational Linguistics and the 11th International Joint Conference on Nat-ural Language Processing (Volume 1: Long Papers) , pages 7319–7328, Online, August 2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.acl-long.568. URL 
+
+https://aclanthology.org/2021.acl-long.568/ .[2] Guillaume Alain and Yoshua Bengio. Understanding intermediate layers using linear classifier probes, 2017. URL https://openreview.net/forum?id=ryF7rTqgl .[3] Emmanuel Ameisen, Jack Lindsey, Adam Pearce, Wes Gurnee, Nicholas L. Turner, Brian Chen, Craig Citro, David Abrahams, Shan Carter, Basil Hosmer, Jonathan Marcus, Michael Sklar, Adly Templeton, Trenton Bricken, Callum McDougall, Hoagy Cunningham, Thomas Henighan, Adam Jermyn, Andy Jones, Andrew Persic, Zhenyi Qi, T. Ben Thompson, Sam Zimmerman, Kelley Rivoire, Thomas Conerly, Chris Olah, and Joshua Batson. Circuit tracing: Revealing computational graphs in language models. Transformer Circuits Thread , 2025. URL 
+
+https://transformer-circuits.pub/2025/attribution-graphs/methods.html .[4] Nora Belrose, Alberto Bietti, Minsu Roy, Antoine Mialon, Julien Mairal, Shariq Nikzad, Max Tänzer, Vered Rassin, A. Lajoie, et al. Eliciting latent predictions from transformers with the Tuned Lens. arXiv preprint arXiv:2303.08112 , 2023. URL https://arxiv.org/abs/2303. 08112 .[5] Giuseppe Bruno, Federico Pasqualotto, and Andrea Agazzi. A multiscale analysis of mean-field transformers in the moderate interaction regime. In The Thirty-ninth Annual Conference on Neural Information Processing Systems , 2026. URL https://openreview.net/forum?id= WCRPgBpbcA .[6] Nelson Elhage, Neel Nanda, Catherine Olsson, Tom Henighan, Nicholas Joseph, Ben Mann, Amanda Askell, Yuntao Bai, Anna Chen, Tom Conerly, Nova DasSarma, Dawn Drain, Deep Ganguli, Zac Hatfield-Dodds, Danny Hernandez, Andy Jones, Jackson Kernion, Liane Lovitt, Kamal Ndousse, Dario Amodei, Tom Brown, Jack Clark, Jared Kaplan, Sam McCandlish, and Chris Olah. A mathematical framework for transformer circuits. Transformer Circuits Thread ,2021. https://transformer-circuits.pub/2021/framework/index.html. [7] Nelson Elhage, Neel Nanda, Catherine Olsson, Tom Henighan, Nicholas Joseph, Ben Mann, Amanda Askell, Yuntao Bai, Anna Chen, Tom Conerly, et al. Privileged bases in the transformer residual stream. Transformer Circuits Thread , 2023. URL https://transformer-circuits. pub/2023/privileged-basis/index.html .[8] Mor Geva, Roei Schuster, Jonathan Berant, and Omer Levy. Transformer feed-forward layers are key-value memories. In Marie-Francine Moens, Xuanjing Huang, Lucia Specia, and Scott Wen-tau Yih, editors, Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing , pages 5484–5495, Online and Punta Cana, Dominican Republic, November 2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.emnlp-main.446. URL 
+
+https://aclanthology.org/2021.emnlp-main.446/ .[9] Asma Ghandeharioun, Avi Caciularu, Adam Pearce, Lucas Dixon, and Mor Geva. Patchscopes: a unifying framework for inspecting hidden representations of language models. ICML’24. JMLR.org, 2024. [10] Wes Gurnee, Emmanuel Ameisen, Isaac Kauvar, Julius Tarng, Adam Pearce, Chris Olah, and Joshua Batson. When models manipulate manifolds: The geometry of a counting task, 2026. URL https://arxiv.org/abs/2601.04480 .10 [11] Ilya Loshchilov and Frank Hutter. Fixing weight decay regularization in adam. CoRR ,abs/1711.05101, 2017. URL http://arxiv.org/abs/1711.05101 .[12] Kevin Meng, David Bau, Alex Andonian, and Yonatan Belinkov. Locating and editing factual associations in gpt. In Proceedings of the 36th International Conference on Neural Information Processing Systems , NIPS ’22, Red Hook, NY, USA, 2022. Curran Associates Inc. ISBN 9781713871088. [13] Neel Nanda, Andrew Lee, and Martin Wattenberg. Emergent linear representations in world models of self-supervised sequence models. In Yonatan Belinkov, Sophie Hao, Jaap Jumelet, Na-joung Kim, Arya McCarthy, and Hosein Mohebbi, editors, Proceedings of the 6th BlackboxNLP Workshop: Analyzing and Interpreting Neural Networks for NLP , pages 16–30, Singapore, De-cember 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.blackboxnlp-1. 2. URL https://aclanthology.org/2023.blackboxnlp-1.2/ .[14] nostalgebraist. Interpreting GPT: the logit lens. https://www.lesswrong.com/posts/ AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens , 2020. [15] Team OLMo, Pete Walsh, Luca Soldaini, Dirk Groeneveld, Kyle Lo, Shane Arora, Akshita Bhagia, Yuling Gu, Shengyi Huang, Matt Jordan, et al. 2 olmo 2 furious. arXiv preprint arXiv:2501.00656 , 2024. [16] Kiho Park, Yo Joong Choe, and Victor Veitch. The linear representation hypothesis and the geometry of large language models, 2024. URL https://arxiv.org/abs/2311.03658 .[17] Ville Satopaa, Jeannie Albrecht, David Irwin, and Barath Raghavan. Finding a" kneedle" in a haystack: Detecting knee points in system behavior. In 2011 31st international conference on distributed computing systems workshops , pages 166–171. IEEE, 2011. [18] Adam Shai, Paul M. Riechers, Lucas Teixeira, Alexander Gietelink Oldenziel, and Sarah Marzen. Transformers represent belief state geometry in their residual stream. In The Thirty-eighth Annual Conference on Neural Information Processing Systems , 2024. URL https: //openreview.net/forum?id=YIB7REL8UC .[19] Zhiqiang Shen, Tianhua Tao, Liqun Ma, Willie Neiswanger, Zhengzhong Liu, Hongyi Wang, Bowen Tan, Joel Hestness, Natalia Vassilieva, Daria Soboleva, and Eric Xing. Slimpajama-dc: Understanding data combinations for llm training, 2024. URL https://arxiv.org/abs/ 2309.10818 .[20] Giuseppe Trimigno, Gianfranco Lombardo, and Stefano Cagnoni. Low-rank lens for scalable llms interpretability. pages 35–40, 01 2026. doi: 10.14428/esann/2026.ES2026-221. [21] An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388 , 2025. [22] Alexander Yom Din, Taelin Karidi, Leshem Choshen, and Mor Geva. Jump to conclusions: Short-cutting transformers with linear transformations. In Nicoletta Calzolari, Min-Yen Kan, Veronique Hoste, Alessandro Lenci, Sakriani Sakti, and Nianwen Xue, editors, Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024) , pages 9615–9625, Torino, Italia, May 2024. ELRA and ICCL. URL https://aclanthology.org/2024.lrec-main.840/ .11 Table 1: Structure of the TunedLens train and validation subsets, extracted from SlimPajama. Data Source Train Tokens Eval Tokens CommonCrawl 130.33M 10.83M C4 65.72M 5.20M ArXiv 11.52M 0.99M GitHub 9.66M 0.92M StackExchange 7.31M 0.54M Wikipedia 1.95M 0.18M Total 226.49M 18.66M 0 5 10                                   
+
+> Layer
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Loss
+> OLMo-2-0425-1B gap=+0.0344
+> train
+> val
+> 010 20 30
+> Layer
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Loss
+> OLMo-2-1124-7B gap=+0.0236
+> train
+> val
+> 010 20 30
+> Layer
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Loss
+> OLMo-2-1124-13B gap=+0.0350
+> train
+> val
+> 020 40 60
+> Layer
+> 0.0
+> 0.5
+> 1.0
+> Loss
+> OLMo-2-0325-32B gap=+0.0398
+> train
+> val
+> 0510 15 20 25
+> Layer
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Loss
+> Qwen2.5-1.5B gap=+0.0123
+> train
+> val
+> 0510 15 20 25
+> Layer
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Loss
+> Qwen2.5-7B gap=+0.0176
+> train
+> val
+> 010 20 30 40
+> Layer
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Loss
+> Qwen2.5-14B gap=+0.0333
+> train
+> val
+> 020 40 60
+> Layer
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Loss
+> Qwen2.5-32B gap=+0.0888
+> train
+> val
+
+Figure 14: Final per-layer training and validation losses across model scales and families. The low gap indicates no overfitting of trained lenses. 
+
+A Representation Lens Training and Experiments Setup 
+
+This appendix documents the training procedure and dataset composition used to obtain the rep-resentation lenses analyzed throughout the paper. All lenses are trained from scratch on the same corpus and under identical hyperparameter configurations, ensuring that any observed variation in the estimated predictive subspaces across model families and scales reflects genuine model-level differ-ences rather than artifacts of the training procedure. To train lenses, we used the official TunedLens implementation, which can be found on GitHub 1. We additionally provide empirical evidence that the trained lenses do not overfit to the training distribution, supporting the validity of the geometric analyses conducted on held-out data. 
+
+Dataset. All TunedLens are trained on a subset of the SlimPajama training corpus 2, comprising a total of 226.49M tokens drawn from six heterogeneous sources: CommonCrawl, C4, ArXiv, GitHub, StackExchange, and Wikipedia. The precise composition of both the training and evaluation subsets is reported in Table 1. This diversity of source domains, spanning natural language text, scientific writing, source code, and structured web content, encourages the lens to recover predictive structure that is not specific to a narrow distributional regime, and supports the generalization of our geometric findings across input types. For all input-dependent experiments reported in this paper, we employ a held-out subset of the SlimPajama validation set, with per-source composition reported in Table 1. 
+
+Optimization. Training is performed using the AdamW optimizer [ 11 ] with a learning rate of 
+
+10 −3 and linear decay. Each run consists of 500 optimizer steps, of which the first 50 constitute a linear warmup phase. Each optimizer step processes a batch of 218 tokens. All lenses, across all model families and scales, are trained under identical hyperparameter configurations to ensure that differences in the estimated predictive subspaces reflect genuine model-level variation rather than artifacts of the training procedure. 
+
+Generalization of trained lenses. To verify that the trained lenses do not overfit to the training distribution, we track the per-layer distillation loss on both the training and validation subsets throughout training. Figure 14 reports the final per-layer training and validation losses for all models examined. Across all layers and model families, training and validation losses are in close agreement, 
+
+> 1
+
+https://github.com/AlignmentResearch/tuned-lens 
+
+> 2
+
+https://huggingface.co/datasets/DKYoon/SlimPajama-6B 
+
+12 0              
+
+> 10
+> 20
+> Qwen2.5-1.5B
+> Layer
+> k=1% - μ=0.63
+> Visibility=0.59
+> k=3% - μ=0.59
+> Visibility=0.51
+> k=5% - μ=0.58
+> Visibility=0.46
+> k=10% - μ=0.57
+> Visibility=0.39
+> k=15% - μ=0.58
+> Visibility=0.36
+> k=25% - μ=0.63
+> Visibility=0.30
+> k=50% - μ=0.74
+> Visibility=0.17
+> 0
+> 10
+> 20
+> Qwen2.5-7B
+> Layer
+> k=1% - μ=0.70
+> Visibility=0.47
+> k=3% - μ=0.67
+> Visibility=0.45
+> k=5% - μ=0.66
+> Visibility=0.43
+> k=10% - μ=0.64
+> Visibility=0.37
+> k=15% - μ=0.65
+> Visibility=0.33
+> k=25% - μ=0.68
+> Visibility=0.28
+> k=50% - μ=0.76
+> Visibility=0.16
+> 0
+> 20
+> 40
+> Qwen2.5-14B
+> Layer
+> k=1% - μ=0.68
+> Visibility=0.45
+> k=3% - μ=0.66
+> Visibility=0.39
+> k=5% - μ=0.63
+> Visibility=0.36
+> k=10% - μ=0.61
+> Visibility=0.32
+> k=15% - μ=0.61
+> Visibility=0.30
+> k=25% - μ=0.65
+> Visibility=0.25
+> k=50% - μ=0.75
+> Visibility=0.15
+> 025 50
+> Layer
+> 0
+> 20
+> 40
+> 60
+> Qwen2.5-32B
+> Layer
+> k=1% - μ=0.70
+> Visibility=0.46
+> 025 50
+> Layer
+> k=3% - μ=0.67
+> Visibility=0.40
+> 025 50
+> Layer
+> k=5% - μ=0.63
+> Visibility=0.37
+> 025 50
+> Layer
+> k=10% - μ=0.61
+> Visibility=0.33
+> 025 50
+> Layer
+> k=15% - μ=0.62
+> Visibility=0.30
+> 025 50
+> Layer
+> k=25% - μ=0.65
+> Visibility=0.26
+> 025 50
+> Layer
+> k=50% - μ=0.75
+> Visibility=0.15
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+
+Figure 15: Pairwise RSS similarity matrices M(k) for all models in the Q WEN 2.5 family across truncation levels k ∈ { 1, 3, 5, 10 , 15 , 25 , 35 , 50 }% of d. Each row corresponds to a model; each column to a truncation level. Geometric contrast decreases monotonically with k across all sizes. with no systematic gap indicative of overfitting. This consistency confirms that the lens parameters have converged to solutions that generalize beyond the training corpus, and that the predictive subspaces they identify reflect genuine structural properties of the model’s residual stream. The geometric analyses reported in the main paper are therefore conducted on the held-out validation subset with full confidence in the reliability of the learned lens parameters. 
+
+Computational Resources. All training and evaluation experiments were conducted on a Linux server equipped with two I NTEL XEON GOLD 6430 CPUs, 1 TB of RAM, and two NVIDIA L40S GPUs with 48 GB memory each. 
+
+Execution Time. Under the specified training settings and hardware configuration, lens training required from a few hours for 1B models up to approximately four days for 32B models. Evaluation experiments required from a few hours for 1B models up to approximately one day and a half for 32B models. 
+
+B Pairwise RSS Similarity Matrices Across Truncation Levels 
+
+Section 3.2 introduces the pairwise RSS similarity matrix M(k), whose off-diagonal spread, quan-tified by Visibility@K , decreases monotonically as the truncation level k increases. The main text illustrates this behavior for OLM O2-32B (Figure 2). Here we provide the complete set of pairwise similarity matrices across all truncation levels k ∈ { 1, 3, 5, 10 , 15 , 25 , 35 , 50 }% of d for all models in both families examined. Figures 15 and 16 report these matrices for the Q WEN 2.5 and OLM O2 families, respectively. Each row corresponds to a model and each column to a truncation level. Several observations are consistent across both families. At low values of k, the matrices exhibit high geometric contrast: off-diagonal entries span a wide range, reflecting well-separated subspaces and a rich layer-wise structure that is clearly visible in the similarity patterns. As k increases, the matrices become progressively more uniform, with off-diagonal entries converging toward higher values and the overall contrast declining. In the limit k → d, all subspaces approach Rd and pairwise similarity collapses toward 1 uniformly, causing Visibility@K to approach zero. This behavior is consistent across model sizes within each 13 0
+
+5
+
+10 
+
+15 
+
+> OLMo-2-1B
+> Layer
+
+k=1% - μ=0.66 
+
+Visibility=0.52 
+
+k=3% - μ=0.68 
+
+Visibility=0.49 
+
+k=5% - μ=0.67 
+
+Visibility=0.47 
+
+k=10% - μ=0.65 
+
+Visibility=0.44 
+
+k=15% - μ=0.65 
+
+Visibility=0.41 
+
+k=25% - μ=0.67 
+
+Visibility=0.34 
+
+k=50% - μ=0.75 
+
+Visibility=0.19 
+
+0
+
+10 
+
+20 
+
+30 
+
+> OLMo-2-7B
+> Layer
+
+k=1% - μ=0.62 
+
+Visibility=0.55 
+
+k=3% - μ=0.64 
+
+Visibility=0.48 
+
+k=5% - μ=0.64 
+
+Visibility=0.45 
+
+k=10% - μ=0.62 
+
+Visibility=0.41 
+
+k=15% - μ=0.63 
+
+Visibility=0.37 
+
+k=25% - μ=0.65 
+
+Visibility=0.31 
+
+k=50% - μ=0.74 
+
+Visibility=0.19 
+
+0
+
+10 
+
+20 
+
+30 
+
+> OLMo-2-13B
+> Layer
+
+k=1% - μ=0.60 
+
+Visibility=0.58 
+
+k=3% - μ=0.61 
+
+Visibility=0.50 
+
+k=5% - μ=0.60 
+
+Visibility=0.46 
+
+k=10% - μ=0.59 
+
+Visibility=0.41 
+
+k=15% - μ=0.60 
+
+Visibility=0.37 
+
+k=25% - μ=0.64 
+
+Visibility=0.31 
+
+k=50% - μ=0.74 
+
+Visibility=0.18 
+
+0 25 50 
+
+Layer 
+
+0
+
+20 
+
+40 
+
+60 
+
+> OLMo-2-32B
+> Layer
+
+k=1% - μ=0.68 
+
+Visibility=0.48 
+
+0 25 50 
+
+Layer 
+
+k=3% - μ=0.64 
+
+Visibility=0.47 
+
+0 25 50 
+
+Layer 
+
+k=5% - μ=0.62 
+
+Visibility=0.45 
+
+0 25 50 
+
+Layer 
+
+k=10% - μ=0.60 
+
+Visibility=0.41 
+
+0 25 50 
+
+Layer 
+
+k=15% - μ=0.60 
+
+Visibility=0.37 
+
+0 25 50 
+
+Layer 
+
+k=25% - μ=0.63 
+
+Visibility=0.31 
+
+0 25 50 
+
+Layer 
+
+k=50% - μ=0.74 
+
+Visibility=0.19 
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 Figure 16: Pairwise RSS similarity matrices M(k) for all models in the OLM O2 family across truncation levels k ∈ { 1, 3, 5, 10 , 15 , 25 , 35 , 50 }% of d. The same monotonic decay in Visibility@K 
+
+is observed consistently across all model sizes, in agreement with the Q WEN 2.5 family. 0.2 0.4 0.6 0.8 1.0 
+
+E(k) [mean energy ratio] 
+
+0.2 
+
+0.3 
+
+0.4 
+
+0.5 
+
+0.6 
+
+> Visibility(k)  [p95  p5 off-diag sim]
+> k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+
+Qwen2.5-1.5B 
+
+0.2 0.4 0.6 0.8 1.0 
+
+E(k) [mean energy ratio] 
+
+0.15 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+0.45 
+
+0.50  
+
+> Visibility(k)  [p95  p5 off-diag sim]
+> k=1% k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+
+Qwen2.5-7B 
+
+0.4 0.6 0.8 1.0 
+
+E(k) [mean energy ratio] 
+
+0.15 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+0.45 
+
+0.50 
+
+> Visibility(k)  [p95  p5 off-diag sim]
+> k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+
+Qwen2.5-14B 
+
+0.2 0.4 0.6 0.8 1.0 
+
+E(k) [mean energy ratio] 
+
+0.15 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+0.45 
+
+0.50 
+
+> Visibility(k)  [p95  p5 off-diag sim]
+> k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+
+Qwen2.5-32B 
+
+0.2 0.4 0.6 0.8 1.0 
+
+E(k) [mean energy ratio] 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+0.45 
+
+0.50 
+
+0.55 
+
+> Visibility(k)  [p95  p5 off-diag sim]
+> k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+
+OLMo-2-0425-1B 
+
+0.2 0.4 0.6 0.8 1.0 
+
+E(k) [mean energy ratio] 
+
+0.2 
+
+0.3 
+
+0.4 
+
+0.5 
+
+0.6 
+
+> Visibility(k)  [p95  p5 off-diag sim]
+> k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+
+OLMo-2-1124-7B 
+
+0.4 0.6 0.8 1.0 
+
+E(k) [mean energy ratio] 
+
+0.2 
+
+0.3 
+
+0.4 
+
+0.5 
+
+0.6 
+
+> Visibility(k)  [p95  p5 off-diag sim]
+> k=1%
+> k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+
+OLMo-2-1124-13B 
+
+0.4 0.6 0.8 1.0 
+
+E(k) [mean energy ratio] 
+
+0.20 
+
+0.25 
+
+0.30 
+
+0.35 
+
+0.40 
+
+0.45 
+
+0.50  
+
+> Visibility(k)  [p95  p5 off-diag sim]
+> k=1% k=3%
+> k=5%
+> k=10%
+> k=15%
+> k=25%
+> k=35%
+> k=50%
+
+OLMo-2-0325-32B 
+
+Figure 17: Pareto frontier between Visibility@K and E(k) for all models in the Q WEN 2.5 and OLM O2 families. Each point corresponds to a truncation level k ∈ { 1, 3, 5, 10 , 15 , 25 , 35 , 50 }% of 
+
+d. The intermediate regime k ∈ { 5% , 10% , 15% } consistently lies at the region of highest curvature across all model sizes and both families, offering the most favorable trade-off between spectral fidelity and geometric discriminability. family, confirming that the trade-off between geometric discriminability and spectral energy retention is a structural property of the representation lens geometry rather than a scale-dependent artifact. 
+
+C Pareto Frontier Between Visibility@K and Spectral Energy 
+
+Section 3.2 establishes that varying the truncation level k traces a Pareto frontier between geometric discriminability, as measured by Visibility@K , and spectral energy retention, as measured by E(k).14 0 5 10 15 20 25                                                 
+
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> Qwen2.5-1.5B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Asym. Gen. Normal R²=0.974
+> Kumaraswamy R²=0.826
+> 0510 15 20 25
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> Qwen2.5-7B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Asym. Gen. Normal R²=0.957
+> Gen. Normal R²=0.886
+> 010 20 30 40
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> Qwen2.5-14B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Asym. Gen. Normal R²=0.961
+> Gen. Normal R²=0.955
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> Qwen2.5-32B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Kumaraswamy R²=0.949
+> Asym. Gen. Normal R²=0.923
+> 510 15
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> OLMo-2-1B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Kumaraswamy R²=0.999
+> Asym. Gen. Normal R²=0.998
+> 010 20 30
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> OLMo-2-7B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Kumaraswamy R²=0.921
+> Asym. Gen. Normal R²=0.892
+> 010 20 30 40
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> OLMo-2-13B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Asym. Gen. Normal R²=0.980
+> Kumaraswamy R²=0.969
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Normalized RSS
+> OLMo-2-32B
+> Distribution fits k=15%
+> Readout Subspace Similarity
+> Asym. Gen. Normal R²=0.775
+> Gen. Normal R²=0.748
+
+Figure 18: Distribution fits (left panels) and double-chord breakpoint detection (right panels) on the RSS profile {s(k=15%) 
+
+ℓ } for all models in the Q WEN 2.5 and OLM O2 families. Left panels show the normalized similarity profile overlaid with fits from the four parametric families (Beta, GNorm, AGNorm, Kumaraswamy). Right panels show the smoothed profile with identified breakpoints ˆb1
+
+and ˆb2 and the corresponding chord constructions. Unimodal families achieve consistently high R2
+
+across all model sizes; the more flexible families do not systematically improve the fit. The main text illustrates this frontier for a representative subset of models (Figure 3). Here we provide the complete Pareto curves for all models in both the Q WEN 2.5 and OLM O2 families. Figure 17 reports Visibility@K against E(k) for each model and truncation level k ∈{1, 3, 5, 10 , 15 , 25 , 35 , 50 }% of d. Across all models and both families, the frontier exhibits the same qualitative structure: no single value of k dominates on both objectives simultaneously, and the curve is strictly monotone in the sense that increasing k always improves E(k) at the cost of reducing 
+
+Visibility@K . The intermediate regime k ∈ { 5% , 10% , 15% } consistently corresponds to the region of highest curvature of the frontier, providing a favorable balance between fidelity and geometric discriminability across all model sizes and both architectural families. This structural regularity supports the use of the intermediate regime as the primary resolution scale for phase detection. 
+
+D Unimodality Validation and Phase Detection Across All Models 
+
+Section 3.2 introduces the unimodality assumption for the RSS similarity profiles {s(k)
+
+ℓ } and validates it by fitting four parametric families (Beta, GNorm, AGNorm, and Kumaraswamy) to the normalized profiles. The main text illustrates both analyses for Q WEN 2.5-14B and OLM O2-13B at k = 15% 
+
+(Figure 4). Here we provide the complete set of distribution fits and breakpoint detections for all models in both families at the same truncation level. Figure 18 report, for each model in the Q WEN 2.5 and OLM O2 families, the distribution fits (left panels) and the double-chord breakpoint detection (right panels) on the RSS profile {s(k=15%) 
+
+ℓ }.Each left panel displays the normalized similarity profile overlaid with the best-fitting curve from each of the four parametric families; each right panel shows the smoothed profile with the identified breakpoints ˆb1 and ˆb2 and the corresponding chord constructions used for their detection. Across all models and both families, the unimodal families achieve high goodness of fit, capturing the global rise–plateau–descent structure of the profiles. The more flexible families (Beta and Ku-maraswamy) do not systematically outperform the unimodal ones (GNorm and AGNorm), confirming that the additional expressivity is not required to account for the observed profile structure and that 15 0 5 10 15                                               
+
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> OLMo-1B
+> 010 20 30
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> OLMo-7B
+> 010 20 30 40
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> OLMo-13B
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> OLMo-32B
+> 0510 15 20 25
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> Qwen-1.5B
+> 0510 15 20 25
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> Qwen-7B
+> 010 20 30 40
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> Qwen-14B
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS(k=15%)
+> P1 P2 P3
+> Qwen-32B
+> Phase P1 Phase P2 Phase P3 Breakpoints
+
+Figure 19: RSS profiles s(k=15%) 
+
+ℓ for all eight models across both families, with consensus breakpoints 
+
+ˆb1 and ˆb2 indicated. The rise–plateau–descent structure and the placement of phase boundaries are consistent across all model sizes and both architectural families. the unimodal assumption does not discard relevant information. Local deviations from a strictly unimodal shape are present in some models, particularly in the transition regions; the chord-based detection procedure is robust to these deviations because of operating on the global geometry of each half-profile rather than on local derivatives. The identified breakpoints ˆb1 and ˆb2 are consistent in their structural placement across all models: ˆb1 falls reliably in the first half of the network and ˆb2 in the second half, confirming that the tripartite decomposition is a stable property of the forward pass geometry across architectures and scales. 
+
+D.1 Breakpoints detection. 
+
+Given the unimodal similarity profile {s(k)
+
+ℓ }L−1
+
+ℓ=1 , we identify two breakpoints b1 < b 2 that partition depth into three phases via a two-stage Kneedle criterion [ 17 ], applied separately to each half of the profile. This chord-based method is assumption-light, avoids derivatives, and is robust to local deviations from unimodality (Figure 4), as it relies on global geometry. All computations use a Gaussian-smoothed profile with σ = 2 . Let ˜sℓ be the smoothed profile and D(ℓ, AB ) the distance from (ℓ, ˜sℓ) to segment AB . The breakpoints are: 
+
+b1 = arg max 
+
+ℓ∈[1 ,m ]
+
+D
+
+
+
+ℓ, (1 , ˜s1)( m, ˜sm)
+
+
+
+,b2 = arg max 
+
+ℓ∈[m,L −1] 
+
+D
+
+
+
+ℓ, (m, ˜sm)( L−1, ˜sL−1)
+
+
+
+.
+
+where L is the number of layers and m = ⌊L/ 2⌋. The midpoint split follows from unimodality, placing one transition in each half. Breakpoint estimates may vary by 1–3 layers across values of k
+
+due to residual noise. We aggregate over the intermediate regime k ∈ { 5% , 10% , 15% } via: 
+
+ˆb1 = mode b(k)1 : k ∈ { 5, 10 , 15 } , ˆb2 = mode b(k)2 : k ∈ { 5, 10 , 15 } ,
+
+using the median when all three estimates are distinct. Robustness to other k values is discussed in Section 4. 
+
+E Geometric Characterization of the Three Phases: Full Results 
+
+Section 4.2 reports the geometric characterization of the three phases for a representative subset of four models. Here we provide the complete results for all eight models across both families (Q WEN 2.5 and OLM O2, 1B–32B parameters), covering the near-orthogonality of updates and the effective rank analysis of hidden states and layer updates. 16 5 10                                   
+
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> OLMo-1B
+> RSS@k15
+> |cos( ,h)|
+> 010 20 30
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> OLMo-7B
+> 020
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> OLMo-13B
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> OLMo-32B
+> 010 20
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> Qwen-1.5B
+> 010 20
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> Qwen-7B
+> 020 40
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> Qwen-14B
+> 020 40 60
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> RSS@k15
+> P1 P2 P3
+> Qwen-32B
+> 0.000
+> 0.025
+> 0.050
+> 0.075
+> 0.100
+> 0.125
+> 0.150
+> 0.175
+> |cos(  , h 1)|
+> 0.00
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> 0.10
+> 0.12
+> 0.14
+> |cos(  , h 1)|
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> |cos(  , h 1)|
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> |cos(  , h 1)|
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> |cos(  , h 1)|
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> |cos(  , h 1)|
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> |cos(  , h 1)|
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> |cos(  , h 1)|
+
+Figure 20: RSS profile s(k=15%) 
+
+ℓ (solid, left axis) and | cos(∆ ℓ, h ℓ−1)| (dashed red, right axis) overlaid for all eight models across both families. High RSS ↔ low cosine (Phase 2); low RSS ↔ high cosine (Phase 3). The anti-correlation is consistent across all models and scales. 2.5 5.0 7.5 10.0 12.5                                           
+
+> Layer
+> 800
+> 1000
+> 1200
+> 1400
+> eff_rank (H )
+> P1 P2 P3
+> OLMo-1B
+> 010 20 30
+> Layer
+> 1000
+> 1500
+> 2000
+> eff_rank (H )
+> P1 P2 P3
+> OLMo-7B
+> 010 20 30
+> Layer
+> 1000
+> 1500
+> 2000
+> eff_rank (H )
+> P1 P2 P3
+> OLMo-13B
+> 020 40 60
+> Layer
+> 500
+> 1000
+> 1500
+> 2000
+> eff_rank (H )
+> P1 P2 P3
+> OLMo-32B
+> 0510 15 20 25
+> Layer
+> 1050
+> 1100
+> 1150
+> eff_rank (H )
+> P1 P2 P3
+> Qwen-1.5B
+> 0510 15 20 25
+> Layer
+> 2000
+> 2200
+> 2400
+> 2600
+> eff_rank (H )
+> P1 P2 P3
+> Qwen-7B
+> 010 20 30 40
+> Layer
+> 1250
+> 1500
+> 1750
+> 2000
+> 2250
+> eff_rank (H )
+> P1 P2 P3
+> Qwen-14B
+> 020 40 60
+> Layer
+> 1250
+> 1500
+> 1750
+> 2000
+> 2250
+> eff_rank (H )
+> P1 P2 P3
+> Qwen-32B
+
+Figure 21: Effective rank of hidden states Hℓ averaged across 16M tokens for all eight models. Rank increases through Phase 1, peaks near ˆb1, stabilises in Phase 2, and remains approximately constant through Phase 3. Q WEN 2.5-1.5B exhibits reduced layer-wise variance consistent with its constrained capacity. 
+
+RSS profiles and consensus breakpoints. Figure 19 extends Figure 10 to all eight models, showing the RSS profile s(k=15%) 
+
+ℓ with consensus breakpoints ˆb1 and ˆb2 across normalised depth. The tripartite structure is consistent across all models and both families: Phase 1 exhibits a rising profile as the predictive geometry stabilises, Phase 2 maintains a near-plateau of high subspace similarity, and Phase 3 shows a decline as the predictive subspace reorients toward the unembedding direction for decoding. The breakpoints are reliably placed in the first and second halves of the network respectively, confirming the structural regularity reported in Section 4.1. 
+
+Near-orthogonality of updates. Figure 20 extends Figure 12 to all eight models, overlaying the RSS profile s(k=15%) 
+
+ℓ and the cosine similarity | cos(∆ ℓ, h ℓ−1)| across normalised depth. The anti-correlation between the two quantities is consistent across all models and both families: high RSS aligns with low cosine in Phase 2, and low RSS with high cosine in Phase 3. In all models, 
+
+| cos(∆ ℓ, h ℓ−1)| is lowest in Phase 2 (7/8 models) and highest in Phase 3 (8/8 models), confirming that updates remain nearly orthogonal to the residual stream throughout the forward pass and that phases differ in the geometric effect of these updates on the predictive subspace rather than in their alignment with the existing residual direction. 17 5 10                                  
+
+> Layer
+> 1000
+> 1100
+> 1200
+> 1300
+> 1400
+> 1500
+> eff\_rank ( )
+> P1 P2 P3
+> OLMo-1B
+> eff\_rank ()
+> 010 20 30
+> Layer
+> 1200
+> 1400
+> 1600
+> 1800
+> 2000
+> 2200
+> eff\_rank ( )
+> P1 P2 P3
+> OLMo-7B
+> 020
+> Layer
+> 1000
+> 1250
+> 1500
+> 1750
+> 2000
+> 2250
+> eff\_rank ( )
+> P1 P2 P3
+> OLMo-13B
+> 020 40 60
+> Layer
+> 500
+> 1000
+> 1500
+> 2000
+> 2500
+> eff\_rank ( )
+> P1 P2 P3
+> OLMo-32B
+> 010 20
+> Layer
+> 1100
+> 1150
+> 1200
+> 1250
+> eff\_rank ( )
+> P1 P2 P3
+> Qwen-1.5B
+> 010 20
+> Layer
+> 2000
+> 2200
+> 2400
+> 2600
+> 2800
+> eff\_rank ( )
+> P1 P2 P3
+> Qwen-7B
+> 020 40
+> Layer
+> 1000
+> 1250
+> 1500
+> 1750
+> 2000
+> 2250
+> eff\_rank ( )
+> P1 P2 P3
+> Qwen-14B
+> 020 40 60
+> Layer
+> 1000
+> 1500
+> 2000
+> eff\_rank ( )
+> P1 P2 P3
+> Qwen-32B
+> 4
+> 6
+> 8
+> 10
+> 12
+> 14
+> 16
+> 5
+> 10
+> 15
+> 20
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> 10
+> 15
+> 20
+> 25
+> 30
+> 35
+> 20
+> 40
+> 60
+> 80
+> 25
+> 50
+> 75
+> 100
+> 125
+> 150
+> 0
+> 100
+> 200
+> 300
+> 0
+> 200
+> 400
+> 600
+
+Figure 22: Effective rank of the total update ∆ℓ (solid) and its norm ∥∆ℓ∥2 (dashed red) for all eight models. Update rank peaks in Phase 2 and declines in Phase 3 (7/8 models); update norm increases monotonically with sharp acceleration in Phase 3 (up to 10 ×), indicating concentration on few high-energy directions. 
+
+Effective rank of hidden states and layer updates. Figures 21 and 22 extend Figures 13 and 9 to all eight models. The effective rank of hidden states (Figure 21) increases throughout Phase 1 and peaks near or shortly after ˆb1 across all models, then enters a low-variance regime in Phase 2 consistent with a stabilised predictive geometry. The exception is Q WEN 2.5-1.5B, which shows a modest dip of ≈ 80 dimensions in Phase 2 and generally lower layer-wise rank variance, which we attribute to its constrained capacity ( d = 1536 , 27 layers). The effective rank and norm of layer updates (Figure 22) follow a consistent pattern: update rank grows through Phases 1–2, peaks in Phase 2 (8/8 models), then declines in Phase 3 (7/8 models), while ∥∆ℓ∥ increases monotonically with sharp acceleration in Phase 3 (up to 10 ×), indicating concentration of update energy onto a shrinking set of high-energy directions. These patterns are qualitatively uniform across model sizes and both architectural families, confirming that the geometric signatures of the three phases identified in the main text are not artifacts of the selected subset of models. 18

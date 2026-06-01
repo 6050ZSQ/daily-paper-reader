@@ -1,0 +1,563 @@
+Title: Invariant Features in Language Models: Geometric Characterization and Model Attribution
+
+URL Source: https://arxiv.org/pdf/2605.06458v1
+
+Published Time: Fri, 08 May 2026 01:45:08 GMT
+
+Number of Pages: 24
+
+Markdown Content:
+# Invariant Features in Language Models: Geometric Characterization and Model Attribution 
+
+Agnibh Dasgupta ∗ Abdullah Tanvir ∗ Xin Zhong †
+
+Department of Computer Science University of Nebraska Omaha, Omaha, NE, USA 
+
+{adasgupta,atanvir,xzhong}@unomaha.edu 
+
+# Abstract 
+
+Language models exhibit strong robustness to paraphrasing, suggesting that se-mantic information may be encoded through stable internal representations, yet the structure and origin of such invariance remain unclear. We propose a local geometric framework in which semantically equivalent inputs occupy structured regions in latent space, with paraphrastic variation along nuisance directions and semantic identity preserved in invariant subspaces. Building on this view, we make three contributions: (1) a geometric characterization of invariant latent features, (2) a contrastive subspace discovery method that separates semantic-changing from semantic-preserving variation, and (3) an application of invariant representations to zero-shot model attribution. Across models and layers, empirical results support these contributions. Invariant structure emerges in specific depth regions, semantic displacement lies largely outside the nuisance subspace, and representation-level interventions indicate a causal role of invariant components in model outputs. In-variant representations also capture model-specific geometric patterns, enabling accurate attribution. These findings suggest that semantic invariance can be viewed as a local geometric property of latent representations, offering a principled per-spective on how language models organize meaning. 
+
+# 1 Introduction 
+
+Large language models (LLMs) exhibit a striking robustness to surface-level variation. Prompts that differ substantially in wording, style, or syntactic structure often lead to similar internal reasoning and consistent outputs. This behavior suggests that LLMs encode semantic information in a stable internal representation that abstracts away from lexical form. However, despite extensive empirical success, it remains unclear where such stable semantic representations emerge within model architectures, how they can be formally characterized, and how their geometric structure differs across models. Understanding invariant internal representations is important for both scientific and practical reasons. From a representation learning perspective, identifying where semantic stability arises provides insight into how transformers organize meaning across depth and how abstraction emerges during inference. From a systems and security perspective, invariant representations offer a mechanism to analyze model behavior beyond observable outputs. Because these internal structures reflect how a model organizes semantic information, they can support applications such as model attribution, forensic analysis, and robustness evaluation. Existing efforts to analyze or identify language models span several complementary directions. Prior work on semantic representations and probing has shown that transformer activations encode structured linguistic and semantic information and exhibit robustness to paraphrasing. A separate line of work studies representation geometry through similarity metrics and subspace analysis, revealing that learned features admit meaningful low-dimensional structure across layers and models. More recently, model attribution and fingerprinting approaches have demonstrated that internal activations 
+
+> ∗Equal contribution.
+> †Corresponding author: xzhong@unomaha.edu Preprint.
+> arXiv:2605.06458v1 [cs.LG] 7 May 2026
+
+Figure 1: Emergence of invariant semantic regions in LLMs. (A) Paraphrases propagate through layers and tend to converge to compact zones. (B) Local geometric interpretation: nuisance vs semantic tangent directions. (C) Geometric decomposition detects invariant zones for model attribution. and outputs can contain model-specific signals. While these studies provide important insights, they largely treat semantic stability, representation geometry, and model identity as separate phenomena. In particular, existing approaches do not provide a unified geometric characterization of semantic invariance as a structural property of latent representations, nor a principled mechanism to identify invariant structure by explicitly separating semantic-preserving and semantic-changing variation. As a result, it remains difficult to systematically understand how semantic invariance emerges across layers and how it relates to model-specific representation geometry. In this work, we develop a geometric framework for analyzing semantic invariance in language models. As illustrated in Fig. 1, semantically equivalent inputs propagate through the network and converge to compact invariant zones in latent space, where local variation can be interpreted along semantic and nuisance directions. (1) Building on this hypothesis, our first contribution is a geometric definition of invariant latent features as representations that are stable under semantic-preserving transformations while remaining discriminative across meanings. (2) Our second contribution is a data-driven framework for identifying local invariant features via contrastive sensitivity decomposition, which separates semantic-changing from semantic-preserving variation. (3) Our third contribution is to show that these invariant zones exhibit model-specific geometry and can serve as latent signatures for zero-shot model attribution, demonstrating that invariant representations encode both semantic stability and model individuality. Together, these contributions establish invariant latent features as a principled geometric framework for understanding and analyzing internal representations in large language models. 
+
+# 2 Related Work 
+
+Semantic Representations and Emergent Invariance in Language Models. Prior work shows that transformer-based language models develop structured representations across depth, with lower layers encoding lexical and syntactic information and higher layers capturing contextual and semantic properties [ 1 , 2 ]. Probing studies further demonstrate that linguistic structures such as syntax and dependency relations can be recovered from these representations [ 3, 4]. Geometric analyses of BERT additionally suggest that semantic and syntactic information occupy structured subspaces in latent space, with word senses exhibiting fine-grained organization [ 5]. Together, these findings indicate that language models encode semantic structure beyond surface form. This line of work also implies an empirical form of semantic invariance: inputs that differ in wording but preserve meaning often yield similar representations. Analyses of contextualized embeddings and their reductions to static representations further show that semantic information remains stable across contexts [1, 6]. Existing studies primarily establish that semantic structure is present in language-model representa-tions. However, a local geometric characterization of how semantic invariance emerges across layers, how paraphrastic variation separates from semantic variation, and how such invariant structure can be operationally identified, remains less explored. 
+
+Representation Geometry and Subspace Analysis in Neural Networks. A central line of work studies neural representations through geometric and statistical comparisons of activation spaces. Representational similarity analysis (RSA) and related methods quantify relationships across inputs, 2layers, and models. Widely used techniques include canonical correlation analysis (CCA) and its variants such as singular vector CCA (SVCCA) [ 7] and projection-weighted CCA (PWCCA) [ 8], as well as centered kernel alignment (CKA), which is invariant to orthogonal transformations and isotropic scaling [ 9]. These methods enable systematic comparison of representations and are widely used to analyze training dynamics, layer correspondence, and cross-model similarity. Complementary approaches examine the structure of representation spaces directly. Linear probes show that linguistic and semantic features can be recovered from learned representations, while geometric analyses indicate that such information resides in structured subspaces [ 3 , 5 ]. Together, these results suggest that neural representations admit meaningful low-dimensional structure that can be characterized through linear projections and subspace decompositions. Despite these advances, existing approaches mainly measure similarity or identify directions associ-ated with specific properties. They do not explicitly provide mechanisms for separating semantic-preserving from semantic-changing variation. Consequently, while prior work reveals structure in representation space, a principled framework for isolating invariant subspaces that distinguish semantic content from nuisance variation remains limited. This motivates our formulation of invariant subspace discovery as a contrastive geometric decomposition, where invariant directions arise from a generalized eigenvalue operator that separates semantic and nuisance components. 
+
+Model-Specific Representations and Attribution via Internal Activations. A growing body of work suggests that language models encode model-specific structure despite similar external behavior. Evidence arises from transfer studies, where soft prompts optimized for one model often fail to generalize to others, indicating interaction with model-specific latent pathways [ 10 ]. Related observations come from adversarial trigger analysis, where input-agnostic triggers reveal global biases and model-dependent vulnerabilities [ 11 ]. These results suggest that similar linguistic functions may be implemented through different internal geometries. Model attribution has also been studied via generated text, watermarking, and explicit identification signals. Prior work explores source-model identification from outputs [ 12 ], watermark-based attribution [ 13 , 14 ], and instruction-based identification through lightweight training interventions [15]. While these approaches demonstrate that model identity can be detected, they typically rely on output-level artifacts, task-specific classifiers, watermarking mechanisms, or training-induced signatures. In contrast, our work uses invariant latent structure itself as a compact semantic signature. Attribution is therefore not treated as a standalone identification mechanism, but as a downstream validation that invariant subspaces preserve both semantic stability and model-specific representation geometry. 
+
+# 3 Proposed Framework for Invariant Latent Feature Analysis 
+
+We present a geometric framework for semantic invariance in language models, based on the hypoth-esis that paraphrastic variation induces structured zones of stability. Section 3.1 formalizes invariant latent features, Section 3.2 introduces a contrastive subspace discovery method, and Section 3.3 uses the resulting representations for zero-shot model attribution as empirical validation. 
+
+3.1 Invariant Latent Features: Definition and Local Geometry 
+
+Let fm denote a language model, hℓ(x) ∈ RT ×d denote the token-level hidden states at layer ℓ, and 
+
+z = Φ ℓ(x) ∈ Rd denote their pooled representation, which serves as the primary object of analysis. We study invariance of these representations under semantic-preserving transformations. Formally, for a transformation T (·) such as paraphrasing, invariance requires Φℓ(T (x)) ≈ Φℓ(x). To avoid trivial collapse, representations must also remain discriminative across meanings. Specifically, for para-phrases x1, x 2 and an input x3 with different meaning, we require Φℓ(x1) ≈ Φℓ(x2), Φℓ(x1)̸ ≈
+
+Φℓ(x3). This within–across criterion defines invariant latent features as representations that are stable under semantic-preserving variation while remaining separable across semantic content. To interpret this property, we adopt a geometric perspective inspired by the manifold hypothesis [ 16 ]. Although latent representations reside in a high-dimensional ambient space Rd, meaningful semantic information occupies only a structured subset of this space. Let M ⊂ Rd denote the semantic representation manifold. Inputs with coherent semantic meaning are mapped to points lying near this manifold, while arbitrary points in the ambient space generally do not correspond to meaningful language representations. Under this view, semantically equivalent inputs correspond to nearby points on the manifold. Paraphrasing can therefore be interpreted as a local perturbation that moves the representation within a neighborhood of the same semantic region. Specifically, for paraphrases 
+
+x1 and x2, ∥Φℓ(x1) − Φℓ(x2)∥ ≤ ϵ, for some small ϵ > 0, while input x3 with distinct semantic meaning occupy separate regions of the manifold. 3We propose to analyze the local structure of M through its tangent space. At a point z = Φ ℓ(x)
+
+on the manifold, the tangent space Tz M contains all directions along which the representation can move infinitesimally while remaining on the manifold. In other words, Tz M provides a local linear approximation of the manifold and captures the allowable directions of variation in representation space. Figure 2 illustrates this local geometric interpretation. Variations of representations on the manifold arise from two qualitatively different sources: semantic changes, which alter the underlying meaning of the input, and nuisance changes, which modify surface form while preserving semantic content. Locally, these two types of variation can be interpreted as approximately distinct directions within the tangent space. We therefore consider a working decomposition of the form 
+
+Tz M ≈ T semantic  
+
+> z
+
+∪ T nuisance  
+
+> z
+
+(1) where T semantic  
+
+> z
+
+captures directions associated with changes in semantic content, and T nuisance  
+
+> z
+
+captures directions corresponding to semantic-preserving variation. In practice, this decomposition is a local and approximate factorization, since learned representations may exhibit partial overlap and entanglement between these components. Under a semantic-preserving transformation such as paraphrasing, the representation primarily moves along nuisance directions, z′ = z + vnuisance .
+
+Invariant features correspond to representations that ignore such nuisance motion. If P denotes a projection operator onto the semantic subspace, the invariant representation can be written as zinv =
+
+P z, which satisfies P (z + vnuisance ) = P z. Throughout this work, “invariant” refers specifically to invariance with respect to semantic-preserving transformations. Thus, invariant features are expected to remain stable under paraphrasing while remaining sensitive to semantic-changing perturbations. 
+
+Figure 2: Local geometric hypothesis of semantic invariance in LM representations. During training, inputs x ∈ RD are mapped by the model to latent representations z = f (x) that lie on a lower-dimensional manifold M ⊂ Rd. At a point z ∈ M , the tangent space 
+
+Tz M provides a local linear approximation of allowable variations in representation space. Semantic-preserving transformations such as paraphrasing primarily induce movements along nuisance directions that do not alter the underlying meaning. Invariant latent features cor-respond to projections that remove these nuisance directions, so that 
+
+zinv = Pz and P (z + vnuisance ) = Pz , preserving semantic identity while ignoring surface variation. This local geometric inter-pretation provides an ex-planation for why invari-ant latent features naturally emerge during training. To maintain consistent behav-ior under paraphrasing, the model must map semanti-cally equivalent inputs to nearby regions in latent space while preserving sep-arability across meanings. These constraints induce structured zones of stability on the representation mani-fold where paraphrase vari-ants cluster while remaining distinguishable from other semantic concepts. Although the existence of such invariant zones follows from the need for semantic consistency, their geometric realization is generally model-specific. Transformer training involves highly non-convex optimization [ 17 , 18 ], and different models may converge to distinct embeddings of the underlying semantic manifold due to variations in initialization, architecture, training data, and optimization dynamics. Consequently, even when two models encode similar semantic concepts, the corresponding latent manifolds may differ in orientation, curvature, and local geometry. Invariant latent features therefore reflect how a particular model internally organizes semantic information. This combination of semantic stabil-ity and geometric individuality later enables these invariant representations to serve as distinctive identifiers for model attribution. 
+
+3.2 Invariant Subspace Identification via Contrastive Sensitivity Decomposition 
+
+The geometric formulation in Section 3.1 characterizes invariant latent features as directions that remain stable under semantic-preserving transformations while remaining responsive to semantic change. We now introduce a data-driven procedure to identify such directions from model activations. The key idea is to contrast two sources of variation in latent space: variation induced by semantic-preserving transformations, which primarily reflects nuisance motion, and variation induced by semantic-changing transformations, which reflects movement across meanings. 4Let x denote an input prompt, at layer ℓ, let hℓ(x) ∈ RT ×d denote token-level hidden states. We define a representation vector zℓ(x) = Φ ℓ(x) ∈ Rd as a deterministic pooling of hℓ(x). In practice, we use the final-token hidden state, i.e., zℓ(x) = h(T ) 
+
+> ℓ
+
+(x). For each input, we construct two perturbation families. The first consists of semantic-preserving variants, denoted by {xsp  
+
+> i
+
+}ni=1 , such as paraphrases that preserve the underlying meaning while altering surface form. The second consists of semantic-changing variants, denoted by {xsc  
+
+> j
+
+}mj=1 , whose semantic content differs from that of the anchor input. We then compute the corresponding finite-difference feature changes ∆zsp  
+
+> i
+
+= Φ ℓ(xsp  
+
+> i
+
+) − Φℓ(x),
+
+∆zsc  
+
+> j
+
+= Φ ℓ(xsc  
+
+> j
+
+) − Φℓ(x). These difference vectors provide empirical estimates of local motion in the representation space. Under the local geometric hypothesis, semantic-preserving perturbations primarily trace nuisance directions in the tangent space, whereas semantic-changing perturbations additionally traverse semantic directions. To capture these two modes of variation, we define the empirical sensitivity covariances Ssp  
+
+> ℓ
+
+= 1
+
+> n
+
+Pni=1 ∆zsp  
+
+> i
+
+(∆ zsp  
+
+> i
+
+)⊤, S sc  
+
+> ℓ
+
+= 1
+
+> m
+
+Pmj=1 ∆zsc  
+
+> j
+
+(∆ zsc  
+
+> j
+
+)⊤. We then identify contrastive directions by solving the generalized eigenvalue problem: 
+
+Ssc  
+
+> ℓ
+
+v = λ S sp  
+
+> ℓ
+
+v. (2) Each eigenvector v maximizes the Rayleigh quotient λ(v) = v⊤Ssc  
+
+> ℓ
+
+v/v ⊤Ssp  
+
+> ℓ
+
+v. This formulation encodes the desired notion of the proposed invariance. Directions with large λ exhibit strong variation under semantic change but weak variation under semantic-preserving perturbations, and therefore correspond to invariant semantic directions. In contrast, directions with small λ are dominated by semantic-preserving variation and are interpreted as nuisance directions. We therefore use the term invariant direction to denote a direction that is stable under semantic-preserving perturbations but discriminative under semantic-changing perturbations. All covariance estimates and the generalized eigenvalue problem are computed on zℓ(x).In practice, Ssp is low rank because the number of semantic-preserving perturbations is much smaller than the hidden dimension. We therefore solve a regularized generalized eigenvalue problem, which ensures positive definiteness of the denominator operator and yields a well-posed decomposition, 
+
+Ssc v = λ(Ssp + ϵI )v, where ϵ > 0 ensures numerical stability. Let V inv  
+
+> ℓ
+
+= [ v1, . . . , v k] denote the top-k generalized eigenvectors with the largest eigenvalues at layer ℓ. Since generalized eigenvectors are orthogonal with respect to the (Ssp + ϵI )-inner product but not necessarily under the Euclidean inner product, we compute an orthonormal basis U inv  
+
+> ℓ
+
+= orth( V inv  
+
+> ℓ
+
+) via QR decomposition. This ensures that U inv  
+
+> ℓ
+
+U inv ⊤ 
+
+> ℓ
+
+defines a valid Euclidean projection operator. The invariant representation at layer ℓ is then obtained by projection, 
+
+zinv = U inv  
+
+> ℓ
+
+U inv ⊤ 
+
+> ℓ
+
+z. (3) This projection suppresses nuisance-sensitive components while preserving directions that remain stable under paraphrasing yet discriminate across meanings. The complementary nuisance component is given by znuis =  I − U inv  
+
+> ℓ
+
+U inv ⊤
+
+> ℓ
+
+ z. Together they induce the decomposition z = zinv + znuis ,
+
+providing a constructive approximation of the semantic–nuisance decomposition in Eq. 1. In par-ticular, zinv captures components aligned with invariant semantic directions, while znuis captures variation dominated by nuisance-sensitive directions. The decomposition in Eq. 3 also admits a local differential interpretation. When perturbations are infinitesimal, ∆z ≈ JΦℓ (x)∆ x, where JΦℓ (x) is the Jacobian of the layer-wise representation map. The resulting covariance operators satisfy S ≈ JΦℓ (x) E[∆ x∆x⊤] JΦℓ (x)⊤. Hence, the proposed covariance-based formulation can be viewed as a data-driven approximation of Jacobian sensitivity. Moreover, if the input perturbations are isotropic so that E[∆ x∆x⊤] = I, then S ≈ U Σ2U ⊤,
+
+where JΦℓ (x) = U ΣV ⊤ is the singular value decomposition of the Jacobian. In that case, the eigenvectors of S align with the left singular vectors of the Jacobian, and the eigenvalues correspond to squared singular values. The generalized eigenvalue formulation therefore extends standard sensitivity analysis by explicitly separating semantic and nuisance variation. We apply this procedure across layers and select those exhibiting strong invariant structure based on their generalized eigenvalue spectra. Invariant zones are thus defined as sets of layers associated with leading eigenvalues, without requiring spatial contiguity. For each model m and input x, we define the invariant zone representation by aggregating invariant projections across the selected layers, sm(x) = Agg  z(ℓi)inv , . . . , z (ℓj )inv 
+
+, where {ℓi, . . . , ℓ j } denotes the set of layers whose invariant subspaces are identified by large generalized eigenvalues, and Agg( ·) denotes feature aggregation across layers, implemented as concatenation of the invariant representations. This representation serves as a compact semantic signature capturing the invariant structure of the model. 53.3 Zero-shot Model Attribution Using Invariant Features 
+
+Figure 3: Zero-shot model attribu-tion via invariant zone signatures. Each model m is represented by an invariant signature sm(x). Given a test model, attribution selects the reference model with highest simi-larity in invariant space. The preceding section constructs invariant zones and their corre-sponding representations sm(x), which capture model-specific semantic structure while remaining stable under paraphrasing. We now use these representations for model attribution. 
+
+Attribution Formulation. Let F = {m1, . . . , m K } denote a collection of language models. Given an input prompt x, the attribution task is to infer its originating model m ∈ F using invariant zone representations. For each reference model m,we compute its signature sm(x), and for a test model we com-pute st(x). Attribution is then performed by similarity match-ing ˆm = arg max m∈F Sim  st(x), s m(x), where Sim( ·, ·)
+
+denotes a similarity measure such as cosine similarity. This formulation corresponds to a zero-shot prototypical [ 19 ] style classification scheme in invariant representation space, as illus-trated in Fig. 3. Each model is represented by its invariant zone, and attribution is performed by selecting the closest match. 
+
+Interpretation as Hypothesis Validation. Attribution is not posed as a standalone forensic task, but as validation of the proposed geometric framework. If invariant zone representa-tions retain discriminative model identity, this indicates that the discovered invariant structures encode model-specific organization of semantic information. In this way, attribution provides empirical evidence that semantic invariance in language models is a geometric property of latent representations. 
+
+# 4 Experiments 
+
+We evaluate the proposed geometric framework through a series of analyses that examine the emergence, structure, and functional role of invariant features across models and layers. Core experiments focus on dataset and model setup, invariant zone localization, geometric validation, causal intervention, and attribution, while extended ablations and additional analyses are deferred to the appendix for completeness. 
+
+4.1 Evaluation Setup                       
+
+> Group SP SC
+> Cats 20 20 France 20 20 Python 20 20 Photosynthesis 20 20 Democracy 20 20 Einstein 20 20 Climate Change 20 20 Calculus 20 20 Meditation 20 20 Bread 20 20
+
+Table 1: Dataset compo-sition. Each group con-tains one anchor query, 20 SP variants, and 20 SC variants (410 total sentences). 
+
+Dataset Construction. We construct a dataset to isolate semantic in-variance from surface-form variation under a within–across perturbation framework. The dataset contains 410 prompts across 10 thematic cat-egories (Table 1). Each group defines a local semantic neighborhood consisting of one anchor, 20 semantic-preserving (SP), and 20 semantic-changing (SC) variants. SP variants are generated through paraphrasing that preserves meaning while varying lexical and syntactic form, approx-imating motion along nuisance directions (Section 3.1). SC variants alter semantic content while preserving overall structure. We consider two SC regimes: easy SC , involving semantically related substitutions with subtle shifts, and hard SC , involving unrelated substitutions that induce large semantic displacement. For example, given the anchor query “What is the official language of France?” , an SP variant is “Which language holds official status in France?” . An easy SC variant is “What is the national currency of France?” , while a hard SC variant is “What is the longest river in South America?” .To prevent data leakage, each group is split into disjoint discovery and validation subsets, each containing 10 SP and 10 SC variants (5 easy, 5 hard). The discovery subset is used exclusively for invariant zone identification, including generalized eigenvalue analysis and layer selection, while the held-out validation subset is used for all downstream experiments, including Tangent-Direction Representation Intervention, projection analysis, and attribution evaluation. This design is consistent with the local nature of the framework: each category defines its own invariant zone centered on a specific semantic neighborhood, while experiments are evaluated independently per group. Although different groups produce different local invariant zones, consistent behavior across groups suggests shared local 6geometric structure. Despite its modest size, the dataset is sufficient for local invariant feature analysis with no leakage between discovery and evaluation perturbations. Additional dataset construction details are provided in Appendix E.                     
+
+> Model Family Params
+> Mistral-Instruct-v0.3 Mistral 7B Llama-3-Instruct Llama 8B Gemma-IT Gemma 7B Qwen2.5-Instruct Qwen 7B GLM-4-Chat GLM 9B DeepSeek-MoE-Chat DeepSeek 16B InternLM2-Chat InternLM 7B Phi-4-Mini Phi 4B Falcon3-Instruct Falcon 7B
+
+Table 2: Language models used for evaluation, spanning diverse families, scales, and training paradigms. 
+
+Models Analyzed. We evaluate nine transformer-based language models listed in Table 2, spanning diverse archi-tectural families, parameter scales (4B–16B), and training paradigms. The suite includes models trained under differ-ent objectives and pipelines, including instruction tuning, chat alignment, and mixture-of-experts architectures. This diversity allows us to assess whether invariant structure is a consistent property of representation geometry across model families, rather than an artifact of a specific architecture, scale, or training procedure. 
+
+4.2 Localization of Invariant Feature Zones 
+
+We investigate where invariant structure emerges across model depth by analyzing the layer-wise generalized eigen-value spectrum defined in Section 3.2. The goal is to identify layers in which semantic-changing variation is maximally separated from semantic-preserving variation, corresponding to the emergence of invariant feature zones. Since invariant zones are locally defined for each semantic group and model pair, the following analysis presents one representative example illustrating how such zones emerge across depth within a specific local semantic neighborhood. 
+
+Figure 4: Per-layer eigenvalue profiles for k = 32 invariant directions (log scale). Each line denotes an eigenvec-tor rank. Eigenvalues increase with depth, and higher-ranked directions re-main dominant, indicating a stable and ordered decomposition of invariant sig-nal across layers. 
+
+Experimental Setup. For each layer ℓ, we compute the generalized eigenvalues {λ(ℓ) 
+
+> i
+
+}ki=1 from Eq. 2, which quan-tify the ratio between semantic-changing and semantic-preserving variation along each direction. Large eigenval-ues indicate directions that are stable under paraphrasing but responsive to semantic change, and therefore corre-spond to invariant features. We analyze the distribution of the top-k eigenvalues across layers to characterize how invariant structure evolves with depth. 
+
+Results. Figure 4 shows the per-layer eigenvalue pro-files on a log scale. A consistent trend is observed across models: the leading eigenvalues increase steadily with depth, indicating that invariant structure strengthens in deeper layers. However, invariant zones are selected using eigenvalues normalized by the total positive eigenvalue mass within each layer, rather than raw magnitudes alone, avoiding a trivial bias toward deeper layers. Moreover, the ordering of eigenvalues is stable within each layer, with top-ranked directions consistently exhibit-ing larger values, suggesting that the decomposition identifies a meaningful hierarchy of invariant directions. The growth of leading eigenvalues becomes most pronounced in mid-to-late layers, suggesting that invariant feature zones are not uniformly distributed but instead emerge in specific depth ranges. This observation aligns with the geometric hypothesis in Section 3.1, where semantic abstraction develops progressively and concentrates in localized regions of the network. These layers are subsequently used to define invariant zones. 
+
+4.3 Tangent-Direction Validation of Invariant Geometry 
+
+We empirically validate the geometric decomposition introduced in Section 3.2 by testing whether paraphrase-induced variation concentrates in the nuisance subspace, while semantic displacement lies predominantly outside it. This experiment directly evaluates the geometric structure discovered via contrastive sensitivity decomposition. 
+
+Experimental Setup. Let the nuisance component at layer ℓ be defined as the Euclidean orthogonal complement of the invariant subspace. Given U inv  
+
+> ℓ
+
+∈ Rd×k, the nuisance component of a representa-tion is obtained via the projection operator (I −U inv  
+
+> ℓ
+
+U inv ⊤ 
+
+> ℓ
+
+). We do not explicitly construct a nuisance basis, as lower-ranked generalized eigenvectors are not guaranteed to form a stable or Euclidean-orthogonal complement in high-dimensional settings. For each semantic group g = {x1, . . . , x k},we compute latent representations zi = Φ ℓ(xi) and define the group centroid ¯zg = 1
+
+> k
+
+Pki=1 zi.
+
+7Model G1 G4 G6 Mistral 0.0189 0.0213 0.0198 Llama3 0.0127 0.0141 0.0135 Qwen2.5 0.0158 0.0172 0.0164 Gemma 0.0169 0.0184 0.0176 Phi4-mini 0.0215 0.0231 0.0223 GLM4 0.0112 0.0126 0.0119 DeepSeek 0.0105 0.0118 0.0112 InternLM2 0.0121 0.0134 0.0128 Falcon3 0.0116 0.0129 0.0123 
+
+Table 3: Nuisance projection en-ergy Enuis across models and groups. Low values indicate that semantic displacement lies largely outside the dominant nuisance-sensitive directions. For two semantic groups g and h, we define the semantic dis-placement ∆gh = ¯ zg − ¯zh. We then evaluate how much of this displacement lies within the nuisance subspace using the pro-jection energy Enuis = (I − U inv  
+
+> ℓ
+
+U inv ⊤ 
+
+> ℓ
+
+) ∆ gh  
+
+> 22
+
+/∥∆gh ∥22.
+
+Under the local geometric hypothesis, semantic-preserving vari-ations span the nuisance subspace, while semantic differences lie in complementary directions. In this case, the projection operator (I − U inv  
+
+> ℓ
+
+U inv ⊤ 
+
+> ℓ
+
+) removes the semantic component of ∆gh , leaving little residual energy. Consequently, the pro-jected vector (I − U inv  
+
+> ℓ
+
+U inv ⊤ 
+
+> ℓ
+
+)∆ gh has small norm, leading to Enuis ≈ 0. Geometrically, Enuis measures the fraction of semantic displacement energy aligned with nuisance direc-tions. When this value approaches zero, it implies that ∆gh 
+
+is nearly orthogonal to the nuisance subspace, and therefore lies primarily in the complementary semantic subspace. This behavior directly reflects the tangent-space decomposition in Eq. 1, where semantic and nuisance variations occupy distinct, approximately orthogonal directions in the local representation geometry. Additional implementation details are provided in Appendix F. 
+
+Results. Table 3 reports Enuis across multiple models and semantic groups. We consistently observe small projection energy ( ≈ 0.01 –0.02 ), indicating that semantic displacement lies largely outside the dominant nuisance-sensitive directions. This behavior is stable across models and groups, suggesting that the separation between semantic and nuisance directions is not incidental but a systematic property of the learned representation geometry. Additional comparisons with PCA projection baseline are provided in Appendix D.2. 
+
+4.4 Ablation Study: Causal Validation via Representation Intervention                                 
+
+> Model Between Within-SP Within-SC
+> KL ↑KL ↓KL ↑
+> Mistral-7B 0.974 0.036 0.341 Llama-3-8B 0.986 0.040 0.360 Gemma-7B 0.979 0.042 0.382 Qwen2.5-7B 0.984 0.047 0.401 GLM-4-9B 0.983 0.034 0.337 DeepSeek-MoE 0.985 0.052 0.427 InternLM2-7B 0.984 0.039 0.354 Phi-4-mini 0.981 0.045 0.391 Falcon3-7B 0.986 0.049 0.418
+
+Table 4: Invariant-component intervention results. Between-group swaps use donors from a different semantic group; within-group swaps use SP or SC donors from the same group. Low within-SP KL and high within-SC/between-group KL indicate semantic se-lectivity of the invariant subspace. We evaluate whether the invariant subspace identi-fied in Section 3.2 causally encodes semantic content through representation-level interventions. Rather than relying solely on correlational analysis, these experiments directly perturb the invariant compo-nent of the representation and measure the resulting change in model outputs under both within-group and between-group conditions. 
+
+Experimental Setup. Given the layer-wise decom-position z = zinv +znuis obtained from Eq. 3, we con-struct interventions by replacing the invariant com-ponent of an anchor representation while keeping the nuisance component fixed. In practice, interven-tions are implemented at the token level using the final-token hidden state h(T ) 
+
+> ℓ
+
+(x), which directly de-termines next-token prediction in causal language models. We therefore set zℓ(x) = h(T ) 
+
+> ℓ
+
+(x), so that 
+
+h(T ) 
+
+> ℓ
+
+(x) = hinv + hnuis . For an anchor hidden state 
+
+h(a) and donor hidden state h(d), the intervened rep-resentation is hint = h(a) + α h(d)inv − h(a)inv 
+
+, which is then propagated through the remaining layers. The intervention effect is measured using the KL divergence between the original and intervened next-token distributions, KL( ℓ) = DKL (pbase ∥ pint ) . We consider three intervention settings. In the within-group SP setting, the donor is a paraphrase from the same semantic group. In the within-group SC setting, the donor is semantically different but remains within the same semantic neighborhood. In the between-group setting, the donor is drawn from a completely different semantic group. Under the geometric hypothesis, SP interventions should produce minimal output change, while SC and between-group interventions should induce substantially larger shifts due to semantic inconsistency. 
+
+Results. Table 4 summarizes KL divergence across all three intervention settings. Within-group SP interventions consistently produce near-zero KL divergence across models, indicating that the discov-ered invariant representation remains stable under paraphrastic variation. In contrast, within-group SC interventions yield substantially larger KL divergence, demonstrating that the invariant subspace is sensitive to semantic change even within a locally related semantic region. The effect becomes even 8stronger in the between-group setting, where invariant-component replacement produces consistently large KL divergence across all models. This confirms that the invariant subspace encodes semantic identity beyond local paraphrastic structure. Together, the strong separation between SP interventions and both SC and between-group interventions provides direct causal evidence that the discovered invariant subspace governs semantically meaningful model behavior. 
+
+4.5 Robust Model Attribution via Invariant Features                                                                                             
+
+> Model Group1 Group2 Group3 BFT DBFT DBFT DMistral 93.2 91.4 89.8 92.7 91.0 89.4 93.5 91.8 90.2 Llama3 94.1 92.5 90.9 93.8 92.1 90.5 94.4 92.9 91.3 Gemma 92.8 90.9 89.2 92.3 90.5 88.8 93.0 91.2 89.6 Qwen2.5 93.6 91.8 90.1 93.1 91.3 89.7 93.9 92.0 90.5 Phi4-mini 89.6 87.8 86.1 89.2 87.4 85.8 90.1 88.2 86.5 GLM4 95.2 93.6 91.9 94.8 93.1 91.5 95.6 94.0 92.3 DeepSeek 95.8 94.2 92.6 95.3 93.7 92.0 96.1 94.5 92.9 InternLM2 94.9 93.3 91.7 94.5 92.9 91.3 95.2 93.6 91.9 Falcon3 95.5 93.9 92.2 95.0 93.4 91.8 95.8 94.2 92.5
+
+Table 5: Attribution accuracy (%) across Base (B), Fine-tuned (FT), and Distilled (D) variants for three representative groups. Performance remains high and stable under model adaptation. 
+
+Experimental Setup. For each model m ∈ F, attribution is per-formed by comparing the invariant representation of a test model to reference model signatures using the method defined in Section 3.3. To assess robustness, we consider three variants of each model: the original base pretrained model (B), a fine-tuned version (FT), and a distilled version (D). Fine-tuned models are obtained via instruction tuning on downstream tasks, while distilled models are trained to approximate teacher outputs with reduced capacity. Importantly, prototype invariant zones are computed from the original models and reused without modification for testing the FT and Dist variants. This protocol isolates whether invariant features reflect intrinsic representation geometry rather than training-specific adaptations. Additional implementation details for fine-tuned and distilled model variants, checkpoint construction, layer-selection protocol, and attribution evaluation are provided in Appendix F.5. 
+
+Figure 5: Per-layer KL divergence under nuisance-component swaps for a model. SP and SC curves increase with depth at comparable rates with no consistent separation. The nuisance subspace likely contains amixture of surface-form and residual semantic information. 
+
+Results. Table 5 reports attribution accuracy across models and variants. We observe consistently high accuracy for original base models (typically above 92% ), indicating that invariant zone rep-resentations capture strong model-specific signatures. Attribution performance remains stable under both fine-tuning and distillation, with only modest degradation (approximately 2–4% across models). This suggests that the discovered invariant features encode persis-tent geometric structure that is preserved under model adaptation. Although fine-tuning alters task behavior and distillation changes parameterization, the underlying organization of semantic representa-tions remains sufficiently stable to support reliable attribution. These findings provide empirical evidence that invariant latent features capture robust model-specific geometry, supporting the interpreta-tion that semantic invariance is persistent geometric characteristic under adaptation rather than a purely behavioral phenomenon. Ad-ditional attribution comparisons against PCA projection baseline are provided in Appendix D.1. 
+
+# 5 Limitation and Discussion 
+
+While the invariant subspace zinv exhibits strong semantic selectivity, the complementary nuisance subspace znuis does not form a perfectly disentangled component. As shown in Fig. 5, swapping nuisance components within the same semantic group produces non-negligible output shifts even for semantic-preserving (SP) donors, indicating that the nuisance representation still contains residual semantic information. This suggests that the proposed data-driven decomposition is not perfectly orthogonal in practice, and that the nuisance subspace may capture a mixture of surface-form variation and weak semantic components. Importantly, this asymmetry does not affect the primary findings: invariant-component swaps remain stable under SP perturbations while exhibiting strong separation under semantic-changing conditions (Section 4.4), confirming that semantic structure is concentrated in the invariant subspace. Achieving a more complete disentanglement of nuisance representations remains an important direction for future work. 9References 
+
+[1] K. Ethayarajh, “How contextual are contextualized word representations? comparing the geometry of BERT, ELMo, and GPT-2 embeddings,” in Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP) . Hong Kong, China: Association for Computational Linguistics, Nov. 2019, pp. 55–65. [Online]. Available: https://aclanthology.org/D19-1006/ [2] I. Tenney, D. Das, and E. Pavlick, “BERT rediscovers the classical NLP pipeline,” in 
+
+Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics .Florence, Italy: Association for Computational Linguistics, Jul. 2019, pp. 4593–4601. [Online]. Available: https://aclanthology.org/P19-1452/ [3] J. Hewitt and C. D. Manning, “A structural probe for finding syntax in word representations,” in 
+
+Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers) .Minneapolis, Minnesota: Association for Computational Linguistics, Jun. 2019, pp. 4129–4138. [Online]. Available: https://aclanthology.org/N19-1419/ [4] A. Rogers, O. Kovaleva, and A. Rumshisky, “A primer in BERTology: What we know about how BERT works,” Transactions of the Association for Computational Linguistics , vol. 8, pp. 842–866, 2020. [Online]. Available: https://aclanthology.org/2020.tacl-1.54/ [5] E. Reif, A. Yuan, M. Wattenberg, F. B. Viegas, A. Coenen, A. Pearce, and B. Kim, “Visualizing and measuring the geometry of bert,” in Advances in neural information processing systems ,vol. 32, 2019. [6] R. Bommasani, K. Davis, and C. Cardie, “Interpreting pretrained contextualized representations via reductions to static embeddings,” in Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics . Online: Association for Computational Linguistics, Jul. 2020, pp. 4758–4781. [Online]. Available: https://aclanthology.org/2020.acl-main.431/ [7] M. Raghu, J. Gilmer, J. Yosinski, and J. Sohl-Dickstein, “Svcca: Singular vector canonical correlation analysis for deep learning dynamics and interpretability,” in Advances in Neural Information Processing Systems , vol. 30, 2017. [8] A. S. Morcos, M. Raghu, and S. Bengio, “Insights on representational similarity in neural networks with canonical correlation,” Advances in Neural Information Processing Systems ,vol. 31, 2018. [9] S. Kornblith, M. Norouzi, H. Lee, and G. Hinton, “Similarity of neural network representations revisited,” in Proceedings of the 36th International Conference on Machine Learning (ICML) .PMLR, 2019, pp. 3519–3529. [10] B. Lester, R. Al-Rfou, and N. Constant, “The power of scale for parameter-efficient prompt tuning,” in Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing . Online and Punta Cana, Dominican Republic: Association for Computational Linguistics, Nov. 2021. [Online]. Available: https://aclanthology.org/2021.emnlp-main.243/ [11] E. Wallace, S. Feng, N. Kandpal, M. Gardner, and S. Singh, “Universal adversarial triggers for attacking and analyzing NLP,” in Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP) . Hong Kong, China: Association for Computational Linguistics, Nov. 2019, pp. 2153–2162. [Online]. Available: https://aclanthology.org/D19-1221/ [12] W. Antoun, B. Sagot, and D. Seddah, “From text to source: Results in detecting large language model-generated content,” in Proceedings of the 2024 Joint International Conference on Com-putational Linguistics, Language Resources and Evaluation (LREC-COLING 2024) , 2024, pp. 7531–7543. [13] J. Wang, X. Lu, Z. Zhao, Z. Dai, C.-S. Foo, S.-K. Ng, and B. K. H. Low, “Source attribution for large language model-generated data,” 2024. [Online]. Available: https://arxiv.org/abs/2310.00646 10 [14] A. Dasgupta, A. A. Tanvir, and X. Zhong, “Watermarking language models through language models,” IEEE Transactions on Artificial Intelligence , 2025. [15] J. Xu, F. Wang, M. Ma, P. W. Koh, C. Xiao, and M. Chen, “Instructional fingerprinting of large language models,” in Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) . Mexico City, Mexico: Association for Computational Linguistics, Jun. 2024, pp. 3277–3306. [Online]. Available: https://aclanthology.org/2024.naacl-long.180/ [16] C. Fefferman, S. Mitter, and H. Narayanan, “Testing the manifold hypothesis,” Journal of the American Mathematical Society , vol. 29, no. 4, pp. 983–1049, 2016. [17] K. Kawaguchi, “Deep learning without poor local minima,” in Advances in Neural Information Processing Systems (NeurIPS) , vol. 29, 2016. [18] A. Choromanska, M. Henaff, M. Mathieu, G. B. Arous, and Y. LeCun, “The loss surfaces of multilayer networks,” in Proceedings of the 18th International Conference on Artificial Intelligence and Statistics (AISTATS) , ser. Proceedings of Machine Learning Research, vol. 38. PMLR, 2015, pp. 192–204. [Online]. Available: https://proceedings.mlr.press/v38/choromanska15.html [19] J. Snell, K. Swersky, and R. Zemel, “Prototypical networks for few-shot learning,” in Advances in neural information processing systems , vol. 30, 2017. [20] R. Taori, I. Gulrajani, T. Zhang, Y. Dubois, X. Li, C. Guestrin, P. Liang, and T. B. Hashimoto, “Stanford alpaca: An instruction-following llama model,” https://github.com/tatsu-lab/stanford_ alpaca, 2023. [21] L. van der Maaten and G. Hinton, “Visualizing data using t-SNE,” Journal of Machine Learning Research , vol. 9, pp. 2579–2605, 2008. [22] P. Bajaj, D. Campos, N. Craswell, L. Deng, J. Gao, X. Liu, R. Majumder, A. McNamara, B. Mitra, T. Nguyen, M. Rosenberg, X. Song, A. Stoica, S. Tiwary, and T. Wang, “MS MARCO: A human generated machine reading comprehension dataset,” in Proceedings of the Workshop on Cognitive Computation: Integrating Neural and Symbolic Approaches , 2016. 11 Appendix A Ablation Study: More Results on Causal Validation via Representation Intervention 
+
+We provide additional causal intervention results to further analyze the functional role of the discov-ered invariant and nuisance subspaces across multiple language models. The experiments include both within-group interventions, where donor representations are drawn from the same local semantic neighborhood, and between-group interventions, where donor representations originate from different semantic groups. Together, these analyses evaluate whether the proposed decomposition selectively controls semantic behavior. 
+
+Model (Anuis ← ASP,nuis ) (Ainv ← ASP,inv ) (Anuis ← ASC,nuis ) (Ainv ← ASC,inv )KL ↓ MSE ↓ KL ↓ MSE ↓ KL ↓ MSE ↓ KL ↑ MSE ↑
+
+Mistral-7B-Instruct-v0.3 0.124 0.581 0.036 0.401 0.109 0.612 0.341 0.951 Meta-Llama-3-8B-Instruct 0.138 0.630 0.040 0.434 0.114 0.646 0.360 0.990 gemma-7b-it 0.131 0.602 0.042 0.455 0.121 0.670 0.382 1.044 Qwen2.5-7B-Instruct 0.142 0.658 0.047 0.498 0.129 0.702 0.401 1.102 glm-4-9b-chat-hf 0.118 0.541 0.034 0.386 0.111 0.594 0.337 0.918 deepseek-moe-16b-chat 0.149 0.691 0.052 0.523 0.138 0.741 0.427 1.184 internlm2-chat-7b 0.126 0.590 0.039 0.417 0.116 0.621 0.354 0.972 Phi-4-mini-instruct 0.135 0.617 0.045 0.471 0.123 0.689 0.391 1.068 Falcon3-7B-Instruct 0.144 0.673 0.049 0.512 0.132 0.718 0.418 1.146 
+
+Table 6: Within-group causal intervention analysis using invariant and nuisance subspace patching across different language models. Interventions are performed using semantic-preserving (SP) and semantic-changing (SC) donors from the same local semantic group. For nuisance swaps (Anuis ← ASP ,nuis and Anuis ← ASC ,nuis ), KL divergence and MSE remain relatively low, indicating limited semantic sensitivity. In contrast, invariant swaps with SC donors ( Ainv ← ASC ,inv ) produce substantially larger deviations than SP donor swaps ( Ainv ← ASP ,inv ), demonstrating that the discovered invariant subspace selectively controls semantic behavior. Results are averaged across the top-4 invariant layers selected by the largest generalized eigenvalues. 
+
+Experimental Setup. For each semantic group, invariant directions are identified using the dis-covery subset by solving the generalized eigenvalue problem in Section 3.2 and selecting the top-k
+
+eigenvectors associated with the largest generalized eigenvalues. The top-4 layers are then se-lected according to the largest leading eigenvalue λ, corresponding to layers exhibiting the strongest semantic–nuisance separation. All intervention experiments are performed exclusively on the held-out validation subset, with no overlap between discovery and evaluation perturbations. At each selected layer, token-level hidden states are decomposed into invariant and nuisance compo-nents through orthogonal projection onto the discovered subspaces: 
+
+h = hinv + hnuis .
+
+Interventions are applied directly to hidden states before propagating the modified activations through the remaining frozen transformer layers. For within-group interventions, donor representations are sampled from either semantic-preserving (SP) or semantic-changing (SC) perturbations within the same local semantic group. For between-group interventions, donor representations are drawn from a different semantic group, introducing a stronger semantic mismatch between anchor and donor. We independently replace either the invariant or nuisance component while keeping the complemen-tary component fixed. Invariant interventions are defined as 
+
+hint = h(a) + α
+
+
+
+h(d)inv − h(a)inv 
+
+
+
+,
+
+while nuisance interventions are defined as 
+
+hint = h(a) +
+
+
+
+h(d)nuis − h(a)nuis 
+
+
+
+.
+
+12 Model behavior before and after intervention is evaluated using KL divergence between next-token distributions and logit-space Mean Squared Error (MSE).                                                                     
+
+> Model Group 1 Group 4 Group 6 MSE ↓KL ↓MSE ↓KL ↓MSE ↓KL ↓
+> Mistral-7B 0.021 0.084 0.024 0.091 0.022 0.087 Llama-3-8B 0.018 0.072 0.020 0.079 0.019 0.075 Qwen2.5-7B 0.019 0.078 0.003 0.033 0.020 0.080 Gemma-7B 0.020 0.019 0.061 0.014 0.021 0.083 Phi-4-mini 0.024 0.031 0.026 0.042 0.025 0.097 GLM-4-9B 0.022 0.067 0.028 0.088 0.023 0.090 DeepSeek-MoE-16B 0.025 0.081 0.030 0.095 0.027 0.102 InternLM2-7B 0.023 0.074 0.027 0.082 0.024 0.088 Falcon3-7B 0.026 0.089 0.031 0.099 0.029 0.105
+
+Table 7: Between-group nuisance-component intervention evaluated using Mean Squared Error (MSE) and KL divergence across models and semantic groups. The invariant component is held fixed while the nuisance component is replaced using a donor from a different semantic group. Low MSE and KL indicate that modifying the nuisance subspace induces only limited changes in the output, suggesting that it does not encode primary semantic content. Results are computed using invariant zones defined by top-4 layers selected via generalized eigenvalue analysis. 
+
+Results. Tables 6, 7, and 8 summarize the intervention results across all evaluated models. A consistent asymmetry emerges between invariant and nuisance interventions. For nuisance swaps, both within-group and between-group interventions generally produce relatively small KL divergence and MSE values. Even when nuisance components are replaced using donors from different semantic groups, the resulting output perturbation remains limited. This indicates that the nuisance subspace does not encode primary semantic identity and has comparatively weak causal influence on semantic behavior. In contrast, invariant interventions produce substantially larger deviations, particularly when donor representations originate from semantically different inputs. Within-group interventions using SP donors produce relatively small changes, while SC donors induce much larger deviations. This separation becomes even more pronounced under between-group interventions, where replacing the invariant component consistently produces strong shifts in model outputs across all architectures. Importantly, these trends remain highly consistent across model families, layers, and semantic groups. The results therefore provide complementary causal evidence that the discovered invariant subspace encodes semantically meaningful directions governing model behavior, whereas the nuisance subspace primarily captures semantic-preserving variability and non-selective residual variation.                                                                     
+
+> Model Group 1 Group 4 Group 6 MSE ↑KL ↑MSE ↑KL ↑MSE ↑KL ↑
+> Mistral-7B 0.962 0.974 0.968 0.978 0.965 0.976 Llama-3-8B 0.975 0.986 0.978 0.988 0.976 0.987 Qwen2.5-7B 0.971 0.984 0.982 0.991 0.972 0.985 Gemma-7B 0.966 0.979 0.980 0.986 0.967 0.980 Phi-4-mini 0.969 0.981 0.971 0.984 0.970 0.982 GLM-4-9B 0.968 0.983 0.973 0.986 0.969 0.984 DeepSeek-MoE-16B 0.970 0.985 0.975 0.988 0.972 0.986 InternLM2-7B 0.969 0.984 0.974 0.987 0.971 0.985 Falcon3-7B 0.972 0.986 0.976 0.989 0.974 0.987
+
+Table 8: Between-group invariant-component intervention evaluated using normalized Mean Squared Error (MSE) and KL divergence across models and semantic groups. The nuisance component is held fixed while the invariant component is replaced using a donor from a different semantic group. High values indicate large and consistent output deviation, suggesting that the invariant subspace encodes semantic identity. Results are computed using invariant zones defined by top-4 layers selected via generalized eigenvalue analysis. 13 Discussion. The contrast between within-group and between-group interventions further clarifies the role of the learned subspaces. Within-group interventions evaluate local semantic stability under paraphrastic variation, while between-group interventions introduce stronger semantic displacement with minimal lexical or structural overlap. The observed asymmetry between invariant and nuisance interventions suggests that the proposed decomposition captures structured semantic geometry rather than superficial activation statistics. Perturbations in the invariant subspace induce systematic semantic changes, whereas perturbations in the nuisance subspace produce comparatively weak and non-selective effects. Together, these findings support a causal interpretation of invariant zones as semantically meaningful latent directions that persist across models and semantic contexts. 
+
+# B Extended Discussion on Limitation: Diagnostic Analysis of Nuisance Subspace 
+
+Token-Level Intervention Protocol. We follow the same token-level intervention framework described in Appendix A. For each input, we extract the hidden state at the final token position and apply the decomposition h = hinv + hnuis . Interventions are performed at layer ℓ by modifying one component while keeping the other fixed, followed by forward propagation to obtain output logits. 
+
+Nuisance Swap Intervention. To analyze the behavior of the nuisance subspace, we perform interventions that replace the nuisance component of an anchor representation with that of a donor, while keeping the invariant component unchanged. Donor inputs are drawn from either semantic-preserving (SP) or semantic-changing (SC) sets, and the effect is measured using KL divergence between the original and intervened output distributions. 
+
+Figure 6: Per-layer KL divergence for nuisance component swaps across all nine models ( k = 32 ,
+
+α = 1 .0), arranged as a 3 × 3 grid. Orange (solid) curves show SC donor swaps and blue (dotted) curves show SP donor swaps. Both curves increase at comparable rates with no consistent SC-SP separation, indicating that the nuisance subspace does not selectively encode semantic content. 
+
+Observations. Figure 6 shows the per-layer KL divergence under nuisance swaps across all nine models. In contrast to invariant interventions, SP and SC curves exhibit comparable magnitudes and similar growth patterns across layers, with no consistent separation between the two conditions. 14 This behavior indicates that perturbations in the nuisance subspace affect model outputs regardless of semantic consistency. Unlike the invariant subspace, where changes align with semantic differences, nuisance perturbations produce output shifts that are not selectively tied to semantic variation. 
+
+Diagnostic Interpretation. These results provide insight into the limitation observed in Section 5. The decomposition h = hinv + hnuis is derived from a data-driven generalized eigenvalue problem that separates directions based on relative sensitivity to semantic-preserving and semantic-changing perturbations. However, this separation is not strictly orthogonal in practice. From a geometric perspective, the tangent-space decomposition Tz M = T semantic  
+
+> z
+
+⊕ T nuisance  
+
+> z
+
+is only approximately realized in learned representations. Finite-sample estimation, nonlinearity of the representation manifold, and imperfect perturbation design introduce mixing between the two subspaces. As a result, the nuisance component may retain weak projections onto semantic directions. This explains why nuisance swaps produce non-negligible output changes even for SP donors: although dominant semantic directions are removed, residual semantic information persists in the nuisance subspace. Consequently, interventions on hnuis do not isolate purely non-semantic variation. 
+
+Implications. This asymmetry highlights a key property of the proposed framework. The invariant subspace provides a selective encoding of semantic information, as demonstrated by its strong causal effect under SC interventions and stability under SP perturbations. In contrast, the nuisance subspace is non-selective: it captures a mixture of surface-form variation and residual semantic components, leading to output changes that are insensitive to semantic alignment. Importantly, this limitation does not invalidate the main conclusions. Rather, it clarifies that the proposed decomposition should be interpreted as a dominant-direction separation rather than a perfectly disentangled factorization. The invariant subspace concentrates semantic structure, while the nuisance subspace captures complementary but partially entangled variation. 
+
+Summary. Together with the within-group and between-group intervention results, this analysis supports a consistent causal picture: semantic information is concentrated in invariant directions that govern model behavior, while nuisance directions contribute secondary, non-selective varia-tion. Achieving more complete orthogonality and purity of the nuisance decomposition remains an important direction for future work. 
+
+# C Robustness of Invariant Interventions Across Subspace Dimensions 
+
+This section evaluates the robustness of the proposed decomposition across models, semantic groups, and subspace dimensions k ∈ { 1, 10 , 32 }. We report within-group per-layer KL divergence under invariant and nuisance component interventions, averaged across all ten concept groups. The intervention protocol follows Section 4.4, where either the invariant or nuisance component of an anchor representation is replaced using a donor drawn from the SP or SC set. Figures 7 and 8 present results for invariant and nuisance swaps, respectively. Each figure is arranged as a 3 × 3 grid with one subplot per model. Solid curves correspond to SC donor swaps for different values of k, and the dotted curve corresponds to SP donor swaps. 
+
+Interpretation. For invariant swaps (Fig. 7), SC curves increase consistently with depth across all models and all values of k, while SP curves remain near zero. This confirms that perturbations in the invariant subspace induce semantically meaningful changes, whereas substitutions with semantically equivalent content leave model outputs largely unchanged. The separation between SC and SP conditions becomes most pronounced in mid-to-late layers, aligning with the invariant zones identified in Section 4.2. For nuisance swaps (Fig. 8), both SC and SP curves increase at comparable rates with no consistent separation. This behavior corroborates the diagnostic analysis in Appendix B, indicating that the nuisance subspace does not selectively encode semantic content. Instead, it contributes non-selective variation that affects outputs regardless of semantic alignment. Together, these results reinforce a consistent causal interpretation: invariant components control semantically structured behavior, while nuisance components introduce secondary, non-selective perturbations. 15 Figure 7: Per-layer KL divergence for invariant component swaps across all nine models, averaged across all ten concept groups ( α = 1 .0). Each subplot shows three solid curves corresponding to 
+
+k ∈ { 1, 10 , 32 } for SC donors, and one dotted curve for SP. SC curves increase consistently with depth while the SP curve remains near zero, suggesting that the invariant subspace selectively encodes semantic content. The three SC curves closely overlap, indicating insensitivity to the choice of k.
+
+Insensitivity to Subspace Dimension k. Across both invariant and nuisance interventions, the SC curves for k ∈ { 1, 10 , 32 } closely overlap, indicating that the results are largely insensitive to the choice of subspace dimension. This robustness suggests that the dominant invariant structure is concentrated in a low-dimensional subspace, and that the leading generalized eigenvectors already capture the primary semantic directions. This observation is consistent with the eigenvalue spectrum in Section 4.2, where a small number of directions exhibit significantly larger eigenvalues. Increasing k primarily introduces weaker components with diminishing influence on downstream behavior. From a theoretical perspective, the framework requires only that a subspace exists that separates semantic-preserving and semantic-changing variation, rather than a precise specification of its dimen-sionality. The empirical stability across k therefore indicates that the identified invariant structure reflects an intrinsic geometric property of the representation, rather than a result of hyperparameter tuning. 
+
+Model-Level Variation. While the overall pattern is consistent across architectures, Phi-4-Mini exhibits a minor deviation under invariant swaps, with slightly elevated SP responses in early-to-mid layers. This may be attributed to its smaller parameter scale, suggesting that semantic abstraction may be less sharply localized across depth. Despite this variation, the SC–SP separation remains evident, and the overall qualitative behavior is consistent with larger models. We report this as a tentative observation for future investigation. 
+
+# D Comparison with Variance-Based Representations 
+
+D.1 Attribution Baseline Comparison Experimental Setup. To evaluate whether invariant zone signatures capture model-specific se-mantic structure beyond trivial architectural separability, we compare the proposed invariant rep-resentation (Z inv ) against a PCA-based latent decomposition baseline. PCA provides a strong 16 Figure 8: Per-layer KL divergence for nuisance component swaps across all nine models, averaged across all ten concept groups ( α = 1 .0). Each subplot shows three solid curves for SC donors at 
+
+k ∈ { 1, 10 , 32 } and one dotted curve for SP donors. Both SC and SP curves increase at comparable rates with no consistent separation, indicating that the nuisance subspace does not selectively encode semantic content regardless of the choice of k.variance-maximizing control that preserves dominant activation energy without explicitly separating semantic-preserving and semantic-changing variation. For each model family, invariant signatures are constructed from the invariant zones identified through the generalized eigenvalue formulation in Section 3.2, while PCA baselines are computed using the same hidden representations and the same subspace dimensionality. Attribution is performed using held-out validation perturbations only, ensuring that discovery perturbations used for invariant zone identification are never reused during evaluation. We evaluate three settings: (1) original base models, (2) supervised fine-tuned variants, and (3) knowledge-distilled variants. Fine-tuned and distilled checkpoints are described in Appendix F.5. In all cases, attribution is performed using invariant signatures extracted from the original base model without re-estimating invariant zones for adapted variants. This design tests whether invariant geometric structure remains discriminative under model adaptation.                                 
+
+> Model Base Model Fine-Tuning Knowledge Distillation PCA Zinv PCA Zinv PCA Zinv
+> Llama-3.1-8B 87.4 96.8 85.1 95.3 82.7 93.9
+> Mistral-7B 86.2 95.7 84.6 94.8 81.9 92.6
+> Qwen2.5-7B 85.8 95.1 83.4 93.8 80.6 91.7
+> Gemma-7B 84.9 94.2 82.8 92.9 79.8 90.8
+
+Table 9: Zero-shot model attribution accuracy (%) using invariant-zone signatures derived from the proposed contrastive decomposition (Z inv ) and a PCA-based baseline with matched subspace dimensionality. Evaluation is performed across base, fine-tuned, and knowledge-distilled variants using held-out validation perturbations only. The proposed invariant representation consistently outperforms PCA across all settings, suggesting that the identified invariant zones capture model-specific semantic organization beyond dominant activation variance alone. 
+
+Results. Table 9 summarizes attribution accuracy across model families and adaptation settings. The proposed invariant representation consistently outperforms PCA across all experiments, with improvements remaining stable under both fine-tuning and knowledge distillation. 17 Importantly, PCA already captures dominant activation variance and therefore implicitly preserves architectural and scale-related information. The consistent improvement of Z inv over PCA suggests that attribution performance is not solely explained by superficial architectural separability or raw activation statistics. Instead, the contrastive invariant decomposition identifies directions that are simultaneously semantically stable and discriminative across model families. These results support the interpretation that invariant zones encode persistent model-specific semantic organization rather than merely reflecting global activation magnitude or dimensionality differences. The fact that attribution remains effective under fine-tuning and distillation further suggests that invariant structure captures stable geometric characteristics that survive substantial model adaptation. 
+
+D.2 Projection Energy Comparison Experimental Setup. We evaluate whether the proposed decomposition separates semantic and nuisance variation more effectively than variance-based representations across multiple language model families, including LLaMA, Gemma, Mistral, Qwen, and DeepSeek. Hidden states are extracted from every transformer layer using the final-token representation. For each semantic group, semantic-preserving (SP) and semantic-changing (SC) perturbations are used to construct covariance statistics for the generalized eigenvalue decomposition described in Section 3.2. The nuisance subspace is defined using the same process as in section 4.3. To evaluate semantic leakage into nuisance directions, we compute semantic centroids for two different semantic groups and measure the normalized projection energy of their semantic displacement vector onto the nuisance subspace. Lower nuisance energy indicates stronger semantic–nuisance separation. We compare the proposed method against a PCA baseline computed from the same hidden representa-tions and matched subspace dimensionality. PCA covariance matrices are constructed from the union of anchor, SP, and SC samples. All evaluations use held-out validation perturbations only, ensuring that discovery perturbations used for invariant zone identification are never reused during evaluation. 
+
+Results. Table 10 reports full layer-wise nuisance projection energy for representative semantic groups ( group g = 0 , group h = 1 ). Across all evaluated architectures and layers, the proposed decomposition consistently produces extremely small nuisance projection energy, typically on the order of 10 −3, while PCA yields substantially larger values ranging from approximately 0.3 to 0.7.These results indicate that the proposed SP/SC-aware decomposition isolates semantic structure substantially more effectively than variance-based PCA decomposition. Importantly, PCA already preserves dominant activation variance and global representation statistics, yet still exhibits large semantic leakage into nuisance directions. The strong and consistent gap therefore suggests that semantic separation is not explained solely by unsupervised variance structure. The proposed method also remains highly stable across shallow and deep transformer layers, whereas PCA exhibits consistently large nuisance projections throughout the network hierarchy. This behavior further supports the interpretation that semantic structure is more effectively characterized through semantic-preserving and semantic-changing perturbation analysis than through variance maximization alone. 
+
+# E Full Dataset Examples 
+
+Table 11 presents representative examples from each thematic group, showing one SP and one SC variant from each of the two independent perturbation subsets constructed per anchor query. For every anchor, SP and SC variants are divided into a discovery subset and a held-out validation subset. The discovery subset is used exclusively for local invariant subspace identification via generalized eigenvalue analysis and layer selection, while the held-out subset is reserved for downstream evalua-tion including projection analysis and causal intervention experiments. The split is performed within each semantic group and each anchor neighborhood, so that subspace discovery and evaluation are performed on disjoint perturbation instances while remaining centered on the same local semantic region. For each anchor, SP variants rephrase the query through lexical substitution or syntactic restructuring while preserving propositional content. SC variants are constructed in two equal halves: the first five 18 Layer LLaMA Gemma Mistral Qwen DeepSeek Ours PCA Ours PCA Ours PCA Ours PCA Ours PCA 0 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 1 0.0055 0.7320 0.0055 0.6440 0.0028 0.5702 0.0054 0.5998 0.0031 0.5940 2 0.0100 0.6208 0.0022 0.5532 0.0069 0.5607 0.0139 0.5746 0.0016 0.5160 3 0.0038 0.6892 0.0047 0.5359 0.0024 0.6096 0.0048 0.5158 0.0030 0.5661 4 0.0063 0.5584 0.0054 0.3913 0.0035 0.4085 0.0048 0.4519 0.0021 0.5061 5 0.0109 0.4182 0.0031 0.3576 0.0037 0.4069 0.0023 0.5534 0.0034 0.4001 6 0.0056 0.5097 0.0039 0.3178 0.0039 0.5340 0.0045 0.5970 0.0036 0.3861 7 0.0042 0.5357 0.0026 0.5032 0.0017 0.5070 0.0025 0.4837 0.0014 0.3528 8 0.0080 0.5216 0.0040 0.4180 0.0050 0.4622 0.0073 0.2989 0.0034 0.3053 9 0.0088 0.5324 0.0038 0.3932 0.0065 0.4638 0.0065 0.2803 0.0056 0.2591 10 0.0082 0.5330 0.0058 0.3944 0.0075 0.4595 0.0026 0.3821 0.0037 0.2693 11 0.0126 0.5927 0.0054 0.3827 0.0052 0.4674 0.0099 0.3565 0.0019 0.3138 12 0.0063 0.5857 0.0052 0.3879 0.0038 0.4737 0.0089 0.3121 0.0032 0.3366 13 0.0097 0.5625 0.0086 0.3677 0.0050 0.4850 0.0041 0.3216 0.0061 0.3069 14 0.0106 0.5745 0.0043 0.3772 0.0047 0.5006 0.0073 0.3188 0.0052 0.3320 15 0.0085 0.5698 0.0063 0.3646 0.0028 0.5248 0.0026 0.3224 0.0050 0.2934 16 – – 0.0055 0.3707 0.0057 0.5418 0.0063 0.3205 0.0040 0.3201 17 – – 0.0050 0.3902 0.0029 0.5669 0.0069 0.3453 0.0020 0.3524 18 – – 0.0058 0.3943 0.0012 0.5632 0.0028 0.3630 0.0067 0.3434 19 – – 0.0060 0.4044 0.0032 0.5646 0.0051 0.4171 0.0067 0.3419 20 – – 0.0046 0.3911 0.0033 0.5314 0.0065 0.4379 0.0052 0.3554 21 – – 0.0030 0.4161 0.0025 0.5444 0.0050 0.4555 0.0035 0.3679 22 – – 0.0036 0.4396 0.0025 0.5413 0.0066 0.4401 0.0045 0.3634 23 – – 0.0051 0.4168 0.0039 0.5410 0.0036 0.4523 0.0025 0.3919 24 – – 0.0029 0.4507 0.0045 0.5403 0.0038 0.4400 0.0047 0.3754 25 – – 0.0053 0.4403 0.0046 0.5471 0.0034 0.4550 0.0042 0.4409 26 – – 0.0020 0.4168 0.0027 0.5526 0.0032 0.4457 0.0025 0.4843 27 – – 0.0051 0.4301 0.0037 0.5485 0.0022 0.3956 0.0017 0.4940 28 – – – – 0.0027 0.5334 – – 0.0039 0.5009 29 – – – – 0.0018 0.5279 – – 0.0022 0.5127 30 – – – – 0.0052 0.5190 – – 0.0028 0.5245 31 – – – – 0.0027 0.5206 – – 0.0026 0.5273 
+
+Table 10: Full layer-wise comparison of normalized nuisance projection energy ( Enuis ) between the proposed invariant decomposition and a PCA baseline across multiple language model families. Lower values indicate better semantic–nuisance separation. Evaluation uses held-out validation perturbations only for representative semantic groups ( group g = 0 , group h = 1 ). Missing layers are denoted by (—). replace a single semantic slot while preserving the surrounding syntactic structure, and the remaining five are sampled from a completely different semantic domain with no topical overlap with the anchor. For example, an anchor query about cats may be paired with a hard SC variant such as “Describe the migration patterns of monarch butterflies.” This mixed construction enables evaluation under both minimal and maximal semantic shifts. 
+
+Scope of Empirical Validation. The dataset used in this work is intentionally small and controlled, consisting of 410 prompts organized into structured semantic groups. This design reflects the local nature of the proposed framework: invariant feature identification is formulated as a contrastive, perturbation-based analysis that operates within a neighborhood of a given input, rather than requiring large-scale statistical estimation. Accordingly, the role of the dataset is not to exhaustively characterize the global geometry of language model representations, but to provide clean and interpretable perturbation regimes that isolate semantic-preserving and semantic-changing variation. Each semantic group defines a local region on the representation manifold, within which the tangent-space decomposition in Section 3.1 can be empirically probed. The consistency of results across multiple models and layers suggests that the observed invariant structure is not specific to individual prompts or groups, but reflects a repeatable local geometric pattern. However, we do not claim that the current dataset fully captures the diversity of semantic phenomena present in natural language. Extending the analysis to larger and more diverse corpora 19 Group Anchor Query SP Variant SC Variant 
+
+Cats Describe the hunting behavior of domestic cats. Describe the hunting habits of domestic cats. Describe the sleeping behavior of domestic cats. Detail how house cats pursue and capture prey. Describe the nocturnal behavior of domestic cats. France What is the official language of France? Which language is officially rec-ognized in France? What is the capital city of France? Identify the language that serves as the official one in France. What is the official flower of France? Python Why did Python become the dominant language for data science? What factors led to Python be-coming the dominant language in data science? Why did Python become popu-lar in academia? Explain the reasons behind Python’s leading position in data science. Why did Python become popu-lar for scientific computing? Photosynthesis What are the pros and cons of engineering crops for enhanced photosynthesis? What are the advantages and dis-advantages of engineering crops for improved photosynthesis? What are the pros and cons of engineering crops for drought re-sistance? Discuss the benefits and costs of engineering crops to improve photosynthetic performance. What are the pros and cons of engineering crops for improved carbon sequestration? Democracy Describe the role of free speech in a democratic society. What role does free speech play in a democratic society? Describe the role of free press in a democratic society. Explain the function of free ex-pression in democratic systems. Describe the role of voting rights in a democratic society. Einstein What is Einstein’s most famous theory? Which theory is Albert Einstein best known for? What is Einstein’s nationality? Identify the theory for which Al-bert Einstein is most widely rec-ognized. What is Einstein’s most famous thought experiment? Climate Change Describe the effect of climate change on global sea levels. What impact does climate change have on global sea levels? Describe the effect of climate change on Arctic ecosystems. Explain how climate change af-fects sea levels on a global scale. Describe the effect of climate change on global monsoon pat-terns. Calculus How do you find the derivative of a composite function? How is the derivative of a com-posite function calculated? How do you evaluate the limit of a function? Explain how to differentiate a function composed of other functions. How do you compute the second derivative of a function? Meditation Describe the cognitive benefits of regular meditation practice. What cognitive benefits are as-sociated with regular meditation practice? Describe the physical benefits of regular meditation practice. Explain the mental effects of consistent meditation practice. Describe the psychological ben-efits of regular meditation prac-tice. Bread What is the primary leavening agent in sourdough bread? What is the main leavening agent in sourdough bread? What is the main ingredient in sourdough bread? Identify the ingredient responsi-ble for leavening in sourdough bread. What is the typical crust texture of sourdough bread? 
+
+Table 11: Representative examples from each thematic group. For each anchor, the first row shows a discovery subset variant and the second row shows a held-out validation subset variant. Each group contributes 10 SP and 10 SC variants per subset (20 SP and 20 SC total), where SC variants comprise five single-slot substitutions and five queries sampled from a different semantic domain. 20 remains an important direction for future work, particularly for studying how invariant structure behaves under broader distributional variation. 
+
+# F Implementation Details 
+
+F.1 Generalized Eigenvalue Regularization. 
+
+For each model and layer, feature-difference vectors are centered before constructing Ssp and Ssc .Because the number of perturbations is smaller than the hidden dimension, Ssp is rank deficient. We use ridge regularization, 
+
+Sϵ 
+
+> sp
+
+= Ssp + ϵI, 
+
+and solve 
+
+Ssc v = λS ϵ
+
+> sp
+
+v. 
+
+Unless otherwise specified, ϵ is set to a small fraction (e.g., 10 −4) of the average diagonal magnitude of Ssp to preserve scale while avoiding numerical singularity. The selected eigenvectors are then Euclidean-orthonormalized before projection. We verified that results are insensitive to ϵ within a reasonable range. 
+
+F.2 Representation Extraction. 
+
+For each sentence, we extract the hidden state at the final token position from every transformer layer using forward hooks. In causal language models, the final token attends to all preceding tokens and aggregates contextual information from the full input, making it the most semantically rich position for next-token prediction. This yields one d-dimensional representation per sentence per layer, where 
+
+d is the model’s hidden dimension (4096 for most models evaluated). All representations are extracted in float32 precision. 
+
+F.3 Implementation Details for Nuisance Energy Evaluation. 
+
+For nuisance energy evaluation, we compute semantic displacement between all ordered semantic group pairs (g, h ) with g̸ = h. Given N semantic groups, this produces N (N − 1) ordered semantic displacement pairs. In our experiments, we use N = 10 semantic groups, yielding a total of 90 semantic displacement pairs per model and per layer. Nuisance energy is evaluated independently at every transformer layer, including the embedding layer and all subsequent transformer blocks. Unless otherwise specified, the nuisance subspace dimensionality is fixed to k = 32 . Hidden representations are extracted from the final-token embedding at each layer and converted to floating-point representations prior to covariance estimation. Covariance matrices are constructed from centered displacement vectors (z − zorig ), removing global mean offsets before subspace decomposition. Semantic displacement vectors are not additionally normalized before projection. Instead, normalization is incorporated implicitly through the energy-ratio formulation, where projected nuisance energy is divided by the total displacement energy. Table 3 reports averages across all semantic group pairs and layers. Across all evaluated models, the proposed method consistently yields very small nuisance projection energy with low variance across semantic groups and layers, indicating stable separation between semantic and nuisance components throughout the transformer hierarchy. In contrast, variance-based decomposition methods produce substantially larger nuisance projection energy and greater variability, suggesting weaker disentanglement between semantic and nuisance directions. The consistently low nuisance energy observed in our method therefore reflects stable concentration of semantic variation within the invariant subspace rather than numerical artifacts or isolated layer behavior. 
+
+F.4 Compute Resources 
+
+All experiments were conducted on a single NVIDIA RTX 6000 Ada Generation GPU (48 GB VRAM) from a workstation equipped with two such GPUs, an AMD Ryzen Threadripper PRO 7985WX (64 cores), and 252 GB system RAM. A single GPU was used throughout to ensure 21 compatibility with single-GPU reproduction environments. Representation extraction for one model across all layers for one concept group takes approximately 1 minute. The causal intervention experiment takes approximately 3 minutes per model per group. Fine-tuning each base model on the Alpaca dataset for one epoch using LoRA takes approximately 20–40 minutes per model. The total compute for all reported experiments, including eigenvalue analysis, intervention experiments, attribution evaluation, and t-SNE visualization across all nine models, ten concept groups, and three values of k, is estimated at approximately 150 GPU-hours, inclusive of preliminary and repeated runs during development. 
+
+F.5 Fine-Tuned and Distilled Model Variants 
+
+To evaluate the robustness of invariant representations under model adaptation, we construct fine-tuned and distilled variants of all nine base models, yielding 18 additional checkpoints (9 fine-tuned, 9 distilled) for a total of 27 model variants evaluated in the attribution experiments.                               
+
+> Teacher Model Student Model Teacher Params Student Params
+> Mistral-7B-Instruct-v0.3 Gemma-2B 7B 2B Gemma-7B-IT Gemma-2B 7B 2B Llama-3-8B-Instruct TinyLlama-1.1B-Chat 8B 1.1B Qwen2.5-7B-Instruct Qwen-1.5B 7B 1.5B GLM-4-9B-Chat Phi-3-Mini 9B 3.8B DeepSeek-MoE-16B-Chat Phi-3-Mini 16B 3.8B InternLM2-7B-Chat Phi-3-Mini 7B 3.8B Phi-4-Mini-Instruct Phi-3-Mini 4B 3.8B Falcon3-7B-Instruct Phi-3-Mini 7B 3.8B
+
+Table 12: Distilled model variants used for attribution robustness evaluation. Each student is trained on the Alpaca dataset to approximate the output distribution of the corresponding teacher via KL divergence minimization. Fine-tuned variants (not shown) are produced for all nine base models using the same Alpaca dataset with standard supervised fine-tuning. 
+
+Checkpoint Sources. All adapted model checkpoints are trained by the authors from the original base model weights obtained from HuggingFace Hub. Fine-tuned variants are produced by applying standard supervised fine-tuning on the Alpaca instruction-following dataset [ 20 ], which consists of 52,000 instruction-response pairs generated using the self-instruct procedure, with cross-entropy loss on the response tokens and all model parameters kept trainable. Distilled variants are produced by training a smaller student model to approximate the output distribution of the corresponding teacher on the same Alpaca dataset, using response-level knowledge distillation where the student minimizes the KL divergence between its logits and those of the teacher. Student architectures are selected based on proximity to the teacher family where possible: Gemma-2B for Mistral and Gemma, TinyLlama-1.1B-Chat for Llama, Qwen-1.5B for Qwen, and Phi-3-Mini for the remaining five models. Table 12 summarizes the distillation pairings and parameter scales. 
+
+Signature Construction and Layer Selection. Invariant zone signatures are computed exclusively from the original base model for each model family. The same signatures and layer selections are reused without modification when evaluating fine-tuned and distilled variants. This protocol is intentional: it tests whether the geometric structure discovered in the base model persists under adaptation, rather than re-discovering potentially adapted structure in each variant separately. We acknowledge that this means layer selection is performed on base model representations and may not reflect the optimal layers for adapted variants. However, since attribution is performed by matching a test variant against a base model prototype, the relevant question is whether the base model’s invariant zones remain discriminative after adaptation — which is precisely what the results in Table 5 evaluate. Layer selection does not use model identity as a signal and is performed independently per model family prior to any attribution comparison, so no identity leakage occurs through this step. All 27 model variants are evaluated using invariant zone signatures derived solely from the original base model checkpoints. This design isolates whether invariant representations encode persistent geometric structure that survives model adaptation, rather than being specific to a particular training state. 22 G Visualizing the Geometric Separability of Invariant Representations 
+
+We visualize that the invariant subspace identified by our framework yields geometrically separable representations across models. We use t-SNE [ 21 ] to visualize representation geometry in two settings: our structured custom dataset and an external corpus of queries sampled from MS MARCO [ 22 ], a large-scale information retrieval benchmark consisting of real web search queries. MS MARCO queries are drawn from a fundamentally different distribution than our custom SP/SC dataset—they are natural, unstructured, and span a broad range of topics without controlled semantic variation—making them a suitable testbed for evaluating whether the invariant subspace generalizes beyond the data used to derive it. 
+
+Custom Dataset. Figure 9 shows a t-SNE visualization of invariant subspace projections for all nine models on a single concept group ( k = 32 ). For each model, the best layer is selected independently as the layer where the top-k generalized eigenvectors account for the largest fraction of invariant signal. To ensure comparability across layers, eigenvalues at each layer are normalized by the sum of positive eigenvalues at that layer. This normalization emphasizes the relative concentration of invariant signal within each layer rather than absolute magnitude, which increases with depth and would otherwise bias selection toward later layers. Hidden states at the selected layer are collected for all 21 sentences in the group (1 anchor, 10 SP, 10 SC), and each representation is projected into the 
+
+k-dimensional invariant coordinate space via c = U ⊤
+
+> inv
+
+h. The resulting coordinates are aggregated across models and reduced to 2D using t-SNE for visualization. Despite the limited number of samples per model, the representations form visually separable clusters by model identity, suggesting that the invariant subspace captures model-specific geometric structure. 
+
+Figure 9: t-SNE visualization of invariant subspace projections ( k = 32 ) for all nine models on a single concept group. Each point represents one sentence, colored by model identity. 
+
+MS MARCO Queries. To evaluate generalization beyond the structured SP/SC dataset, we sample 200 queries from the MS MARCO training split and extract hidden state representations for each model at its best layer. The best layer is selected as the one with the highest mean normalized eigenvalue fraction averaged across all ten concept groups. This cross-group averaging ensures that the selected layer reflects consistently strong invariant structure across diverse semantic domains rather than being tuned to a single concept. Critically, Uinv is derived from the custom SP/SC dataset and held fixed; it is applied to MS MARCO representations without recomputation, testing whether invariant subspaces discovered on controlled data transfer to natural language queries from a different distribution. Figure 10 compares two conditions. The left panel reduces each model’s raw d-dimensional hidden states to k = 32 dimensions via Gaussian random projection, a distance-preserving linear transforma-tion that treats all directions uniformly and introduces no semantic bias, before applying t-SNE. The right panel applies t-SNE directly to invariant subspace coordinates c = U ⊤
+
+> inv
+
+h ∈ R32 , which already 23 Figure 10: Side-by-side t-SNE comparison of model separability using 200 MS MARCO queries per model ( k = 32 ). Left: full representation space reduced via Gaussian random projection. Right: 
+
+invariant subspace projection. Silhouette scores are shown for both the 2D t-SNE output and the raw 
+
+k-dimensional coordinates. share a common dimensionality across models. To quantify separability beyond visual inspection, silhouette scores are computed both on the 2D t-SNE embeddings and on the original k-dimensional representations, with both values reported in the figure. The invariant projection exhibits consis-tently higher separability, indicating that the contrastive subspace concentrates model-discriminative structure while suppressing nuisance variation. This is consistent with the geometric formulation in Section 3.2, where invariant directions are selected to maximize semantic-changing variation relative to semantic-preserving variation. 
+
+# H Broader Impacts 
+
+This work studies the internal representation geometry of large language models and proposes a framework for identifying invariant latent features that encode semantic information. As a primarily foundational contribution, the goal is to improve scientific understanding of how language models organize meaning and maintain consistency under paraphrastic variation. A potential positive impact of this work lies in model transparency and interpretability. By providing a principled method to analyze invariant structure, the framework may support better diagnostic tools for understanding model behavior, detecting failure modes, and evaluating robustness under distribution shift. In addition, the use of invariant representations for model attribution may contribute to provenance tracking, intellectual property protection, and forensic analysis of generated content, which are increasingly important in the deployment of generative models. At the same time, the ability to identify model-specific signatures from internal representations may introduce potential risks. Attribution techniques could be used to infer proprietary information about models or to reverse-engineer aspects of their internal structure without authorization. Furthermore, improved understanding of invariant features may enable adversaries to design attacks that specifically target or manipulate these representations, potentially affecting model reliability or enabling evasion of detection systems. More broadly, as with many advances in representation learning, the proposed methods are dual-use. While they can enhance robustness, transparency, and accountability, they may also be misused in adversarial settings. We do not release model-specific fingerprints or tools intended for unauthorized identification, and we emphasize that responsible use of such techniques should follow appropriate legal and ethical guidelines. Overall, we believe the primary impact of this work is to advance the scientific understanding of representation geometry in language models. We encourage future work to further study safeguards, robustness, and responsible deployment of techniques that analyze or utilize invariant latent structure. 24

@@ -1,0 +1,1765 @@
+Title: Semantic Smoothing for Language Models via Distribution Estimation and Embeddings
+
+URL Source: https://arxiv.org/pdf/2605.07994v1
+
+Published Time: Mon, 11 May 2026 01:41:27 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# Semantic Smoothing for Language Models via Distribution Estimation and Embeddings 
+
+Haricharan Balasundaram, Swathi Shree Narashiman, Pranay Mathur, Andrew Thangaraj 
+
+Department of Electrical Engineering, IIT Madras Chennai, India Email: haricharanb,swathinarashiman,pranaym@smail.iitm.ac.in, andrew@ee.iitm.ac.in 
+
+Abstract —We propose semantic smoothing, a smoothing method for language models that uses embeddings to share statistical observations across semantically similar contexts. The starting point is a decomposition of log-perplexity that motivates smoothing as a collection of distribution-estimation problems under Kullback-Leibler (KL) loss. We then show that, under a Lipschitz-logit model for embedding-based language gener-ation, proximity of context embeddings implies proximity of the corresponding next-word distributions in KL divergence. Combining these observations, we formulate semantic smoothing as distribution estimation in KL loss with KL-proximity side information. For n samples on a d-symbol alphabet with a side-information distribution at KL distance ∆, we give an inter-polation estimator with worst-case KL risk O(min {∆, d/n }),and prove a matching-order lower bound for uniform side information. We extend the estimator to multiple and empirically estimated synonymous distributions. Experiments on synthetic Markov data and WikiText-103 bigram models using Word2Vec, GloVe, and GPT-2 embeddings show that semantic smoothing consistently reduces test perplexity when applied to add-constant and Kneser–Ney estimates. 
+
+Index Terms —language models, smoothing, distribution esti-mation, KL divergence, embeddings, perplexity 
+
+I. I NTRODUCTION 
+
+A k-gram language model posits a conditional distribution Pr (wk|w1, w 2, . . . , w k−1) for the next word wk given the k−1
+
+preceding words or context w1, w 2, . . . , w k−1. The model is learned using a training corpus of sentences minimizing a metric called perplexity (a modified version of log-loss that will be precisely defined later) and is expected to maintain low perplexity on a new test corpus of sentences. Since the test sentences will contain k-grams unseen in the training corpus, traditional Maximum Likelihood (ML) estimates result in unacceptably large test perplexity and smoothing , which is the procedure for assigning suitable nonzero probabilities to unseen k-grams, becomes a very important requirement for language models [1]. Smoothing methods for language models include i) add-constant smoothing studied by Laplace [1] and Lidstone [2], and the interpolation/backoff-based ones proposed by ii) Katz [3], iii) Jelinek-Mercer [4], and iv) Kneser-Ney [5]. The interpolation/backoff-based methods use l-gram frequency counts for l = 1 , . . . , k and combine them using natural lan-guage heuristics. Kneser-Ney smoothing results in the lowest test perplexities in several data sets [1]. However, these models incur very high complexity as k increases and, in recent years, they have been superseded in performance and popularity by large language models (LLMs) [6] that use embeddings of words over a large context to train a transformed context embedding, which translates to a conditional next-word dis-tribution estimate. It is well known that LLMs require very large data sets and significant compute power for training. In this work, we propose a smoothing principle that uses semantic similarity, as measured by embeddings, to share probability mass across contexts. Classical smoothing methods share information across lower-order contexts or frequency classes. In contrast, semantic smoothing shares information across contexts whose embeddings are close, and therefore whose next-word distributions are expected to be close. We justify this principle in three steps. 1) Perplexity decomposition : We observe that log-perplexity for a fixed context length decomposes into a model-independent, empirical conditional entropy of the test sequence plus a weighted sum of Kullback-Leibler (KL) divergences. So, minimization of empirical perplexity is achieved by mini-mizing the KL loss of distribution estimation after each context independently. 2) Word embeddings : We determine semantic similarity of contexts through the proximity of their embeddings. We show that under suitable Lipschitz-logit conditions (satisfied by popular models such as Word2Vec [7], [8] and GPT-2 [9]) embedding proximity translates to a closeness of conditional next-word distributions in KL distance. 3) Semantic smoothing : Combining the above two ideas, we propose semantic smoothing of language models. Semantically similar contexts (such as the synonyms ‘enormous’ and ‘big’ in bigram models) result in similar conditional distributions that can be combined to result in improved test perplexities. The proposed semantic smoothing essentially reduces the problem of smoothing to a distribution estimation problem under KL loss given the knowledge that the unknown distri-bution is within a known KL distance of a side information distribution. Our main theoretical result is as follows. For the underlying problem of distribution estimation with n i.i.d. samples over a size-d alphabet under KL loss with a known side information distribution at a proximity of ∆ in KL distance, we provide a minimax upper bound of O(min(∆ , d/n )) through an in-terpolation estimator that linearly interpolates between the add-constant estimator and the side information distribution 
+
+> arXiv:2605.07994v1 [cs.IT] 8 May 2026
+
+with suitable weights. In the case where the side information distribution is uniform over the alphabet, we show a matching minimax lower bound using Assouad’s lemma. For experiments, we consider bigram semantic smoothing, where, for each context word w, we determine m synonyms as the closest words w1, . . . , w m to w in the embedding space and interpolate between the conditional distribution estimates Pr train (·| w) and Pr train (·| wi), i = 1, . . . , m , with suitable weights as suggested by the theory. We evaluate the perplexity of our proposed bigram semantic smoothing method in the following scenarios: (1) synthetic Markov data with a low-rank factorization for the log of the transition matrix resulting in state embeddings, (2) WikiText-103 with Word2Vec/GloVe embeddings in a bigram model, and (3) WikiText-103 with GPT-2 embeddings in a bigram model of tokens 1.
+
+Related work : Outside of the classical smoothing methods mentioned earlier, recent work on n-gram smoothing includes Falahatgar et al. [10] that studies Kneser–Ney smoothing through competitive distribution estimation, and Malagutti et al. [11] that relates n-gram smoothing to regularization methods for neural language models. Our work is closest in spirit to this statistical line, but differs in that we formulate semantic smoothing as distribution estimation under KL loss with KL-proximity side information and prove minimax upper and lower bounds. A second related direction is retrieval- and nearest-neighbor-based language modeling. The kNN-LM of Khandelwal et al. [12] interpolates a neural language model with a distri-bution induced by nearest neighbors in representation space, and subsequent work studies why such nearest-neighbor lan-guage models improve perplexity [13]. These methods, like ours, use representation-space proximity to improve next-token prediction. However, our focus is different: rather than retrieving token-level neighbors at inference time, we use em-bedding proximity between contexts to construct semantically smoothed conditional distributions, with interpolation weights motivated by KL-risk bounds. Distribution estimation with side information is a framework introduced in [14] in the ℓ2–norm. The technical extensions in this work include KL loss with KL proximity (which has technical challenges especially in the lower bound), and the practical scenario where the synonymous distribution is to be estimated from the samples. LLM alignment given a prompt is an important problem studied, for instance, in [15], wherein the expected reward function has to be maximized subject to a KL–divergence constraint. This problem is mathematically similar to our distribution estimation with side information framework, with a difference that LLM alignment requires the final estimate to be at a distance ∆ from a known distribution (the con-straint) as opposed to ∆ being the separation between the two synonymous distributions themselves.          
+
+> 1The code for the experiments can be found at https://github.com/ BaristaBandits/Distribution Estimation.
+
+Organization of the Paper : We introduce notation and state our results on perplexity decomposition, closeness of word embeddings, and i.i.d. distribution estimation with side infor-mation, respectively in Sections II, III, and IV. We explain how we combine these results to get semantic smoothing for a language model in Section V and provide experiments on synthetic and natural language data in Section VI. We provide concluding remarks in Section VII and proofs for the theorems in Section VIII. II. L ANGUAGE MODELS : P ERPLEXITY MINIMIZATION AND KL L OSS 
+
+We consider a sequence of words W n = ( W1, W 2, . . . , W n)
+
+from natural language text to be a random process. The perplexity of a given word sequence wn = ( w1, . . . , w n),denoted PPL (wn), is defined as 
+
+PPL (wn) = exp 
+
+
+
+− 1
+
+n log Pr (W n = wn)
+
+
+
+. (1) The log function is to the base e unless mentioned otherwise. This true perplexity is not computable because Pr (W n) is unknown and can only be estimated approximately. A popular approximation stems from the k-gram assumption. 
+
+A. k-gram language models 
+
+The one-sided k-gram context of the word Wi is de-fined as the length-(k−1) random vector Ci,k (W n) =(Wi−k+1 , W i−k+2 , . . . , W i−1). Wj for j < 1 is assumed to be a special start-of-sentence word. Under the k-gram assumption, we suppose that the word sequence is a (k−1) -th order stationary Markov process, i.e. Wi given the context 
+
+Ci,k (W n) is conditionally independent of all other words. So, under k-gram, the probability of a given word sequence 
+
+wn = ( w1, . . . , w n) is Pr (W n = wn) = 
+
+> n
+
+Y
+
+> i=1
+
+Pr (Wi=wi|Ci=ci) = 
+
+> n
+
+Y
+
+> i=1
+
+p(wi|ci), (2) where Ci = Ci,k (W n) and ci = ci,k (wn) are shorthand notations and p(·| ci) denotes the transition probability of the 
+
+(k − 1) -th order Markov process for the context ci. The perplexity of wn under the k-gram assumption with transition probability p, denoted PPL (p, w n), is seen to be 
+
+PPL (p, w n) = exp − 1
+
+n
+
+> n
+
+X
+
+> i=1
+
+log p(wi|ci)
+
+!
+
+. (3) A k-gram language model learns or estimates the transition probability p(·| c) for a k-gram context c using a training corpus, which is a sequence of S words that we will denote 
+
+uS = ( u1, . . . , u S ). For a particular language model M , we denote the estimated transition probability as ˆpM,u S (·| c) or simply ˆpM (·| c), when the training corpus is not important. B. Test perplexity and its decomposition 
+
+The figure of merit for a language model M is its test 
+
+perplexity, i.e. PPL (ˆ pM,u S , v T ) of a test sequence of words 
+
+vT = ( v1, . . . , v T ), which is different from the train sequence 
+
+uS . A good model should have low test perplexity, which requires smoothing, i.e. assigning nonzero probabilities to contexts and k-grams unseen in the training corpus uS and likely to be seen in the test sequence vT .For a sequence wn, a k-gram context c and a word w, let 
+
+pwn,k (c) = 1
+
+n
+
+> n
+
+X
+
+> i=1
+
+I(ci,k (wn) = c) and 
+
+pwn,k (w|c) = 
+
+Pni=1 I(ci,k (wn) = c)I(wi = w)
+
+Pni=1 I(ci,k (wn) = c) ,
+
+where I(·) is the indicator function and the second definition is valid when the denominator is nonzero. So, pwn,k (·) and 
+
+pwn,k (·| c) are the empirical k-gram context distribution and empirical transition distribution given a k-gram context c,respectively. When n and k are clear, we use shorthands pw(·)
+
+and pw(·| c) to denote the empirical distributions. 
+
+Theorem 2.1: For a test sequence vT and a k-gram language model M , we have 
+
+log( PPL (ˆ pM , v T )) = X  
+
+> cin vT
+
+pv (c) H(pv (·| c)) + X  
+
+> cin vT
+
+pv (c) dKL (pv (·| c) ∥ ˆpM (·| c)) , (4) where H(p) is the entropy of a distribution p and dKL (p ∥ q)
+
+is the KL divergence between the distributions p and q. Both the KL divergence and the entropy are in base e.The decomposition in (4) is a purely algebraic result for the perplexity of a fixed test sequence with the first empirical conditional entropy term being independent of the model M
+
+(this term will be significant only for very short contexts), and the second conditional KL-divergence term measuring the closeness of the model’s conditional distributions given a con-text to that of the corresponding empirical test distributions. 
+
+C. Distribution estimation under KL Loss 
+
+An important consequence of Theorem 2.1 is the fol-lowing: for achieving low empirical perplexity, the quantity 
+
+dKL (pv (·| c) ∥ ˆpM (·| c)) is to be minimized and this minimiza-tion can be done independently for each context c. This leads to the classical problem of distribution estimation under KL loss using the training corpus uS . However, since the test perplexity is with respect to a different test sequence vT , a smoothing method becomes necessary. III. E MBEDDINGS , S EMANTIC SIMILARITY AND 
+
+PROXIMITY IN KL D ISTANCE 
+
+A. Word and context embeddings 
+
+Modern LLMs embed words and contexts into a real vector space. A t-dimensional embedding e of words from a vocabulary V is a mapping taking w ∈ V to ew ∈
+
+Rt. Embeddings are learned such that closeness of ew and 
+
+e ˜w in the embedding space indicates semantic connections between the words w and ˜w. The context of a word wi
+
+occurring in the sequence (w1, w 2, . . . ) is either the one-sided k-gram context defined earlier, or the two-sided k-gram context (wi−k+1 , . . . , w i−1, w i+1 , . . . , w i+k−1). Popular em-beddings such as Word2Vec and GloVe can be understood as approximate, low-rank factorizations of the Pointwise Mutual Information (PMI) matrix derived from frequency counts of words occurring in contexts of a training corpus [7], [16]. For a context c with |c| words, a t-dimensional embedding f
+
+is a mapping taking the embeddings of the words in the context 
+
+Ec = ( ew : w ∈ c) ∈ Rt×| c| to a vector fc ∈ Rt. Each column of Ec is a length-t embedding of a word in the context c. For example, transformers (the main components of LLMs) use the idea of attention to transform Ec (and positional encodings of words) in multiple computation steps into (y1, . . . , y |c|) ∈
+
+Rt×| c|, yi ∈ Rt. The vector corresponding to the last context position y|c| is defined to be the embedding fc ∈ Rt for a context c.In general, word and context embeddings are learned using training data and satisfy some semantic relationship heuristics. We will assume such embeddings are available and use them to impose Lipschitzness conditions on the natural language process. 
+
+B. Embeddings to next-word probabilities: Lipschitzness 
+
+In transformer-based LLMs, the context embedding fc is converted into logits e′
+
+> w
+
+fc, where ew ∈ Rt is the embedding of a word w ∈ V and e′ 
+
+> w
+
+denotes the transpose of ew. The logits are converted into a distribution over the words in V using 
+
+softmax , which converts a vector [a1, a 2, . . . ] into a probability distribution Pr (i) = exp( ai)/ P 
+
+> i
+
+exp( ai). Fig. 1 shows the schematic of a language model that uses word and context embeddings that are converted to next-word probabilities using logit-softmax. We consider the following generalized Lipschitz-logit model for the natural language process that generates the training corpus uS and the test sequence vT :
+
+Definition 1 ( (L, ϵ )-Lipschitz-logit process): A random pro-cess on words in a vocabulary V with a context defined for each word and a transition probability Pr (·| c) over V for a context c is said to be (L, ϵ )-Lipschitz-logit if Pr (w|c) = exp( gw(fc) + ϵc,w )
+
+P 
+
+> y∈V
+
+exp( gy (fc) + ϵc,y ) , |ϵc,w | ≤ ϵ ∀(w, c ),
+
+(5) where fc ∈ Rt is the embedding for the context c, the function 
+
+gw : Rt → R is L-Lipschitz satisfying |gw(fc) − gw(f˜c)| ≤ 
+
+L∥fc − f˜c∥2, and ϵc,w is the permitted error. As pointed out earlier, text generated by transformer-based LLMs clearly satisfy the Lipschitz-logit condition with 
+
+gw(fc) = e′
+
+> w
+
+fc and L = max w ∥ew∥2.Though our proposed smoothing method is motivated by the Lipschitz-logit assumption, we do not require any knowledge or use of the functions gw, which may not be available or may be computationally intensive to evaluate. Compared to w1
+
+w2
+
+...
+
+w|c|
+
+Context c
+
+ew1 ∈ Rt
+
+ew2 ∈ Rt
+
+...
+
+ew|c| ∈ Rt
+
+Word embeddings 
+
+Ec = ( ew : w ∈ c) ∈ Rt×| c|
+
+fc ∈ Rt
+
+Language 
+
+model 
+
+l1 = g1(fc)
+
+l2 = g2(fc)
+
+...
+
+l|V | = g|V |(fc)
+
+Logits 
+
+p(w1|c)
+
+p(w2|c)
+
+...
+
+p(w|V ||c)
+
+p(·| c)
+
+softmax  
+
+> Fig. 1. Schematic depicting a language model - from embeddings to next-word probabilities.
+
+the number of parameters in gw of modern LLMs, the size of the embeddings is significantly smaller. 
+
+C. KL proximity 
+
+For a Lipschitz-logit process, as shown in the theorem below, closeness in context embeddings results in closeness in the KL–divergences between the corresponding conditional probability distributions. 
+
+Theorem 3.1: In an (L, ϵ )-Lipschitz-logit process, let c, ˜c be two contexts and let their embeddings be fc and f˜c. Then, 
+
+dKL (Pr (·| c)∥Pr (·| ˜c)) ≤ 2L∥fc − f˜c∥2 + 4 ϵ. (6) We have chosen the 2-norm in the statement of the above theorem for simplicity. A similar result will hold for all other equivalent norms. In several practical examples, the embedding function f :
+
+Rt×| c| → Rt can be shown to be Lipschitz, i.e. ∥fc − f˜c∥2 ≤
+
+Lf ∥Ec − E˜c∥F , where ∥ · ∥ F is the Frobenius norm. In Appendix A, we prove this for the Word2Vec Continuous-Bag-Of-Words (CBOW) model, transformer-based models (with bounded input norms) and GloVe-based bigram models. In such cases, the KL proximity of the next-word probabilities can be expressed in terms of word embeddings. This is shown in the following corollary to Theorem 3.1. 
+
+Corollary 3.2: If the context embedding function fc is Lf -Lipschitz as defined above, then 
+
+dKL (Pr (·| c)∥Pr (·| ˜c)) ≤ 2LL f ∥Ec − E˜c∥F + 4 ϵ (7) for an (L, ϵ )-Lipschitz-logit process. The results in this and the previous section firmly establish the theoretical basis of semantic smoothing, i.e. estimation of the conditional distribution given a context under the metric of KL loss with the knowledge that the conditional distributions of semantically similar contexts are proximal in KL distance. Next, we consider such distribution estimation problems and derive minimax results for them. IV. D ISTRIBUTION ESTIMATION UNDER KL L OSS WITH 
+
+KL P ROXIMITY SIDE INFORMATION 
+
+Consider n i.i.d. samples Xn = ( X1, X 2, . . . , X n) from a distribution π = ( π1, π 2, . . . , π d). Let Ni = P 
+
+> j∈[n]
+
+I(Xj = i)
+
+denote the individual letter counts. Let π(em ) 
+
+> i
+
+= Ni 
+
+> n
+
+denote the empirical distribution. For the distribution estimation problem of estimating π from the samples Xn under expected KL loss, minimax results have been studied in [17]–[21] and a minimax optimal es-timator is the variable add-constant estimator ˆπopt that assigns 
+
+ˆπopt (i) ∝ r + βr to the letter i when Ni = r and the constant 
+
+βr varies with r as specified in [22]. The result is captured in the theorem below. 
+
+Theorem 4.1: 
+
+min  
+
+> ˆπ
+
+max  
+
+> π
+
+E[dKL (π∥ˆπ(Xn))] = max  
+
+> π
+
+E[dKL (π∥ˆπopt (Xn))] = d − 12n + o
+
+ 1
+
+n
+
+
+
+,
+
+where ˆπ is an estimator for the distribution π and the expec-tation is over the samples Xn ∼ i.i.d. π.
+
+A. Minimax distribution estimation with side information 
+
+We now consider the scenario where, along with the i.i.d. samples Xn ∼ π, we have side information that π is 
+
+close to another distribution π(0) = (π(0) 1 , π (0) 2 , . . . , π (0)  
+
+> d0
+
+).More precisely, our side information is that the distribution 
+
+π ∈ BKL (π(0) , ∆) = {π′ : dKL (π′∥π(0) ) ≤ ∆}, which is the ∆-neighborhood around π(0) in KL distance. We assume supports of π and π(0) are such that ∆ is finite. In terms of language models, π = Pr (·| c), π(0) = Pr (·| ˜c) and ∆ is the semantic similarity between the two contexts c and ˜c evaluated through the Lipschitz-logit assumption. We will call π and π(0) 
+
+as synonymous distributions. For now, we assume that π(0) is known exactly, and we will relax this assumption later. The minimax distribution estimation problem with side information can be stated as 
+
+min  
+
+> ˆπ
+
+max 
+
+> π∈BKL (π(0) ,∆)
+
+E[dKL (π∥ˆπ(Xn))] , (8) where the expectation is over the samples Xn ∼ i.i.d. π. This specific problem with expected KL loss and KL proximity has not been considered in earlier work. Our first result for the minimax problem in (8) is the following upper bound. 
+
+Theorem 4.2: The linear interpolation estimator ˆπ =
+
+αˆπopt (Xn) + (1 − α)π(0) for appropriate values of α ∈ [0 , 1] 
+
+achieves 
+
+max 
+
+> π∈BKL (π(0) ,∆)
+
+E[dKL (π∥ˆπ)] ≤ min 
+
+ d − 12n + o
+
+ 1
+
+n
+
+
+
+, ∆
+
+
+
+,
+
+(9) where the expectation is over the samples Xn ∼ i.i.d. π.Our second result is a matching lower bound for a special case of π(0) .
+
+Theorem 4.3: Let π(0) = Unif [d] be the uniform distribution on an alphabet of size d. Then, 
+
+min  
+
+> ˆπ
+
+max 
+
+> π∈BKL (π(0) ,∆)
+
+E[dKL (π∥ˆπ)] ≥ 132 min 
+
+ d
+
+4n , 14 , ∆
+
+
+
+e−4.
+
+(10) For ∆ < 1/4, it can be seen that the lower bound for uniform 
+
+π(0) and upper bound are both Θ  min  ∆, dn
+
+ .
+
+B. Extension to m synonyms 
+
+The results above are stated for one synonymous distribution 
+
+π(0) with ∆. It is easy to see that if there are m synonymous distributions π(1) , π (2) . . . π (m) with respective KL proximities 
+
+∆1, ∆2, . . . , ∆m, the linear interpolation estimator 
+
+α0 ˆπopt + α1π(1) + α2π(2) + · · · + αmπ(m) (11) with αi ≥ 0, Pmi=0 αi = 1 achieves the upper bound of 
+
+O
+
+
+
+min 
+
+ d − 12n , ∆1, ∆2, . . . , ∆m
+
+ 
+
+. (12) The bound above is minimized by placing all mass on the source with the smallest loss. In practice, we use a softmin (or other similar functions) over the estimated loss proxies to obtain a more stable interpolation as follows: 
+
+αi ∝
+
+(
+
+exp( −τ ( d−12n )) , i = 0 ,
+
+exp( −τ ∆i), otherwise , (13) where τ is a temperature parameter. 
+
+C. Estimated synonymous distribution 
+
+So far, we have assumed that the synonymous distribution 
+
+π(0) is known completely. However, in the context of language models, the distributions π and π(0) arise as distributions Pr (·| c) and Pr (·| ˜c) following similar contexts c and ˜c. So, in practice, we will not directly know π(0) , but we will have, say, n0 samples from π(0) , where n0 is the number of times the context ˜c occurs in the training sample, and we have to estimate the distribution π(0) from the n0 i.i.d. samples. In this version of the problem of estimating π, we have n
+
+samples Xn ∼ i.i.d. π = ( π1, . . . , π d), n0 samples Y n0 ∼
+
+i.i.d. π(0) = ( π(0) 1 , . . . , π (0)  
+
+> d0
+
+) with the side information that 
+
+π ∈ BKL (π(0) , ∆) . We proceed with a plugin approach as follows. First, from the n0 samples Y n, we find the variable add-constant estimate ˆπ(0)  
+
+> opt
+
+(Y n) for π(0) , which is minimax optimal as claimed in Theorem 4.1. Next, we use ˆπ(0)  
+
+> opt
+
+(Y n) in place of π(0) in the linear interpolation estimator in Theorem 4.2 to obtain an estimator for π. For this plugin-interpolated estimator we prove a risk upper bound. 
+
+Theorem 4.4: The estimator 
+
+ˆπ = αˆπopt (Xn) + (1 − α)ˆ π(0)  
+
+> opt
+
+(Y n)
+
+for appropriate values of α ∈ [0 , 1] satisfies 
+
+E[dKL (π∥ˆπ)] ≤ min d − 12n + o
+
+ dn
+
+
+
+,
+
+∆ + log 
+
+
+
+1 + d0
+
+n0
+
+
+
++ log (2) 
+
+!
+
+.
+
+For typical parameters, if the approximation log(1 + x) ≈ x
+
+holds, we get a rough bound of the order of min 
+
+ dn , ∆ + d0
+
+> n0
+
+
+
+.As before, the estimator and bound of Theorem 4.4 can be extended analogously from a single synonym to m synonyms. V. S EMANTIC SMOOTHING : T HEORY TO PRACTICE 
+
+Consider a corpus with training sequence uS =(u1, . . . , u S ) and test sequence vT = ( v1, . . . , v T ), which we will assume are generated through a common random process 
+
+P that is (L, ϵ )-Lipschitz-logit with next-word probabilities 
+
+pP (·| c) for a context c, embeddings ew for a word w and fc
+
+for the context c. The embeddings are assumed to be available along with uS for training a language model M with param-eters θ(M ) and obtain the next-word probabilities ˆpM,u S (·| c)
+
+so as to minimize the test perplexity PPL (ˆ pM,u S , v T ).Theoretically, we assume random U S ∼ P , V T ∼ P and consider the following problem of minimizing the expected log perplexity: 
+
+min   
+
+> θ(M)
+
+EU S ,V T [log( PPL (ˆ pM,U S , V T )] . (14) Using the decomposition of perplexity in Theorem 2.1 (with suitable separability assumptions for context stationary prob-abilities) and the proximity results of Theorem 3.1 (and its corollaries), we relate the problem to the following distribution estimation with side information problem for each context c:
+
+min   
+
+> θ(M)
+
+EU S [dKL (pP (·| c) ∥ pM,U S (·| c)] (15) with the side information that pP (·| c) is close in KL distance to pP (·| ci), i = 1 , . . . , m , where the ci are neighboring or synonymous contexts in the embedding space. For a specific training sequence U S = uS , the language model M estimates pP (·| c) as ˆpM,u S (·| c). Using the ideas of Section IV-C and, in particular, Theorem 4.4, we define the semantically smoothed version of the language model’s estimate, denoted ˆpsem  
+
+> M,u S
+
+(·| c), as follows: 
+
+ˆpsem  
+
+> M,u S
+
+(·| c) = α(c) 
+
+> c
+
+ˆpM,u S (·| c)+ α(c) 
+
+> c1
+
+ˆpM,u S (·| c1) + · · · + α(c) 
+
+> cm
+
+ˆpM,u S (·| cm),
+
+(16) where α(c) 
+
+> c
+
+, α (c) 
+
+> ci
+
+∈ [0 , 1] , i = 1 , . . . , m and α(c) 
+
+> c
+
++Pmi=1 α(c) 
+
+> ci
+
+=1 are linear interpolation coefficients that are treated as hyper-parameters and chosen using ideas motivated by the theoretical bounds. Suppose the context c occurs nc times in uS , and the context 
+
+ci appears nci times. To use the bounds of Theorem 4.4, we require knowledge of the alphabet size dc of words that follow c and the alphabet size dci of words that follow ci.In experiments, when the sizes are unknown, we estimate them using the samples of next words following the respective contexts in uS . Next, we estimate the KL proximity of ci to 
+
+c using Theorem 3.1 as 
+
+∆cc i = L∥fc − fci ∥ (17) for a suitable norm (usually 1 or 2 norm) and a hyperparameter Lipschitz constant L chosen suitably. Applying the ideas in Section IV-B, we pick α(c) 
+
+> c′
+
+as being proportional to a function of the respective KL loss proxies (upper bounds from Theorem 4.4) as follows (this requires a mild generalization of the proof of Theorem 4.4 for an arbitrary β): 
+
+α(c) 
+
+> c′
+
+∝
+
+
+
+ϕ
+
+ dc−12nc
+
+
+
+, c′ = c, ϕ
+
+
+
+∆cc ′ + log 
+
+
+
+1 + βd c′
+
+> nc′
+
+
+
++ [log( 1 
+
+> β
+
+)] +
+
+
+
+, c′ = ci,
+
+(18) where (x)+ denotes max( x, 0) and the function ϕ(x) could be chosen as exp( −τ x ) for softmin or another similar one. For any language model M , we will use the loss proxies of an add-β as shown in (18). For any language model M , the above idea of semantic smoothing can be applied to obtain new estimates of next-word probabilities. Theoretically, this approach is motivated by the minimization of expected test perplexity under the assumptions described in the sections above. To verify the theory, we provide experimental results with both a synthetic and a natural language data set. VI. E XPERIMENTS 
+
+A. Synthetic experiments on Markov data 
+
+We assume a bigram model and generate the train and test sequences by a Markov process with transition matrix 
+
+Pcw = Pr (w|c), where c denotes the context which is the previous word and w denotes the word following the context. The Markov process has |V | = 100 states and the transition matrix has 10 distinct rows repeated 10 times each where the distinct rows are randomly generated. The embeddings are also t = 10 dimensional vectors. The embeddings are obtained by factorizing the matrix Qcw =log 
+
+ Pr (w|c)
+
+> Pr (c)
+
+
+
+as Qcw = e′ 
+
+> c
+
+˜ew (e′ is the transpose of e). Such a factorization exists since P is low rank. So, 
+
+exp( e′ 
+
+> c
+
+˜ew) = Pr (w|c)
+
+Pr (c) , X
+
+> y∈Vc
+
+exp( e′ 
+
+> c
+
+˜ey ) = 1
+
+P (c) ,
+
+Pr (w|c) = exp( e′ 
+
+> c
+
+˜ew)
+
+P 
+
+> y∈Vc
+
+exp( e′ 
+
+> c
+
+˜ey ) ,
+
+which is (L, 0) -Lipschitz-logit with gw(x) = x′ ˜ew and L =max w∈V ∥˜ew∥2.The add-β model uses 
+
+ˆpadd −β (w|c) = Nc,w + βNc + β|V | , (19) 10 4 10 5 10 6
+
+> Number of training samples (n)
+
+100 
+
+120 
+
+140  
+
+> Perplexity
+> Lower Bound
+> Add-constant
+> Jelinek-Mercer
+> Kneser-Ney
+> Semantic Smoothing (m = 5)
+> Semantic Smoothing (m = 10)
+> 1
+> Fig. 2. Perplexity vs Number of Training samples for semantic smoothing with varying number of synonyms.
+
+where Nc,w is the number of times the word w occurs after the context c in the training data, Nc = P 
+
+> w∈V
+
+Nc,w is the number of occurrences of the unigram c in the training data, and β > 0 is a constant. We consider the add-β estimator with β = 1 and its seman-tically smoothed versions with m ∈ { 5, 10 } synonyms that are the words closest to the context word in the embedding space. The softmin function with τ = 1 is used for interpolation. We take ntest = 5 ×10 6 samples for computing test perplexity with 
+
+10 repetitions for obtaining error bars. A plot of test perplexity vs the number of training samples n is shown in Fig. 2. It is seen that the test perplexity improves significantly by semantic smoothing. The semantic-smoothed estimators perform better than the naive add-constant, Kneser-Ney and Jelinek-Mercer estimators, and come close to the conditional entropy lower bound H(p(word |context )) from Theorem 2.1 even for small values of n.
+
+B. Experiments on natural language data 
+
+We evaluate the semantic smoothing method on natural language data to show its effectiveness even when there is no simple bigram process for data generation. Our goal is to merely show the effectiveness of semantic smoothing and no effort has been made to optimize for the lowest perplexities by hyperparameter tuning. 
+
+Dataset, embeddings and preprocessing : We run experi-ments on the WikiText-103 dataset [23], using the inbuilt train-test split as available in the Python Datasets [24] module. The validation data is not used. A token (typically a word) is defined to be the lowest level of division of a sentence. The data is first preprocessed by i) making letters lowercase, ii) replacing numbers with a <num> token and URLs with a 
+
+<url> token, iii) removing references, non-ASCII characters and punctuation, and iv) normalizing whitespaces. For the simulations, we use Word2Vec ( 300 dimensions) [7], GloVe ( 100 dimensions) [16], and GPT-2 ( 768 dimensions) [9] embeddings. In the case of Word2Vec and GloVe embeddings, tokens are created by i) splitting the sentences at whitespaces, and ii) padding the beginning and end of each sentence with 
+
+<bos> and <eos> tokens, respectively. For GPT-2 embed-dings, we use the GPT-2 tokenizer [9]. We construct a corpus consisting of 100 , 000 training sentences and 10 , 000 test sentences from Wikitext-103 after preprocessing and sentence tokenization. Let V be the vocabulary, defined formally to be the set of unique tokens appearing in either the train or the test sequence. Using standard word-level tokenization, the vocabulary size is found to be 66 , 753 . For GPT2 tokenization, the preprocessing pipeline produces a reduced vocabulary size of 27 , 007 , due to byte-pair encoding. 
+
+Language models : We again consider bigram language mod-els, such as the add-β estimator defined earlier and the Kneser-Ney (KN) model. The KN model with an absolute discount 
+
+D, for a context c which is the previous word and the next word w, is defined as 
+
+ˆpKN −D (w|c) = max( Nc,w −D, 0) 
+
+Nc
+
++ λcPcont (c),
+
+where λw = D N +1 (w, ·)/N w, Pcont (w) = N +1 (·, w )/N +1 (·, ·),
+
+N +1 (w, ·) is the number of unique continuations after w,
+
+N +1 (·, w ) is the number of unique contexts before w, and 
+
+N +1 (·, ·) is the total number of unique bigrams. 
+
+Semantic smoothing : For a bigram model, the context c is a word w and the embedding fc equals the word embedding 
+
+ew. We compute the KL proximity as ∆w ˜w = 5 ∥ew − e ˜w∥1,where we have chosen the Lipschitz constant as 5 based on the maximum norm of the word embeddings. For each w ∈ V ,we estimate the alphabet size of the words following w, ˆdw,using the Chebyshev polynomial estimator from [25]. We pick the m synonymous words of a given word w to be the m
+
+words ˜w with the smallest values of ∆cc ′ + log 
+
+
+
+1 + β ˆdc′
+
+> nc′
+
+
+
+,choosing β = 0 .005 . The interpolation function ϕ is set to be 
+
+ϕ(x) = 1 /x . For any word in the train or test sequence that does not have an embedding, we skip semantic smoothing. 0 10 20 30 40 50 
+
+> Number of Synonyms (m)
+
+550 
+
+600 
+
+650 
+
+700    
+
+> Perplexity
+> GloVe
+> Word2Vec
+> = 0.003
+> = 0.007
+> Fig. 3. Perplexity vs no. of synonyms for add-βmodel. The conditional entropy lower bound from Theorem 2.1 is 33 .51 .
+
+For the add-constant model, a plot of test perplexity versus number of synonyms of semantic smoothing using GloVe and Word2Vec embeddings is shown in Fig. 3. We can see that the test perplexity drops as the number of synonyms increases for different constants β.0 10 20 30 40 50 
+
+> Number of Synonyms (m)
+
+295 
+
+300 
+
+305 
+
+310 
+
+315 
+
+320  
+
+> Perplexity
+> GloVe
+> Word2Vec
+> D = 0.5
+> D = 0.6
+> Fig. 4. Perplexity vs no. of synonyms for Kneser-Ney model. The conditional entropy lower bound from Theorem 2.1 is 33 .51 .
+
+A similar plot for the Kneser-Ney model is shown in Fig. 4, and an improvement in perplexity is observed with increasing m for different values of the absolute discount 
+
+D. Comparing Figs. 3 and 4, we observe that the absolute perplexities are significantly better for the KN model and that semantic smoothing ( m = 50 ) is effective in both cases in different proportions – about 700 to 520 for add-0.003 model and about 310 to 295 for KN-0.6.0 10 20 30 40 50 
+
+> Number of Synonyms (m)
+
+160 
+
+180 
+
+200 
+
+220 
+
+240    
+
+> Perplexity
+> = 0.003
+> = 0.007
+> D = 0.5
+> D = 0.6
+> Fig. 5. Perplexity vs no. of synonyms for add-βand KN-Dmodels using GPT-2 embeddings.
+
+Finally, in Fig. 5, we plot perplexity versus number of synonyms when using GPT-2 embeddings and tokenization, which results in a significantly lower absolute perplexity value. However, semantic smoothing ( m = 50 ) results in improvements – about 240 to under 200 for add-0.003 and about 164 to 160 for KN-0.6.In summary, while several improvements are potentially possible, these initial experiments with both synthetic and natural language data establish the effectiveness of semantic smoothing for reducing the perplexity metric in practice. VII. C ONCLUDING REMARKS 
+
+We proposed semantic smoothing, a framework for improv-ing language-model probability estimates by combining infor-mation across semantically similar contexts. The method has information-theoretic backing through a distribution estimation with side information problem. The theoretical and experimen-tal results suggest that embedding geometry can provide useful smoothing information beyond frequency counts alone. Several directions remain open. First, the present experi-ments focus on bigram models; extending the method to longer contexts requires scalable nearest-neighbor search over con-text embeddings and careful estimation of the corresponding interpolation weights. Second, the current weighting rules are motivated by minimax upper bounds but are not optimized end-to-end for held-out perplexity; data-dependent or adaptive weighting may further improve performance. Third, it will be interesting to train/use embeddings optimized for the purpose of semantic smoothing as opposed to using general purpose ones. Finally, the distribution-estimation problem with side information appears to be of independent interest, particularly when the side-information distribution is itself estimated from samples. Several aspects of this problem including optimal minimax rates for a general side information distribution remain open. VIII. P ROOFS OF THEOREMS 
+
+A. Proof of Theorem 2.1 
+
+Let Nc,w = PTi=1 I(ci,k (vT ) = c)I(vi = w), i.e. the number of times w occurs after a k-gram context c in vT .Note that 
+
+log( PPL (ˆ pM , v T )) = − 1
+
+T
+
+> T
+
+X
+
+> i=1
+
+log(ˆ pM (vi|ci)) 
+
+> (a)
+
+= −1
+
+T
+
+X
+
+> (c,w )
+
+Nc,w log(ˆ pM (w|c)) 
+
+> (b)
+
+= − X
+
+> (c,w )
+
+pv (c)pv (w|c) log 
+
+
+
+pv (w|c) · ˆpM (w|c)
+
+pv (w|c)
+
+
+
+= X
+
+> (c,w )
+
+pv (c)pv (w|c)
+
+
+
+log 
+
+ 1
+
+pv (w|c)
+
+
+
++ log 
+
+ pv (w|c)ˆpM (w|c)
+
+ 
+
+= X
+
+> c
+
+pv (c) H(pv (·| c)) + X
+
+> c
+
+pv (c) dKL (pv (·| c) ∥ ˆpM (·| c)) ,
+
+where (a) follows by regrouping terms in the summation to be over all word-context tuples in the test sequence, (b) follows from Ncw = pv (c)pv (w|c) T by definition. 
+
+B. Proof of Theorem 3.1 
+
+Let 
+
+Z = X
+
+> y∈V
+
+exp( gy (fc) + ϵc,y )) ,
+
+˜Z = X
+
+> y∈V
+
+exp( gy (f˜c) + ϵ˜c,y )) 
+
+denote the denominators of the next-word probability expres-sion in (5). Now, 
+
+log ˜ZZ = log 
+
+P 
+
+> y∈V
+
+exp( gy (f˜c) + ϵ˜c,y )
+
+P 
+
+> y∈V
+
+exp( gy (fc) + ϵc,y )
+
+≤ log 
+
+P 
+
+> y∈V
+
+exp( gy (fc) + L∥fc − f˜c∥ + 2 ϵ + ϵc,y )
+
+P 
+
+> y∈V
+
+exp( gy (fc) + ϵc,y )= L∥fc − f˜c∥ + 2 ϵ. (20) Next, note that 
+
+log 
+
+ Pr (x|c)
+
+Pr (x|˜c)
+
+
+
+= gx(fc) + ϵc,x − gx(f˜c) − ϵ˜c,x − log 
+
+ Z
+
+˜Z
+
+
+
+≤ 2 · L∥fc − f˜c∥ + 4 ϵ. (21) From this, 
+
+dKL (Pr (·| c)∥Pr (·| ˜c)) = X
+
+> x∈V
+
+Pr (x|c) log 
+
+ Pr (x|c)
+
+Pr (x|˜c)
+
+
+
+≤ X
+
+> x∈V
+
+Pr (x|c)
+
+!
+
+· (2 · L∥fc − f˜c∥ + 4 ϵ)= 2 · L∥fc − f˜c∥ + 4 ϵ. (22) 
+
+C. Proof of Corollary 3.2 
+
+The proof follows directly from Theorem 3.1 and the Lf -Lipschitzness. 
+
+D. Proof of Theorem 4.2 
+
+Note from [26, Theorem 2.7.2] that the KL–divergence is convex in the second argument. From this, we have 
+
+max 
+
+> π∈BKL (π(0) ,∆)
+
+E[dKL (π∥ˆπ)] 
+
+≤ max 
+
+> π∈BKL (π(0) ,∆)
+
+
+
+αE[dKL (π∥ˆπopt )] + (1 − α)dKL (π∥π(0) )
+
+
+
+≤ α
+
+ d − 12n + o
+
+ 1
+
+n
+
+ 
+
++ (1 − α)∆ . (23) Picking α to be 0 or 1 depending on the relative values of the two terms gives the desired result. 
+
+E. Proof of Theorem 4.3 
+
+First, note that 
+
+min  
+
+> ˆπ
+
+max 
+
+> π∈BKL (π(0) ,∆)
+
+E[dKL (π∥ˆπ)] 
+
+> (a)
+
+≥ min  
+
+> ˆπ
+
+max 
+
+> π∈BKL (π(0) ,∆)
+
+E[∥π − ˆπ∥21]2
+
+> (b)
+
+≥ min  
+
+> ˆπ
+
+max 
+
+> π∈BKL (π(0) ,∆)
+
+E[∥π − ˆπ∥1]2
+
+2 , (24) where (a) follows from Pinsker’s inequality and (b) follows using E[X2] ≥ E[X]2. In the rest of the proof, we lower bound the ℓ1 norm error using Assouad’s lemma [27] and use (24) to get a lower bound on the KL–divergence. 
+
+Lemma 8.1 (Assouad’s Lemma): Consider distributions θv
+
+on d letters, where v ∈ {− 1, 1}l, such that 
+
+min  
+
+> a∈A
+
+(L(θv , a ) + L(θv′ , a )) ≥ λ · dH (v, v ′), (25) where A is a family of distributions on d letters, L(·, ·)
+
+is a real-valued loss function defined between distributions, 
+
+dH (·, ·) denotes Hamming distance between vectors and λ is a constant. Then, 
+
+min 
+
+> ˆθ
+
+max  
+
+> θ∈A
+
+L(θ, ˆθ) ≥ lλ 
+
+4 exp( −n max   
+
+> v,v ′:dH(v,v ′)=1
+
+dKL (θv ∥θv′ )) .
+
+(26) Without loss of generality, assume that d is even. We take 
+
+l = d 
+
+> 2
+
+, A = BKL (π(0) , ∆) for π(0) = Unif [d], and the loss L
+
+to be the expected ℓ1–norm. Clearly, v ∈ {− 1, +1 } d 
+
+> 2
+
+. Define 
+
+θv as follows: 
+
+θv =
+
+ 1
+
+d + τ v 1, 1
+
+d − τ v 1, . . . , 1
+
+d + τ v d
+
+> 2
+
+, 1
+
+d − τ v d
+
+> 2
+
+
+
+. (27) 1) To ensure non-negativity of coordinates, we need τ ≤ 1 
+
+> d
+
+.We take τ ≤ 12d to ensure each 1 
+
+> d
+
+− τ ≥ 12d . It can be seen that θv is a valid distribution for d ≥ 2.2) To ensure that θv ∈ BKL (π(0) , ∆) , note that we need 
+
+dKL (θv ∥π(0) ) ≤ ∆. The sum of the (2 i − 1) -th term and the (2 i)-th term in the KL–divergence is 
+
+ 1
+
+d + τ v i
+
+
+
+log 
+
+ 1 
+
+> d
+
++ τ v i
+
+> 1
+> d
+
+
+
++
+
+ 1
+
+d − τ v i
+
+
+
+log 
+
+ 1 
+
+> d
+
+− τ v i
+
+> 1
+> d
+
+
+
+. (28) Since τ ≤ 12d , by a Taylor expansion of this function it can be seen that this term is at most 
+
+τ 2
+
+2
+
+ 1 
+
+> 1
+> d
+
+− τ + 1 
+
+> 1
+> d
+
+− τ
+
+
+
+≤ τ 2
+
+2 4d. (29) Summing this up over the d 
+
+> 2
+
+such pairs, we see that the 
+
+dKL (θv ∥π(0) ) ≤ d2τ 2. To ensure this is at most ∆, we need τ ≤ p∆/d 2.3) To ensure that (25) is satisfied in Lemma 8.1, we need 
+
+min  
+
+> a∈A
+
+∥θv − a∥1 + ∥a − θ′ 
+
+> v
+
+∥1 ≥ ∥θv − θ′ 
+
+> v
+
+∥1
+
+2= dH (v, v ′)2 (4 τ ).
+
+It can be seen that (25) holds for λ = 2 τ .4) Next, we compute 
+
+max   
+
+> v,v ′:dH(v,v ′)=1
+
+dKL (θv ∥θv′ ). (30) Since the Hamming distance is at most 1, v and v′ differ only at one coordinate, say i. Thus, θv and θv′ would be different only at coordinates 2i − 1 and 2i. Note that 
+
+dKL (θv ∥θv′ ) ≤
+
+ 1
+
+d + τ v i
+
+
+
+log 
+
+ 1 
+
+> d
+
++ τ v i 
+
+> 1
+> d
+
+− τ v i
+
+
+
++
+
+ 1
+
+d − τ v i
+
+
+
+log 
+
+ 1 
+
+> d
+
+− τ v i 
+
+> 1
+> d
+
++ τ v i
+
+
+
+≤ (2 τ )212d
+
+≤ 8τ 2d. (31) Using Assouad’s Lemma gives a lower bound of 
+
+min  
+
+> ˆπ
+
+max 
+
+> π∈BKL (π(0) ,∆)
+
+E[∥π − ˆπ∥1] ≥ 14
+
+d
+
+2 2τ e −n8τ 2d. (32) To ensure that the term in the exponent is O(1) , we need for instance n8τ 2d ≤ 2, i.e. τ ≤ 1√4dn . Note that to satisfy the first two constraints, τ ≤ min 
+
+ 12d , √∆
+
+> d
+
+
+
+.Pick τ = min 
+
+ 1√4dn , 12d , √∆
+
+> d
+
+
+
+. This gives a lower bound of 
+
+14 min 
+
+r d
+
+4n , 12 , √∆
+
+!
+
+e−2. (33) This is a lower bound on the expected ℓ1 norm. To get a lower bound on the KL–divergence itself, we use (24). 
+
+F. Proof of Theorem 4.4 
+
+First, note that 
+
+E[dKL (π∥ˆπ)] ≤ αE[dKL (π∥ˆπopt )] + (1 − α)E[dKL (π∥ˆπ(0)  
+
+> opt
+
+)] 
+
+(34) which follows from the convexity of KL divergence. Note from Theorem 4.1 that E[dKL (π∥ˆπopt )] ≤ d−12n +o   dn
+
+.Note for the other term that 
+
+dKL (π∥ˆπ(0)  
+
+> opt
+
+)= X
+
+> i∈[d0]
+
+πi log πi
+
+ˆπ(0)  
+
+> opt
+
+(i)
+
+!
+
+= X
+
+> i∈[d0]
+
+πi log πi
+
+π(0) 
+
+> i
+
+!
+
++ πi log π(0) 
+
+> i
+
+ˆπ(0)  
+
+> opt
+
+(i)
+
+!! 
+
+. (35) The first term is dKL (π, π (0) ) ≤ ∆. We are left to bound the expected value of the second term. Note that for symbol counts 
+
+N1, N 2, . . . , N d0 from the samples Y n0 , ˆπ(0)  
+
+> opt
+
+(i) = Ni+βi 
+
+> n0+γ
+
+,where γ = P 
+
+> i∈[d0]
+
+βi for suitable βi from [22]. We have 
+
+E
+
+"
+
+log π(0) 
+
+> i
+
+ˆπ(0)  
+
+> opt
+
+(i)
+
+!# 
+
+= E
+
+"
+
+log π(0)  
+
+> i
+
+(n0 + γ)
+
+Ni + βi
+
+!# 
+
+= log 
+
+
+
+1 + γn0
+
+
+
++ E
+
+"
+
+log π(0)  
+
+> i
+
+n0
+
+Ni + βi
+
+!# 
+
+> (a)
+
+≤ log 
+
+
+
+1 + γn0
+
+
+
++ E
+
+"
+
+log π(0)  
+
+> i
+
+n0
+
+(Ni + 1) min( βi, 1) 
+
+!# 
+
+(36) = log 
+
+
+
+1 + γn0
+
+
+
+− log(min( βi, 1)) + E
+
+"
+
+log π(0)  
+
+> i
+
+n0
+
+Ni + 1 
+
+!# 
+
+= log 
+
+
+
+1 + γn0
+
+
+
++ log 
+
+ 1
+
+βi
+
+
+
+> +
+
++ E
+
+"
+
+log π(0)  
+
+> i
+
+n0
+
+Ni + 1 
+
+!# 
+
+> (b)
+
+≤ log 
+
+
+
+1 + d0
+
+n0
+
+
+
++ log (2) + E
+
+"
+
+log π(0)  
+
+> i
+
+n0
+
+Ni + 1 
+
+!# 
+
+, (37) where (a) uses Ni + βi ≥ (Ni + 1) min( βi, 1) , and (b) uses 
+
+βi ≥ 12 and γ ≤ d0 for the optimal estimator from [22]. We will finally prove E
+
+
+
+log 
+
+ π(0)  
+
+> in0
+> Ni+1
+
+ 
+
+≤ 0.
+
+E
+
+"
+
+log π(0)  
+
+> i
+
+n0
+
+Ni + 1 
+
+!# (a)
+
+≤ E
+
+"
+
+π(0)  
+
+> i
+
+n0
+
+Ni + 1 − 1
+
+!# 
+
+(38) 
+
+> (b)
+
+≤ π(0)  
+
+> i
+
+n0
+
+(n0 + 1) π(0) 
+
+> i
+
+− 1
+
+!
+
+≤ 0, (39) where (a) follows since log( x) ≤ x − 1 for x > 0, and (b)
+
+uses the standard result that E
+
+h 1
+
+> Ni+1
+
+i
+
+≤ 1(n0+1) π(0) 
+
+> i
+
+. So, we have 
+
+E
+
+"
+
+log π(0) 
+
+> i
+
+ˆπ(0)  
+
+> opt
+
+(i)
+
+!# 
+
+≤ log 
+
+
+
+1 + d0
+
+n0
+
+
+
++ log (2) . (40) Multiplying the above by πi, summing over all i and picking 
+
+α to be 0 or 1 in (34) appropriately gives us the desired result. REFERENCES [1] S. F. Chen and J. Goodman, “An empirical study of smoothing techniques for language modeling,” in 34th Annual Meeting of the Association for Computational Linguistics . Santa Cruz, California, USA: Association for Computational Linguistics, Jun. 1996, pp. 310–318. [Online]. Available: https://aclanthology.org/P96-1041/ [2] G. J. Lidstone, “Note on the general case of the Bayes-Laplace formula for inductive or a posteriori probabilities,” Transactions of the Faculty of Actuaries , vol. 8, pp. 182–192, 1920. [3] S. M. Katz, “Estimation of probabilities from sparse data for the language model component of a speech recognizer,” IEEE Transactions on Acoustics, Speech, and Signal Processing , vol. 35, no. 3, pp. 400– 401, March 1987. [4] F. Jelinek and R. L. Mercer, “Interpolated estimation of Markov source parameters from sparse data,” in Proceedings of the Workshop on Pattern Recognition in Practice . Amsterdam, The Netherlands: North-Holland, May 1980. [5] R. Kneser and H. Ney, “Improved backing-off for m-gram language modeling,” in Proceedings of the IEEE International Conference on Acoustics, Speech, and Signal Processing (ICASSP) , vol. 1, 1995, pp. 181–184. [6] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. u. Kaiser, and I. Polosukhin, “Attention is all you need,” in Advances in Neural Information Processing Systems , I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, Eds., vol. 30. Curran Associates, Inc., 2017. [7] T. Mikolov, K. Chen, G. Corrado, and J. Dean, “Efficient estimation of word representations in vector space,” 2013. [Online]. Available: https://arxiv.org/abs/1301.3781 [8] T. Mikolov, I. Sutskever, K. Chen, G. S. Corrado, and J. Dean, “Distributed representations of words and phrases and their compositionality,” in Advances in Neural Information Processing Systems , C. Burges, L. Bottou, M. Welling, Z. Ghahramani, and K. Weinberger, Eds., vol. 26. Curran Associates, Inc., 2013. [Online]. Available: https://proceedings.neurips.cc/paper files/ paper/2013/file/9aa42b31882ec039965f3c4923ce901b-Paper.pdf [9] A. Radford, K. Narasimhan, T. Salimans, and I. Sutskever, “Improving language understanding by generative pre-training,” OpenAI ,2018. [Online]. Available: https://cdn.openai.com/research-covers/ language-unsupervised/language understanding paper.pdf [10] M. Falahatgar, M. Ohannessian, A. Orlitsky, and V. Pichapati, “Towards competitive n-gram smoothing,” in International Conference on Artifi-cial Intelligence and Statistics . PMLR, 2020, pp. 4206–4215. [11] L. Malagutti, A. Buinovskij, A. Svete, C. Meister, A. Amini, and R. Cot-terell, “The role of n-gram smoothing in the age of neural networks,” in 
+
+Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies . Mexico City, Mexico: Association for Computational Linguistics, 2024, pp. 6882–6899. [12] U. Khandelwal, O. Levy, D. Jurafsky, L. Zettlemoyer, and M. Lewis, “Generalization through memorization: Nearest neighbor language mod-els,” in International Conference on Learning Representations , 2020. [13] F. F. Xu, U. Alon, and G. Neubig, “Why do nearest neighbor language models work?” in Proceedings of the 40th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, vol. 202. PMLR, 2023, pp. 38 325–38 341. [14] H. Balasundaram and A. Thangaraj, “Distribution estimation with side information,” 2026. [Online]. Available: https://arxiv.org/abs/2601.08535 [15] J. Q. Yang, S. Salamatian, Z. Sun, A. T. Suresh, and A. Beirami, “Asymptotics of language model alignment,” in 2024 IEEE International Symposium on Information Theory (ISIT) , 2024, pp. 2027–2032. [16] J. Pennington, R. Socher, and C. Manning, “GloVe: Global vectors for word representation,” in Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing (EMNLP) ,A. Moschitti, B. Pang, and W. Daelemans, Eds. Doha, Qatar: Association for Computational Linguistics, Oct. 2014, pp. 1532–1543. [Online]. Available: https://aclanthology.org/D14-1162/ [17] T. Cover, “Admissibility properties or Gilbert’s encoding for unknown source probabilities (corresp.),” IEEE Transactions on Information The-ory , vol. 18, no. 1, pp. 216–217, 1972. [18] R. Krichevsky and V. Trofimov, “The performance of universal encod-ing,” IEEE Transactions on Information Theory , vol. 27, no. 2, pp. 199– 207, 1981. [19] O. Catoni, “The Mixture Approach To Universal Model Selection,” Tech. Rep., 1997. [Online]. Available: https://cds.cern.ch/record/461892 [20] D. Braess, J. Forster, T. Sauer, and H. U. Simon, “How to achieve minimax expected kullback-leibler distance from an unknown finite dis-tribution,” in Algorithmic Learning Theory , N. Cesa-Bianchi, M. Numao, and R. Reischuk, Eds. Berlin, Heidelberg: Springer Berlin Heidelberg, 2002, pp. 380–394. [21] L. Paninski, “Variational minimax estimation of discrete distributions under kl loss,” in Advances in Neural Information Processing Systems ,L. Saul, Y. Weiss, and L. Bottou, Eds., vol. 17. MIT Press, 2004. [22] D. Braess and T. Sauer, “Bernstein polynomials and learning theory,” 
+
+Journal of Approximation Theory , vol. 128, no. 2, pp. 187–206, 2004. [Online]. Available: https://www.sciencedirect.com/science/article/pii/ S0021904504000723 [23] S. Merity, C. Xiong, J. Bradbury, and R. Socher, “Pointer sentinel mixture models,” arXiv preprint arXiv:1609.07843 , 2016. [Online]. Available: https://arxiv.org/abs/1609.07843 [24] Q. Lhoest, A. Villanova del Moral, Y. Jernite et al. , “Datasets: A community library for natural language processing,” in Proceedings of EMNLP: System Demonstrations , 2021, pp. 175–184. [Online]. Available: https://aclanthology.org/2021.emnlp-demo.21/ [25] Y. Wu and P. Yang, “Chebyshev polynomials, moment matching, and optimal estimation of the unseen,” 2015. [26] T. M. Cover and J. A. Thomas, Elements of Information Theory 2nd Edition . Wiley-Interscience, 2006. [27] B. Yu, Assouad, Fano, and Le Cam . New York, NY: Springer New York, 1997, pp. 423–435. [28] H. Kim, G. Papamakarios, and A. Mnih, “The Lipschitz constant of self-attention,” in Proceedings of the 38th International Conference on Machine Learning (ICML) , ser. Proceedings of Machine Learning Research, vol. 139. PMLR, 2021, pp. 5562–5571. [Online]. Available: https://proceedings.mlr.press/v139/kim21i.html [29] V. Castin, P. Ablin, and G. Peyr´ e, “How smooth is attention?” in Proceedings of the 41st International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, vol. 235. PMLR, Jul 2024, pp. 5817–5840. [Online]. Available: https: //proceedings.mlr.press/v235/castin24a.html [30] M. Ye, Y. Liu, Z. Chen, and S. Wang, “Mitigating transformer overconfidence via Lipschitz regularization,” in Proceedings of the Thirty-Ninth Conference on Uncertainty in Artificial Intelligence , ser. Proceedings of Machine Learning Research, vol. 216. PMLR, 2023, pp. 2422–2432. [Online]. Available: https://proceedings.mlr.press/v216/ ye23a.html 
+
+APPENDIX ACOMMON EMBEDDINGS 
+
+Many models for language used while training embeddings satisfy the (L, ϵ )-Lipschitz-logit process defined in (5). 
+
+A. Word2Vec 
+
+Let ew ∈ Rt denote the Word2Vec ‘input’ embedding of each word w. Note that Ec ∈ Rt×| c| is the input context em-bedding matrix. Under the Continuous Bag of Words (CBOW) model, this is converted to the final context embedding fc ∈ Rt
+
+by averaging the individual word embeddings, i.e. 
+
+fc = 1
+
+k Ec1|c|× 1. (41) where 1|c|× 1 denotes the |c|× 1 matrix of all ones. This process is Lipschitz with Lf =
+
+√|c| 
+
+> k
+
+.The probability estimates in the model are trained to be Pr (w|c) = exp( f Tc ˜ew + ϵc,w )
+
+P 
+
+> y∈V
+
+exp( f Tc ˜ey + ϵc,y ) , (42) where ˜ew’s are ‘output’ embeddings of w and ϵc,w includes possible training error in the model. The function gw(x) = 
+
+x′ ˜ew is L-Lipschitz for L = max w∈V ∥˜ew∥2.
+
+B. Transformer-based embeddings 
+
+A transformer takes the embedding context Ec from the word embeddings ew and first converts it to yt×| c| using the attention mechanism [6]. Recall that the last context position, 
+
+y|c|, is taken to be fc. As before, the probabilities in the model are trained to be Pr (w|c) = exp( f ′
+
+> c
+
+ew + ϵc,w )
+
+P 
+
+> y∈V
+
+exp( f ′
+
+> c
+
+ey + ϵc,y ) , (43) where ϵc,w includes possible training errors. The function 
+
+gw(x) = x′ew is L-Lipschitz for L = max w∈V ∥ew∥2 and taking fc(yt×| c|) = y|c| is 1-Lipschitz. It is left to show that the conversion of Ec to yt×| c| is 
+
+Lf Lipschitz. A transformer consists of ℓ sequential layers. If we prove that the ith layer is Li-Lipschitz, then we get 
+
+Lf = Qℓi=1 Li. So, it is sufficient to show that the individual layers are Lipschitz. 
+
+Self Attention : Self-attention is computed as [6] 
+
+f (X) = softmax 
+
+ QK ⊤
+
+√d
+
+
+
+V, (44) where Q = XW Q, K = XW K , V = XW V . Without any input constraints, the self-attention step is not Lipschitz [28]. However, as shown in [29, Theorem 3.3], when the norm of the input vectors is bounded, the Lipschitz constant of self-attention scales as √n for a sequence length n. From [29, Lemma 3.8], note that if each head is Lipschitz and the matrices have finite norm, the overall multi-headed attention block is also Lipschitz. 
+
+Residual Connections : A layer of the form f (x) = x + h(x)
+
+is (1 + L)-Lipschitz if h is L-Lipschitz. Since h is either a linear or a self attention layer and both of them are Lipschitz, 
+
+f is Lipschitz. 
+
+Layer Normalization : The LayerNorm is expressed as: 
+
+f (x) = x − μ(x)
+
+pσ2(x) + ϵ γ + β, (45) where γ, β are parameters, μ(x) = 1
+
+> d
+
+Pdi=1 xi, σ2(x) =
+
+> 1
+> d
+
+Pdi=1 (xi − μ(x)) 2, and ϵ > 0 is a small constant added for numerical stability. It is shown in [30, Supplementary material, Section A] that the LayerNorm is Lipschitz. Transformer components such as MLP/feed-forward block and activation functions are known to be Lipschitz. 
+
+C. GloVe 
+
+GloVe embeddings [16] are trained to ensure the following: 
+
+log( X ˜ww ) = f ′
+
+> ˜w
+
+ew + b ˜w + ˜bw + ϵ ˜w,w , (46) where X ˜ww is the number of times word w occurs as the word to be predicted when word ˜w is in the context c, f ˜w is the embedding of the word ˜w when it acts as the context, ew is the embedding of the w when it acts as the word to be predicted, and ϵ ˜w,w is the training error. For a bigram model, the context is the previous word in the GloVe model, i.e. c = ˜w. In such a case, the context embedding fc = e ˜w. If sufficiently many samples are taken, due to stationarity and ergodicity, note that 
+
+Xcw 
+
+Xc
+
+≈ Pr (Wt = w|Wt−1 = c), (47) where Xc = P 
+
+> y∈Vc
+
+Xcy .Combining equations (46) and (47), we get Pr (w|c) ∝ exp( f ′
+
+> c
+
+ew + bc + ˜bw + ϵc,w ) (48) 
+
+∝ exp( f ′
+
+> c
+
+ew + ˜bw + ϵc,w ). (49) From the above, we observe that the next-word probabilities are Lipschitz-logit with gw(x) = x′ew + ˜bw, and gw is Lipschitz with a constant sup w ∥ew∥.

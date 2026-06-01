@@ -1,0 +1,1521 @@
+Title: Perturbation is All You Need for Extrapolating Language Models
+
+URL Source: https://arxiv.org/pdf/2605.04344v1
+
+Published Time: Thu, 07 May 2026 00:27:37 GMT
+
+Number of Pages: 44
+
+Markdown Content:
+# Perturbation is All You Need for Extrapolating Language Models 
+
+Zetai Cen ∗1, Jin Zhu †2, Xinwei Shen ‡3, and Chengchun Shi §41School of Mathematics, University of Bristol 
+
+> 2
+
+School of Mathematics, University of Birmingham 
+
+> 3
+
+Department of Statistics, University of Washington 
+
+> 4
+
+Department of Statistics, London School of Economics and Political Science 
+
+Abstract 
+
+We introduce a simple yet powerful framework for training large language models. In con-trast to the standard autoregressive next-token prediction based on an exact prefix, we propose a perturbation-based procedure that first transforms the prefix into a semantic neighbor and then conditions on this perturbed variant for next-token prediction. This yields a hierarchical model with a pre-post-additive noise structure. Within this framework, we develop a rigorous theory of extrapolability, namely, the capacity of a model class to make reliable predictions for token sequences that lie outside the empirical support of the training corpus. We evaluate the finite-sample performance of the proposed procedure using both synthetic and real-world language data. Results show that the proposed method consistently improves out-of-support prediction while maintaining competitive in-support performance, demonstrating that pertur-bation offers a practical route to language modeling. 
+
+Key words and phrases: Extrapolation, large language models, perturbation, pre-post-additive noise model. 
+
+> ∗
+
+Equal contribution. Email: zetai.cen@bristol.ac.uk. Supported by Engineering and Physical Sciences Research Council (EP/Z531327/1). 
+
+> †
+
+Equal contribution. Email: j.zhu.7@bham.ac.uk 
+
+> ‡
+
+Email: xwshen@uw.edu 
+
+> §
+
+Corresponding author. Email: c.shi7@lse.ac.uk 
+
+1
+
+> arXiv:2605.04344v1 [stat.ML] 5 May 2026
+
+# Contents 
+
+1 Introduction 3
+
+1.1 Motivation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31.2 Related works . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 51.3 Contribution and organization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+2 Methodology 6
+
+2.1 Models and training . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 62.2 Perturbation design . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+
+3 Theoretical Analysis 94 Numerical Experiments 13 
+
+4.1 Synthetic data analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13 4.2 Real data analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14 4.3 An ablation study . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16 
+
+5 Concluding Remarks 17 A Additional Numerical Results 23 
+
+A.1 Scoring rules as objective functions . . . . . . . . . . . . . . . . . . . . . . . . . . . 23 A.2 Additional numerical results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 
+
+B Meta-Theoretical Results and Additional Discussion 27 C Proofs 34 
+
+C.1 Proofs of lemmas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 34 C.2 Proofs of theorems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 35 C.3 Proofs of propositions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 40 
+
+D Details of Experiments 42 
+
+D.1 Implementation details in the training phase . . . . . . . . . . . . . . . . . . . . . . 42 D.2 Details on simulation studies . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 42 D.3 Details on real-world language modeling . . . . . . . . . . . . . . . . . . . . . . . . 43 21 Introduction 
+
+The past few years have witnessed the emergence of highly intelligent large language models (LLMs), such as the Gemini and DeepSeek series (Comanici et al., 2025; Guo et al., 2025). The impact of these models is everywhere: they have been deeply integrated into our daily lives and work, representing an important milestone toward the realization of artificial general intelligence. Despite their remarkable success, it has become increasingly challenging to enhance the performance of these LLMs. As the availability of high-quality text data appears to approach its limit (Villalobos et al., 2024), the scaling laws which link model performance to parameter count and data volume (Kaplan et al., 2020) suggest that performance gains from continued scaling are diminishing. This calls for more sample-efficient algorithms for further enhancement. In this paper, we propose a simple yet effective technique to bolster the performance of exist-ing LLMs, supported by a rigorous theoretical framework that characterizes its benefits. Our methodology is simple to describe. It builds upon autoregressive language models (Bengio et al., 2000) and introduces a two-step procedure for next-token prediction: (i) we generate a semantic perturbation (e.g., a synonym) of the input prefix; and (ii) the model then performs next-token prediction conditioned on this perturbed variant rather than the original input. Figure 1 provides a graphical illustration for the proposed perturbed autoregressive model. 
+
+1.1 Motivation 
+
+Our use of perturbations for language modeling arises naturally from research in linguistics and cognitive science, which suggests that human language comprehension and generation are funda-mentally robust to textual variation. Sophisticated cognitive processes frequently rely on analog-ical reasoning and metaphor, often remaining unaffected by semantic substitutions (Erickson and Mattson, 1981; Sato et al., 2015). As discussed by Sato et al. (2015), people habitually speak about abstract concepts metaphorically. For instance, describing a person as being “full of love” is conceptually equivalent to saying they have “a lot of love to give”. This flexibility is further supported by neurocognitive evidence. For example, Li et al. (2024) demonstrate that reasoning on syntactic patterns involves brain regions specifically dedicated to semantic analogies. Collec-tively, these findings indicate that human language production is inherently resilient to—and even driven by—textual perturbations. We bring this enlightenment to LLMs, by explicitly modeling the metaphor or analogy as a prob-abilistic perturbation process. In this paper, we adopt simple techniques (e.g., random insertion, 3Figure 1: An illustration of our approach, in comparison with the classical LLM training. In both pretrain and inference, our method processes an input prefix X<t in two steps: (i) X<t → fX<t by perturbation T (·| X<t ) and (ii) fX<t → cXt by autoregressive modeling Pθ(·| fX<t ). The classical method consists of our step (ii) only, such that X<t → cXt via autoregressive modeling Pθ(·| X<t ). deletion, and swap, see Section 2) to design the perturber, so as to pinpoint the importance of including perturbation per se. As a more important point of view, we argue that employing such a perturbed model for pretrain-ing is reasonable. Not only does it mimic the cognition of human beings, but it also addresses a crucial yet seldom studied problem in language generation—extrapolation. In our specific con-text, extrapolation can be thought of as the capability of LLMs to generate reasonable answers to unseen contexts during training. In practical applications, a model almost never encounters the exact prompts or contexts seen during training; inputs are inherently out-of-support or may even deviate substantially from the training corpus. Furthermore, we posit that the capacity for extrapolation is intrinsically linked to a model’s creativity and the emergence of complex reasoning, namely, capabilities that require the model to generalize beyond rote memorization. 4Consequently, it is expected that an LLM specifically trained to enhance its extrapolative power would outperform standard models. 
+
+1.2 Related works 
+
+In machine learning, extrapolation is concerned with the performance of a trained model on data points that lie outside its training support. Recent works have advanced our understanding of the extrapolability of machine learning algorithms (Christiansen et al., 2022; Dong and Ma, 2023; Kong et al., 2024). Our proposal is closely related to engression (Shen and Meinshausen, 2025), which considers the standard regression setting with a scalar response Y and a vector of predictors 
+
+X. Its goal is to learn the conditional distribution function of Y given X. Toward that end, they distinguish among three types of regression models: (i) Post-additive noise model : Y = f (X) + ε;(ii) Pre-additive noise model : Y = f (X + η); (iii) Pre-post-additive noise model : Y = f (X + η) + ε.In all three models, f denotes a nonlinear deterministic function to be estimated, whereas ε and 
+
+η denote some random noises. Most regression models studied in the literature fall into the first type, in which the noise is added to the response and its effect is independent of the regression function f . The second type, the pre-additive noise model, has the implication that each response 
+
+Y is generated not directly from the corresponding predictor X, but from a perturbed version 
+
+X + η. The third type combines the first two. Engression advocates the second type of model over the classical first type for effective distributional learning. This preference is motivated by the theoretical finding that pre-additive noise models can extrapolate under certain conditions. We will adapt the principle of engression to the large language models. Unlike Shen and Meinshausen (2025) who focus on the second type, we primarily utilize the third type of model for generality. LLMs aim to characterize the probability distribution over text. Learning such models is one of the most fundamental problems in NLP. In modern practice, these models are predominantly trained using Transformer-based autoregressive architectures (Vaswani et al., 2017; Radford et al., 2018). Pretraining refers to the procedure that encodes general linguistic knowledge into these high-capacity language models using massive human text corpora. This is typically achieved via maximum likelihood estimation (MLE), which is equivalent to minimizing the Kullback– Leibler (KL) divergence between the model’s predictive distribution and the empirical distribution 5of human texts (Radford et al., 2018). More recently, Ji et al. (2023), Zhang et al. (2023), and Ren et al. (2024) proposed to minimize alternative divergence measures, such as the total variation distance and Earth Mover’s distance, to mitigate the sensitivity of KL divergence to small perturbations in the data. Different from these works, which primarily propose alternative training objectives, we propose an alternative model architecture based on perturbation. Our model can nonetheless be trained under these objectives. 
+
+1.3 Contribution and organization 
+
+To summarize, we make at least the following contributions. Methodologically, we formalize a perturbed autoregressive language model, that differs from classical LLMs whose training relies exclusively on unperturbed sequences. Our approach also deviates from standard data augmen-tation that utilizes perturbations solely for enriching the training dataset. As the first of its kind, we also establish theoretical results for the proposed framework in terms of extrapolation, based on a formal characterization of the extrapolability of LLM models. Our main results establish three key properties: (i) adaptivity, demonstrating that if the base model class can extrapolate, then the class of perturbed models inherits these capabilities; (ii) robustness, spelling out some extrapolation guarantee of the perturbed models when the base model class extrapolates poorly; and (iii) extrapolability, pinpointing that with a properly chosen perturber, the perturbed models can perfectly extrapolate. The rest of this paper is organized as follows. We detail the perturbed autoregressive model in Section 2, together with the choice of perturbation mechanism. Section 3 formalizes the nota-tion for extrapolation, and presents the main theoretical findings. In Section 4, we demonstrate the effectiveness of our proposal for pretraining through a series of experiments on both syn-thetic data and real data. Section 5 concludes. Additional experiments, configuration details of implementation, and all the proofs are included in the supplement. 
+
+# 2 Methodology 
+
+2.1 Models and training 
+
+We first formulate the pretraining problem in language modeling. Let X denote a human-authored sentence, represented as a sequence of tokens ( X1, . . . , X L), where each token Xt (encoded as an integer) is a word, subword, or punctuation symbol drawn from a vocabulary V. We assume a 6fixed sequence length L, where shorter sentences are extended to this length via zero padding. Let P ∗ denote the probability distribution over X. Our goal is to learn a parametric distribution 
+
+Pθ, parameterized by θ, that is as close to the human language model P ∗ as possible. For any t > 1, define X<t := ( X1, . . . , X t−1) as the sequence of tokens preceding the tth token, with the convention that X<1 = ∅. By the chain rule, both P ∗ and Pθ can be factorized into products of conditional distributions such that 
+
+P ∗(X) = 
+
+> L
+
+Y
+
+> t=1
+
+P ∗(Xt|X<t ), Pθ(X) = 
+
+> L
+
+Y
+
+> t=1
+
+Pθ(Xt|X<t ).
+
+Autoregressive language models are motivated by this factorization. Given a prefix X<t of length 
+
+t − 1, an autoregressive language model outputs a probability distribution Pθ(·| X<t ) over the vocabulary, conditional on the preceding tokens. The next token is then sampled from this distribution, and this procedure repeats for t = 1 , 2, . . . , until an end-of-sequence (EOS) token is produced, at which point the sentence is complete. Note that the stochasticity in such classical models arises solely from the sampling of the next-token distribution. Consequently, these models are conceptually similar to post-additive noise models in classical regression. Our approach differs from existing LLMs, with the intuition inspired by the favorable extrapo-lation properties of pre- and pre-post-additive noise models proposed in the standard regression setting. As discussed in Section 1, these models do not link the predictor directly to the response; instead, the response depends on a perturbed version of the predictor that resides in its neigh-borhood. Such structure inherently captures out-of-support information: even when test data lies outside the training support, the model can still extrapolate effectively provided that the test data can viewed as “neighbors” to the training data through these perturbations. We extend this mindset to language modeling. Specifically, we propose a novel perturbed autoregressive model that can be applied on top of any 
+
+existing autoregressive LLM. Given a sequence of preceding tokens X<t , we first randomly perturb it to obtain its contextual neighbor, denoted by fX<t , which need not have the same length as 
+
+X<t . This perturbed sequence is generated according to 
+
+fX<t ∼ T (·| X<t ),
+
+where T denotes a specific perturbation distribution to be detailed later. We next feed fX<t into a 7base autoregressive language model Pθ(·| fX<t ), parameterized by θ, to predict the next token, and repeat this procedure for t = 1 , 2, . . . , until the EOS token is generated. It is worthwhile to mention that generating perturbation from T (·| X<t ) is conceptually similar to injecting pre-additive noise as in X + η in classical regression. Meanwhile, the stochastic sampling from Pθ(·| fX<t ) injects post-additive noise during next-token generation. The perturbed model can thus be viewed as an adaption of the pre-post-additive noise model described in Section 1 to LLMs. To train the model, given a prefix X<t from a training sequence X, MLE boils down to maximizing log EfX<t ∼T (·| X<t )
+
+Pθ(Xt| fX<t ) ,
+
+which is akin to the log-likelihood of a hierarchical model. For computational efficiency, we can in turn maximize a lower bound, EfX<t ∼T (·| X<t )
+
+ log Pθ(Xt| fX<t ) , by Jensen’s inequality. To this end, we first sample m number of perturbed sequences { fX(i) 
+
+> <t
+
+}mi=1 such that 
+
+fX(i) 
+
+> <t
+
+∼ T (·| X<t ), i = 1 , . . . , m. 
+
+By aggregating these over all t, this gives rise to our objective function for a single sequence, 
+
+LLog (Pθ; X) := 1
+
+m
+
+> m
+
+X
+
+> i=1
+> L
+
+X
+
+> t=1
+
+log Pθ(Xt| fX(i) 
+
+> <t
+
+). (2.1) Finally, we aggregate LLog (Pθ; X) over all sequences X in a training corpus D. The parameter θ
+
+is estimated by maximizing this objective function P 
+
+> X∈D
+
+LLog (Pθ; X). Note that while multiple perturbed sequences are sampled during training to reduce the randomness arising from the perturbation distribution T , we typically employ a single perturbation during inference 1 for the sake of computational efficiency. We summarize the training and inference procedures of our proposed model in Algorithms 1 and 2, respectively. 
+
+2.2 Perturbation design 
+
+Our proposal is related to data augmentation in that we can apply techniques such as synonym replacement and random insertion or deletion to construct perturbations. Early approaches in natural language processing augment the data by replacing synonyms or keywords, inserting and deleting words or characters in the training text. Despite their simplicity, these techniques have 
+
+> 1Inference in LLMs refers to a trained LLM being employed for next-token prediction.
+
+8Algorithm 1 Perturbed Autoregressive Training 
+
+Require: Training corpus D = {X(i)}ni=1 , scoring rule S, m perturbation steps, random insertion 
+
+T
+
+for i = 1 , . . . , n do for t = 1 , . . . , |X(i)| do for j = 1 , . . . , m do 
+
+Sample fX(i,j ) 
+
+> <t
+
+∼ T (·| X(i) 
+
+> <t
+
+)
+
+end for end for end for 
+
+Set L(θ) = Pni=1 
+
+P|X(i)|
+
+> t=1
+
+Pmj=1 S[Pθ(·| fX(i,j ) 
+
+> <t
+
+), X (i) 
+
+> t
+
+]
+
+Return: arg max θ L(θ)been empirically shown to improve the model performance (Wei and Zou, 2019; Feng et al., 2020). To be simple and computationally effective, we primarily utilize random insertion in our implementation, which proceeds as follows: (i) a subset of tokens is randomly selected from the prefix; (ii) synonyms for these tokens are generated; and (iii) these synonyms are inserted at random positions within the prefix (prior to the EOS token). Thus the perturbation distribution 
+
+T is embedded through the transformation that takes a prefix as input and produces an output through steps (i)–(iii). Synonym replacement and random deletion are also applicable, as shown in additional experiments in the supplement. We remark a technical nuance in our proposal which distinguishes our proposal from data aug-mentation. The difference lies in that we introduce perturbations not only during training (or pretraining) but also at inference time (e.g., when generating the model output), whereas data augmentation methods apply perturbations exclusively during training. That is, in our proposal, perturbation is an intrinsic component of the LLM architecture, rather than a technique to en-rich the training dataset. We will elucidate in Section 3 why such a simple change could lead to nontrivial improvement, and further demonstrate the advantages of perturbing at both training and inference time in our ablation study in Section 4.3. 
+
+# 3 Theoretical Analysis 
+
+This section establishes the theoretical properties on the extrapolability of the proposed class of perturbed autoregressive models. To formally characterize extrapolability, we first introduce some notations. Let X ∗ denote the space of all possible prefixes (i.e., the set of all finite token 9Algorithm 2 Perturbed Autoregressive Inference 
+
+Require: Prompt X0, random insertion T , parameter θ
+
+Initialize: Set X<1 ← X0, t ← 0
+
+repeat 
+
+t ← t + 1 Sample fX<t ∼ T (·| X<t ) and Xt ∼ Pθ(·| fX<t )Set X<t ← (X<t , X t)
+
+until Xt is EOS 
+
+Return: X<t 
+
+sequences), and let X ⊆ X ∗ represent the training support, consisting of the subset of sequences observed during pretraining. We equip X ∗ with a metric M (·, ·) that measures the semantic distance between any two prefixes, such as the Hamming distance. Let the distance between a prefix X and the training support X be d(X, X ) := inf X′∈X M (X, X′). For a given prefix X, we further define the total variation distance between two token prediction distributions Pθ(·| X) and 
+
+Pθ′ (·| X) as TV X (Pθ, P θ′ ) := TV [Pθ(·| X), P θ′ (·| X)]. We study the extrapolability of a language model class P = {P } through the following definition, adapted from Shen and Meinshausen (2025). 
+
+Definition 1 (Extrapolation uncertainty and extrapolability) . For a given δ > 0, the extrapola-tion uncertainty of a class of LLMs P is defined as 
+
+UP (δ) := sup      
+
+> X′:
+> d(X′,X)≤δ
+
+sup        
+
+> Pθ, P θ′∈ P :
+> TV X(Pθ, P θ′) = 0
+> ∀X∈ X
+
+TV X′ (Pθ, P θ′ ).
+
+We say P is extrapolable if UP (δ) = 0 for any δ > 0.
+
+The extrapolation uncertainty UP (δ) for a model class P can be understood as the worst per-formance of its models that are perfectly trained on X , over any testing sequence X′ that is at most δ away from the training support (quantified by the distance d(·, X )). The smaller this uncertainty value, the stronger the model’s extrapolation capability beyond the training support. In the extreme case where UP (δ) = 0, the model class is considered perfectly extrapolable. Finally, we define two model classes for our analysis. The first is the base model class Pbase =
+
+{Pθ(·| X) : X ∈ X ∗, θ ∈ Θbase }, which serves as the foundation for our proposed approach. The second is the proposed perturbed model class (denoted by Pperturb ), obtained by first drawing a 10 perturbed prefix fX from T (·| X) and then sampling the next token from the base distribution 
+
+Pθ(·| fX). By the law of total probability, the distribution of each model in Pperturb can be represented as EfX∼T (·| X)Pθ(·| fX). Hence, 
+
+Pperturb =
+
+n
+
+EfX∼T (·| X)Pθ(·| fX) : X ∈ X ∗, θ ∈ Θbase o
+
+.
+
+We next delineate our main theoretical results. We first characterize the adaptivity of the per-turbed model class, under the following assumption. 
+
+Assumption 1. For any Pγ , P γ′ ∈ P perturb with TV X (Pγ , P γ′ ) = 0 for all X ∈ X , their corre-sponding base models Pθ, P θ′ also satisfy TV X (Pθ, P θ′ ) = 0 for all X ∈ X .
+
+Theorem 1 (Adaptivity) . Under Assumption 1, if Pbase is extrapolable, then Pperturb is extrap-olable. 
+
+Assumption 1 can be viewed as an identifiability condition on the base models, which would hold if the perturbation transformation T is invertible in some sense; we refer to the supplement on how Assumption 1 can be fulfilled or relaxed. The implication of Theorem 1 is that under some identifiabili conditions on the perturber, if the base LLM can extrapolate, then the perturbed LLM will preserve this property. While this result might initially appear that nothing is gained by the perturbation itself, the following theorem demonstrates a critical safety property: even in scenarios where the base class exhibits poor extrapolability, the proposed framework remains robust to such failures. 
+
+Theorem 2 (Robustness) . There exists a constant CT,δ depending only on T and δ, independent of Pbase , such that UPperturb (δ) ≤ CT,δ .
+
+Theorem 2 establishes an upper bound on the extrapolation uncertainty of Pperturb that is entirely agnostic to the underlying base model class. This implies that even if the base model class Pbase 
+
+exhibits arbitrarily large extrapolation uncertainty, the proposed perturbed model maintains a guaranteed level of robustness. This upper bound is determined solely by the properties of the perturber T and the distance δ, where the latter quantifies the deviation of the test sequence from the training support X . We give an explicit form of the constant in Theorem 2, under a concrete scenario in Proposition 1 (deferred to the end of this section). Our final theorem demonstrates that an appropriately selected perturber not only offers robustness but can actively promote the extrapolability of the class of perturbed models. 11 Assumption 2. For a given δ > 0 and any X′ with d(X′, X ) ≤ δ, the perturbation process is such that T (·| X′) = T (·| X0) for some X0 ∈ X .
+
+Theorem 3 (Extrapolability) . Under Assumption 2, we have UPperturb (δ) = 0 for any δ > 0,i.e., Pperturb is extrapolable. 
+
+Theorem 3 strengthens the conclusion of Theorem 2 under a mild condition explained later. Specif-ically, this theorem guarantees that the pretrained LLM under our framework can extrapolate and thus behaves reasonably for token sequences that are unseen in training. The rationale behind this result is captured by Assumption 2. Intuitively, a perturber satisfy-ing this condition enables the model to map unfamiliar, out-of-support prefixes X′ to familiar sequences X0 within the training support X . This ensures that the model’s predictions for X′
+
+are as reliable as those for X0. In essence, perturbation transforms an extrapolation task into an interpolation task by bridging the gap between the unseen X′ and the seen X0.We illustrate one practical example under which Assumption 2 is fulfilled. According to Sato et al. (2015), it is reasonable to assume that token sequences are linked to multiple concrete source domains before subsequent language generation, and several sequences belong to the same concrete source domain. Namely, there is a set {D1, . . . , D d} such that X ∗ = Sdi=1 Di, and T (·| X)randomly maps the input sequence X to some Di with X ∈ Di. Then Assumption 2 holds as long as the training support X consists of at least one sequence from every Di, i = 1 , . . . , d .
+
+Proposition 1 (Extrapolability of synonym replacement) . Let X ∗ be equipped with Hamming distance. For each i ∈ V , let Si ⊆ V be a specified list of synonyms of i and i / ∈ S i2. Using notations in Theorem 4, assume the perturbation proceeds as follows. Independently for each token in input sequence X = ( X1, . . . , X L): with probability β ∈
+
+(0 , 1) , replace Xl by a random draw from SXl ; otherwise leave it intact. Then we have CT,δ = (1 − β)δ, namely, UPperturb (δ) ≤ (1 − β)δ.
+
+Remark 1. Note that Assumption 2 can be readily relaxed. In particular, suppose that for a given δ > 0 and any X′ with d(X′, X ) ≤ δ, the perturbation process is such that T (•| X′) = 
+
+T (•| X0) for some X0 ∈ S ⊆ X . Then it holds that USPperturb (δ) = 0 , where USPperturb denotes the extrapolation uncertainty from Definition 1 with X replaced by S. With S arbitrarily small,    
+
+> 2Note that we allow Si=∅. Then drawing from this set always yields a “null” token, representing deleting the original token.
+
+12 the assumption on extrapolation is now more realistic, at the cost of how well we quantify the extrapolation uncertainty. 
+
+Remark 2. For our setup in Definition 1, note that the total variation distance can be replaced by any distance between two measures, such as the Wasserstein distance, and all our results follow analogously. In addition, Theorem 1–3 can hold for general distributions (i.e., not necessarily for discrete random variable), defined on any measurable set (not necessarily finite). 
+
+# 4 Numerical Experiments 
+
+4.1 Synthetic data analysis 
+
+Data generating process . In this subsection, we set the ground-truth language model P ∗ to a bi-gram language model to generate synthetic datasets for evaluation. Specifically, we set P ∗
+
+to be such that P ∗(Xt|X<t ) = P ∗(Xt|Xt−1). As such, the synthetic data distribution is fully characterized by an initial token distribution π ∈ R|V| and a token-to-token transition matrix 
+
+M ∈ R|V|×|V| , where |V| denotes the vocabulary size. we set π to a uniform distribution, and draw each row of the transition matrix M independently from a Dirichlet distribution with a concentration parameter of 0 .5. We sample 500 sequences from P ∗ to form a training dataset D,where each sequence has a maximum length of 10. 
+
+Training and evaluation . To estimate P ∗, we parameterize Pθ via a neural bi-gram language model proposed by Zhang et al. (2023) and learn the model parameters via MLE. Our procedure relies on a perturbation intensity parameter that controls the variability in the perturbations. Larger values of this parameter result in more tokens in the input prefix being replaced to generate perturbed samples. In the extreme case where the parameter is set to zero, the procedure reduces to standard pretraining without perturbation. More details on Pθ and our training procedures are deferred to Appendix D.2. Since Pθ yields an estimated transition matrix cM and the oracle matrix M is known, we evaluate the model’s extrapolation capability by computing mean absolute error (MAE) between cM and M over token pairs that are absent from the training set D.
+
+Results . Figure 2 visualizes the MAEs of our learned models when varying the perturbation intensity parameter and the number of tokens |V| in the vocabulary. The leftmost panel of Fig-ure 2 represents a regime with a small vocabulary size, where the training set D sufficiently covers the text space. Under this setting, there is no need to extrapolate; consequently, introducing perturbations degrades the model performance. In contrast, as |V| increases, our approach sig-13 0.0 0.2 0.4 0.6 0.8 1.0                              
+
+> 1.265
+> 1.270
+> 1.275
+> 1.280
+> 1.285
+> 1.290
+> 1.295
+> MAE
+> ×10 2
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> 7.35
+> ×10 3
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> 4.36
+> 4.37
+> 4.38
+> 4.39
+> 4.40
+> 4.41
+> ×10 3
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> 2.38
+> 2.39
+> 2.40
+> ×10 3
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> 1.23
+> ×10 3
+> Perturbation intensity
+> |V| = 50 |V| = 100 |V| = 200 |V| = 400 |V| = 800
+
+Figure 2: MAE of estimated transition matrices on unobserved token pairs with varying pertur-bation intensities. From left to right, the vocabulary size |V| increases from 50 to 800; a smaller 
+
+|V| represents a dense data regime where training samples provide sufficient coverage. Results reported are mean MAEs ± 2 standard errors, aggregated over 100 independent replications. nificantly reduces the MAE compared to the classical approach, and the improvement becomes increasingly pronounced as the perturbation intensity increases. These findings empirically verify that semantic perturbation can significantly bolster the extrapolation capabilities of LLMs. 
+
+4.2 Real data analysis 
+
+Datasets. In this subsection, we follow the experiment setup in Ren et al. (2024) and use the WikiText-2 dataset (Merity et al., 2017) for training. We evaluate the learned model’s performance on three out-of-sample datasets: (i) WikiText-103, which is more than 50 times larger than WikiText-2; (ii) the test split of the WebText dataset released by OpenAI (Radford et al., 2019); and (iii) WritingPrompts, drawn from the writing prompts forum on Reddit (Fan et al., 2018). We also use the WikiText-2 test set to assess the in-sample performance of the learned model. 
+
+Baselines . We implement our method as described in Section 2; see more variants and their results in the supplement. We compare our method against five baseline algorithms: standard training by MLE, maximizing the Brier score, MixCE (Zhang et al., 2023), total variation distance minimization (TVD, Ji et al., 2023), and Earth Mover’s Distance optimization (EMO, Ren et al., 2024). For a fair comparison, all baseline methods use the same model architecture described below. Our approaches are built on the same base architecture, with the addition of perturbation. 
+
+Training and evaluation. We assess the performance of the various training objectives across three representative decoder-only Transformer architectures: OPT-125M (Zhang et al., 2022), GPT-2 (Radford et al., 2019), and GPT-Neo-1.3B (Black et al., 2021). The implementation 14 Table 1: Results for various combinations of models and datasets, ROUGE-1 is written as R-1 for short. The best scores for each metric are highlighted in bold . Our methods are denoted by “MLE (ours)”. Model Method WikiText-2 WikiText-103 WebText WritingPrompts Mauve R-1 Mauve R-1 Mauve R-1 Mauve R-1 OPT-125M MLE 0.83 0.38 0.80 0.38 0.44 0.37 0.11 0.36 MixCE 0.77 0.38 0.79 0.38 0.46 0.37 0.10 0.36 TVD 0.78 0.38 0.77 0.38 0.40 0.37 0.10 0.36 Brier 0.71 0.37 0.67 0.37 0.40 0.36 0.11 0.36 EMO 0.80 0.38 0.79 0.38 0.49 0.37 0.10 0.36 MLE (ours) 0.90 0.41 0.87 0.41 0.56 0.39 0.13 0.38 
+
+GPT-2 MLE 0.74 0.37 0.74 0.37 0.47 0.37 0.10 0.36 MixCE 0.77 0.38 0.77 0.38 0.48 0.37 0.10 0.36 TVD 0.75 0.37 0.75 0.37 0.45 0.37 0.09 0.36 Brier 0.71 0.36 0.74 0.36 0.49 0.36 0.11 0.36 EMO 0.82 0.39 0.82 0.39 0.58 0.38 0.13 0.37 MLE (ours) 0.89 0.40 0.87 0.40 0.57 0.39 0.17 0.38 
+
+GPT-Neo-1.3B MLE 0.82 0.39 0.82 0.39 0.54 0.38 0.14 0.36 MixCE 0.79 0.39 0.79 0.39 0.53 0.38 0.14 0.37 TVD 0.81 0.39 0.81 0.39 0.53 0.38 0.14 0.37 Brier 0.79 0.38 0.79 0.38 0.51 0.37 0.13 0.36 EMO 0.85 0.38 0.85 0.38 0.56 0.36 0.13 0.35 MLE (ours) 0.87 0.41 0.87 0.41 0.58 0.39 0.17 0.38 
+
+details are deferred to the supplement. We use Mauve (Pillutla et al., 2023) as our primary evaluation criterion, which measures the alignment between model-generated completions and human-written text by computing the area under the KL-divergence frontier and is widely adopted in the literature. In addition, we report the ROUGE-1 score (Lin, 2004), which rewards models for maintaining high 1-gram overlap. 
+
+Results . The results are summarized in Table 1. Our approach consistently achieves the highest Mauve scores as well as the highest ROUGE-1 scores in both in-sample and out-of-sample eval-uations. These findings provide strong empirical evidence for the effectiveness of incorporating perturbations into training. We note that the improvement in ROUGE-1 scores are minor, which is not too surprising given that the ROUGE-1 score measures 1-gram overlap and thus assesses how well the prediction matches lexical rather than semantic meanings. Thus, it favors verbose 15 NoPerturb 
+
+> TestPerturb
+> TrainPerturb
+> Ours
+> 0.40
+> 0.45
+> 0.50
+> 0.55
+> 0.60
+> Mauve
+> MLE
+
+Figure 3: The ablation study on real-world data analysis, showing the differences between the Mauve differences over 100 repetitions. The study is conducted with GPT-2 as the base model, WikiText-2 as the training dataset, and the trained model evaluated on the WebText dataset with the Mauve metric. and repetitive predictions, which might be overly simple. 
+
+4.3 An ablation study 
+
+As discussed earlier, our method employs perturbations during both training and inference. To evaluate the contribution of perturbation at each stage, we conduct an ablation study using the real data described in Section 4.2. We compare our approach against two variants: (i) TrainPer-turb , which trains the model with perturbed data but performs inference without perturbations, and is closely related to data augmentation; and (ii) TestPerturb , which trains the model on the original data while applying perturbations only during inference. Figure 3 visualizes the Mauve scores of the standard approach without perturbations during either training or inference, the two variants above, and our method, using the objective function in (2.1). It can be seen that neither TrainPerturb nor TestPerturb significantly outperforms the standard approach (i.e., without perturbation), indicating that applying perturbation at only one stage (training or inference) is insufficient to achieve meaningful performance gains. In contrast, our approach, which integrates perturbation during both training and inference, achieves substantial improvements, demonstrating the importance of perturbing at both stages. In addition, it is also interesting to see that the performance of TrainPerturb is generally unsat-isfactory (compared to NoPerturb), despite of more samples used in the training stage. However, 16 this might not be surprising—if we deem perturbation as a part of LLM architecture—as Train-Perturb discards a part of its architecture when being employed in the inference stage. 
+
+# 5 Concluding Remarks 
+
+We introduce a novel perturbed model class for LLM pretraining. Recent work has shown growing interest in developing statistical methodologies and foundations for LLMs, including post-training from human feedback (Lee et al., 2024; Liu et al., 2024, 2025a; Lu et al., 2025; Xiao et al., 2025; Ye et al., 2025; Cho and Sun, 2026) or AI feedback (Xia et al., 2026), reasoning (Gong et al., 2026; Huang et al., 2026; Zhou et al., 2026a), ranking and evaluation (Fan et al., 2025a,b; Liu et al., 2025b; Li et al., 2026a), and LLM-generated text detection (Li et al., 2025; Xie et al., 2025; Li et al., 2026b; Zhou et al., 2026b). Nonetheless, pretraining remains underexplored. Our work contributes to this growing line of literature by addressing this gap. The proposed perturbed model can be conveniently trained and deployed. Theoretically, we demonstrate that the class of perturbed models is adaptive, robust, and can extrapolate. In addition to theoretical grounding, our framework is also corroborated by the sheer empirical improvement of the pretrained LLMs. Although we choose to directly specify the perturber in this paper, it is possible to consider a parameterized perturbation class. These parameters could be jointly optimized alongside the LLM’s primary parameters to further enhance learning. Also, we expect such perturbed model class can be extended from LLMs to visual- and multimodal-LLMs. We leave the detailed development to future research. 
+
+References 
+
+Bengio, Y., Ducharme, R., and Vincent, P. (2000). A neural probabilistic language model. In Leen, T., Dietterich, T., and Tresp, V., editors, Advances in Neural Information Processing Systems , volume 13. MIT Press. Black, S., Leo, G., Wang, P., Leahy, C., and Biderman, S. (2021). Gpt-neo: Large scale autore-gressive language modeling with mesh-tensorflow. Zenodo .Brier, G. W. (1950). Verification of forecasts expressed in terms of probability. Monthly weather review , 78(1):1–3. 17 Cho, Y. H. and Sun, W. W. (2026). Privacy-preserving reinforcement learning from human feedback via decoupled reward modeling. arXiv preprint arXiv:2603.22563 .Christiansen, R., Pfister, N., Jakobsen, M. E., Gnecco, N., and Peters, J. (2022). A causal framework for distribution generalization. IEEE Transactions on Pattern Analysis and Machine Intelligence , 44(10):6614–6630. Comanici, G., Bieber, E., Schaekermann, M., Pasupat, I., Sachdeva, N., Dhillon, I., Blistein, M., Ram, O., Zhang, D., Rosen, E., et al. (2025). Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities. arXiv preprint arXiv:2507.06261 .Dong, K. and Ma, T. (2023). First steps toward understanding the extrapolation of nonlinear models to unseen domains. In The Eleventh International Conference on Learning Representa-tions .Eikema, B. and Aziz, W. (2020). Is MAP decoding all you need? the inadequacy of the mode in neural machine translation. In Scott, D., Bel, N., and Zong, C., editors, Proceedings of the 28th International Conference on Computational Linguistics , pages 4506–4520, Barcelona, Spain (Online). International Committee on Computational Linguistics. Erickson, T. D. and Mattson, M. E. (1981). From words to meaning: A semantic illusion. Journal of Verbal Learning and Verbal Behavior , 20:540–551. Fan, A., Lewis, M., and Dauphin, Y. (2018). Hierarchical neural story generation. In Gurevych, I. and Miyao, Y., editors, Proceedings of the 56th Annual Meeting of the Association for Computa-tional Linguistics (Volume 1: Long Papers) , pages 889–898, Melbourne, Australia. Association for Computational Linguistics. Fan, J., Kwon, H., and Zhu, X. (2025a). Uncertainty quantification for ranking with heterogeneous preferences. arXiv preprint arXiv:2509.01847 .Fan, J., Lou, Z., Wang, W., and Yu, M. (2025b). Ranking inferences based on the top choice of multiway comparisons. Journal of the American Statistical Association , 120(549):237–250. Feng, S. Y., Gangal, V., Kang, D., Mitamura, T., and Hovy, E. (2020). GenAug: Data aug-mentation for finetuning text generators. In Agirre, E., Apidianaki, M., and Vuli´ c, I., editors, 18 Proceedings of Deep Learning Inside Out (DeeLIO): The First Workshop on Knowledge Ex-traction and Integration for Deep Learning Architectures , pages 29–42, Online. Association for Computational Linguistics. Gneiting, T. and Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. 
+
+Journal of the American Statistical Association , 102(477):359–378. Gong, S., Ye, K., Zhu, J., Zhang, X., Zhou, H., and Shi, C. (2026). Kernelized advantage estimation: From nonparametric statistics to llm reasoning. arXiv preprint arXiv:2604.28005 .Guo, D., Yang, D., Zhang, H., Song, J., et al. (2025). Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. arXiv preprint arXiv:2501.12948v2 .Huang, Y., Wen, Z., Chi, Y., Wei, Y., Singh, A., Liang, Y., and Chen, Y. (2026). On the learning dynamics of rlvr at the edge of competence. arXiv preprint arXiv:2602.14872 .Ji, H., Ke, P., Hu, Z., Zhang, R., and Huang, M. (2023). Tailoring language generation models under total variation distance. In The Eleventh International Conference on Learning Repre-sentations .Kaplan, J., McCandlish, S., Henighan, T., Brown, T. B., Chess, B., Child, R., Gray, S., Radford, A., Wu, J., and Amodei, D. (2020). Scaling laws for neural language models. arXiv preprint arXiv:2001.08361 .Kingma, D. P. and Ba, J. (2015). Adam: A method for stochastic optimization. In 3rd Interna-tional Conference on Learning Representations, ICLR 2015 .Kong, L., Chen, G., Stojanov, P., Li, H., Xing, E. P., and Zhang, K. (2024). Towards understand-ing extrapolation: a causal lens. In Proceedings of the 38th International Conference on Neural Information Processing Systems , NIPS ’24, Red Hook, NY, USA. Curran Associates Inc. Lee, S. J., Sun, W. W., and Liu, Y. (2024). Low-rank contextual reinforcement learning from heterogeneous human feedback. arXiv preprint arXiv:2412.19436 .Li, J., Simchi-Levi, D., and Sun, W. W. (2026a). Llm evaluation as tensor completion: Low rank structure and semiparametric efficiency. Li, X., Ruan, F., Wang, H., Long, Q., and Su, W. J. (2025). A statistical framework of water-marks for large language models: Pivot, detection efficiency and optimal rules. The Annals of Statistics , 53(1):322–351. 19 Li, X., Ruan, F., Wang, H., Long, Q., and Su, W. J. (2026b). Robust detection of watermarks for large language models under human edits. Journal of the Royal Statistical Society Series B: Statistical Methodology , 88(2):491–515. Li, Z., Zhou, Z., Wang, X., Wu, J., and Chen, L. (2024). Neural correlates of analogical reasoning on syntactic patterns. Journal of Cognitive Neuroscience , 36(5):854–871. Lin, C.-Y. (2004). Rouge: A package for automatic evaluation of summaries. In Text summariza-tion branches out , pages 74–81. Liu, K., Long, Q., Shi, Z., Su, W. J., and Xiao, J. (2025a). Statistical impossibility and possibility of aligning llms with human preferences: From condorcet paradox to nash equilibrium. arXiv preprint arXiv:2503.10990 .Liu, P., Lu, J., and Sun, W. W. (2025b). Uncertainty quantification for large language model reward learning under heterogeneous human feedback. arXiv preprint arXiv:2512.03208 .Liu, P., Shi, C., and Sun, W. W. (2024). Dual active learning for reinforcement learning from human feedback. arXiv preprint arXiv:2410.02504 .Loshchilov, I. and Hutter, F. (2019). Decoupled weight decay regularization. In International Conference on Learning Representations .Lu, N., Fang, E. X., and Lu, J. (2025). Contextual online uncertainty-aware preference learning for human feedback. arXiv preprint arXiv:2504.19342 .Manton, J. H. and Amblard, P.-O. (2015). A primer on reproducing kernel hilbert spaces. Foun-dations and Trends ® in Signal Processing , 8(1–2):1–126. Merity, S., Xiong, C., Bradbury, J., and Socher, R. (2017). Pointer sentinel mixture models. In 
+
+International Conference on Learning Representations .Pillutla, K., Liu, L., Thickstun, J., Welleck, S., Swayamdipta, S., Zellers, R., Oh, S., Choi, Y., and Harchaoui, Z. (2023). Mauve scores for generative models: theory and practice. J. Mach. Learn. Res. , 24(1). Radford, A., Narasimhan, K., Salimans, T., and Sutskever, I. (2018). Improving language under-standing by generative pre-training. Technical report, OpenAI. 20 Radford, A., Wu, J., Child, R., Luan, D., Amodei, D., and Sutskever, I. (2019). Language models are unsupervised multitask learners. Technical report, OpenAI. Ren, S., Wu, Z., and Zhu, K. Q. (2024). EMO: Earth mover distance optimization for auto-regressive language modeling. In The Twelfth International Conference on Learning Represen-tations .Roch, S. (2024). Modern Discrete Probability: An Essential Toolkit . Cambridge Series in Statistical and Probabilistic Mathematics. Cambridge University Press. Sato, M., Schafer, A. J., and Bergen, B. K. (2015). Metaphor priming in sentence production: Concrete pictures affect abstract language production. Acta Psychologica , 156:136–142. Selten, R. (1998). Axiomatic characterization of the quadratic scoring rule. Experimental Eco-nomics , 1:43–62. Shen, X. and Meinshausen, N. (2025). Engression: extrapolation through the lens of distributional regression. Journal of the Royal Statistical Society Series B: Statistical Methodology , 87(3):653– 677. Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., and Polosukhin, I. (2017). Attention is all you need. In Proceedings of the 31st International Conference on Neural Information Processing Systems , NIPS’17, page 6000–6010, Red Hook, NY, USA. Curran Associates Inc. Villalobos, P., Ho, A., Sevilla, J., Besiroglu, T., Heim, L., and Hobbhahn, M. (2024). Position: Will we run out of data? limits of llm scaling based on human-generated data. In Forty-first International Conference on Machine Learning .Wei, J. and Zou, K. (2019). EDA: Easy data augmentation techniques for boosting performance on text classification tasks. In Inui, K., Jiang, J., Ng, V., and Wan, X., editors, Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th Interna-tional Joint Conference on Natural Language Processing (EMNLP-IJCNLP) , pages 6382–6388, Hong Kong, China. Association for Computational Linguistics. Xia, X., Xia, Z., Zhang, L., and Cai, Z. (2026). A statistical framework for alignment with biased ai feedback. arXiv preprint arXiv:2602.08259 .21 Xiao, J., Li, Z., Xie, X., Getzen, E., Fang, C., Long, Q., and Su, W. (2025). On the algorithmic bias of aligning large language models with RLHF: Preference collapse and matching regularization. 
+
+Journal of the American Statistical Association , 120(552):2154–2164. Xie, Y., Li, X., Mallick, T., Su, W., and Zhang, R. (2025). Debiasing watermarks for large language models via maximal coupling. Journal of the American Statistical Association , 120(551):1424– 1436. Ye, K., Zhou, H., Zhu, J., Quinzan, F., and Shi, C. (2025). Robust reinforcement learning from human feedback for large language models fine-tuning. arXiv preprint arXiv:2504.03784 .Zhang, S., Roller, S., Goyal, N., Artetxe, M., Chen, M., Chen, S., Dewan, C., Diab, M., Li, X., Lin, X. V., Mihaylov, T., Ott, M., Shleifer, S., Shuster, K., Simig, D., Koura, P. S., Sridhar, A., Wang, T., and Zettlemoyer, L. (2022). Opt: Open pre-trained transformer language models. 
+
+arXiv preprint arXiv:2205.01068v4 .Zhang, S., Wu, S., Irsoy, O., Lu, S., Bansal, M., Dredze, M., and Rosenberg, D. (2023). MixCE: Training autoregressive language models by mixing forward and reverse cross-entropies. In Rogers, A., Boyd-Graber, J., and Okazaki, N., editors, Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 9027–9050, Toronto, Canada. Association for Computational Linguistics. Zhou, H., Ye, K., Xu, E., Zhu, J., Yang, Y., Gong, S., and Shi, C. (2026a). Demystifying group rel-ative policy optimization: Its policy gradient is a u-statistic. arXiv preprint arXiv:2603.01162 .Zhou, H., Zhu, J., Yang, Y., and Shi, C. (2026b). Detecting llm-generated text with performance guarantees. arXiv preprint arXiv:2601.06586 .22 Supplement to “Perturbation is All You Need for Extrapolating Language Models” 
+
+In this supplementary material, we provide additional details in the main text, organized as fol-lows. Appendix A includes detailed and additional numerical results of our proposed methodology. We provide in Appendix B all the details of our theories, from assumptions to additional theoret-ical results, explanation, and discussion. All the proofs are relegated to Appendix C. Appendix D details how we implement our proposed method in the experiments presented in the main text. 
+
+# A Additional Numerical Results 
+
+A.1 Scoring rules as objective functions 
+
+The parameter θ in LLMs can be computed by optimizing an objective function, for example, a proper scoring rule (Gneiting and Raftery, 2007). A scoring rule S(P, v ) measures how well a token-level distribution P aligns with a specific token v. The corresponding expected score is defined as S(P, P ∗) := Ev∼P ∗ [S(P, v )]. A scoring rule is proper if S(P ∗, P ∗) ≥ S(P, P ∗) for any distributions P, P ∗. It is strictly proper if the equality holds if and only if P = P ∗. Given a strictly proper scoring rule, we are guaranteed to recover P ∗ by maximizing the expected score 
+
+S(P, P ∗) (or minimizing the loss −S(P, P ∗)), since the optimizer exists and is unique. A prominent example is the logarithmic scoring rule, defined as S(P, v ) = log P (v). Maximizing this score over a data sequence X optimizes the log-likelihood of the data P 
+
+> t
+
+S(Pθ(·| X<t ), X t) = 
+
+P 
+
+> t
+
+log Pθ(Xt|X<t ), which is equivalent to minimizing the cross-entropy loss. The main text shows exactly the case when the logarithmic scoring rule is used. Another popular family of strictly proper scoring rules is the α-power score (Selten, 1998). It is defined as S(P, v ) = αP α−1(v) − (α − 1) ∥P ∥αα for a given constant α > 1, where P denotes the vector [ P (v1), P (v2), · · · ]⊤ that contains the probabilities for all tokens in the vocabulary V, and 
+
+∥ · ∥ α denotes the Lα-norm of the vector. In the special case where α = 2, it is reduced to the Brier score (Brier, 1950), and maximizing the cumulative score P 
+
+> t
+
+S(Pθ(·| X<t ), X t) over a data sequence X is mathematically equivalent to minimizing the squared Euclidean distance between 
+
+Pθ and the ground-truth distribution P ∗, P 
+
+> t
+
+∥Pθ(·| X<t ) − P ∗(·| X<t )∥22.For any scoring rule, the model can be trained as follows. Given a prefix X<t from a training 23 sequence X, we first sample m number of perturbed sequences { fX(i) 
+
+> <t
+
+}mi=1 such that 
+
+fX(i) 
+
+> <t
+
+∼ T (·| X<t ), i = 1 , . . . , m. 
+
+For each perturbed sequence, we compute their individual score S(Pθ(·| fX(i) 
+
+> <t
+
+), X t) by a strictly proper scoring rule S. These m scores are averaged to approximate the expectation 
+
+EfX<t ∼T (·| X<t )S(Pθ(·| fX<t ), X t)under the perturbation distribution T . By aggregating these averaged scores over t, it yields our objective function for a single sequence, 
+
+LS (Pθ; X) = 1
+
+m
+
+> L
+
+X
+
+> t=1
+> m
+
+X
+
+> i=1
+
+S[Pθ(·| fX(i) 
+
+> <t
+
+), X t]. (A.1) Then we aggregate LS (Pθ; X) over all sequences X in a training corpus D, and parameter θ is estimated by maximizing this objective function P 
+
+> X∈D
+
+LS (Pθ; X). For a concrete example when the Brier scoring rules is employed, (A.1) respectively reduces to: 
+
+LBrier (Pθ; X) := 1
+
+m
+
+> m
+
+X
+
+> i=1
+> L
+
+X
+
+> t=1
+
+h
+
+2Pθ(Xt| fX(i) 
+
+> <t
+
+) − ∥ Pθ(·| fX(i) 
+
+> <t
+
+)∥22
+
+i
+
+. (A.2) 
+
+A.2 Additional numerical results 
+
+Additional real data analysis: improvement by perturbation . As EMO in Table 1 gener-ally prevails over other unperturbed frameworks, we further experiment the EMO method under perturbation. The results are presented in Table A1, together with those from the vanilla EMO method for convenience. We also experiment on the setting employing the Brier score (as detailed in Appendix A.1); see Table A2. The implication for those results are similar to that of Table 1, i.e., the methods can be visually improved under such simple perturbation. 
+
+Additional ablation study . On top of the ablation study presented in the main text, we conduct an additional experiment using the Brier score (see Appendix A.1). The result is showcased in Figure A1, once again supporting the effect of perturbation in both training and inference stages. 
+
+Effects of perturbation design . In addition to the perturbation method by random insertion 24 Table A1: Results of vanilla EMO and perturbed EMO (denoted by “(ours)”) for various com-binations of models and datasets, ROUGE-1 is written as R-1 for short. The best score for each metric is highlighted in bold .Model Method WikiText-2 WikiText-103 WebText WritingPrompts Mauve R-1 Mauve R-1 Mauve R-1 Mauve R-1 OPT-125M EMO 0.80 0.38 0.79 0.38 0.49 0.37 0.10 0.36 EMO (ours) 0.91 0.40 0.90 0.41 0.61 0.39 0.14 0.38 
+
+GPT-2 EMO 0.82 0.39 0.82 0.39 0.58 0.38 0.13 0.37 EMO (ours) 0.89 0.41 0.90 0.40 0.58 0.40 0.17 0.38 
+
+GPT-Neo-1.3B EMO 0.85 0.38 0.85 0.38 0.56 0.36 0.13 0.35 EMO (ours) 0.88 0.40 0.89 0.40 0.62 0.38 0.18 0.36 
+
+Table A2: Results of vanilla Brier and perturbed Brier (denoted by “(ours)”) for various combi-nations of models and datasets, ROUGE-1 is written as R-1 for short. The best score for each metric is highlighted in bold .Model Method WikiText-2 WikiText-103 WebText WritingPrompts Mauve R-1 Mauve R-1 Mauve R-1 Mauve R-1 OPT-125M Brier 0.71 0.37 0.67 0.37 0.40 0.36 0.11 0.36 Brier (ours) 0.89 0.40 0.91 0.40 0.60 0.39 0.15 0.38 
+
+GPT-2 Brier 0.71 0.36 0.74 0.36 0.49 0.36 0.11 0.36 Brier (ours) 0.90 0.40 0.91 0.40 0.67 0.39 0.19 0.38 
+
+GPT-Neo-1.3B Brier 0.79 0.38 0.79 0.38 0.51 0.37 0.13 0.36 Brier (ours) 0.91 0.41 0.88 0.41 0.65 0.39 0.22 0.38 
+
+which we adopted in the main text, we also experiment synonym replacement and random deletion. We present the results in Table A3, from which we observe that, overall, the three perturbation methods do not exhibit substantial differences in performance. 
+
+Sensitivity to perturbation intensity . We now study the effect of perturbation intensity in real-world language modeling. The training dataset is WikiText-2, and the evaluation dataset is WebText. We apply the proposed framework to train a GPT-2 model using the random insertion. The perturbation intensity α is set to 0 .1 × 2κ, where κ ∈ {− 4, −3, −2, −1, 0, 1, 2}. When α
+
+is close to zero, the proposed method approaches to the classical method, providing no gain in explorability. In contrast, when α is close to one, overly strong perturbations may produce 25 Table A3: Mauve comparison of three perturbation strategies when perturbation intensity varies. The comparison is based on the following experimental setting: GPT-2 is trained on WikiText-2 using the proposed method with three different perturbation strategies and evaluated on the WebText test set. Perturbation intensity Replacement Deletion Insertion 0.0000 0.505 0.498 0.507 0.0125 0.648 0.666 0.657 0.0250 0.664 0.671 0.695 0.0500 0.653 0.668 0.678 NoPerturb 
+
+> TestPerturb
+> TrainPerturb
+> Ours
+> 0.45
+> 0.50
+> 0.55
+> 0.60
+> 0.65
+> Mauve
+> Brier
+
+Figure A1: The ablation study on real-world data analysis, showing the differences between the Mauve differences over 100 repetitions. The study is conducted with GPT-2 as the base model, WikiText-2 as the training dataset, and the model trained using the Brier score (see Section A.1), and evaluated on the WebText dataset with the Mauve metric. training data that substantially deviates from the underlying human language distribution; as a result, leveraging such heavily perturbed data can degrade performance. 26 0.00625 0.0125 0.025 0.05 0.1 0.2 0.4 
+
+> Perturbation intensity
+> 0.58
+> 0.60
+> 0.62
+> 0.64
+> 0.66
+> 0.68
+> 0.70
+> Mauve
+
+Figure A2: The perturbation intensity versus Mauve plot. The results reported in Figure A2 supports the above discussion. By choosing a moderate per-turbation intensity, the proposed method achieves improved explorability in the trained model. Based on Figure A2, we find that α = 0 .025 is an effective choice. We adopt this setting in real-world analysis in Section 4.2, where it generally yields performance improvements over baselines across various combinations of LLMs and datasets (see Table 1). 
+
+Examples of text generation . We showcase some examples of generated texts in our real data analysis shown in Table 1. Table A4 presents the results of different methods by training GPT-2 on WikeText-2, with test set on WebText. Table A4 shows some unexpected punctuations present in the texts generated by baselines. In contrast, both our methods generate reasonable text. 
+
+# B Meta-Theoretical Results and Additional Discussion 
+
+We include in this section the general statements of all definitions and theoretical results presented in the main text, with additional discussion. All the proofs are included in Appendix C. To help readers navigate among the statements and results in this paper, we also present Table A5 as a summary. To clarify the notation used throughout this appendix, we consider the version of Definition 1 adapted to some general X , rather than a fixed X . In detail, for δ > 0, the extrapolation uncertainly of a class of LLMs P over X is defined exactly the same as in Definition 1 but with notation UP (δ) replaced by UP,X (δ). We say P is extrapolable over X if UP,X (δ) = 0 for any 27 Table A4: Examples of text generated by different models on the test set of the WebText dataset. 
+
+Human Source Input text Clinton talks about her time of “reflection” during sick days Hillary Clinton returned to the campaign trail Thursday afternoon, 
+
+Predictions Ground truth debuting some new intro music and telling the crowd that her sick days allowed her a chance to “reconnect with what this whole campaign is about.” The former secretary of state, who took the stage to James Brown’s “I Feel Good,” spent the beginning of the week at her home in Chappaqua, New York, after being diagnosed late last week with pneumonia. 
+
+MLE in Arkansas. Noting Sanders’ performance in the Senate, she took a wide laugh. Clin-ton’s presidential campaign “lifted the veil of hypocrisy” in the long days following the Iowa caucuses. In an earnings call to Goldman Sachs executives in early Novem-ber, Clinton remarked that networking with Republicans “would be tough, but James [ Risen ] is an important role model in ... .” 
+
+MixCE and the senator polices the stage and promises everyone that the thoughts of her former colleagues – not to mention more Youngstown fans – will continue to serve her well. The night before, the Democratic National Convention extended south @-@ west to Boston, with an extension from Boston to the Long Branch City Center in the downtown area. = = = Reactions = = = 
+
+TVD and the senator polices the stage and promises everyone that the thoughts of her former colleagues – not when she was in touch with her husband – say standing up for the middle class : ” It is about time for the United States to take a look back in time — and resolve — the financial crisis of 2008. ” = = Political history = = 
+
+Brier in Arkansas. Noting Sanders’ performance in the California primary, she recovered from the blow her states sent her. Noting ” four years ago, Hillary Clinton led in national surveys. She kept qualified. This is a legacy to the voters who voted her against ” — Mayor Clinton (@-@ Rahm Emanuel ), @-@ DNC I. M. [ Hillary Clinton @-@ Wasserman Schultz ] 
+
+EMO debuting her campaign website in early June. The campaign unveiled the campaign’s five @-@ minute video, which takes an intimate look at what the campaign has been up to since its introduction, as well as highlights of Clinton’s political future. 
+
+MLE (ours) debuting a new “The Bill Clinton Experience” in which she describes how they made up their minds to help each other become more successful before a campaign. The audio in the video also features Clinton’s former Secretary of State, Hillary Rodham Clinton, who talked with him during the Clinton family’s family vacations. 
+
+Brier (ours) debuting a new “The Bill Clinton Experience” in which she describes how they made up their minds to help each other become more successful before a major financial crisis struck in the country. The video begins with Hillary telling her interviewer, “They started a game, because we told them so.” But while Hillary continues to describe her years working with Paul Manafort. 
+
+28 Table A5: Summary of theoretical statements and results. Name Description/Interpretation Definition 1 Definitions of extrapolation uncertainty and extrapolablility Assumption 1 An identifiability condition which guarantees zero perturbation cost Assumption 2 A sufficient condition to extrapolability on the perturbed model class Assumption 3 A sufficient condition to extrapolability on a general model class Assumption 4 Imposing zero perturbation cost Lemma 1 A useful representation to aid studying extrapolability Lemma 2 Assumption 1 implies Assumption 4 Lemma 3 Identifiability of shifts in continuous random variables Theorem 1 Adaptivity: perturbed models can inherit extrapolability Theorem 2 Robustness: extrapolation uncertainty can be controlled only by perturbation Theorem 3 Extrapolability: extrapolability can be achieved only by perturbation Theorem 4 Some meta results on extrapolability of perturbed models Theorem 5 A scenario of zero perturbation cost: feature map Theorem 6 General version of Theorem 3 Theorem 7 A scenario of zero perturbation cost: RKHS Proposition 1 Extrapolation uncertainty under perturbation: synonym replacement Proposition 2 Proposition F.1 of Shen and Meinshausen (2025) 
+
+δ > 0. Even though all the arguments shown later are based on this adapted version of definition, they directly imply those shown in the main text, where we focus on a fixed training support X .We first present the following lemmas. 
+
+Lemma 1 (A hierarchical representation of language models) . The set P can be equivalently represented as 
+
+P =
+
+n
+
+gγ (·| Xβ ), Xβ ∼ Tβ (·| X) : X ∈ X ∗o
+
+,
+
+where Xβ ∈ X ∗ denotes some random sequence of tokens, and gγ and Tβ are some conditional probability measures parameterized by γ and β, respectively. 
+
+Lemma 2. Under Assumption 1, ET, Pbase ,δ defined in (B.2) is zero for any δ.
+
+Lemma 3. Given some continuous probability density function f : R 7 → R≥0 with full support, for any a, b ∈ R, we have 
+
+Z ∞−∞ 
+
+f (x − a) − f (x − b) dx = 0 if and only if a = b. 
+
+29 Lemma 1 serves as a useful tool to explore the connection between a class of models and its version under perturbation. Note that using measure-theoretic notations, the lemma can be read as that any model Pθ ∈ P can be written as 
+
+Pθ(·| X) = 
+
+Z
+
+gγ (·| Xβ ) d Tβ (Xβ |X), θ = ( γ, β ), (B.1) and vice versa. This lemma facilitates the notation for general arguments, compared to 
+
+EfX∼T (·| X)gγ (·| fX) = 
+
+Z
+
+gγ (·| fX) d T ( fX|X),
+
+where gγ plays the role of base model Pθ in the main text. Namely, we consider some general model which can always be represented in such hierarchical form. Notably, gγ and Tβ are not identified due to this composition structure, but their roles and constraints would be more clarified in the henceforth discussion. Throughout this appendix, we refer to Tβ (·| X) the perturbation process ,and gγ (·| Xβ ) the inference process .
+
+Assumption 3 (General version of Assumption 2) . Given P, for any δ > 0 and X′ with 
+
+d(X′, X ) ≤ δ, there exists some perturbation process in each Pθ ∈ P such that Tβ (·| X′) = Tβ (·| X0)
+
+for some X0 ∈ X .
+
+Assumption 4. For any δ > 0, the perturbation cost ET, Pbase ,δ , defined in (B.2) , is zero. 
+
+Note that Assumption 4 can be fulfilled by, for instance, the settings in Theorem 5 or Theorem 7. In both cases, Assumption 4 may be regarded as requiring the perturbation transformation T to be invertible in some sense. We defer more detailed discussion to the remarks towards Theorem 5. Next, we delineate some meta results which the results presented in the main text are mainly based on. 
+
+Theorem 4 (Extrapolability under perturbation) . Let Pbase = {Pθ(·| X) : X ∈ X ∗, θ ∈ Θbase } be any class of language models characterized by the set of parameters Θbase . Let T (·| X), X ∈ X ∗,be some given perturbation mechanism representing an perturbation process, and thereby define the perturbed class of language models 
+
+Pperturb := 
+
+Z 
+
+Pθ(·| fX) d T ( fX|X) : X ∈ X ∗, θ ∈ Θbase 
+
+
+
+.
+
+Then given some set X , constant δ > 0, the following holds. 
+
+30 (i) UPperturb , X (δ) ≤ ηT (δ), where 
+
+ηT (δ) := sup 
+
+X′ :
+
+d(X′, X ) ≤ δ
+
+inf 
+
+X ∈ X TV (T (·| X), T (·| X′)) .
+
+(ii) Define 
+
+ρT (δ) := sup 
+
+X′ :
+
+d(X′, X ) ≤ δ
+
+sup 
+
+fX :
+
+T ( fX|X′) > 0
+
+d( fX, X ).
+
+Define the perturbation cost as 
+
+ET, Pbase ,δ := sup 
+
+X′ :
+
+d(X′, X ) ≤ δ
+
+sup 
+
+fX∗ :
+
+T ( fX∗|X′) > 0
+
+(
+
+sup 
+
+Pγ = R Pθ (·| fX) d T ( fX|X),Pγ′ = R Pθ′ (·| fX) d T ( fX|X)
+
+∈ P perturb :
+
+TV X (Pγ , P γ′ ) = 0 
+
+∀X ∈ X 
+
+inf 
+
+Pθ0 , P θ′ 
+
+> 0
+
+∈ P base :
+
+TV X (Pθ0 , P θ′ 
+
+> 0
+
+) = 0 
+
+∀X ∈ X 
+
+TV 
+
+
+
+Pθ(·| fX∗) − Pθ0 (·| fX∗), P θ′ (·| fX∗) − Pθ′ 
+
+> 0
+
+(·| fX∗)
+
+)
+
+.
+
+(B.2) 
+
+Then 
+
+UPperturb , X (δ) ≤ U Pbase , X (ρT (δ)) + ET, Pbase ,δ .
+
+Theorem 5 (An example 3 when ET, Pbase ,δ = 0) . Using notations in Theorem 4, assume each base model in Pbase is such that for any i ∈ V , X ∈ X ∗:
+
+Pθ(i|X) = g (⟨ψθ,i , ϕ (X)⟩) ,
+
+where g(·) : R 7 → [0 , 1] is some injective function, ϕ(·) : X ∗ 7 → Rd is some latent, d-dimensional feature map, and ψθ,i ∈ Rd is the vector of coefficients. If {EfX∼T (·| X)[ϕ( fX)] : X ∈ X } spans Rd, then for any δ > 0, ET, Pbase ,δ = 0 in part (ii) of Theorem 4. 
+
+> 3
+
+See the even more general version by Theorem 7. 
+
+31 Theorem 6 (Extrapolability of language models) . Under Assumption 3, P is extrapolable. 
+
+Markedly, in Theorem 4, the perturbation cost defined in (B.2) represents the possible loss of perturbation if it undermines the structure in the base class of models. Note that if the pertur-bation T (·| X) is Lipschitz with constant L in total variation distance, then the theorem implies 
+
+UPperturb (δ) ≤ Lδ , thus implying extrapolability in an approximate sense that the extrapolation uncertainty decays linearly. Note that in Theorem 5, it is implicitly required that |X | ≥ d, which is very mild in the context of language generation. The underlying idea in Theorem 5 is that the perturbation should not break the identifiability of models in Pbase , which is essentially the same as in Proposition F.1 of Shen and Meinshausen (2025) spelling out that certain “pre-post-additive noise models” are (distributionally) extrapolable. Notably, Theorem 5’s condition on {EfX∼T (·| X)[ϕ( fX)] : X ∈ X } 
+
+spanning Rd effectively requires the existence of generalized right inverse for the d × |X | matrix with columns EfX∼T (·| X)[ϕ( fX)], X ∈ X .Theorem 6 gives a general characterization of extrapolable class of language models. This theorem dives in a different route in characterizing distributional extrapolability, compared with Theorem 1 in Shen and Meinshausen (2025). It is not merely from regression to learning some categorical distributions—the real difference is essentially about the “complexity of learning”. To clarify this point, consider simple inference processes that are deterministic and injective, e.g., the setup of pre-additive noise models in Shen and Meinshausen (2025). Then the class of the overall data generating models is easily extrapolable as long as the perturbation process allows one to identify the model parameters, which would be straightforward if the pre-additive noise has full support, by applying Lemma 3. However, it would be impractical to assume that language generation admits such a simple form. We further present some theoretical results on (distributional) extrapolability which can be re-garded as a generalization of the results shown in the main text and of partial results by Shen and Meinshausen (2025), thus of independent interests. Some brief notation on reproducing kernel Hilbert space (RKHS). For more details, we refer to Section 4 in Manton and Amblard (2015). Recall first the notation X ∗ which can essentially be any (finite or infinite) non-empty set (or simply regard it as the set of all token sequences in the context of this paper). Similarly, let V be in general any (finite or infinite) non-empty set (one may think of it as the set of tokens or vocabularies in the context of this paper). We denote by 32 HK the RKHS on X ∗ with some symmetric, positive (semi-)definite kernel K(·, ·) : X ∗ × X ∗ 7 → R.Namely, HK is a Hilbert space (uniquely corresponding to the specified kernel K(·, ·)) of functions on X ∗ with the property that for any X ∈ X ∗, K(X, ·) ∈ H K and f (X) = ⟨f, K (X, ·)⟩HK .
+
+Theorem 7 (A very general scenario for ET, Pbase ,δ = 0) . Assume there exists an RKHS on X ∗,denoted by HK , with some measurable function f1, . . . , f d : V 7 → R such that with notations in Theorem 4, each base model Pθ ∈ P base defines the following elements in HK for j = 1 , . . . , d :
+
+hθ,j (X) := Ei∼Pθ (·| X)[fj (i)] ,
+
+with Ei∼Pθ (·| X)[|fj (i)|] < ∞ for any X ∈ X ∗. For each X ∈ X ∗, also define the linear functional 
+
+LX : HK → R as 
+
+LX (h) := EfX∼T (·| X)[h( fX)] .
+
+Assume that LX (h) = LX (h′) for all X ∈ X implies h = h′. Further assume that hθ,j = hθ′,j for all j = 1 , . . . , d implies θ = θ′. Then for any δ > 0, ET, Pbase ,δ = 0 in part (ii) of Theorem 4. More generally, if LX (hθ,j ) = LX (hθ′,j ) for all X ∈ X and j = 1 , . . . , d implies θ = θ′, then we also have ET, Pbase ,δ = 0 for any δ > 0.
+
+A high-level idea by Theorem 7 is that base models, given some perturbation mechanism, remain uniquely identified in a feature space characterized by an RKHS. This generalizes the underlying idea in, e.g., Appendix F in Shen and Meinshausen (2025). As an example, we apply our Theo-rem 4 and Theorem 7 to prove their Proposition F.1 (see Appendix C). The proposition is quoted as follows with details added accordingly. 
+
+Proposition 2 (Proposition F.1 of Shen and Meinshausen (2025)) . Let X be any set in R contain-ing at least three distinct points. With θ := ( θ0, θ 1, θ 2), define the quadratic polynomial function 
+
+gθ(x) := θ0 + θ1x + θ2x2. Then the class of quadratic pre-post-additive noise models 
+
+gθ(x + η) + βx + ξ : θ ∈ R3, β ∈ R, η, ξ have symmetric distributions and unbounded supports 
+
+is extrapolable, where E(η2) and E(ξ2) are assumed to exist. 
+
+In the remainder of this section, we discuss how our results can be generalized. First, it might be worth pointing out that the inference process gγ (·| Xβ ) is allowed to be deterministic, in which case we may write the hierarchical distribution in (B.1) as ( gγ ♯T β )( ·| X), where gγ ♯T β denotes the pushforward measure of Tβ by gγ .33 To reinforce our Remark 2, further note that Theorem 4 can hold for general distributions (i.e., not necessarily for discrete random variable), defined on any measurable set (not necessarily finite); see the footnotes in its proof. From the proof of Theorem 6, it is also straightforward that Assumption 3 is always a sufficient condition for extrapolability in the general context. Also, recall that the total variation distance can be replaced in Definition 1. In fact, except for some quantities (involving total variation distance) that need to be adjusted based on a different distance, our results would be exactly the same. For instance, Assumption 3 remains sufficient for extrapolability of the perturbed models, where extrapolability is defined by some general distance (compared to the specific total variation distance). 
+
+# C Proofs 
+
+C.1 Proofs of lemmas 
+
+Proof of Lemma 1. This result is straightforward since gγ and Tβ can be arbitrary. Setting Tβ as the identity map (i.e., Dirac delta on the input sequence) recovers the model parameterized by θ,and the other direction is trivial. 
+
+Proof of Lemma 2. To show Assumption 1 is sufficient for ET, Pbase ,δ = 0, note that θ0, θ ′ 
+
+> 0
+
+in the definition of ET, Pbase ,δ in (B.2) can be taken as those corresponding base models Pθ, P θ′ in Assumption 1, so that the total variation distance in (B.2) is zero. This concludes the proof. 
+
+Proof of Lemma 3. If a = b, the argument is direct. If a̸ = b, we suppose R ∞−∞ |f (x − a) − f (x −
+
+b)| dx = 0 and will show contradiction, thereby completing the proof. Note that it must then hold that |f (x − a) − f (x − b)| = 0 for any x ∈ R, since otherwise there always exists some interval (nearby |f (x−a)−f (x−b)| > 0; by the continuity of f ) leading to R ∞−∞ |f (x−a)−f (x−b)| dx > 0. This means f (x − a) = f (x − b) or equivalently, f (x) = f (x + ( a − b)) for any x ∈ R, which implies 
+
+f (·) is periodic with period a − b. Hence 
+
+Z ∞−∞ 
+
+f (x) d x =
+
+> ∞
+
+X
+
+> i=−∞
+
+Z (i+1)( a−b)
+
+> i(a−b)
+
+f (x) d x =
+
+> ∞
+
+X
+
+> i=−∞
+
+Z a−b
+
+> 0
+
+f (x) d x, 
+
+but R a−b 
+
+> 0
+
+f (x) d x > 0 by f (x) > 0 for all x ∈ R. Hence P∞
+
+> i=−∞
+
+R a−b 
+
+> 0
+
+f (x) d x diverges and contradicts with R ∞−∞ f (x) d x = 1. 34 C.2 Proofs of theorems 
+
+Proof of Theorem 1. By Lemma 2, Assumption 1 implies Assumption 4. Then combining As-sumption 4 and Theorem 4 (ii), we have 
+
+UPperturb , X (δ) ≤ U Pbase , X (ρT (δ)) .
+
+As Pbase is extrapolable over X , we have UPbase , X (δ) = 0 for any δ > 0. Together with the above display, we arrive at UPperturb , X (δ) = 0 for any δ > 0, thereby completing the proof. 
+
+Proof of Theorem 2. This is direct from Theorem 4 (i) with CT,δ = ηT (δ). 
+
+Proof of Theorem 3. This is direct from Theorem 6. 
+
+Proof of Theorem 4. Consider part (i) first. Fix any δ > 0 and X′ with d(X′, X ) ≤ δ. Recall that 
+
+ηT (δ) = sup       
+
+> X′:d(X′,X)≤δ
+
+inf   
+
+> X∈ X
+
+TV (T (·| X), T (·| X′)) .
+
+Note that X is a finite set since X ∗ is a finite set, thus allowing us to define a X∗ ∈ X achieving the infimum in ηT (δ), i.e., X∗ satisfies 4
+
+TV (T (·| X∗), T (·| X′)) ≤ ηT (δ). (C.1) To ease notation, we parameterize any model in Pperturb by γ such that for any X ∈ X ∗, θ ∈ Θbase ,
+
+Pγ (·| X) := 
+
+Z
+
+Pθ(·| fX) d T ( fX|X). (C.2) Then consider any two perturbed models Pγ (·| X), P γ′ (·| X) ∈ P perturb (with θ and θ′ denoting the parameters for the inference processes, respective) such that for all X ∈ X , it holds that 
+
+TV X (Pγ , P γ′ ) = 0. In particular, TV X∗ (Pγ , P γ′ ) = 0, implying that for any token i from the                           
+
+> 4Note that for all the arguments for part (i) in Theorem 4 to hold by allowing |X ∗|to be infinite where no X∗∈ X
+> can achieve the infimum, we simply need to update the result by replacing ηT(δ) with ηT(δ) + ϵfor any ϵ > 0 and there must exists X∗∈ X (otherwise the infimum is at least ηT(δ) + ϵ) such that TV (T(·| X∗), T (·| X′)) ≤ηT(δ) + ϵ,in replacement of (C.1).
+
+35 vocabulary, we have 0 = Pγ (i|X∗) − Pγ′ (i|X∗) = 
+
+Z n
+
+Pθ(i| fX) − Pθ′ (i| fX)
+
+o
+
+dT ( fX|X∗).
+
+Based on this, on X′, for any token i from the vocabulary, we can write 
+
+Pγ (i|X′) − Pγ′ (i|X′) =
+
+Z n
+
+Pθ(i| fX) − Pθ′ (i| fX)
+
+o
+
+dT ( fX|X′)
+
+=
+
+Z n
+
+Pθ(i| fX) − Pθ′ (i| fX)
+
+o
+
+dT ( fX|X′) −
+
+n
+
+Pθ(i| fX) − Pθ′ (i| fX)
+
+o
+
+dT ( fX|X∗)
+
+=
+
+Z n
+
+Pθ(i| fX) − Pθ′ (i| fX)
+
+o
+
+d
+
+n
+
+T ( fX|X′) − T ( fX|X∗)
+
+o
+
+≤
+
+Z
+
+Pθ(i| fX) − Pθ′ (i| fX) d T ( fX|X′) − T ( fX|X∗)
+
+≤ TV (T (·| X∗), T (·| X′)) · sup Pθ(i| fX) − Pθ′ (i| fX) ≤ ηT (δ),
+
+where |A| := A+ + A− denotes the total variation measure of any measure A (which can be expressed as the difference between two positive measure, i.e., A = A+ − A−); the first inequality used the fact that for any measures A, B :
+
+Z
+
+B dA ≤
+
+Z
+
+B dA+ +
+
+Z
+
+B dA− ≤
+
+Z
+
+|B| dA+ +
+
+Z
+
+|B| dA− =
+
+Z
+
+|B| d|A|;the second inequality used the definition of total variation distance; and the last inequality used Equation (C.1) together with the fact that sup Pθ(i| fX) − Pθ′ (i| fX) ≤ 1. By taking supremum of the above display over i in the vocabulary list, it is direct to conclude TV X′ (Pγ , P γ′ ) ≤ ηT (δ)and hence UPperturb , X (δ) ≤ ηT (δ). This completes the proof of part (i). Consider part (ii). Take any δ > 0, X′ with d(X′, X ) ≤ δ, and Pγ , P γ′ ∈ Pperturb with 
+
+TV X (Pγ , P γ′ ) = 0 for all X ∈ X . Then recall the notation of vocabulary list V = {1, . . . , v }, we have 5
+
+TV X′ (Pγ , P γ′ ) = TV 
+
+Z 
+
+Pθ(·| fX) d T ( fX|X′),
+
+Z
+
+Pθ′ (·| fX) d T ( fX|X′)
+
+          
+
+> 5For general X∗and V(possibly infinite sets), all arguments in the proof of Theorem 4 (ii) remain to hold, since any Pvi=1 | · | in the second and third lines of (C.3) can be replaced by the L1norm for a measure.
+
+36 = 12
+
+> v
+
+X
+
+> i=1
+
+Z
+
+Pθ(i| fX) d T ( fX|X′) −
+
+Z
+
+Pθ′ (i| fX) d T ( fX|X′)
+
+≤ 12
+
+Z vX
+
+> i=1
+
+Pθ(i| fX) − Pθ′ (i| fX) dT ( fX|X′)=
+
+Z
+
+TV (Pθ(·| fX), P θ′ (·| fX)) d T ( fX|X′)
+
+≤ sup   
+
+> fX:T(fX|X′)>0
+
+TV (Pθ(·| fX), P θ′ (·| fX)) . (C.3) Note that for any Pθ0 , P θ′ 
+
+> 0
+
+∈ P base , we always have 
+
+TV (Pθ(·| fX), P θ′ (·| fX)) 
+
+≤ TV (Pθ0 (·| fX), P θ′ 
+
+> 0
+
+(·| fX)) + TV (Pθ(·| fX), P θ0 (·| fX)) + TV (Pθ′ (·| fX), P θ′ 
+
+> 0
+
+(·| fX)) ,
+
+which, if it holds that TV X (Pθ0 , P θ′ 
+
+> 0
+
+) = 0 for all X ∈ X , then we may write (C.3) as 
+
+TV X′ (Pγ , P γ′ )
+
+≤ sup 
+
+fX :
+
+T ( fX|X′) > 0
+
+TV (Pθ0 (·| fX), P θ′ 
+
+> 0
+
+(·| fX)) + sup 
+
+fX :
+
+T ( fX|X′) > 0
+
+TV (Pθ(·| fX), P θ0 (·| fX)) + sup 
+
+fX :
+
+T ( fX|X′) > 0
+
+TV (Pθ′ (·| fX), P θ′ 
+
+> 0
+
+(·| fX)) 
+
+≤ U Pbase , X (ρT (δ)) + sup 
+
+fX :
+
+T ( fX|X′) > 0
+
+TV (Pθ(·| fX), P θ0 (·| fX)) + sup 
+
+fX :
+
+T ( fX|X′) > 0
+
+TV (Pθ′ (·| fX), P θ′ 
+
+> 0
+
+(·| fX)) ,
+
+where the last inequality used the definition of the extrapolation uncertainty of Pbase and the definition that 
+
+ρT (δ) = sup 
+
+X′ :
+
+d(X′, X ) ≤ δ
+
+sup 
+
+fX :
+
+T ( fX|X′) > 0
+
+d( fX, X ).
+
+With definition (B.2), this concludes the proof of part (ii) by the definition of extrapolation uncertainty, with infimum of Pθ0 , P θ′ 
+
+> 0
+
+taken over Pbase with TV X (Pθ0 , P θ′ 
+
+> 0
+
+) = 0 for all X ∈ X .37 Proof of Theorem 5. By Lemma 2, it suffices to show the scenario in Theorem 5 fulfills Assump-tion 1. Since g(·) is assumed to be injective, we may consider the identity map that g(x) = x,without loss of generality. To this end, fix any token i from the vocabulary list. Consider any two perturbed models Pγ (·| X), P γ′ (·| X) ∈ P perturb (with θ and θ′ denoting the parameters for the inference processes as in the reparameterization (C.2), respectively) such that for all X ∈ X ,it holds that Pγ (i|X) = Pγ′ (i|X). Then we can write 
+
+X 
+
+> fX∈X ∗
+
+⟨ψθ,i , ϕ ( fX)⟩ · T ( fX|X) = X 
+
+> fX∈X ∗
+
+⟨ψθ′,i , ϕ ( fX)⟩ · T ( fX|X),
+
+or equivalently, by some simplification and the fact that PfX∈X ∗ T ( fX|X) = 1, we have 0 = 
+
+*
+
+ψθ,i − ψθ′,i , X 
+
+> fX∈X ∗
+
+ϕ( fX) · T ( fX|X)
+
++
+
+=
+
+*
+
+ψθ,i − ψθ′,i , EfX∼T (·| X)
+
+h
+
+ϕ( fX)
+
+i +
+
+.
+
+Then by defining the follows by concatenation (with Xj denoting the j-th sequence in X , under any pre-specified ordering): 
+
+y := ( ψθ,i − ψθ′,i ) ∈ Rd,
+
+Φ := 
+
+
+
+EfX∼T (·| X1)
+
+h
+
+ϕ( fX)
+
+i ⊤
+
+...
+
+
+
+EfX∼T (·| X|X | )
+
+h
+
+ϕ( fX)
+
+i ⊤
+
+ ∈ R|X |× d,
+
+we have Φ y = 0. Since EfX∼T (·| X)
+
+ϕ( fX) : X ∈ X spans Rd+1 , the matrix Φ has full column rank, thus implying y = 0. In other words, ψθ,i = ψθ′,i , and hence the two base models Pθ and 
+
+Pθ′ are the same. This completes the proof. 
+
+Proof of Theorem 6. Fix any δ > 0, and consider any X′ with d(X′, X ) ≤ δ. Then consider any two models Pθ, P θ′ ∈ P such that TV X (Pθ, P θ′ ) = 0 for all X ∈ X . In other words, Pθ(·| X) = 
+
+Pθ′ (·| X) for all X ∈ X . Denote by θ = ( γ, β ) and θ′ = ( γ′, β ′) using (B.1). By Assumption 3, for 
+
+Pθ and Pθ′ , there are some perturbation processes and X0 ∈ X such that Tβ (·| X′) = Tβ (·| X0)and Tβ′ (·| X′) = Tβ′ (·| X0). Thus, we can fix the representation from (B.1) under the perturbation 38 processes from Assumption 3. Then for X′, we may write 
+
+Pθ(·| X′) = 
+
+Z
+
+gγ (·| Xβ ) d Tβ (Xβ |X′) = 
+
+Z
+
+gγ (·| Xβ ) d Tβ (Xβ |X0),Pθ′ (·| X′) = 
+
+Z
+
+gγ′ (·| Xβ ) d Tβ′ (Xβ |X′) = 
+
+Z
+
+gγ′ (·| Xβ ) d Tβ′ (Xβ |X0).
+
+However, the RHS of the two lines above must equal, by recalling that Pθ and Pθ′ agree on all 
+
+X ∈ X , i.e., 
+
+Z
+
+gγ (·| Xβ ) d Tβ (Xβ |X) = Pθ(·| X) = Pθ′ (·| X) = 
+
+Z
+
+gγ′ (·| Xβ ) d Tβ′ (Xβ |X).
+
+This shows Pθ(·| X′) = Pθ′ (·| X′), thereby implying TV X′ (Pθ, P θ′ ) = 0 which holds true uni-formly over all X′ in the neighboring sets in X (detailed at the beginning). This concludes the extrapolability of P over X and hence the sufficiency of Assumption 3. 
+
+Proof of Theorem 7. We generalize the proof of Theorem 5 and in particular, we will verify As-sumption 1 therein which has shown to be sufficient to ET, Pbase ,δ = 0. Consider any two perturbed models Pγ (·| X), P γ′ (·| X) ∈ P perturb (with θ and θ′ denoting the parameters for the inference processes as in the reparameterization (C.2), respectively) such that for all X ∈ X , it holds that Pγ (·| X) = Pγ′ (·| X). Hence for any j = 1 , . . . , d , X ∈ X , by Fubini’s theorem and the fact that fj (i) is integrable w.r.t. any base model, we have 
+
+LX (hθ,j ) = 
+
+Z 
+
+> fX∈X ∗
+
+hθ,j ( fX) d T ( fX|X)=
+
+Z 
+
+> fX∈X ∗
+
+Ei∼Pθ (·| fX)[fj (i)] d T ( fX|X) = 
+
+Z 
+
+> fX∈X ∗
+
+Z
+
+> i∈V
+
+fj (i) d Pθ(i| fX) d T ( fX|X)=
+
+Z
+
+> i∈V
+
+fj (i) d Pγ (i|X) = 
+
+Z
+
+> i∈V
+
+fj (i) d Pγ′ (i|X) = 
+
+Z 
+
+> fX∈X ∗
+
+Z
+
+> i∈V
+
+fj (i) d Pθ′ (i| fX) d T ( fX|X)=
+
+Z 
+
+> fX∈X ∗
+
+Ei∼Pθ′ (·| fX)[fj (i)] d T ( fX|X) = 
+
+Z 
+
+> fX∈X ∗
+
+hθ′,j ( fX) d T ( fX|X) = LX (hθ′,j ).
+
+Since the above holds for all X ∈ X , by our assumption we obtain hθ,j = hθ′,j . Similarly, this holds for all j = 1 , . . . , d , and by our assumption we conclude θ = θ′. The more general assumption also leads to this implication (more directly). This shows Assumption 1 and hence completes the proof. 39 C.3 Proofs of propositions 
+
+Proof of Proposition 1. First, we clarify in the statement of this theorem that the notation M (·, ·)is the Hamming distance. By Theorem 4, it suffices to show T (·| X) is Lipschitz with con-stant (1 − β) in total variation distance (w.r.t. the Hamming distance). That is, we want 
+
+TV (T (·| X), T (·| X′)) ≤ (1 − β)M (X, X′). We first construct a coupling (cf. Definition 4.1.1 of Roch (2024)) between T (·| X) and T (·| X′). To do this, for position l = 1 , . . . , L , independently generate Ul ∼ Bernoulli( β) and some uniformly random draw from SXl , denoted as eXl. Then construct Y = ( Y1, . . . , Y L) and Y ′ = ( Y ′ 
+
+> 1
+
+, . . . , Y ′
+
+> L
+
+)as token sequences such that for any l = 1 , . . . , L ,
+
+Yl =
+
+
+
+Xl if Ul = 0 ,
+
+eXl if Ul = 1 ., Y ′ 
+
+> l
+
+=
+
+
+
+X′ 
+
+> l
+
+if Ul = 0 ,
+
+eXl if Ul = 1 .
+
+By our perturbation procedure, Y ∼ T (·| X) and Y ′ ∼ T (·| X′), so that ( Y , Y ′) is a coupling of the measures of X and X′. Then by the coupling inequality (cf. Lemma 4.1.11 of Roch (2024)), we have 
+
+TV (T (·| X), T (·| X′)) ≤ P(Y̸ = Y ′). (C.4) Let Z ⊆ { 1, . . . , L } be the set of locations where X and X′ differ. Then observe that Y can only equal Y ′ if Ul = 1 for all l ∈ Z, and hence by the independence over Ul, we have 
+
+P(Y̸ = Y ′) = 1 − P(Y = Y ′) = 1 − Y
+
+> l∈Z
+
+P(Ul = 1) = 1 − β|Z|
+
+= 1 − [1 − (1 − β)] |Z| ≤ 1 − 1 − (1 − β) · | Z| = (1 − β) · | Z| = (1 − β) · M (X, X′)where the last inequality used the Bernoulli’s inequality, and the last equality used the definition of Hamming distance. Combined with (C.4), we may conclude this proof. 
+
+Proof of Proposition 2. First, note that now X ∗ = R and V = R. We define 
+
+gγ (x) := gθ(x) + βx = θ0 + ( θ1 + β)x + θ2x2,
+
+with γ = ( θ0, θ 1 + β, θ 2). Note that it suffices to identify the sum θ1 + β rather than the individual 
+
+θ1 and β, since the former already identifies the function gγ (·). We will read each quadratic 40 pre-post-additive noise model as in a base model Pθ(·| x) being the distribution of gγ (x) + ξ, and a perturbation T (·| x) being the distribution of x + η.Consider the base model first. Denoting the probability density function of ξ as f (·), if Pθ(·| x0) = 
+
+Pθ′ (·| x0) for any x0, we have 
+
+Z ∞−∞ 
+
+f (x − gγ (x0)) − f (x − gγ′ (x0)) dx = 0 ,
+
+which, by Lemma 3, implies gγ (x0) = gγ′ (x0). As both gγ (·) and gγ′ (·) are quadratic, X containing at least three distinct points guarantee that θ0 = θ′
+
+> 0
+
+, θ1 + β1 = θ′ 
+
+> 1
+
++ β′
+
+> 1
+
+, and θ2 = θ′ 
+
+> 2
+
+(cf. the fact that the corresponding Vandermonde matrix is invertible). Note that albeit θ1, β 1 cannot be identified, it suffices to identify the function gγ since all coefficients in the polynomial function are identified. That is, we now have gγ (x) = gγ′ (x) for any x ∈ R. Hence the class of base models is extrapolable over X , i.e., UPbase , X (δ) = 0 for any δ > 0. By Theorem 4, it remains to show ET, Pbase ,δ = 0, for which we will use Theorem 7 with kernel 
+
+K(x, y ) = 1 + xy + x2y2, so that this RKHS consists of all polynomial functions with maximum degree 2. Further let f1(x) = x and 
+
+hθ, 1(x) := Ei∼Pθ (·| x)[f1(i)] = Ei∼Pθ (·| x)[i] = gγ (x),
+
+where the last equality used the fact that the distribution of ξ is symmetric. We may also verify that Ei∼Pθ (·| x)[|f1(i)|] = Ei∼Pθ (·| x)[|i|] < ∞ by E(ξ2) < ∞. Furthermore, define the linear functional 
+
+Lx(hθ, 1) := Ey∼T (·| x)[hθ, 1(y)] = Ey∼T (·| x)[gγ (y)] = Ey∼T (·| x)
+
+θ0 + ( θ1 + β)y + θ2y2 = θ0 + ( θ1 + β)x + θ2E(η2) + θ2x2,
+
+by the fact that the distribution of η is symmetric. Then by Theorem 7, it suffices to show 
+
+θ0 + ( θ1 + β)x + θ2E(η2) + θ2x2 = θ′ 
+
+> 0
+
++ ( θ′ 
+
+> 1
+
++ β′)x + θ′
+
+> 2
+
+E(η2) + θ′
+
+> 2
+
+x2 for sufficiently many x ∈ R (to be detailed soon) implies ( θ0, θ 1 + β, θ 2) = ( θ′
+
+> 0
+
+, θ ′ 
+
+> 1
+
++ β′, θ ′
+
+> 2
+
+). Note that we may rewrite 0 = 
+
+h
+
+(θ0 − θ′
+
+> 0
+
+) + ( θ2 − θ′
+
+> 2
+
+)E(η2) + (θ1 + β) − (θ′ 
+
+> 1
+
++ β′)x + ( θ2 − θ′
+
+> 2
+
+)x2,
+
+which, if holds true for at least three distinct x, gives us the desired. This completes the verification of conditions in Theorem 7 and hence shows Proposition F.1 of Shen and Meinshausen (2025). 41 D Details of Experiments 
+
+D.1 Implementation details in the training phase 
+
+Perturbation is not applied to every token, as doing so may generate a completely random prefix. Instead, we perturb an α proportion of tokens in the prefix, where α denotes the perturbation intensity. Moreover, to be compatible with the existing training pipeline so as to simplify imple-mentation, we perturb the original dataset D to obtain a collection of new datasets eD(1) , . . . , eD(m).Finally, the combined dataset D ∪ eD(1) ∪ · · · ∪ eD(m) is used to train Pθ based on some specified scoring rule. We fix m = 1 throughout the experiments. Notably, our method makes use of joints datasets. Hence to ensure a fair comparison, we combine the original dataset and its copy when conducting the training procedure using the classical approach (i.e., without perturbation). The model parameters are then updated after each epoch. 
+
+D.2 Details on simulation studies 
+
+Architecture of Pθ. Each token is first mapped to a d-dimensional continuous vector, i.e., one row in the embedding matrix E ∈ R|V|× d. Given the embedding ei−1 of the previous token xi−1,the probability of next token is predicted via a two-layer neural network: 
+
+Pθ(xi|xi−1) = 
+
+> the second layer
+
+z }| {
+
+SoftMax 
+
+
+
+W2 Dropout(ReLU( W1ei−1 + b1)) 
+
+| {z }
+
+> the first layer
+
++b2
+
+
+
+,
+
+where the parameters θ include W1, W2, b1, and b2. After training the model, we feed the embedding matrix E into Pθ to directly obtain the estimated transition matrix. The embedding dimension is fixed as d = 50, and the dropout rate is fixed as 0.1. Besides, the output of the first layer is also set to be a d-dimensional vector. 
+
+Setting of Algorithm 1. We set m = 2 in Algorithm 1. Specifically, when j = 1, we set 
+
+fX(i,j ) 
+
+> t
+
+= X(i) 
+
+> t
+
+. That is, the first half of the perturbed dataset is identical to the original dataset. For j = 2, we merely consider tokens that belong to the following set: 
+
+n
+
+v ∈ V | P  v|X(i)
+
+> t−1
+
+ > 2/|V| and P  X(i)
+
+> t+1
+
+|v > 2/|V| 
+
+o
+
+,
+
+which is designed to mimic the set of synonym. Each token v in the above set is assigned with a 42 probability cP  v|X(i)
+
+> t−1
+
+ where c is one rescaled constant such that all probabilities are summed to one. 
+
+Training configuration. We train the model using the Adam optimizer (Kingma and Ba, 2015) with a learning rate of 10 −3 and a weight decay of 10 −4. The batch size is set to 500, and the model is trained for 25 epochs. In particular, for the classical method, since it does not involve perturbation, we simply replicate the dataset once and combine it with the original dataset to match the size of the training data used by our method. This ensures that both our method and the classical method follow the same and fair training procedure. 
+
+D.3 Details on real-world language modeling 
+
+Source of datasets. Two datasets, WikiText-2 and WikiText-103, are available from the Hug-ging Face dataset repository Salesforce/wikitext 6. As for another two datasets, Writing-Prompts and WebText, they can be accessed via the interface provided in the Github repository 
+
+bloomberg/MixCE-acl2023 7.
+
+Setup of methods . The MixCE method involves a tuning parameter that convexly combines the forward KL and reverse KL divergences; we fix this parameter to 0.5 in all experiments. The TVD method includes a parameter that trade-offs bias and variance, which we also set to 0.5. The MLE, EMO, and Brier methods do not involve any tuning parameters. Our method builds upon MLE, EMO, and the Brier score; for simplicity, we set the perturbation intensity α to 0.025 throughout the experiments. 
+
+Training details . For fairness, all methods apply the same training configuration described below. We use the AdamW optimizer (Loshchilov and Hutter, 2019) with a learning rate of 5 × 10 −5. Besides, we adopt a linear learning rate scheduler throughout training, which is trained with gradient accumulation steps set to 1. The batch size is fixed as 32. The maximum input length during training is set to 256. 
+
+Evaluation details . To gauge the quality of the learned model distribution Pθ in a faithful way (Eikema and Aziz, 2020), we employ unbiased sampling as the primary decoding algorithm throughout the experiments as in the setting in Ren et al. (2024). The lengths of prefix sequences for each dataset are summarized in Table A6, and the length of the generated tokens is fixed as 
+
+> 6https://huggingface.co/datasets/Salesforce/wikitext
+> 7https://github.com/bloomberg/MixCE-acl2023
+
+43 80. We repeat the sampling process for 20 independent runs for each prefix and report the average Mauve score. Table A6: Length of the provided prefix for each dataset used in the real-world language modeling experiments. 
+
+WikiText2 Wikitext103 WebText WritingPrompts 
+
+Length 20 20 20 35 44
