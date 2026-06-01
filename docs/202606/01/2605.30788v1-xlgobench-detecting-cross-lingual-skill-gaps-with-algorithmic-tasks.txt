@@ -1,0 +1,2445 @@
+Title: XLGoBench: Detecting cross-lingual skill gaps with algorithmic tasks
+
+URL Source: https://arxiv.org/pdf/2605.30788v1
+
+Published Time: Mon, 01 Jun 2026 00:47:47 GMT
+
+Number of Pages: 45
+
+Markdown Content:
+# XLGOBENCH: Detecting cross-lingual skill gaps with algorithmic tasks 
+
+Purvam Jain 1 Preethi Jyothi 2,1 Vihari Piratla 1∗ Suvrat Raju 3,1 
+
+> 1
+
+Google DeepMind 
+
+> 2
+
+Indian Institute of Technology Bombay 
+
+> 3
+
+International Centre for Theoretical Sciences, Tata Institute of Fundamental Research 
+
+Abstract 
+
+We introduce a set of synthetic algorithmic tasks to detect cross-lingual gaps in the abil-ities of large language models. Our bench-mark is commensurate across languages, since it requires models to perform the same un-derlying task in different languages; scalable, since each task can be generated at varying levels of complexity allowing it to be adapted to models with different capabilities; quantifi-able, since every task admits an objective no-tion of correctness; and transparent, since tasks are generated from simple templates that can be readily audited for translation errors. Be-cause our benchmark focuses on algorithmic tasks, differential performance is a sufficient— but not necessary—indicator of cross-lingual gaps. Nevertheless, we show through exten-sive experiments that our benchmark exposes persistent cross-lingual gaps in multiple state-of-the-art models. 
+
+1 Introduction 
+
+Large language models (LLMs) have had a signif-icant and increasing impact on society, including in fields such as education (Hausman et al., 2025), professional writing (Noy and Zhang, 2023), cus-tomer service (Brynjolfsson et al., 2025), program-ming (Handa et al., 2025), and others (Hausman et al., 2025). Nevertheless, the widespread adop-tion of these models has exacerbated concerns about global inequality (Skare et al., 2024; UNDP, 2025; Misra et al., 2025). Cross-lingual gaps in the abilities of LLMs rep-resent one facet of broader disparities faced by users. These gaps persist because capability eval-uation benchmarks are largely in English (Ahuja et al., 2024), leaving model abilities across many non-English languages largely unmeasured (Wu et al., 2025). On the other hand, it is encourag-ing that LLMs show a measure of cross-lingual   
+
+> ∗Corresponding author: vpiratla@google.com
+
+transfer, which allows them to perform well even in relatively low-resource languages (Nguyen et al., 2024). Moreover, improvements in the abilities of models can make LLMs more accessible to users (Microsoft AI Economy Institute, 2026) and po-tentially even empower linguistically marginalized communities (Ding et al., 2024). Therefore, removing cross-lingual gaps is both important and potentially achievable. The first step towards this objective is to precisely measure cross-lingual gaps. Towards this goal, we introduce a new synthetic benchmark. Our benchmark XLGOBENCH comprises a set of algorithmic puzzles. This offers some advantages over alternate methods of measuring cross-lingual gaps. 1. Transparency in translation: A recurrent challenge in multilingual evaluations is to en-sure translation accuracy. For example, popu-lar multilingual benchmarks such as MMLU (Hendrycks et al., 2021) and MGSM (Shi et al., 2023) have been shown to contain trans-lation, annotation or evaluation errors (Gema et al., 2025; Singh et al., 2025; Peter et al., 2025). This makes it unclear whether, for example, the remaining 1.2% gaps between English and Telugu on MGSM (Peter et al., 2025) with Gemini-2.5-Flash arise from gen-uine capability differences or experimental errors. In contrast, our puzzles are formed by combining a small set of templates. The translation accuracy of these templates can be checked by hand, as we did for our empirical tests, using expert human raters. Therefore, we do not expect translation errors to affect our evaluations. 2. Scalability: Traditional multilingual evalua-tions involve a multi-step process and manual collation. This has led to benchmarks that include long-context reasoning (Kim et al., 1              
+
+> arXiv:2605.30788v1 [cs.CL] 29 May 2026 100 150 200 250 300 350 400
+> Complexity (Total Edges)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+> T. Rank Gamma Fit
+> Ar
+> En
+> Te
+> Zh 0100 200 300 400 500 600
+> Complexity (Chain Size)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+> SLT Gamma Fit
+> Ar
+> En
+> Te
+> Zh
+
+Figure 1: We show a graph of accuracy vs complexity for selected languages for (a) Gemini-3-Flash for the Tour-nament ranking task on the left and (b) Gemini-3.1-Flash-Lite for the Sequential Linear Transforms task on the right. Significant cross-lingual gaps are observed in the intermediate complexity region, as performance in English declines more slowly with complexity compared to other languages. The dots denote observed accuracy and the solid lines and uncertainty bands are obtained by fitting a mathematical model described in Section 3 to the data. 
+
+2025), expert knowledge (Xuan et al., 2025) or hard coding tasks (Huang et al., 2025). However, as models continue to improve, such benchmarks are expected to saturate, re-quiring the creation of new datasets. In contrast, our puzzles can be scaled to ar-bitrarily high complexity. This reduces the accuracy of all models, including those that we might train in the foreseeable future, and exposes cross-lingual gaps where they exist. Similarly, the complexity can also be scaled down to test smaller models. 3. Quantifiability: Since the answers to our puzzles are easily verifiable, it is possible to perform a large number of experiments. This reduces potential statistical fluctuations in our measurements and enables the precise quan-tification of cross-lingual variation in model performance. Moreover, we do not need to use an LLM as a judge, removing another po-tential source of ambiguities. 4. Commensurate Tasks: In a multilingual test, it is subtle to ensure the task performed in one language is commensurate with a simi-lar task in another language. For instance, differences in nuance, sentence structure and content might make it harder for models to retrieve information from a corpus in one language compared to another. Our tasks sidestep this issue since our puzzles are sim-ple to express and, at an abstract level, encode a language-independent task that is the same regardless of the prompt language. 1
+
+The use of synthetic algorithm-based tasks is well-recognized for training and evaluating reason-ing abilities of LLMs (Liu et al., 2025; Zhang, 2024; Tang et al., 2024; Wei et al., 2025; OpenAI, 2026; He et al., 2026). Nevertheless, it was not a priori guaranteed that cross-lingual gaps in the abilities of models on real-world tasks would be reflected in the simple synthetic tasks that we eval-uate. A surprising empirical result of our study is that frontier models display differences in perfor-mance even on such synthetic puzzles. We emphasize that it is possible that a model that performs equally in two different languages on our simple algorithmic tasks, might show uneven per-formance when tested on tasks like creative writ-ing, or awareness of nuance. So, our perspective is that gaps in performance in algorithmic tasks are 
+
+sufficient but not necessary to demonstrate the ex-istence of cross-lingual gaps. As a corollary, it is important to supplement the benchmark presented in this paper with measures of more subtle linguis-tic capabilities, and we leave this to future work. 
+
+Summary of results. We test four frontier mod-els on a suite of five puzzles (described in more de-tail in Section 2) across seven different languages. The puzzles are based on templates, that are vet-ted by expert human raters as described in Section 2.3, and are scalable in complexity. We track the performance of the models from low complexity 
+
+> 1Here, commensurate refers to the underlying abstract puz-zle rather than its surface realization in tokens. The potential implications of inefficient tokenization on cross-lingual gaps are discussed in Section 5.
+
+2Graph Shortest 
+
+> Path (Graph SP)
+
+A B C D
+
+E F G                                          
+
+> Aand Bare friends. Band Care coworkers.
+> Cand Dare neighbors. Aand Eare classmates.
+> Eand Fare friends. ...
+> Shortest chain from Ato D?
+> A{"path": ["A", "B", "C", "D"]}
+> Complexity: num_edges
+> Tournament Ranking (T-Rank)
+> Cdefeated D
+> Adefeated B
+> Ddefeated E
+> Bdefeated C
+> ⟳shuffled
+> 1. A
+> 2. B
+> 3. C
+> 4. D
+> 5. E
+
+rank                     
+
+> Match results (shuffled pairwise outcomes).
+> Rank all players from strongest to weakest.
+> Extra matches add transitive redundancy.
+> A{"ranking": ["A", "B", "C", "D", "E"]}
+> Complexity: num_edges
+> Discrete State
+> Automaton (DSA)
+
+S₁ S₂ S₃Gold  Silver                                        
+
+> Gold
+> Input sequence: Gold → Silver → Gold
+> You are navigating abuilding with rooms.
+> Each room has keys leading to other rooms.
+> In S
+> ₁,if you use Gold Key →S
+> ₂.
+> In S
+> ₂,if you use Silver Key →S
+> ₃....
+> Which room do you end up in?
+> A{"state": "S ₂"}
+> Complexity: num_states
+> Probabilistic-Discrete State
+> Automaton (Pr-DSA)
+
+S₁
+
+S₂
+
+S₃
+
+S₄
+
+S₅                                                                   
+
+> p=0.3
+> p=0.7
+> 0.4
+> 0.6
+> Each room has keys leading to one of two
+> rooms with specific probabilities.
+> Gold Key →S
+> ₂(p=0.3) or S
+> ₃(p=0.7)
+> List the 8most probable final rooms.
+> A{"states": ["S ₅", "S ₄", ...]}
+> Complexity: num_states
+> Sequential Linear
+> Transforms (SLT)
+> After B, visit
+> C.
+> C: ×3, +2
+> Start: A,
+> capital=7
+> After A, visit B.
+> B: ×(-1), +5
+> After C, visit
+> D.
+> D: ×1, +1
+> ⟳shuffled
+> A → B → C → D
+> Amerchant departed with capital 7.
+> Afierce wind scattered the ledger's pages.
+> Reconstruct the chronological order and
+> compute wealth after each transaction.
+> A{"chain": [7, -2, -4, -3]}
+> Complexity: chain_size (num transactions)
+
+Figure 2: Five puzzle types in XLGOBENCH. We visually depict the basic schema of all puzzle types in our bench-mark, along with their respective complexity measures. More detailed puzzle descriptions are in Section 2. 
+
+— where all models achieve perfect accuracy in all languages — to high complexity, where the ac-curacy collapses as described in Section 3. A sta-tistically significant variation in the performance of models at a given complexity reflects a cross-lingual gap. We present a summary metric that measures the maximum possible cross-lingual gap utilizing a model of the variation of the accuracy with complexity. We show in Section 4 that this suite of puzzles, taken collectively, is sufficient to expose unambiguous cross-lingual gaps in all mod-els. In Section 4.1, we show that these gaps cannot be attributed to translation errors. We also note that these gaps arise at intermediate complexity levels. We comment on possible underlying causes and fu-ture work in Section 5. The Appendices provide extended empirical results, including plots of ac-curacy vs complexity, and details on prompts and the construction of puzzles. The full set of results, code to reproduce our plots, and templates for the puzzles are included in the supplementary material for this paper.This supplementary material can be downloaded from zenodo.org/records/20423110 
+
+1.1 Related Work 
+
+Benchmarks dedicated to measuring cross-lingual gaps have been of great interest since the era of encoder-only language models (Hu et al., 2020), and their scope has since expanded from classifica-tion tasks to more complex reasoning tasks for eval-uating modern LLMs (Ghosh et al., 2025). Most closely related to our work, Dobler et al. (2026) previously introduced cross-lingual evaluations us-ing synthetic tasks by translating templates from an English reasoning gym (Stojanovski et al., 2025). Bruun and Smart (2025) previously studied the variation in the accuracy of models on configura-tions of the Zebra puzzle across several European languages. Kim et al. (2025) also described syn-thetic tasks to test the ability of models to retrieve and aggregate data in different languages. In contrast to prior work, our puzzles were se-lected explicitly for cross-lingual evaluation and are not translations of any existing reasoning benchmark. They also involve considerably more reasoning than the typical tasks presented in Dobler et al. (2026) and Kim et al. (2025), which allows our benchmark to expose cross-lingual gaps in some of the largest frontier LLMs. The structure of our puzzles, which can be solved by repetitively applying a simple algorithm, allows us to make contact with parallel quantita-tive studies of errors in LLMs (Raju and Netra-palli, 2026) leading to interesting novel observa-3tions about the variation of the cross-lingual gap with complexity. Additional benchmarks are surveyed in Uppad-hyay et al. (2026). Our benchmark is immune to concerns about data leakage described there. Each puzzle instance is randomly generated from a tem-plate, allowing for a very large number of unique realizations, making memorization unlikely. 
+
+2 The XLGOBENCH Benchmark 
+
+Our benchmark comprises a suite of algorithmic tasks. Each of these tasks can be solved by a re-peated application of a small number of atomic op-erations. We propose to compare model correct-ness across the same problem translated in various languages. We leave the language of the thinking and response space to model default. In this paper, we consider six languages apart from English: Ara-bic (AR), Hindi (HI), Japanese (JA), Chinese (ZH), Tamil (TA), Telugu (TE). These languages repre-sent large speaker populations and span diverse lan-guage families and scripts. The benchmark can be easily extended to other languages. Now that several flagship language models of-fer context windows of one million or longer, rea-soning over information presented in context is an important skill. This is a potential source of cross-lingual gaps, owing to the volume of non-English tokens. We picked three graph walk and two graph search tasks to align with the practical challenge of navigating information graphs (in context). We il-lustrate the structure of the five puzzles in our eval-uation suite in Figure 2. Unique instances of the puzzle are generated using a base template that can be vetted for translation errors, and then scaled to any desired complexity. While the actual content of the puzzles is always in the respective script, the identifiers used for peo-ple’s names or states are always in alphanumeric form, such as A1234. This avoids potential ambi-guities — for instance, in some cultures, “Baner-jee” and “Bandopadhyaya” are understood to be equivalent whereas in others “Robert” and “Bob” are used interchangeably. The use of alphanumeric identifiers also allows us to scale the number of unique entities to any desired value. We provide example prompts for each task in Appendix C, both in English and other languages. While the puzzle content is in the respective scripts, all formatting details, algorithmic con-straints, and output constraints are provided in En-glish. This is a design choice to ensure that the gaps we observe do not arise due to known deficien-cies in multilingual instruction-following (Li et al., 2026, 2024). Moreover, while code-switching in the input could be a cause for concern as a po-tential trigger of errors, frontier LLMs are gener-ally robust to such inputs. In fact, in-context code-switching has been shown to improve performance across multiple LLMs and tasks (Yoo et al., 2025). 
+
+2.1 Graph walk problems Sequential Linear Transforms (SLT). A trav-eling merchant makes a sequence of transactions with T people starting with an initial wealth of w0.Each tth transaction is uniquely identified by the customer name, along with multiplicative ( at) and additive ( bt) adjustment factors to the merchant’s wealth, and mentions the (t + 1) th customer. The transactions are chronologically jumbled to make the task harder. The problem requires computing the final wealth wT through a sequence of trans-formations wt+1 = atwt + bt. The numbers are chosen to satisfy at, b t, w t ∈ [−9, 9] .The total number of transactions T determines the complexity of the problem. Please see Ap-pendix C.3.1 for a full prompt. 
+
+Discrete State Automaton (DSA). Each prob-lem specifies a discrete state automaton, i.e., states transition depending on the action. We verbalize the problem by defining states as different rooms and actions as keys to various other connecting rooms. We then prompt for the final state given the starting room (initial state) and a sequence of keys (actions). The state transitions are all determinis-tic. We verify the answer through exact match on the correct final state. We use an equal number of states and actions, which defines the complexity. Please see an exam-ple prompt in Appendix C.3.2. 
+
+Probabilistic-Discrete State Automata (Pr-DSA). The setup is similar to DSA except that the state transitions are probabilistic. For a given (state, action) pair, we specify the probabilities of two possible next states for a given action. Given the initial state and a sequence of actions, we prompt the model for the eight most likely final states, and validate the response based on whether the top-8 set (order-invariant) is correctly identi-fied. We fixed the number of actions to a constant value of 15 and varied the number of states. Puzzle complexity, thereby, is defined by the number 4of states. Please refer to Appendix C.3.3 for an example prompt. 
+
+2.2 Graph search problems Graph shortest path (Graph SP). Given asocial acquaintance graph with connections de-scribed as {Person A} and {Person B} are friends ,the problem requires finding the shortest path be-tween any two people, which is ensured to be unique by construction. Please find graph construc-tion details in Appendix C.1. The number of edges in the graph defines complexity. Please see Ap-pendix C.3.4 for an example prompt. 
+
+Tournament Ranking (T-Rank). Given n play-ers with unique strengths, the problem requires or-dering players according to their strength given a directed graph of game outcomes. During con-struction, we ensure the problem is well-specified and the solution is unique through acyclic and con-nected graphs, as we first construct the backbone of a Hamiltonian path and then add extra valid edges. We maintain a ratio of 1 : 3 between number of nodes (players) and number of edges (matches) in the graph such that the complexity is defined by a single variable: the number of edges. Please see Appendix C.3.5 for an example prompt. 
+
+2.3 Validation of questions 
+
+Traditional approaches demand considerable anno-tation effort to ensure questions remain valid in all languages. Our setup requires considerably low an-notation effort by construction. We only need to ensure that the few templates that constitute each problem are translated correctly to all languages. The average number of templates that make up any prompt across tasks is only 5.We confirmed the validity of translations in En-glish and six non-English languages with native speakers who performed the following checks. (a) Template translations in various languages are se-mantically equivalent to that in English, (b) spot-checking with five full prompts if they make a meaningful problem of intended meaning in each language. For English, we only need step (b) since there are no translations in English. We provide further details in Appendix C.2. 
+
+2.4 Validation of responses 
+
+We instructed models to produce JSON-formatted output that was parsed using an automated script. For Pr-DSA, and the two graph search problems where the solution is a list of values, the answer was marked as correct only when the entire list matched the ground-truth solution. For Pr-DSA, the order of the states was ignored for response matching. This procedure sidesteps errors that could have been introduced by using an LLM judge. 
+
+2.5 Cross-lingual gaps 
+
+The templates described above can be used to gen-erate unique puzzles with varying complexity. The accuracy of models is expected to drop from nearly 100% at very low complexity to nearly 0% at very high complexity (Shojaee et al., 2026; Raju and Netrapalli, 2026). However, the precise rate of de-cline of the accuracy with complexity might vary across languages. Our benchmark detects cross-lingual gaps by identifying differences in the ac-curacy vs complexity curve across languages. 
+
+3 Experiments 
+
+Models. Our empirical validation spans the following models: Gemini-3-Flash (Deepmind, 2025), Gemini 3.1 Flash-Lite (Deepmind, 2026a), Gemma-4-31B (Deepmind, 2026b), GLM-5.1 (Z.ai, 2026). This selection was made to ensure that (a) we cover both open and proprietary models and (b) that we cover models developed in different countries, since this might influence the linguistic distribution of the training data and evaluation process. 
+
+Complexity. Our setup naturally enables study-ing cross-lingual gaps at various complexity levels. For each problem type, we generate problems of varying complexities such that we see perfect accu-racy at the lowest complexity level and zero accu-racy at the highest complexity level for English lan-guage (as seen in Figure 1). Table 1 shows the de-fault complexity ranges we used for different tasks and also describes the parameter used to measure the complexity. The complexity range for Gemini 3.1 Flash-Lite was chosen separately as described in Appendix A.1. 2
+
+Sample collection. We uniformly sample 20 complexity levels from the ranges specified in Ta-ble 1. For each complexity level, we randomly gen-erate 50 questions per language (seeds are reused     
+
+> 2Complexity ranges for each puzzle type were identified using one of our models (Gemini-3-Flash). cmin and cmax de-note configurations with consistent near-100 % and near-0%accuracy across multiple runs, enabling a full gamma fit.
+
+5across languages). This protocol is followed across all puzzle types defined in Section 2. Therefore, in total, our experiments comprise about 4×20 ×50 ×
+
+7 × 5 = 140 , 000 prompts. (Total prompts = mod-els × configurations × questions per configuration 
+
+× languages × tasks.)                   
+
+> Puzzle Complexity Measure cmin cmax
+> SLT Chain length 100 600
+> DSA Number of states 32 2090
+> Pr DSA Number of states 961
+> Graph SP Number of edges 70 720
+> T. Rank Number of edges 100 400
+> Table 1: Complexity measure and default range of com-plexity values for each puzzle.
+
+Analyzing cross-lingual gaps. The procedure above yields a picture of the decline of accuracy with complexity in each language. At a fine-grained level, any variation in the accuracy of the model at a given complexity indicates a cross-lingual gap. However, although the cross-lingual gap is, strictly speaking, measured by a function worth of information, we find it convenient to com-press this into a single numerical metric using the procedure below. We utilize the quantitative model of the varia-tion of the accuracy of LLMs with the complexity of simple algorithmic tasks described in Raju and Netrapalli (2026). In this model, the accuracy fℓ
+
+in language ℓ is related to the complexity via 
+
+fℓ(c) = 1Γ( qℓ/2) γ
+
+( qℓ
+
+2 , qℓ
+
+2 rℓ c2
+
+)
+
+(1) where γ(x, y ) denotes the lower incomplete gamma function, c is the task complexity and 
+
+rℓ, q ℓ > 0 are language-specific parameters that can be interpreted in terms of an elementary er-ror rate, and the number of plausible erroneous to-kens at each step. This functional form naturally captures the sigmoidal decay from near-perfect ac-curacy at low complexity to near-zero accuracy at high complexity, and it provides a good fit to our empirical data. We computed R2 values for the fit and found R2 > 0.97 across all models and tasks. We fit the mean accuracy as measured above, with the complexity parameter as defined in Ta-ble 1, to define the signed max divergence (SMD) 
+
+for a language ℓ.SMD (ℓ) = fEn (c∗) − fℓ(c∗), (2) where 
+
+c∗ = arg max |fEn (c) − fℓ(c)|. (3) The SMD captures the worst possible cross-lingual gap for the respective model, task and language combination when compared to English. The SMD can potentially be subtle to interpret in cases where a language performs better than En-glish for some complexity range and worse in an-other complexity range. Therefore, in Appendix A, we define a second measure called the recipro-cal deviation (RD) that can be used to check for for such a feature in the data. We do not find any statis-tically significant value for the RD in cases where we report a significant SMD. 
+
+Confidence intervals. We generate 300 samples of the accuracy at each value of the complexity using the posterior beta distribution described in Appendix C of (Raju and Netrapalli, 2026) to get multiple estimates for qℓ, r ℓ. The distribution of gamma fit parameters defines the standard devia-tion for the SMD, which is reported below. 
+
+4 Results 
+
+Our main results are in Tables 2a, 2b, 2c, 2d. We consider problems with insignificant cross-lingual gaps equally valuable and report observations on every task irrespective of their cross-lingual gaps. We report SMD values along with standard devia-tions per task for each model. On average, Gemma-4-31B shows the smallest cross-lingual gaps, which is consistent with the stated multilingual emphasis of the model (Deep-mind, 2026b). It is notable that GLM-5.1’s per-formance on Chinese exceeds that of English on the Graph SP task and is on par with English on other tasks. This is consistent with the stated em-phasis on training and evaluating the model on Chi-nese (Z.ai, 2026). On the whole, Tamil and Tel-ugu saw the largest gaps which might arise due to their relatively low representation in the training data among the six non-English languages. 
+
+4.1 Observed cross-lingual gaps are not due to translation or other extraneous errors 
+
+As already mentioned, our puzzles are generated through templates that are human validated. How-ever, beyond this, the following observations rein-force our confidence in the cause of gaps. 6Task AR HI JA TA TE ZH 
+
+SLT 9.49 ±4.12 3.51 ±4.69 8.56 ±4.92 10 .77 ±4.26 18 .56 ±4.36 −1.79 ±5.60 
+
+DSA 29 .72 ±5.75 53 .48 ±5.31 47 .73 ±5.12 42 .71 ±5.28 45 .11 ±5.11 28 .40 ±6.14 
+
+Pr DSA 6.05 ±4.34 5.39 ±5.23 −4.34 ±4.73 4.00 ±4.57 −1.50 ±5.33 −8.49 ±4.52 
+
+Graph SP 6.54 ±4.63 16 .83 ±3.97 3.88 ±4.43 8.29 ±5.10 20 .48 ±3.66 12 .47 ±4.93 
+
+T. Rank 29 .85 ±6.35 27 .49 ±6.39 19 .43 ±6.20 24 .84 ±6.30 35 .25 ±6.32 25 .01 ±6.30 
+
+(a) Gemini 3 Flash 
+
+Task AR HI JA TA TE ZH 
+
+SLT 20 .98 ±5.35 4.68 ±9.13 5.35 ±8.08 14 .21 ±6.72 4.81 ±7.06 −5.37 ±7.31 
+
+DSA 13 .48 ±4.99 16 .40 ±4.97 12 .94 ±5.41 4.31 ±6.65 12 .65 ±5.13 1.06 ±6.14 
+
+Pr DSA −6.13 ±5.98 9.15 ±6.03 4.53 ±6.00 12 .50 ±5.80 −3.33 ±5.48 7.62 ±5.31 
+
+Graph SP −1.88 ±5.06 −3.60 ±5.58 −4.47 ±5.16 6.97 ±4.30 7.99 ±4.00 5.33 ±4.64 
+
+T. Rank 14 .06 ±5.23 9.83 ±5.27 −4.58 ±7.84 13 .90 ±6.58 13 .36 ±5.76 6.33 ±5.32 
+
+(b) Gemma 4 31B IT 
+
+Task AR HI JA TA TE ZH 
+
+SLT 61 .15 ±6.53 43 .60 ±6.65 27 .72 ±7.68 30 .60 ±7.60 34 .21 ±8.16 8.37 ±8.92 
+
+DSA 14 .33 ±5.13 2.48 ±6.74 4.77 ±6.18 21 .95 ±5.72 31 .46 ±5.09 19 .99 ±5.40 
+
+Pr DSA 4.46 ±5.53 14 .10 ±4.16 12 .20 ±4.56 −3.20 ±7.59 7.37 ±4.62 10 .95 ±4.70 
+
+Graph SP −3.68 ±8.58 −6.12 ±7.37 −4.46 ±7.56 −6.17 ±7.28 −10 .50 ±7.10 −5.00 ±8.06 
+
+T. Rank 27 .45 ±3.53 24 .44 ±3.80 25 .13 ±3.76 16 .50 ±3.80 20 .70 ±4.34 16 .53 ±4.71 
+
+(c) Gemini 3.1 Flash Lite 
+
+Task AR HI JA TA TE ZH 
+
+SLT 9.10 ±5.36 8.86 ±6.21 6.99 ±7.33 18 .05 ±5.37 12 .56 ±5.66 9.22 ±5.83 
+
+DSA 12 .28 ±5.19 22 .64 ±5.83 −6.79 ±6.30 43 .89 ±6.09 42 .59 ±5.45 6.15 ±6.46 
+
+Pr DSA 6.71 ±3.50 9.80 ±3.90 6.59 ±3.96 15 .87 ±3.10 11 .48 ±3.00 3.44 ±5.50 
+
+Graph SP −6.83 ±6.29 −8.02 ±7.58 −5.95 ±6.97 −6.82 ±5.52 −9.53 ±6.20 −25 .48 ±5.28 
+
+T. Rank 2.70 ±4.15 4.09 ±5.57 14 .66 ±3.75 8.83 ±3.28 4.33 ±4.33 1.91 ±4.47 
+
+(d) GLM-5-1 
+
+Table 2: Signed Max Divergence (w. En in %) ±σ per task and language across all evaluated models, shown along with its standard deviation. Positive values indicate superior performance by EN. We highlight cells with a significant gap (outside the reported 1.96 ∗ σ) in red. Please see Section 4 for observations and Appendix A for extended empirical results including additional measures of accuracy and cross-lingual gaps. 
+
+7No gaps at low complexity. For lower complex-ity values, we observe that all languages achieve near 100% performance and gaps arise only for intermediate levels of complexity. This implies the correctness of the puzzle template and sug-gests that the reasoning gaps cannot be attributed to prompt ambiguities. This can also be seen in Figure 1 and in the figures of Appendix B. 
+
+Back-translation tests. We performed addi-tional checks to rule out the possibility that gaps arise due to mild phrasing or syntactic errors between languages. For cases where a significant SMD is observed, we back-translated templates from the worst-performing non-English languages to English for Gemini 3 Flash and Gemini 3.1 Flash Lite, and compared their performance with the original English prompt. Details of these experiments are provided in Appendix A.3. We did not find statistically significant deviations, which reinforces our confidence in the correctness of the templates. 
+
+4.2 Gaps arise at intermediate complexity 
+
+As mentioned, all models achieve near perfect ac-curacy at low complexity. Similarly, the accuracy of all models collapses for sufficiently high com-plexity. Cross-lingual reasoning gaps are apparent only in the range of intermediate complexity. This highlights a critical drawback with static bench-marks for fast evolving models. In our benchmark, we can easily vary the complexity range for each puzzle type and identify the ranges where cross-lingual gaps, if any, emerge. 
+
+4.3 Not all problems show gaps 
+
+Even though all our puzzles require extensive rea-soning, we do not observe uniform cross-lingual gaps across tasks. Moreover, the tasks on which we observe cross-lingual gaps also vary across models. One notable exception is the T-Rank task, that ex-posed cross-lingual gaps for almost all models and languages. 
+
+5 Discussion 
+
+In this paper, we have introduced a method of de-tecting cross-lingual reasoning gaps. Unlike tradi-tional benchmarks, generating problems with lan-guage templates enables us to scale problem com-plexity in any language while still preserving the accuracy of translation. Our extensive empiri-cal tests demonstrate the utility of our benchmark, which serves to detect cross-lingual gaps in several state-of-the-art models. One might naively have suspected that gaps can be ameliorated through longer thinking or traced back to the model expending less thinking effort in non-English languages. However, our preliminary investigations do not indicate a clear correlation between thinking length and cross-lingual gaps in the results. This is discussed quantitatively in Appendix A.4. This suggests that cross-lingual gaps might reflect a fun-damental issue that cannot be resolved merely by tweaking thinking in non-English languages. It might also be the case that the thinking process for multilingual prompts is sub-optimal. A second observation is that most models (in-cluding GLM-5.1) tend to think in English even when the problem is given in another language. In our examination of thinking traces, we also observed the “quote and think” phenomenon de-scribed in Yong et al. (2025), where the model quotes from the original prompt but then proceeds to think in English. So, it is possible that perfor-mance in non-English languages degrades faster than English due to cross-attention between think-ing tokens and the prompt tokens. This suggests that the models could improve their accuracy by translating the question entirely into English and then ignoring the original prompt. However, we did not observe any model exploiting this procedure consistently. Another possibility is that cross-lingual gaps might arise from inefficient tokenization in non-English languages. We have focused on the decline of accuracy with complexity, which is what mat-ters from a user’s point of view since tokenization is transparent to the user. But prompts at the same level of complexity might consume significantly different token budgets in different languages, de-pending on the tokenizer used by the model. Our preliminary observations do not suggest that mod-els with a wide variation in token budget across lan-guages, such as GLM-5.1, necessarily show larger cross-lingual gaps. However, this remains an im-portant issue for further investigation. This paper focuses on the detection of cross-lingual gaps. It is important to follow this up by developing methods to ameliorate these gaps. We leave this to future work. 
+
+Acknowledgments. We are grateful to Kinshuk Vasisht for collaboration on related work, which 8was a precursor to this study. We would like to thank Jason Hickey and Katja Filippova for com-ments on a draft of this manuscript. We would like to thank Partha Talukdar, Markus Freitag for en-gaging in discussions regarding the benchmark. 
+
+6 Limitations. 
+
+Our benchmark has two important limitations. 
+
+Real-world tasks. We expect that a model that displays differential performance on the synthetic tasks here will also show differential performance in real world tasks. However, the converse is not true. Our puzzles do not directly correspond to re-alistic applications and, for simplicity, we even re-moved names from the prompts. Eventually, we would like models to be sensi-tive to subtleties and nuance in various languages, and also generate text as proficiently as they do in English (e.g., as evaluated in Vayani et al. (2025)). The removal of obvious cross-lingual gaps that can be detected by our benchmark is an important step in this process. Our empirical results suggest that state-of-the-art models have not yet cleanly crossed this threshold. 
+
+Expensive evaluation. Since gaps emerge only on very long reasoning problems, the token count for our puzzles — both in terms of input and out-put — is high. For instance, we estimate incur-ring costs of approximately USD 2100 for Gemini 3 Flash and USD 6900 for GLM-5.1. These costs are expected to be higher for larger models. It might be possible to reduce these costs by sam-pling thinly at extreme values of the complexity and focusing on the range of complexity where the SMD appears. 
+
+References 
+
+Sanchit Ahuja, Divyanshu Aggarwal, Varun Gumma, Ishaan Watts, Ashutosh Sathe, Mil-licent Ochieng, Rishav Hada, Prachi Jain, Mohamed Ahmed, Kalika Bali, and Sunayana Sitaram. 2024. MEGAVERSE: Benchmark-ing large language models across languages, modalities, models and tasks. In Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 2598–2637, Mexico City, Mexico. Association for Compu-tational Linguistics. Sofie Helene Bruun and Dan Saattrup Smart. 2025. Multizebralogic: A multilingual log-ical reasoning benchmark. ArXiv preprint ,abs/2511.03553. Erik Brynjolfsson, Danielle Li, and Lindsey Ray-mond. 2025. Generative ai at work. The Quar-terly Journal of Economics , 140(2):889–942. Google Deepmind. 2025. Gemini 3 flash: frontier intelligence built for speed. Google blog post. Google Deepmind. 2026a. Gemini 3.1 flash-lite: Built for intelligence at scale. Google blog post. Google Deepmind. 2026b. Gemma 4. Website. Zhaojun Ding, Zhengliang Liu, Hanqi Jiang, Yizhu Gao, Xiaoming Zhai, Tianming Liu, and Ninghao Liu. 2024. Foundation models for low-resource language education (vision paper). 
+
+ArXiv preprint , abs/2412.04774. Konstantin Dobler, Simon Lehnerer, Federico Scozzafava, Jonathan Janke, and Mohamed Ali. 2026. Multilingual reasoning gym: Multilin-gual scaling of procedural reasoning environ-ments. ArXiv preprint , abs/2603.10793. Aryo Pradipta Gema, Joshua Ong Jun Leang, Gi-won Hong, Alessio Devoto, Alberto Carlo Maria Mancino, Rohit Saxena, Xuanli He, Yu Zhao, Xiaotang Du, Mohammad Reza Ghasemi Madani, and 1 others. 2025. Are we done with mmlu? In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 5069–5096. Akash Ghosh, Debayan Datta, Sriparna Saha, and Chirag Agarwal. 2025. A survey of multilin-gual reasoning in language models. In Findings of the Association for Computational Linguis-tics: EMNLP 2025 , pages 8920–8936, Suzhou, China. Association for Computational Linguis-tics. Kunal Handa, Alex Tamkin, Miles McCain, Saf-fron Huang, Esin Durmus, Sarah Heck, Jared Mueller, Jerry Hong, Stuart Ritchie, Tim Be-lonax, and 1 others. 2025. Which economic tasks are performed with ai? evidence from mil-lions of claude conversations. ArXiv preprint ,abs/2503.04761. 9Naomi Hausman, Oren Rigbi, and Sarit Weisburd. 2025. Generative ai’s impact on student achieve-ment and implications for worker productivity. 
+
+Available at SSRN 5393516 .Andre He, Nathaniel Weir, Kaj Bostrom, Allen Nie, Darion Cassel, Sam Bayless, and Huzefa Rangwala. 2026. Resyn: Autonomously scal-ing synthetic environments for reasoning mod-els. ArXiv preprint , abs/2602.20117. Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. 2021. Measuring massive mul-titask language understanding. In 9th Interna-tional Conference on Learning Representations, ICLR 2021, Virtual Event, Austria, May 3-7, 2021 . OpenReview.net. Junjie Hu, Sebastian Ruder, Aditya Siddhant, Gra-ham Neubig, Orhan Firat, and Melvin John-son. 2020. XTREME: A massively mul-tilingual multi-task benchmark for evaluating cross-lingual generalisation. In Proceedings of the 37th International Conference on Machine Learning, ICML 2020, 13-18 July 2020, Virtual Event , volume 119 of Proceedings of Machine Learning Research , pages 4411–4421. PMLR. Xu Huang, Wenhao Zhu, Hanxu Hu, Conghui He, Lei Li, Shujian Huang, and Fei Yuan. 2025. Benchmax: A comprehensive multilingual eval-uation suite for large language models. ArXiv preprint , abs/2502.07346. Yekyung Kim, Jenna Russell, Marzena Karpin-ska, and Mohit Iyyer. 2025. One ruler to measure them all: Benchmarking multilingual long-context language models. ArXiv preprint ,abs/2503.01996. Yizhi Li, Ge Zhang, Xingwei Qu, Jiali Li, Zhao-qun Li, Noah Wang, Hao Li, Ruibin Yuan, Ying-hao Ma, Kai Zhang, and 1 others. 2024. Cif-bench: A chinese instruction-following bench-mark for evaluating the generalizability of large language models. In Findings of the Associa-tion for Computational Linguistics: ACL 2024 ,pages 12431–12446. Zhenyu Li, Kehai Chen, Yunfei Long, Xuefeng Bai, Yaoyin Zhang, Xuchen Wei, Juntao Li, and Min Zhang. 2026. Xifbench: Evaluating large language models on multilingual instruction fol-lowing. Advances in Neural Information Pro-cessing Systems , 38. Huanyu Liu, Jia Li, Hao Zhu, Kechi Zhang, Yi-hong Dong, and Ge Li. 2025. SATURN: SAT-based reinforcement learning to unleash LLMs reasoning. In The Thirty-ninth Annual Confer-ence on Neural Information Processing Systems .Microsoft AI Economy Institute. 2026. Global ai adoption in 2025 —a widening digital divide. ht tps://www.microsoft.com/en-us/corpor ate-responsibility/topics/ai-economy-ins titute/reports/global-ai-adoption-2025/ .See section: “South Korea’s AI Surge: Policy, Models, and a Viral Cultural Moment”. Amit Misra, Jane Wang, Scott McCullers, Kevin White, and Juan Lavista Ferres. 2025. Measur-ing ai diffusion: A population-normalized met-ric for tracking global ai usage. ArXiv preprint ,abs/2511.02781. Xuan-Phi Nguyen, Mahani Aljunied, Shafiq Joty, and Lidong Bing. 2024. Democratizing llms for low-resource languages by leveraging their english dominant abilities with linguistically-diverse prompts. In Proceedings of the 62nd Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) ,pages 3501–3516. Shakked Noy and Whitney Zhang. 2023. Ex-perimental evidence on the productivity effects of generative artificial intelligence. Science ,381(6654):187–192. OpenAI. 2026. Graphwalks. Huggingface.co. Jan-Thorsten Peter, David Vilar, Tobias Domhan, Dan Malkin, and Markus Freitag. 2025. Mind the gap... or not? how translation errors and eval-uation details skew multilingual results. ArXiv preprint , abs/2511.05162. Suvrat Raju and Praneeth Netrapalli. 2026. Amodel of errors in transformers. ArXiv preprint ,abs/2601.14175. Freda Shi, Mirac Suzgun, Markus Freitag, Xuezhi Wang, Suraj Srivats, Soroush Vosoughi, Hyung Won Chung, Yi Tay, Sebastian Ruder, Denny Zhou, Dipanjan Das, and Jason Wei. 2023. Language models are multilingual 10 chain-of-thought reasoners. In The Eleventh International Conference on Learning Repre-sentations, ICLR 2023, Kigali, Rwanda, May 1-5, 2023 . OpenReview.net. Parshin Shojaee, Seyed Iman Mirzadeh, Keivan Alizadeh, Maxwell Horton, Samy Bengio, and Mehrdad Farajtabar. 2026. The illusion of think-ing: Understanding the strengths and limitations of reasoning models via the lens of problem complexity. In The Thirty-ninth Annual Confer-ence on Neural Information Processing Systems .Shivalika Singh, Angelika Romanou, Clémentine Fourrier, David Ifeoluwa Adelani, Jian Gang Ngui, Daniel Vila-Suero, Peerat Limkonchoti-wat, Kelly Marchisio, Wei Qi Leong, Yosephine Susanto, and 1 others. 2025. Global mmlu: Un-derstanding and addressing cultural and linguis-tic biases in multilingual evaluation. In Proceed-ings of the 63rd Annual Meeting of the Associ-ation for Computational Linguistics (Volume 1: Long Papers) , pages 18761–18799. Marinko Skare, Beata Gavurova, and Sanja Blažević Burić. 2024. Artificial in-telligence and wealth inequality: A comprehen-sive empirical exploration of socioeconomic implications. Technology in society , 79:102719. Zafir Stojanovski, Oliver Stanley, Joe Sharratt, Richard Jones, Abdulhakeem Adefioye, Jean Kaddour, and Andreas Köpf. 2025. Reason-ing gym: Reasoning environments for reinforce-ment learning with verifiable rewards. ArXiv preprint , abs/2505.24760. Jianheng Tang, Qifan Zhang, Yuhan Li, Nuo Chen, and Jia Li. 2024. Grapharena: Evaluating and exploring large language models on graph com-putation. ArXiv preprint , abs/2407.00379. UNDP. 2025. The next great divergence. Technical report, United Nations Development Program. Manan Uppadhyay, Himanshu Beniwal, Prashant Kodali, and Sunayana Sitaram. 2026. The state and fate of multilingual, contextual evaluation in the nlp world. Microsoft.com. Ashmal Vayani, Dinura Dissanayake, Hasindri Watawana, Noor Ahsan, Nevasini Sasikumar, Omkar Thawakar, Henok Biadglign Ademtew, Yahya Hmaiti, Amandeep Kumar, Kartik Kukreja, and 1 others. 2025. All languages matter: Evaluating lmms on culturally diverse 100 languages. In Proceedings of the Computer Vision and Pattern Recognition Conference ,pages 19565–19575. Anjiang Wei, Yuheng Wu, Yingjia Wan, Tarun Suresh, Huanmi Tan, Zhanke Zhou, Sanmi Koyejo, Ke Wang, and Alex Aiken. 2025. Sat-bench: Benchmarking llms’ logical reasoning via automated puzzle generation from sat formu-las. ArXiv preprint , abs/2505.14615. Minghao Wu, Weixuan Wang, Sinuo Liu, Huifeng Yin, Xintong Wang, Yu Zhao, Chenyang Lyu, Longyue Wang, Weihua Luo, and Kaifu Zhang. 2025. The bitter lesson learned from 2,000+ multilingual benchmarks. ArXiv preprint ,abs/2504.15521. Weihao Xuan, Rui Yang, Heli Qi, Qingcheng Zeng, Yunze Xiao, Aosong Feng, Dairui Liu, Yun Xing, Junjue Wang, Fan Gao, and 1 others. 2025. Mmlu-prox: A multilingual benchmark for ad-vanced large language model evaluation. In Pro-ceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 1513–1532. Zheng-Xin Yong, M Farid Adilazuarda, Jonibek Mansurov, Ruochen Zhang, Niklas Muen-nighoff, Carsten Eickhoff, Genta Indra Winata, Julia Kreutzer, Stephen H Bach, and Al-ham Fikri Aji. 2025. Crosslingual reason-ing through test-time scaling. arXiv preprint arXiv:2505.05408 .Haneul Yoo, Jiho Jin, Kyunghyun Cho, and Alice Oh. 2025. Code-switching in-context learning for cross-lingual transfer of large language mod-els. ArXiv preprint , abs/2510.05678. Z.ai. 2026. Glm-5.1: Towards long-horizon tasks. Z.ai. Yifan Zhang. 2024. Training and evaluating lan-guage models with template-based data genera-tion. ArXiv preprint , abs/2411.18104. 11 A Extended Empirical Results 
+
+In this section, we present the full extended results of our empirical experiments. This section is di-vided into several subsections. In section A.1, we describe the complexity selection for Gemini-3.1-Flash-Lite. In section A.2, we describe some addi-tional measures of accuracy and cross-lingual gaps and present detailed tables of results. In section A.3, we present results for the back-translation ex-periments described in section 4.1. In section A.4, we present results showing the lack of clear corre-lations between thinking length and accuracy, as discussed in section A.4. 
+
+A.1 Complexity selection for Gemini-3.1-Flash-Lite 
+
+The complexity measures for Gemini-3-Flash, Gemma-4-31B, and GLM-5.1 were selected as de-scribed in section 3. But, since Gemini-3.1-Flash-Lite model is a smaller scale model than the other models in our evaluation set we chose to include some easier complexity levels for its evaluation to get the full accuracy curve starting from 100 %. We present the complexity bounds in the Table 3. Note that DSA and Pr DSA had the same complexity levels as the default. Separate complexity levels were selected for SLT, Graph SP and T. Rank. For SLT we chose to include easier levels starting from chain length of 10; for Graph SP, we decided to sample more questions from the complexity range of 70-200(total edges); and for T. Rank we de-cided to sample questions only from the range of 25-150(total edges).                   
+
+> Puzzle Complexity Measure cmin cmax
+> SLT* Chain length 10 600
+> DSA Number of states 32 2090
+> Pr DSA Number of states 961
+> Graph SP* Number of edges 70 200
+> T. Rank* Number of edges 25 150
+> Table 3: Complexity measure and range of complexity values for each puzzle for Gemini-3.1-Flash-Lite.
+
+A.2 Additional Accuracy Measures 
+
+The SMD reported in the main text is a sufficient indicator of the presence of a cross-lingual gap. However, one might be concerned that it obscures cases where some language displays superior per-formance to English at one complexity and inferior performance at another. Therefore, it is convenient to define two supple-mentary measures. We define the average accuracy by Avg Acc (ℓ) = 1
+
+cmax − cmin 
+
+∫ cmax 
+
+> cmin
+
+fℓ(c) dc. (4) We report the Average Accuracy in Table 4. We also define the Reciprocal Divergence (RD) by RD (ℓ) = min  
+
+> c
+
+sign (SMD (ℓ)) ( fEn (c) − fℓ(c)) .
+
+(5) If the SMD is positive, which means that at the point of the largest cross-lingual gap English dis-plays superior performance, the RD tells us the best relative-performance of the non-English language. If the SMD is negative (as in the case of GLM-5.1), the RD tells us the best relative-performance of En-glish. The RD is reported in Table 5. This Table shows the SMD is a good representative of the holistic performance, since the RD is insignificant in all cases. Therefore the peak difference in the accu-racy is also an indicator of the difference in accu-racy at other complexity values. Finally, Tables 6, 7, 8 and 9 expand the SMD re-sults displayed in Table 2 by presenting an estimate of the accuracy of English and the non-English lan-guages at the point of maximum cross-lingual gap. The values in this table are generated as follows. For all the metrics reported, we sample N = 300 
+
+times from the observed distribution of accuracies using the posterior distribution of (Raju and Netra-palli, 2026) to generate the accuracy curve, both for English and the other language. Each sample, 
+
+i, yields a value c∗ 
+
+> i
+
+as defined in (3). Across these values of c∗ 
+
+> i
+
+, we now compute 
+
+⟨fEn ⟩ = 1
+
+N
+
+∑
+
+> i
+
+fEn (c∗ 
+
+> i
+
+); 
+
+⟨fℓ⟩ = 1
+
+N
+
+∑
+
+> i
+
+fℓ(c∗ 
+
+> i
+
+); 
+
+⟨c∗⟩ = 1
+
+N
+
+∑
+
+> i
+
+c∗ 
+
+> i
+
+;
+
+(6) together with their corresponding standard devia-tions. 
+
+A.3 Back-Translation Experiments 
+
+As described in section 4.1, we performed some back-translation experiments to rule out translation 12 Task EN AR HI JA TA TE ZH 
+
+SLT 45 .18 ±1.13 41 .18 ±1.17 43 .70 ±1.13 43 .58 ±1.31 42 .45 ±1.30 40 .30 ±1.33 45 .65 ±1.26 
+
+DSA 52 .88 ±1.74 40 .52 ±1.95 29 .61 ±1.48 33 .08 ±1.54 34 .81 ±1.90 33 .32 ±2.13 41 .75 ±2.03 
+
+Pr DSA 31 .74 ±1.16 29 .97 ±1.05 31 .02 ±1.21 32 .93 ±1.25 30 .28 ±0.98 32 .27 ±1.09 33 .64 ±1.00 
+
+Graph SP 26 .01 ±1.40 22 .40 ±1.13 17 .74 ±1.27 23 .93 ±1.34 21 .40 ±1.26 16 .32 ±0.92 19 .46 ±1.36 
+
+T. Rank 42 .69 ±1.15 35 .83 ±0.81 36 .39 ±0.84 38 .33 ±0.83 37 .01 ±0.86 34 .51 ±0.75 37 .03 ±0.81 
+
+(a) Gemini 3 Flash 
+
+Task EN AR HI JA TA TE ZH 
+
+SLT 28 .88 ±0.87 24 .32 ±0.75 29 .09 ±1.07 27 .97 ±1.03 27 .41 ±0.95 28 .88 ±0.97 30 .53 ±0.95 
+
+DSA 24 .81 ±1.20 21 .59 ±1.13 20 .33 ±0.91 22 .53 ±1.21 24 .32 ±1.37 21 .77 ±1.17 24 .99 ±1.34 
+
+Pr DSA 30 .14 ±1.21 32 .84 ±1.31 29 .51 ±1.21 30 .30 ±1.05 29 .45 ±1.12 31 .55 ±1.15 28 .27 ±1.25 
+
+Graph SP 17 .03 ±0.92 17 .92 ±1.07 18 .81 ±1.04 19 .29 ±1.07 16 .11 ±1.07 14 .99 ±1.16 16 .00 ±1.06 
+
+T. Rank 23 .39 ±1.11 19 .09 ±0.94 20 .31 ±0.89 23 .19 ±0.89 19 .13 ±0.96 19 .29 ±1.06 21 .34 ±0.92 
+
+(b) Gemma 4 31B IT 
+
+Task EN AR HI JA TA TE ZH 
+
+SLT* 27 .84 ±0.95 16 .84 ±0.60 20 .77 ±0.71 24 .48 ±0.85 23 .13 ±0.76 22 .53 ±0.96 26 .35 ±0.89 
+
+DSA 18 .83 ±0.93 16 .10 ±0.93 17 .96 ±1.02 17 .36 ±1.07 13 .91 ±0.83 13 .33 ±0.79 16 .34 ±0.84 
+
+Pr DSA 21 .04 ±0.91 19 .56 ±0.83 17 .12 ±0.84 17 .65 ±0.86 20 .32 ±0.86 18 .67 ±0.77 18 .48 ±0.91 
+
+Graph SP* 14 .71 ±1.47 15 .59 ±1.15 16 .25 ±1.00 15 .82 ±0.89 16 .26 ±0.90 17 .50 ±1.08 15 .96 ±1.20 
+
+T. Rank* 52 .93 ±0.90 45 .21 ±0.70 45 .73 ±0.76 45 .45 ±0.80 47 .93 ±0.81 47 .09 ±0.92 47 .91 ±1.02 
+
+(c) Gemini 3.1 Flash Lite 
+
+Task EN AR HI JA TA TE ZH 
+
+SLT 32 .28 ±0.93 30 .06 ±0.87 30 .13 ±0.94 31 .44 ±1.07 27 .73 ±0.86 28 .99 ±0.76 30 .20 ±0.90 
+
+DSA 24 .95 ±1.07 21 .68 ±0.99 19 .12 ±0.91 25 .89 ±0.97 15 .05 ±0.79 15 .37 ±0.76 24 .48 ±1.14 
+
+Pr DSA 44 .15 ±1.61 39 .36 ±1.49 37 .25 ±1.58 39 .52 ±1.51 33 .30 ±1.25 36 .13 ±1.23 42 .26 ±1.57 
+
+Graph SP 32 .88 ±1.14 34 .91 ±1.58 37 .40 ±1.49 32 .99 ±1.52 35 .62 ±1.47 36 .70 ±1.59 45 .27 ±1.52 
+
+T. Rank 40 .75 ±1.06 40 .07 ±1.00 40 .68 ±1.32 34 .81 ±1.16 36 .78 ±0.94 38 .74 ±1.02 39 .93 ±1.19 
+
+(d) GLM-5-1 
+
+Table 4: Average Accuracy (%) as calculated from the gamma fits. Higher is better. * denotes custom complexity levels used as described in Appendix A.1. 
+
+13 Task AR HI JA TA TE ZH 
+
+SLT −0.01 ±1.42 0.00 ±1.22 −1.49 ±1.46 −0.83 ±1.30 −1.44 ±1.42 −1.66 ±1.39 
+
+DSA 0.00 ±2.25 0.00 ±0.00 0.00 ±0.43 0.00 ±1.64 0.00 ±0.59 0.00 ±2.27 
+
+Pr DSA 0.00 ±1.06 −0.87 ±1.45 −0.04 ±1.24 0.00 ±1.08 −1.22 ±1.36 −0.35 ±1.27 
+
+Graph SP 0.04 ±1.11 0.19 ±0.71 0.08 ±0.92 −0.62 ±1.48 0.23 ±0.73 −0.55 ±1.66 
+
+T. Rank 0.00 ±0.13 0.00 ±0.20 0.00 ±0.37 0.00 ±0.20 0.00 ±0.03 −0.00 ±0.26 
+
+(a) Gemini 3 Flash 
+
+Task AR HI JA TA TE ZH 
+
+SLT 0.00 ±0.93 −2.14 ±2.32 −0.02 ±1.68 −1.37 ±1.74 −1.62 ±2.12 −0.40 ±2.38 
+
+DSA 0.00 ±0.97 0.00 ±0.75 −0.10 ±1.36 −0.30 ±1.80 0.00 ±0.78 −0.69 ±1.63 
+
+Pr DSA −0.01 ±1.41 −2.35 ±1.52 −2.02 ±1.22 −3.50 ±1.57 −0.00 ±1.12 −0.11 ±0.96 
+
+Graph SP −0.12 ±0.86 −1.71 ±1.40 −1.02 ±1.52 −0.37 ±0.86 0.12 ±0.67 −0.05 ±0.66 
+
+T. Rank 0.05 ±0.89 0.05 ±1.79 −2.85 ±2.34 0.05 ±3.12 0.05 ±1.96 0.04 ±1.45 
+
+(b) Gemma 4 31B IT 
+
+Task AR HI JA TA TE ZH 
+
+SLT* 0.00 ±0.15 −0.29 ±0.88 −1.58 ±1.66 −0.28 ±0.94 −0.31 ±1.09 0.00 ±1.50 
+
+DSA 0.00 ±0.81 −0.35 ±1.57 −0.00 ±1.53 0.00 ±0.49 0.00 ±0.50 −0.43 ±1.11 
+
+Pr DSA −0.00 ±1.51 0.11 ±0.47 0.09 ±1.01 −3.16 ±2.02 −0.00 ±1.53 −0.00 ±0.59 
+
+Graph SP* 0.00 ±2.64 −0.17 ±2.13 0.00 ±2.40 0.00 ±2.05 −0.48 ±2.05 0.00 ±2.25 
+
+T. Rank* −0.00 ±0.44 0.00 ±0.07 0.00 ±0.15 0.00 ±0.27 −0.04 ±0.83 0.00 ±0.62 
+
+(c) Gemini 3.1 Flash Lite 
+
+Task AR HI JA TA TE ZH 
+
+SLT 0.00 ±0.64 0.00 ±1.30 −0.64 ±0.87 0.00 ±0.28 −0.84 ±2.50 0.00 ±0.64 
+
+DSA 0.00 ±0.77 0.00 ±0.68 −0.28 ±0.96 0.00 ±0.38 0.00 ±0.00 −0.77 ±1.53 
+
+Pr DSA 0.01 ±1.22 0.02 ±1.45 0.06 ±1.18 0.02 ±0.67 0.05 ±0.94 −1.48 ±1.85 
+
+Graph SP −0.06 ±1.05 −2.97 ±2.80 −1.92 ±1.33 0.00 ±1.05 0.00 ±1.03 0.00 ±0.05 
+
+T. Rank −0.26 ±1.18 −1.99 ±1.71 0.03 ±0.49 0.00 ±0.63 −0.00 ±0.94 0.00 ±1.10 
+
+(d) GLM-5-1 
+
+Table 5: Reciprocal Divergence(%). 
+
+14 Task Metric AR HI JA TA TE ZH 
+
+SLT 
+
+c∗ 326 ±35 303 ±52 254 ±36 258 ±25 251 ±12 410 ±54 
+
+fEN 41 .4±15 .7 52 .6±22 .0 78 .9±16 .3 76 .9±12 .0 80 .4±5.9 15 .6±23 .6
+
+fℓ 31 .9±15 .4 49 .1±23 .0 70 .3±14 .3 66 .1±10 .7 61 .8±5.2 17 .4±21 .7
+
+DSA 
+
+c∗ 721 ±73 667 ±32 651 ±30 680 ±45 692 ±47 704 ±80 
+
+fEN 79 .8±7.5 85 .6±4.8 87 .3±4.0 84 .3±4.7 83 .0±5.9 81 .6±8.2
+
+fℓ 50 .1±5.1 32 .1±3.9 39 .5±3.3 41 .6±4.2 37 .9±5.3 53 .2±5.9
+
+Pr DSA 
+
+c∗ 21 ±4 19 ±5 21 ±5 22 ±4 33 ±5 21 ±3
+
+fEN 67 .8±18 .5 77 .5±21 .9 64 .5±21 .1 57 .4±20 .9 16 .6±25 .6 65 .8±15 .7
+
+fℓ 61 .7±16 .8 72 .1±19 .2 68 .9±22 .4 53 .5±19 .7 18 .1±22 .6 74 .3±17 .1
+
+Graph SP 
+
+c∗ 211 ±53 192 ±22 195 ±60 245 ±51 189 ±18 230 ±36 
+
+fEN 42 .5±17 .4 49 .2±9.2 48 .2±19 .9 32 .8±16 .2 50 .7±8.2 36 .5±11 .4
+
+fℓ 36 .0±19 .2 32 .3±8.2 44 .3±20 .0 24 .5±17 .8 30 .3±6.4 24 .1±12 .7
+
+T. Rank 
+
+c∗ 212 ±6 210 ±6 212 ±8 211 ±7 208 ±4 209 ±6
+
+fEN 68 .9±9.1 71 .4±9.2 68 .9±11 .6 69 .7±10 .1 73 .8±7.6 72 .2±9.3
+
+fℓ 39 .0±7.0 43 .9±7.2 49 .4±10 .2 44 .9±8.5 38 .6±5.6 47 .2±7.9
+
+Table 6: Gemini 3 Flash. Here we present the ⟨c∗⟩ at which SMD values were reported along with ⟨fEN ⟩ and ⟨fℓ⟩
+
+at the respective complexities over 300 bootstraps. 
+
+Task Metric AR HI JA TA TE ZH 
+
+SLT 
+
+c∗ 155 ±15 131 ±35 146 ±30 133 ±23 132 ±36 204 ±40 
+
+fEN 59 .6±13 .1 81 .8±24 .0 68 .2±20 .3 79 .8±15 .6 80 .8±24 .0 25 .8±25 .5
+
+fℓ 38 .6±10 .2 77 .1±18 .4 62 .8±20 .0 65 .6±12 .1 76 .0±20 .1 31 .1±22 .2
+
+DSA 
+
+c∗ 309 ±57 346 ±47 285 ±53 285 ±102 312 ±54 260 ±103 
+
+fEN 65 .5±15 .3 53 .6±13 .4 74 .0±14 .2 74 .0±23 .9 64 .5±14 .8 82 .3±23 .2
+
+fℓ 52 .1±14 .0 37 .2±12 .0 61 .1±12 .4 69 .7±21 .7 51 .8±13 .8 81 .2±23 .2
+
+Pr DSA 
+
+c∗ 26 ±5 18 ±4 18 ±4 18 ±3 25 ±4 20 ±4
+
+fEN 33 .2±21 .2 80 .9±18 .1 82 .1±20 .6 83 .4±14 .4 36 .0±21 .2 71 .5±18 .4
+
+fℓ 39 .3±19 .6 71 .7±14 .7 77 .6±18 .3 70 .8±11 .5 39 .3±19 .7 63 .9±16 .9
+
+Graph SP 
+
+c∗ 199 ±47 234 ±60 220 ±58 114 ±27 125 ±24 119 ±31 
+
+fEN 27 .8±22 .3 18 .9±27 .2 22 .0±25 .6 74 .7±13 .8 66 .9±13 .3 70 .8±16 .0
+
+fℓ 29 .7±20 .5 22 .4±23 .0 26 .5±22 .2 67 .7±12 .3 58 .9±12 .5 65 .4±15 .0
+
+T. Rank 
+
+c∗ 160 ±13 163 ±17 138 ±25 161 ±15 161 ±14 169 ±21 
+
+fEN 53 .5±14 .4 50 .0±17 .4 79 .0±22 .5 52 .8±15 .3 52 .8±15 .2 44 .1±20 .2
+
+fℓ 39 .4±12 .2 40 .2±17 .4 83 .6±27 .6 38 .9±16 .1 39 .4±14 .6 37 .7±20 .3
+
+Table 7: Gemma 4 31B IT. Here we present the ⟨c∗⟩ at which SMD values were reported along with ⟨fEN ⟩ and 
+
+⟨fℓ⟩ at the respective complexities over 300 bootstraps. 
+
+15 Task Metric AR HI JA TA TE ZH 
+
+SLT 
+
+c∗ 122 ±4 126 ±5 128 ±5 131 ±6 129 ±6 147 ±26 
+
+fEN 88 .0±3.7 85 .2±3.8 83 .2±4.4 81 .2±6.5 82 .2±6.3 65 .1±20 .1
+
+fℓ 26 .8±3.9 41 .6±3.9 55 .5±5.1 50 .6±4.9 48 .0±5.2 56 .8±19 .4
+
+DSA 
+
+c∗ 271 ±55 461 ±104 370 ±105 288 ±40 242 ±11 242 ±24 
+
+fEN 70 .0±14 .0 27 .3±21 .1 42 .8±22 .0 64 .8±11 .6 79 .4±4.2 79 .4±6.7
+
+fℓ 55 .7±11 .6 24 .8±22 .6 38 .0±22 .5 42 .8±9.0 47 .9±3.8 59 .4±5.5
+
+Pr DSA 
+
+c∗ 20 ±4 17 ±2 17 ±2 14 ±4 20 ±3 16 ±2
+
+fEN 39 .4±20 .4 61 .1±12 .2 61 .1±15 .4 82 .5±22 .7 41 .3±16 .8 69 .5±14 .8
+
+fℓ 34 .9±22 .4 47 .0±10 .2 48 .9±13 .3 85 .7±28 .0 34 .0±17 .9 58 .6±13 .0
+
+Graph SP 
+
+c∗ 89 ±9 95 ±9 91 ±10 92 ±10 96 ±9 94 ±9
+
+fEN 45 .9±23 .5 27 .7±24 .1 38 .5±24 .4 36 .9±24 .1 25 .2±22 .6 30 .4±23 .7
+
+fℓ 49 .6±25 .3 33 .9±22 .4 42 .9±25 .1 43 .1±24 .4 35 .7±20 .4 35 .4±24 .3
+
+T. Rank 
+
+c∗ 87 ±2 86 ±3 84 ±3 85 ±4 90 ±3 87 ±4
+
+fEN 53 .9±6.8 57 .3±8.0 62 .1±7.7 59 .4±10 .2 47 .3±9.2 53 .9±10 .6
+
+fℓ 26 .5±6.4 32 .9±7.0 37 .0±7.5 42 .9±9.2 26 .6±9.0 37 .4±10 .8
+
+Table 8: Gemini 3.1 Flash Lite. Here we present the ⟨c∗⟩ at which SMD values were reported along with ⟨fEN ⟩
+
+and ⟨fℓ⟩ at the respective complexities over 300 bootstraps. 
+
+Task Metric AR HI JA TA TE ZH 
+
+SLT 
+
+c∗ 167 ±24 167 ±28 151 ±25 170 ±15 207 ±21 163 ±27 
+
+fEN 62 .7±15 .5 62 .7±16 .8 75 .9±15 .8 60 .9±11 .1 35 .2±12 .5 66 .5±16 .5
+
+fℓ 53 .6±13 .8 53 .9±16 .2 68 .9±13 .7 42 .8±8.1 22 .6±13 .8 57 .3±14 .8
+
+DSA 
+
+c∗ 302 ±51 296 ±33 282 ±72 259 ±24 256 ±10 256 ±83 
+
+fEN 60 .4±14 .9 62 .4±11 .5 67 .5±17 .0 75 .8±9.0 76 .8±5.3 76 .8±20 .7
+
+fℓ 48 .1±13 .7 39 .7±9.1 74 .3±18 .9 31 .9±7.1 34 .2±4.5 70 .7±17 .5
+
+Pr DSA 
+
+c∗ 30 ±8 30 ±7 27 ±8 29 ±4 28 ±5 43 ±11 
+
+fEN 42 .5±18 .3 44 .7±16 .1 50 .2±19 .0 46 .7±10 .4 47 .2±12 .4 22 .9±23 .6
+
+fℓ 35 .8±18 .1 34 .9±16 .0 43 .6±18 .5 30 .8±9.1 35 .7±11 .3 19 .5±27 .1
+
+Graph SP 
+
+c∗ 212 ±54 377 ±90 190 ±65 226 ±63 229 ±54 259 ±20 
+
+fEN 64 .7±17 .4 18 .0±27 .5 75 .2±19 .9 58 .1±18 .9 57 .0±16 .0 45 .1±5.4
+
+fℓ 71 .5±18 .4 26 .0±21 .1 81 .2±23 .1 64 .9±19 .2 66 .5±17 .7 70 .6±8.8
+
+T. Rank 
+
+c∗ 183 ±34 172 ±41 192 ±12 211 ±21 227 ±30 204 ±33 
+
+fEN 73 .8±23 .4 82 .2±27 .4 66 .3±9.8 50 .4±14 .9 39 .0±20 .7 56 .2±22 .3
+
+fℓ 71 .1±21 .6 78 .1±23 .2 51 .6±8.9 41 .6±14 .0 34 .6±21 .1 54 .3±22 .6
+
+Table 9: GLM-5-1. Here we present the ⟨c∗⟩ at which SMD values were reported along with ⟨fEN ⟩ and ⟨fℓ⟩ at the respective complexities over 300 bootstraps. 
+
+16 errors. For Gemini 3 Flash and Gemini 3.1 Flash Lite, in cases where a significant SMD was ob-served, we picked the worst-performing language and back-translated its prompt template to English. In all cases, the back-translated prompts were se-mantically identical to the original prompt and, in addition had ≥ 95 % word-level overlap with the original prompt in English. Nevertheless, to rule out the possibility that small variations in the prompt lead to variations in accuracy, we evaluated the accuracy of the model using this back-translated prompt on the two orig-inal complexity values c1, c 2 that were closest to the value of c∗ defined in equation (3) with c1 <c∗ < c 2. This yielded accuracy values f b
+
+> En
+
+(c1) and 
+
+f b
+
+> En
+
+(c2). This allows us to compute 
+
+δi = f b
+
+> En
+
+(ci) − fEn (ci), (7) where fEn (ci) are the original accuracies and ci
+
+runs over c1 and c2. With the original standard de-viations, σ1 and σ2, we can then finally compute 
+
+δ = 1(c2 − c1)
+
+(
+
+|c2 − c∗| δ21
+
+σ21
+
++ |c1 − c∗| δ22
+
+σ22
+
+)
+
+(8) This measure δ yields a weighted χ2 value, and values of δ ≫ 1 would indicate that back-translation has induced a significant difference in accuracy. We present the observed value of δ in Table 10. These show that there are no significant gaps be-tween the original prompt performance and back-translated prompt performance. We note that for Gemini-3.1-Flash-Lite, the tour-nament ranking prompt was an exact match to the original prompt. The Pr DSA task with Gemini 3 Flash and the Graph SP tasks with Gemini 3.1 Flash Lite did not display any significant SMD val-ues at all. For these reasons, the corresponding en-tries in Table 10 have been left blank.                    
+
+> Task Gemini 3 Flash Gemini 3.1 Flash Lite
+> SLT 0.064 (TE) 0.368 (AR) DSA 0.683 (HI) 1.195 (TE) Pr DSA —0.761 (HI) Graph SP 2.903 (TE) —T. Rank 2.003 (TE) — (AR)
+
+Table 10: The variance δ between the back-translated prompt and the original prompt. 
+
+A.4 Correlation between Thinking Budget and Cross-Lingual gaps 
+
+To verify if the thought length is correlated with the cross-lingual gaps, we did the following analysis. We ranked the language based on SMD and then computed the Spearman’s rank correlation with the rankings observed on the average thought usage. This average was computed over all the datapoints for that specific model x language x task triplet (ap-proximately 1000 points). The number of thought tokens was accessible for Gemini 3 Flash, whereas for other models we estimated the average thought token length using the thought character lengths. 3
+
+We present the results of this analysis in Table 11. These results indicate that thought length is not strongly correlated with language performance.  
+
+> 3This is an imperfect measure since character-based mea-surement does not account for script density differences. For instance, a single CJK character encodes more information than an ASCII character. This introduces an estimated 10– 20% measurement error in cross-script comparisons.
+
+17 Model SLT DSA Pr DSA Graph SP T. Rank 
+
+Gemini 3 Flash −0.371 −0.600 −0.086 −0.429 −0.657 
+
+Gemma 4 31B IT +0 .429 −0.314 −0.257 +0 .257 +0 .029 
+
+Gemini 3.1 Flash Lite −0.257 +0 .200 −0.314 −0.143 +0 .143 
+
+GLM-5-1 −0.886 ∗ −0.657 −0.886 ∗ +0 .029 −0.257            
+
+> Table 11: Spearman rank correlation ( ρ) between language ranking by thinking effort and language ranking by Signed Max Divergence (SMD) across tasks and models. Thinking effort is measured by avg_thinking_tokens
+> for Gemini 3 Flash (script-agnostic) and by avg_thought_len (character count) for all other models. ∗Significant at p < 0.05 (highlighted in bold and green). A negative ρwould support the hypothesis that languages with lower SMD (better cross-lingual parity) achieve this by eliciting greater thinking effort from the model. Only 2/20 combinations show a significant negative correlation (both GLM-5-1), while 18/20 are statistically indistinguishable from zero, confirming that cross-lingual gaps cannot be explained merely by differential thinking effort .
+
+B Gamma Fits 
+
+In this section we present graphs for the incom-plete gamma function fit described in section 3 for all the model, task pairs, and for all the languages. These are generated using a Bayesian bootstrap ap-proach: for each bootstrap iteration, we sample the accuracy at each complexity level from the poste-rior Beta distribution Beta(k+1, n−k+1), where k is the number of correct responses and n is the to-tal, and refit the gamma CDF to obtain a new curve. We repeat this 300 times and shade the region be-tween the 2.5th and 97.5th percentiles of the pre-dicted curves, yielding a 95% credible interval for the fitted curve at each complexity. 18 100 200 300 400 500 600 
+
+Complexity (Chain Size) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+SLT Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 0 500 1000 1500 2000 
+
+Complexity (State Count) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+DSA Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 10 20 30 40 50 60 
+
+Complexity (State Count) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+Pr DSA Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 100 200 300 400 500 600 700 
+
+Complexity (Total Edges) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+Graph SP Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 100 150 200 250 300 350 400 
+
+Complexity (Total Edges) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+T. Rank Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh Figure 3: Accuracy vs Complexity plots for different tasks. In each sub-plot, we compare between English and non-English with Gemini 3 Flash model. 
+
+19 0 100 200 300 400 500 600 
+
+Complexity (Chain Size) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+SLT Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 0 200 400 600 800 1000 1200 1400 1600 
+
+Complexity (State Count) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+DSA Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 10 20 30 40 50 60 
+
+Complexity (State Count) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+Pr DSA Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 100 200 300 400 500 600 700 
+
+Complexity (Total Edges) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+Graph SP Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 100 150 200 250 300 350 400 
+
+Complexity (Total Edges) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+T. Rank Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh Figure 4: Accuracy vs Complexity plots for different tasks. In each sub-plot, we compare between English and non-English with Gemma-4-31b-IT model. 
+
+20 0 100 200 300 400 500 600 
+
+Complexity (Chain Size) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+SLT Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 0 500 1000 1500 2000 
+
+Complexity (State Count) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+DSA Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 10 20 30 40 50 60 
+
+Complexity (State Count) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+Pr DSA Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 80 100 120 140 160 180 200 
+
+Complexity (Total Edges) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+Graph SP Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 20 40 60 80 100 120 140 
+
+Complexity (Total Edges) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+T. Rank Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh Figure 5: Accuracy vs Complexity plots for different tasks. In each sub-plot, we compare between English and non-English with Gemini-3.1-Flash-Lite model. 
+
+21 0 100 200 300 400 500 600 
+
+Complexity (Chain Size) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+SLT Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 0 200 400 600 800 1000 1200 1400 
+
+Complexity (State Count) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+DSA Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 10 20 30 40 50 60 
+
+Complexity (State Count) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+Pr DSA Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 100 200 300 400 500 600 700 
+
+Complexity (Total Edges) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+Graph SP Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh 100 150 200 250 300 350 400 
+
+Complexity (Total Edges) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Accuracy
+
+T. Rank Gamma Fit 
+
+Ar 
+
+En 
+
+Hi 
+
+Ja 
+
+Ta 
+
+Te 
+
+Zh Figure 6: Accuracy vs Complexity plots for different tasks. In each sub-plot, we compare between English and non-English with GLM-5.1 model. 
+
+22 C Construction of Prompts and Puzzles 
+
+In this section, we explain the construction of prompts and puzzles and provide sample prompts for each puzzle. We start by explaining the construction of the Graph Shortest Path Puzzle. The other puzzles in our suite can be straightfor-wardly constructed given their description and the prompts given in section C.3. We explain the pro-cedure used to translate the puzzles in section C.2. 
+
+C.1 Graph Shortest Path Construction 
+
+The Graph Shortest Path puzzle presents a social network as an undirected graph and asks the model to find the shortest path between a source and a target node. The puzzle is constructed so that a unique shortest path of length d exists, embed-ded within a densely cross-wired graph of bypass chains. The generation procedure is parameterized by: • d: the shortest path length (backbone length), • nc: the number of parallel bypass chains, • ce: the chain excess (each bypass chain has length d + ce, making it strictly longer than the backbone), • ρ ∈ [0 , 1] : noise density controlling the frac-tion of safe cross-edges added. The total number of nodes and edges are given by: 
+
+N = ( d + 1) + nc · (d + ce − 1) 
+
+Estructural = d + nc · (d + ce)
+
+Eestimated = Estructural + ρ · | C|
+
+where |C| is the number of candidate noise edges. 
+
+Algorithm: Graph Shortest Path Puzzle Generation Input: Parameters (d, n c, c e, ρ )
+
+Step 1: Backbone Construction. 
+
+1. Compute total nodes N = ( d + 1) + 
+
+nc · (d + ce − 1) .2. Generate N unique alphanumeric node IDs (e.g. A1234 ). 3. Assign the first d+1 nodes as the back-bone : b0 → b1 → · · · → bd.4. Set source = b0, target = bd.5. Add edges (bi, b i+1 ) for i = 0 , . . . , d −
+
+1. This creates the unique shortest path of length d.
+
+Step 2: Parallel Bypass Chains. 
+
+1. For each chain j = 1 , . . . , n c:• Allocate d + ce − 1 fresh nodes: 
+
+cj
+
+> 1
+
+, c j
+
+> 2
+
+, . . . , c jd+ce−1.• Add edges: b0 → cj 
+
+> 1
+
+→ cj 
+
+> 2
+
+→· · · → cjd+ce−1 → bd.2. Each bypass chain has total length d +
+
+ce > d , so they cannot create a shorter path than the backbone. 
+
+Step 3: Cross-Wiring Noise Edges. 
+
+1. Enumerate candidate edges. For each chain node u, consider two types of partners: • Chain–chain pairs: For each other chain node v:
+
+– Same chain: allow if depth gap > 1 and ≤ ce.
+
+– Different chains: allow if 
+
+depth (v) − depth (u) ≤
+
+excess (v) and depth (u) −
+
+depth (v) ≤ excess (u).• Chain–backbone pairs: For each backbone node bi: allow only if bi is at the same depth or behind u (i.e. i ≤ depth (u) and 
+
+depth (u) − i ≤ excess (u)). This prevents shortcut edges. No backbone–backbone pairs are ever considered. 2. Add edges with distance safety check. Shuffle candidates, then for each (u, v ) sampled with probability 
+
+ρ:• Compute dist s(u) + 1 + dist t(v)
+
+and dist s(v) + 1 + dist t(u).• Reject if either value ≤ d (would create a path ≤ d from source to target). • Otherwise, add edge (u, v ) and propagate updated distances via incremental BFS. 
+
+Step 4: Verification. 
+
+1. Run BFS from source to target. Verify shortest path length = d.2. Count shortest paths. Verify exactly 1 unique shortest path exists. When scaling complexity levels we keep the pa-rameters d, n c, c e constant, and vary the noise den-23 sity ρ to meet the desired number of edges. Once the maximum number of edges are achieved with the set parameters, we increment d by 1 and con-tinue from appropriate p based on required total edges. 
+
+C.2 Translation and Annotation procedure 
+
+For translating and auditing our puzzles, we em-ployed native speakers through a third-party ag-gregator to verify and check the templates. Each translation was validated and audited by two sepa-rate annotators. No issues were found for 70 % of the translations, while minor stylistic changes were made for 30 % of the prompts. The annotators were appropriately compensated. Below we present the guidelines provided to the annotators. 
+
+Task : This is a Translation Verification task. 
+
+Metrics : Check for semantic equivalence with English ground truth and naturalness of the words used in translated versions. 
+
+Rater Process :1. For each locale, we provide a separate tab within the same google sheet la-beled with the locale name. 2. Column A: “EN-GLISH_GROUNDTRUTH” to check against. 3. Column B: “{lang_id}_TRANSLATION” (e.g., AR_TRANSLATION) to verify. 4. Column C: “Translation OK” (Yes/No). 5. Column D: Edited Translation to add the fixed translations if required. 6. Column E: Comments. 
+
+Instructions :• Compare the English ground truth with translation based on metrics defined above. • Before you go ahead with translation please look at the rows marked as full example to see the full context of the task which will help with any ambigu-ities. • If translation has semantic equivalence with English ground truth and natural-ness of the words, Column C: “Trans-lation OK” = “Yes”. • If any translation edit is required: 
+
+– Column C: “Translation OK” = “No”. 
+
+– Fill out Column D: Edited Trans-lation. 
+
+– Fill out Column E: Comments with comments on what the issue was and what changes were made. 
+
+Audit Process : To be done by a separate set of annotators. • Column F : “Audit Done?” [Data Val-idation: Yes, No]. • Column G : “Issues Found?” [Data Validation: True, False]. • Column H: “Comments” [If issue found? = True, provide a justification]. 
+
+C.3 Prompts 
+
+We now provide example prompts from all five puz-zle types in our benchmark, shown across all seven evaluation languages. Each prompt is generated from the actual puzzle templates with small con-figuration parameters for readability. The under-lying puzzle structure (states, edges, players, etc.) is identical across all languages—only the surface-level rendering changes. 
+
+C.3.1 Sequential Linear Transforms (SLT) English. 
+
+A merchant departed from R4257 with an initial capital of 7. He traveled far and wide, met many people, and carefully recorded every transaction in his ledger. However, a sudden fierce wind scattered the ledger’s pages, completely disrupting his itinerary. Your task is to help this merchant piece the ledger back together. Starting from R4257, infer whom he met in order, reconstruct the timeline, and calculate his exact wealth after each encounter. • After ending business with Z1106, the merchant set off to visit Y3615. Y3615 reviewed the accounts and multiplied the merchant’s balance by a factor of 
+
+−2. As a token of goodwill, Y3615 also gifted the merchant 9. • After ending business with N4611, the 
+
+24 merchant set off to visit O5557. O5557 reviewed the accounts and multiplied the merchant’s balance by a factor of 
+
+−4. Before parting ways, O5557 de-manded a fee of 2. • After ending business with W9928, the merchant set off to visit N4611. N4611 reviewed the accounts and multiplied the merchant’s balance by a multiple of −1. Before parting ways, N4611 de-manded a fee of 1. • After ending business with K5552, the merchant set off to visit E4527. E4527 reviewed the accounts and multiplied the merchant’s balance by a factor of 
+
+−1. Before parting ways, E4527 de-manded a fee of 2. • After ending business with O5557, the merchant set off to visit Z1106. Z1106 reviewed the accounts and multiplied the merchant’s balance by a factor of 2. Before parting ways, Z1106 demanded a fee of 6. • After ending business with W7924, the merchant set off to visit K5552. K5552 reviewed the accounts and multiplied the merchant’s balance by a factor of 2. Before parting ways, K5552 demanded a fee of 7. • After ending business with R4257, the merchant set off to visit W9928. W9928 reviewed the accounts and mul-tiplied the merchant’s balance by a fac-tor of 1. Before parting ways, W9928 demanded a fee of 6. • After ending business with Y3615, the merchant set off to visit W7924. W7924 reviewed the accounts and mul-tiplied the merchant’s balance by a fac-tor of −5. Before parting ways, W7924 demanded a fee of 8. IMPORTANT: Output ONLY the answer in this exact format with no other text: {“chain”: [v0, v1, v2, ...]} where each value is the merchant’s wealth after each transaction, in chronological order. Do not show any intermediate steps or explanations. Your response must be a single valid JSON object and nothing else. 
+
+Arabic. 
+
+༥؇ﺏ 7. ڢڎﺭﻩ ﺃﻭሒᇿ ݁؇ﻝ ߓߵﺃﺱ R4257 ّ݆݁؇රජ ﺍَޚ੯੩ ෛ؇ﺹ، ً݆݁؇ܳأڎࢴ ࣖﻭﺍܳٺࠔ ࠥﺍ৚৑ڣ؇ﻕ، ݬڰگ۰ ႟၍ ﻭ෠஖ܭ ﺍங৙৑ ﻭ݁ڰ؇ۏ༟ ۰٪؇۰ਃಾ ﺭ ل؇ﺡ ًأଫ଒ﺕ ﺫዻዧ، ﻭ ݁ؕﺍᄴᄟڣሒᇭ .ଫଐ ًأٷ؇ل۰ ஓ஄؇݁؇ً. ﺭ༡ܹٺ ۬݁ފ؇ﺭ ﺃﺭᆙᆘ ۹ً؇ ﺍᄴᄟڣଫଐ، ݬڰ༲؇ﺕ ዛᔻ݄ٺ۹ ༥ًڎࣖࢴ. ݆݁ﺍᄴᄟڣᆇ໶໢ ଫଐ٭ሒᇭؕ  ﺍܳٺ؇රජ ۱ڍﺍ ݁ފ؇༟ڎﺓ ሒሃ ݆݁ࣖࢻﺀﺍ ਍ಸ؇ﺀ ﻭﺃ༟ڎ ً؇ܳ྘ོଫଐصዛኞ ، ܾﺍܳٺࠔ ݆ࠥ݁ﺍݿྥٷٺھ ،R4257 ܳگ؇ﺀ. ႟၍ ًأڎ ﺍᄴᄟڢ٭گ۰ ߜߵﻭ ّ۬ﻭﺍۋފص ﺍෑෂ݁มฃ، ﺍܳྥފܹފܭ 
+
+• ෑෂ ل؇ﺭﺓ ﺍܳٺ؇රජ ﺍَޚZ1106، ੯੩ ݁ؕﺃᄩᄟ؇ᆇᅦ ﺇዛኡ؇ﺀ ًأڎ ﺭﺍۏؕ.Y3615 Y3615 ﺍࠍ੆ފ؇ً؇ﺕ ﻭ๤ཚﺏ ﺭݬ٭ڎ ﺍܳٺ؇රජ ሒᇭ −2.܋أݠًިﻥ ݁ިﺩﺓ، ﺃ۱ڎﻯ Y3615 රජ؇ﺃلݯ؇ ًﺍܳٺ .9 
+
+• ෑෂ ل؇ﺭﺓ ﺍܳٺ؇රජ ﺍَޚN4611، ੯੩ ݁ؕﺃᄩᄟ؇ᆇᅦ ﺇዛኡ؇ﺀ ًأڎ ﺭﺍۏؕ.O5557 O5557 ﺍࠍ੆ފ؇ً؇ﺕ ﻭ๤ཚﺏ ﺭݬ٭ڎ ﺍܳٺ؇රජ ሒᇭ −4.ڢٴܭ ﺍ৖৑ڣଫଐﺍﻕ، ޗ؇ܳص 2. ڢڎﺭ۱؇ ߓߵݿިﻡ O5557 
+
+• ෑෂ ل؇ﺭﺓ ﺍܳٺ؇රජ ﺍَޚW9928، ੯੩ ݁ؕﺃᄩᄟ؇ᆇᅦ ﺇዛኡ؇ﺀ ًأڎ ﺭﺍۏؕ.N4611 N4611 ﺍࠍ੆ފ؇ً؇ﺕ ﻭ๤ཚﺏ ﺭݬ٭ڎ ﺍܳٺ؇රජ ሒᇭ −1.ڢٴܭ ﺍ৖৑ڣଫଐﺍﻕ، ޗ؇ܳص 1. ڢڎﺭ۱؇ ߓߵݿިﻡ N4611 
+
+• ෑෂ ل؇ﺭﺓ ﺍܳٺ؇රජ ﺍَޚK5552، ੯੩ ݁ؕﺃᄩᄟ؇ᆇᅦ ﺇዛኡ؇ﺀ ًأڎ ﺭﺍۏؕ.E4527 E4527 ﺍࠍ੆ފ؇ً؇ﺕ ﻭ๤ཚﺏ ﺭݬ٭ڎ ﺍܳٺ؇රජ ሒᇭ −1.ڢٴܭ ﺍ৖৑ڣଫଐﺍﻕ، ޗ؇ܳص 2. ڢڎﺭ۱؇ ߓߵݿިﻡ E4527 
+
+• ෑෂ ل؇ﺭﺓ ﺍܳٺ؇රජ ﺍَޚO5557، ੯੩ ݁ؕﺃᄩᄟ؇ᆇᅦ ﺇዛኡ؇ﺀ ًأڎ ﺭﺍۏؕ.Z1106 Z1106 ﺍࠍ੆ފ؇ً؇ﺕ ﻭ๤ཚﺏ Z1106 ޗ؇ܳص ﺍ৖৑ڣଫଐﺍﻕ، 2.ڢٴܭ ሒᇭ ﺍܳٺ؇රජ ﺭݬ٭ڎ 6. ڢڎﺭ۱؇ ߓߵݿިﻡ 
+
+• ෑෂ ل؇ﺭﺓ ﺍܳٺ؇රජ ﺍَޚW7924، ੯੩ ݁ؕﺃᄩᄟ؇ᆇᅦ ﺇዛኡ؇ﺀ ًأڎ ﺭﺍۏؕ.K5552 K5552 ﺍࠍ੆ފ؇ً؇ﺕ ﻭ๤ཚﺏ K5552 ޗ؇ܳص ﺍ৖৑ڣଫଐﺍﻕ، 2.ڢٴܭ ሒᇭ ﺍܳٺ؇රජ ﺭݬ٭ڎ 7. ڢڎﺭ۱؇ ߓߵݿިﻡ 
+
+• ෑෂ ل؇ﺭﺓ ﺍܳٺ؇රජ ﺍَޚR4257، ੯੩ ݁ؕﺃᄩᄟ؇ᆇᅦ ﺇዛኡ؇ﺀ ًأڎ ﺭﺍۏؕ.W9928 W9928 ﺍࠍ੆ފ؇ً؇ﺕ ﻭ๤ཚﺏ W9928 ޗ؇ܳص ﺍ৖৑ڣଫଐﺍﻕ، 1.ڢٴܭ ሒᇭ ﺍܳٺ؇රජ ﺭݬ٭ڎ 6. ڢڎﺭ۱؇ ߓߵݿިﻡ 
+
+• ෑෂ ل؇ﺭﺓ ﺍܳٺ؇රජ ﺍَޚY3615، ੯੩ ݁ؕﺃᄩᄟ؇ᆇᅦ ﺇዛኡ؇ﺀ ًأڎ ﺭﺍۏؕ.W7924 W7924 ﺍࠍ੆ފ؇ً؇ﺕ ﻭ๤ཚﺏ ﺭݬ٭ڎ ﺍܳٺ؇රජ ሒᇭ −5.ڢٴܭ ﺍ৖৑ڣଫଐﺍﻕ، ޗ؇ܳص 8. ڢڎﺭ۱؇ ߓߵݿިﻡ W7924 
+
+IMPORTANT: Output ONLY the answer in this exact format with no other text: 
+
+25 {“chain”: [v0, v1, v2, ...]} where each value is the merchant’s wealth after each transaction, in chronological order. Do not show any intermediate steps or explanations. Your response must be a single valid JSON object and nothing else. 
+
+Hindi. 
+
+एकव्य ापारी ने R4257 से 7 की पूंजी के साथ अपनीव्य ापािरक यात्रा शुरू की। उसनेदू र-दूर तक यात्रा की, कई लोगाें सेव्य ापार िकया और अपनी हर लेन-देन को सावधानीपूवर्क अपने बही-खाते में दजर् िकया। लेिकन अचानक आई एक भयानक आंधी ने उसके बही-खाते के पन्ने िबखेर िदए, िजससे उसकी यात्रा का पूराक्र म िबगड़ गया। अब आपको इसव्य ापारी की मदद करनी है। R4257 से शुरू करतेहु ए, यह पता लगाएं िक वह िकसके बाद िकससे िमला, और हर मुलाकात के बाद उसकी सटीक संपित्त की गणना करें। 
+
+• Z1106 के साथ अपना काम खत्म करने के बाद,व्य ापारी Y3615 से िमलने िनकल पड़ा। 
+
+Y3615 ने बही-खाते की जांच की, औरव्य ापारी की शेष रािश को −2 से गुणा िकया। सद्भावना केप्र तीक केरू प में, Y3615 नेव्य ापारी को 9 का उपहार भी िदया। 
+
+• N4611 के साथ अपना काम खत्म करने के बाद,व्य ापारी O5557 से िमलने िनकल पड़ा। 
+
+O5557 ने बही-खाते की जांच की, औरव्य ापारी की शेष रािश को −4 से गुणा िकया। वहां से िवदा लेने से पहले, O5557 ने 2 का शुल्क मांगा। 
+
+• W9928 के साथ अपना काम खत्म करने के बाद,व्य ापारी N4611 से िमलने िनकल पड़ा। 
+
+N4611 ने बही-खाते की जांच की, औरव्य ापारी की शेष रािश को −1 से गुणा िकया। वहां से िवदा लेने से पहले, N4611 ने 1 का शुल्क मांगा। 
+
+• K5552 के साथ अपना काम खत्म करने के बाद,व्य ापारी E4527 से िमलने िनकल पड़ा। E4527 
+
+ने बही-खाते की जांच की, औरव्य ापारी की शेष रािश को −1 से गुणा िकया। वहां से िवदा लेने से पहले, E4527 ने 2 का शुल्क मांगा। 
+
+• O5557 के साथ अपना काम खत्म करने के बाद,व्य ापारी Z1106 से िमलने िनकल पड़ा। Z1106 
+
+ने बही-खाते की जांच की, औरव्य ापारी की शेष रािश को 2 से गुणा िकया। वहां से िवदा लेने से पहले, Z1106 ने 6 का शुल्क मांगा। 
+
+• W7924 के साथ अपना काम खत्म करने के बाद,व्य ापारी K5552 से िमलने िनकल पड़ा। 
+
+K5552 ने बही-खाते की जांच की, औरव्य ापारी की शेष रािश को 2 से गुणा िकया। वहां से िवदा 
+
+लेने से पहले, K5552 ने 7 का शुल्क मांगा। 
+
+• R4257 के साथ अपना काम खत्म करने के बाद,व्य ापारी W9928 से िमलने िनकल पड़ा। 
+
+W9928 ने बही-खाते की जांच की, औरव्य ापारी की शेष रािश को 1 से गुणा िकया। वहां से िवदा लेने से पहले, W9928 ने 6 का शुल्क मांगा। 
+
+• Y3615 के साथ अपना काम खत्म करने के बाद,व्य ापारी W7924 से िमलने िनकल पड़ा। 
+
+W7924 ने बही-खाते की जांच की, औरव्य ापारी की शेष रािश को −5 से गुणा िकया। वहां से िवदा लेने से पहले, W7924 ने 8 का शुल्क मांगा। 
+
+IMPORTANT: Output ONLY the answer in this exact format with no other text: {“chain”: [v0, v1, v2, ...]} where each value is the merchant’s wealth after each transaction, in chronological order. Do not show any intermediate steps or explanations. Your response must be a single valid JSON object and nothing else. 
+
+Japanese. 
+
+あ る 商 人 が 初 期 資 本 7を 持 っ て 
+
+R4257 を出発しました。彼はあちこち を旅し、 多くの人と出会い、 すべての取 引を帳簿に注意深く記録しました。し かし、突然の強風で帳簿のページが散 乱し、彼の旅程は完全に分からなくな ってしまいました。 あなたの任務は、 この商人が帳簿を元通りに繋ぎ合わせる のを手伝うことです。 R4257 から出発 し、彼が順番に誰と出会ったかを推測 してタイムラインを再構築し、それぞ れの出会いの後の彼の正確な所持金を 計算してください。 
+
+• Z1106 との取引を終えた後、 商人は 
+
+Y3615 を訪ねるために出発しまし た。 Y3615 は帳簿を確認し、 商人の 残高に −2 を掛けました。親善の 印として、 Y3615 は商人に 9を贈り ました。 
+
+• N4611 との取引を終えた後、商人 は O5557 を訪ねるために出発しま した。 O5557 は帳簿を確認し、 商人 の残高に −4 を掛けました。別れ る前に、 O5557 は2の料金を要求し ました。 
+
+• W9928 との取引を終えた後、商人 は N4611 を訪ねるために出発しま 
+
+26 した。 N4611 は帳簿を確認し、 商人 の残高に −1 を掛けました。別れ る前に、 N4611 は1の料金を要求し ました。 
+
+• K5552 との取引を終えた後、商人 は E4527 を訪ねるために出発しま した。 E4527 は帳簿を確認し、商人 の残高に −1 を掛けました。別れ る前に、 E4527 は2の料金を要求し ました。 
+
+• O5557 との取引を終えた後、商人 は Z1106 を訪ねるために出発しま した。 Z1106 は帳簿を確認し、商人 の残高に 2を掛けました。別れる前 に、 Z1106 は6の料金を要求しまし た。 
+
+• W7924 との取引を終えた後、商人 は K5552 を訪ねるために出発しま した。 K5552 は帳簿を確認し、 商人 の残高に 2を掛けました。別れる前 に、 K5552 は7の料金を要求しまし た。 
+
+• R4257 との取引を終えた後、 商人は 
+
+W9928 を訪ねるために出発しまし た。 W9928 は帳簿を確認し、商人 の残高に 1を掛けました。別れる前 に、 W9928 は6の料金を要求しまし た。 
+
+• Y3615 との取引を終えた後、 商人は 
+
+W7924 を訪ねるために出発しまし た。 W7924 は帳簿を確認し、 商人の 残高に −5 を掛けました。別れる 前に、 W7924 は8の料金を要求しま した。 
+
+IMPORTANT: Output ONLY the answer in this exact format with no other text: {“chain”: [v0, v1, v2, ...]} where each value is the merchant’s wealth after each transaction, in chronological order. Do not show any intermediate steps or explanations. Your response must be a single valid JSON object and nothing else. 
+
+Tamil. 
+
+ஒரு வியாபாரி R4257 -லிருந்து 7 என்ற ஆரம்ப மூலதனத்துடன் புறப்பட்டார். அவர் பல இடங்களுக்குப் பயணம் ெசய்து, 
+
+பலைரச் சந்தித்து, ஒவ்ெவாரு பரிவர்த்தைனையயும் தனது கணக்குப் புத்தகத்தில் கவனமாகப் பதிவு ெசய்தார். இருப்பினும், திடீெரனவீ சிய பலத்த காற்று கணக்குப் புத்தகத்தின் பக்கங்கைளச் சிதறடித்து, அவரது பயணத் திட்டத்ைத முற்றBலுமாகசீ ர்குைலத்தது. இந்த வியாபாரிக்கு தனது கணக்குப் புத்தகத்ைதமீ ண்டும் ஒன்றBைணக்க உதவுவேத உங்கள் பணியாகும். R4257 
+
+-லிருந்து ெதாடங்கி, அவர் யாைர, எந்த வரிைசயில் சந்தித்தார் என்பைத ஊகித்து, காலவரிைசைய மறுகட்டைமப்பு ெசய்து, ஒவ்ெவாரு சந்திப்பிற்கும் பிறகு அவரது சரியான ெசல்வத்ைதக் கணக்கிடுங்கள். 
+
+• Z1106 உடனான வியாபாரத்ைத முடித்த பிறகு, வியாபாரி 
+
+Y3615 ஐச் சந்திக்கப் புறப்பட்டார். Y3615 
+
+கணக்குகைளச் சரிபார்த்து, வியாபாரியின் இருப்ைப 
+
+−2 ஆல் ெபருக்கினார். நல்ெலண்ணத்தின் அைடயாளமாக, Y3615 
+
+வியாபாரிக்கு 9 -ஐப் பரிசளித்தார். 
+
+• N4611 உடனான வியாபாரத்ைத முடித்த பிறகு, வியாபாரி O5557 ஐச் சந்திக்கப் புறப்பட்டார். 
+
+O5557 கணக்குகைளச் சரிபார்த்து, வியாபாரியின் இருப்ைப −4 ஆல் ெபருக்கினார். பிரியும் முன், 
+
+O5557 2 -ஐக் கட்டணமாகக் ேகாரினார். 
+
+• W9928 உடனான வியாபாரத்ைத முடித்த பிறகு, வியாபாரி N4611 ஐச் சந்திக்கப் புறப்பட்டார். 
+
+N4611 கணக்குகைளச் 
+
+27 சரிபார்த்து, வியாபாரியின் இருப்ைப −1 ஆல் ெபருக்கினார். பிரியும் முன், 
+
+N4611 1 -ஐக் கட்டணமாகக் ேகாரினார். 
+
+• K5552 உடனான வியாபாரத்ைத முடித்த பிறகு, வியாபாரி E4527 ஐச் சந்திக்கப் புறப்பட்டார். E4527 
+
+கணக்குகைளச் சரிபார்த்து, வியாபாரியின் இருப்ைப 
+
+−1 ஆல் ெபருக்கினார். பிரியும் முன், E4527 2 -ஐக் கட்டணமாகக் ேகாரினார். 
+
+• O5557 உடனான வியாபாரத்ைத முடித்த பிறகு, வியாபாரி Z1106 ஐச் சந்திக்கப் புறப்பட்டார். Z1106 
+
+கணக்குகைளச் சரிபார்த்து, வியாபாரியின் இருப்ைப 2 ஆல் ெபருக்கினார். பிரியும் முன், Z1106 6 -ஐக் கட்டணமாகக் ேகாரினார். 
+
+• W7924 உடனான வியாபாரத்ைத முடித்த பிறகு, வியாபாரி K5552 ஐச் சந்திக்கப் புறப்பட்டார். 
+
+K5552 கணக்குகைளச் சரிபார்த்து, வியாபாரியின் இருப்ைப 2 ஆல் ெபருக்கினார். பிரியும் முன், 
+
+K5552 7 -ஐக் கட்டணமாகக் ேகாரினார். 
+
+• R4257 உடனான வியாபாரத்ைத முடித்த பிறகு, வியாபாரி W9928 ஐச் சந்திக்கப் புறப்பட்டார். 
+
+W9928 கணக்குகைளச் சரிபார்த்து, வியாபாரியின் இருப்ைப 1 ஆல் ெபருக்கினார். பிரியும் முன், 
+
+W9928 6 -ஐக் கட்டணமாகக் ேகாரினார். 
+
+• Y3615 உடனான வியாபாரத்ைத முடித்த பிறகு, வியாபாரி W7924 ஐச் சந்திக்கப் புறப்பட்டார். 
+
+W7924 கணக்குகைளச் சரிபார்த்து, வியாபாரியின் 
+
+இருப்ைப −5 ஆல் ெபருக்கினார். பிரியும் முன், 
+
+W7924 8 -ஐக் கட்டணமாகக் ேகாரினார். 
+
+IMPORTANT: Output ONLY the answer in this exact format with no other text: {“chain”: [v0, v1, v2, ...]} where each value is the merchant’s wealth after each transaction, in chronological order. Do not show any intermediate steps or explanations. Your response must be a single valid JSON object and nothing else. 
+
+Telugu. 
+
+ఒకవాయ్పారి 7పా ȼ రంభపె టుట్బడితో R4257 
+
+నుండి బయలుదేరాడు. అతనుదే శదేశాలుతిరిగి , ఎంతో మందిని కలిసి, పȼతిలావాదేవీని తనఖాతా పుసత్కంలోజా గȪతత్గా నమోదుచే సుకునాన్డు. అయితే, అకసామ్తుత్గావీచి న బలşనగాలిఖాతా పుసత్కంపేజీ లనుచెలాల్చె దురుచేసి ంది,దీని వలల్ అతని పȼయాణవి వరాలు పూరిɌగాతా రుమారయాయ్యి. ఈవాయ్పారి తనఖాతా పుసత్కానిన్ మళీల్ ఒక కȨమంలోపె టట్డానికి సహాయంచే యడమేమీ పని. R4257 నుండిపాȼ రంభించి, అతను వరుసగా ఎవరిని కలిశాడో ఊహించండి,కా లకȨమానిన్ పునరిన్రిమ్ంచండి మరియు పȼతి ఒకక్రినీ కలిసిన తరావ్త అతని వదద్ ఉనన్ ఖచిచ్తşన సంపదనులెకిక్ ంచండి. 
+
+• Z1106 తోవాయ్పా రం ముగిసిన తరావ్త,వాయ్పారి 
+
+Y3615 ని కలవడానికి బయలుదేరాడు. Y3615 ఖాతా లను పరిశీలించి,వాయ్పారిబాయ్లెన్‍స్ ను −2తో గుణించారు. సదాభ్వనకుచి హన్ంగా, 
+
+Y3615 వాయ్పారికి 9 కూడా బహǼమతిగా ఇచాచ్రు. 
+
+• N4611 తోవాయ్పా రం ముగిసిన తరావ్త,వాయ్పారి 
+
+O5557 ని కలవడానికి బయలుదేరాడు. O5557 ఖాతా లను పరిశీలించి,వాయ్పారిబాయ్లెన్‍స్ ను −4తో గుణించారు.విడిపోయే ముందు, O5557 2రుసుముగా అడిగారు. 
+
+• W9928 తోవాయ్పా రం ముగిసిన తరావ్త,వాయ్పారి 
+
+N4611 ని కలవడానికి బయలుదేరాడు. N4611 ఖాతా లను పరిశీలించి,వాయ్పారిబాయ్లెన్‍స్ ను −1తో గుణించారు.విడిపోయే ముందు, N4611 1రుసుముగా అడిగారు. 
+
+• K5552 తోవాయ్పా రం ముగిసిన తరావ్త, 
+
+28 వాయ్పారి E4527 ని కలవడానికి బయలుదేరాడు. E4527 ఖాతా లను పరిశీలించి,వాయ్పారిబాయ్లెన్‍స్ ను −1తో గుణించారు.విడిపోయే ముందు, 
+
+E4527 2 రుసుముగా అడిగారు. 
+
+• O5557 తోవాయ్పా రం ముగిసిన తరావ్త,వాయ్పారి 
+
+Z1106 ని కలవడానికి బయలుదేరాడు. Z1106 ఖాతా లను పరిశీలించి,వాయ్పారిబాయ్లెన్‍స్ ను 2తో గుణించారు.విడిపోయే ముందు, Z1106 6రుసుముగా అడిగారు. 
+
+• W7924 తోవాయ్పా రం ముగిసిన తరావ్త,వాయ్పారి 
+
+K5552 ని కలవడానికి బయలుదేరాడు. K5552 ఖాతా లను పరిశీలించి,వాయ్పారిబాయ్లెన్‍స్ ను 2తో గుణించారు.విడిపోయే ముందు, K5552 7రుసుముగా అడిగారు. 
+
+• R4257 తోవాయ్పా రం ముగిసిన తరావ్త,వాయ్పారి 
+
+W9928 ని కలవడానికి బయలుదేరాడు. W9928 ఖాతా లను పరిశీలించి,వాయ్పారిబాయ్లెన్‍స్ ను 1తో గుణించారు.విడిపోయే ముందు, W9928 
+
+6 రుసుముగా అడిగారు. 
+
+• Y3615 తోవాయ్పా రం ముగిసిన తరావ్త,వాయ్పారి 
+
+W7924 ని కలవడానికి బయలుదేరాడు. W7924 ఖాతా లను పరిశీలించి,వాయ్పారిబాయ్లెన్‍స్ ను −5తో గుణించారు.విడిపోయే ముందు, W7924 
+
+8 రుసుముగా అడిగారు. 
+
+IMPORTANT: Output ONLY the answer in this exact format with no other text: {“chain”: [v0, v1, v2, ...]} where each value is the merchant’s wealth after each transaction, in chronological order. Do not show any intermediate steps or explanations. Your response must be a single valid JSON object and nothing else. 
+
+Chinese. 
+
+一位商人带着 7的初始本金从 R4257 启程。他游历四方，结识了许多人，并将 每一笔交易都仔细记录在账本中。然而， 一阵突如其来的狂风吹散了账本的书页， 将他的行程彻底打乱。你的任务是帮助 这位商人重新拼凑账本。从 R4257 出发， 推断出他先后遇见了谁， 重建时间线， 并计算出他每次遭遇后的确切财富。 
+
+• 在与 Z1106 结束生意后，商人启程 
+
+去拜访 Y3615 。Y3615 审核了账目， 将商人的余额乘以了 −2。作为善意 的象征， Y3615 还赠予了商人 9。
+
+• 在与 N4611 结束生意后，商人启程 去拜访 O5557 。O5557 审核了账目， 将商人的余额乘以了 −4。在分道扬 镳之前， O5557 索要了 2的费用。 
+
+• 在与 W9928 结束生意后，商人启程 去拜访 N4611 。N4611 审核了账目， 将商人的余额乘以了 −1。在分道扬 镳之前， N4611 索要了 1的费用。 
+
+• 在与 K5552 结束生意后，商人启程 去拜访 E4527 。E4527 审核了账目， 将商人的余额乘以了 −1。在分道扬 镳之前， E4527 索要了 2的费用。 
+
+• 在与 O5557 结束生意后，商人启程 去拜访 Z1106 。Z1106 审核了账目， 将商人的余额乘以了 2。在分道扬镳 之前， Z1106 索要了 6的费用。 
+
+• 在与 W7924 结束生意后，商人启程 去拜访 K5552 。K5552 审核了账目， 将商人的余额乘以了 2。在分道扬镳 之前， K5552 索要了 7的费用。 
+
+• 在与 R4257 结束生意后，商人启程 去拜访 W9928 。W9928 审核了账目， 将商人的余额乘以了 1。在分道扬镳 之前， W9928 索要了 6的费用。 
+
+• 在与 Y3615 结束生意后，商人启程 去拜访 W7924 。W7924 审核了账目， 将商人的余额乘以了 −5。在分道扬 镳之前， W7924 索要了 8的费用。 
+
+IMPORTANT: Output ONLY the answer in this exact format with no other text: {“chain”: [v0, v1, v2, ...]} where each value is the merchant’s wealth after each transaction, in chronological order. Do not show any intermediate steps or explanations. Your response must be a single valid JSON object and nothing else. 
+
+C.3.2 Discrete State Automata (DSA) English. 
+
+You are navigating a building with different rooms. Each room has keys that take you to other rooms. You start in Room E2679. • In Room V9935, if you use the Gold 
+
+29 Key, you reach Room H4657. • In Room V9935, if you use the Silver Key, you reach Room A5506. • In Room U2824, if you use the Silver Key, you reach Room V9935. • In Room A5506, if you use the Gold Key, you reach Room V9935. • In Room A5506, if you use the Silver Key, you reach Room V9935. • In Room E2679, if you use the Silver Key, you reach Room A5506. • In Room H4657, if you use the Gold Key, you reach Room A5506. • In Room E2679, if you use the Gold Key, you reach Room A5506. • In Room U2824, if you use the Gold Key, you reach Room E2679. • In Room H4657, if you use the Silver Key, you reach Room V9935. If you use the following sequence of keys: 1. Gold Key 2. Silver Key 3. Gold Key 4. Gold Key 5. Silver Key, which room do you end up in? Example response: {“state”: “Room D6881”} IMPORTANT: The sequence has exactly 5 numbered triggers. Process them step by step: for each numbered trigger, find the matching transition rule for your current room and that trigger, then move to the next room. After applying all 5 triggers, report the final room. For example, if the sequence is: 1. Gold Key 2. Silver Key 3. Gold Key you apply trigger 1 (Gold Key), then trigger 2 (Silver Key), then trigger 3 (Gold Key), and report the room after exactly 3 steps. IMPORTANT: Your response must be a sin-gle valid JSON object and nothing else. 
+
+Arabic. 
+
+ً۬݁ٴྥོ ሒᇭ ปฃٷگܭ ﺃ೑಻ ෛٺܹڰ۰. ਵؗﻑ ੼ ႟၍ ۰ڣਵؗ ؇ዛኞ ﺃරඝﻯਵؗ .ﻑ ﺇ༠؊ّ ሌᇿڍﻙ ݁ڰ؇ਃಾں ڎﺃਊಾ ሒᇭ ۰ڣਵؗ E2679. 
+
+• ﺍม฀۱ᄳᄟ، ﺍৎ৊ڰٺ؇ﺡ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ ،ਵؗ V9935ڣ۰ ሒᇭ ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ۰ڣਵؗ H4657. 
+
+• ﺍܳڰ๴ཟ، ﺍৎ৊ڰٺ؇ﺡ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ ،ਵؗ V9935ڣ۰ ሒᇭ ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ۰ڣਵؗ A5506. 
+
+• ሒᇭ ਵؗڣ۰ U2824، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ﺍܳڰ๴ཟ، ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ਵؗڣ۰ V9935. 
+
+• ﺍม฀۱ᄳᄟ، ﺍৎ৊ڰٺ؇ﺡ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ ،ਵؗ A5506ڣ۰ ሒᇭ ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ۰ڣਵؗ V9935. 
+
+• ﺍܳڰ๴ཟ، ﺍৎ৊ڰٺ؇ﺡ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ ،ਵؗ A5506ڣ۰ ሒᇭ ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ۰ڣਵؗ V9935. 
+
+• ﺍܳڰ๴ཟ، ﺍৎ৊ڰٺ؇ﺡ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ ،ਵؗ E2679ڣ۰ ሒᇭ ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ۰ڣਵؗ A5506. 
+
+• ሒᇭ ਵؗڣ۰ H4657، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ،ม฀۱ᄳᄟﺍ ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ਵؗڣ۰ A5506. 
+
+• ﺍม฀۱ᄳᄟ، ﺍৎ৊ڰٺ؇ﺡ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ ،ਵؗ E2679ڣ۰ ሒᇭ ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ۰ڣਵؗ A5506. 
+
+• ሒᇭ ਵؗڣ۰ U2824، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ،ม฀۱ᄳᄟﺍ ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ਵؗڣ۰ E2679. 
+
+• ሒᇭ ਵؗڣ۰ H4657، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ﺍܳڰ๴ཟ، ڣފިﻑ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ሒᇭ ਵؗڣ۰ V9935. ﺍܳٺ؇ሒᇿ: ﺍৎ৊ڰਃಾ؇ں૭૜ ܹފܭ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ .1 ڰٺ؇ﺡৎ৊ﺍ ม฀۱ᄳᄟﺍ ﺍܳڰ๴ཟ ﺍৎ৊ڰٺ؇ﺡ 2. .3 ڰٺ؇ﺡৎ৊ﺍ ม฀۱ᄳᄟﺍ .4 ڰٺ؇ﺡৎ৊ﺍ ม฀۱ᄳᄟﺍ ዛኞ؇؟ ݿྥٷมᘟው ﺍܳมฆ ﺍܳ؞ݠڣ۰ ᆇᅫ ሒሃ؇ ﺍܳڰ๴ཟ، ﺍৎ৊ڰٺ؇ﺡ 5. ݁ټ؇ﻝ আॻ༟ :۰ً؇༶ݿٺ৖৑ﺍ {``state'': ۰ڣਵؗ`` D6881``} 
+
+IMPORTANT: The sequence has exactly 5 numbered triggers. Process them step by step: for each numbered trigger, find the matching transition rule for your current room and that trigger, then move to the next room. After applying all 5 triggers, report the final room. For example, if the sequence is: 
+
+30 .1 ڰٺ؇ﺡৎ৊ﺍ ม฀۱ᄳᄟﺍ ﺍܳڰ๴ཟ ﺍৎ৊ڰٺ؇ﺡ 2. .3 ڰٺ؇ﺡৎ৊ﺍ ม฀۱ᄳᄟﺍ 
+
+you apply trigger 1 ( ﺍม฀۱ᄳᄟ ﺍৎ৊ڰٺ؇ﺡ ), then trig-ger 2 ( ﺍܳڰ๴ཟ ﺍৎ৊ڰٺ؇ﺡ ), then trigger 3 ( ﺍৎ৊ڰٺ؇ﺡ ม฀۱ᄳᄟﺍ ) and report the room after exactly 3 steps. IMPORTANT: Your response must be a single valid JSON object and nothing else. 
+
+Hindi. 
+
+आप एक इमारत में अलग-अलग कमराें से गुज़र रहे हैं। हर कमरे में चािबयाँ हैं जो आपकोदू सरे कमराें में ले जाती हैं। आप कमरा E2679 में शुरू करते हैं। 
+
+• कमरा V9935 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप कमरा H4657 में पहुँचते हैं। 
+
+• कमरा V9935 में, यिद आप चांदी की चाबी का उपयोग करते हैं, तो आप कमरा A5506 में पहुँचते हैं। 
+
+• कमरा U2824 में, यिद आप चांदी की चाबी का उपयोग करते हैं, तो आप कमरा V9935 में पहुँचते हैं। 
+
+• कमरा A5506 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप कमरा V9935 में पहुँचते हैं। 
+
+• कमरा A5506 में, यिद आप चांदी की चाबी का उपयोग करते हैं, तो आप कमरा V9935 में पहुँचते हैं। 
+
+• कमरा E2679 में, यिद आप चांदी की चाबी का उपयोग करते हैं, तो आप कमरा A5506 में पहुँचते हैं। 
+
+• कमरा H4657 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप कमरा A5506 में पहुँचते हैं। 
+
+• कमरा E2679 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप कमरा A5506 में पहुँचते हैं। 
+
+• कमरा U2824 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप कमरा E2679 में पहुँचते हैं। 
+
+• कमरा H4657 में, यिद आप चांदी की चाबी का उपयोग करते हैं, तो आप कमरा V9935 में पहुँचते हैं। यिद आप चािबयाें के िनम्निलिखतक्र म का उपयोग करते हैं: 
+
+1. सोने की चाबी 2. चांदी की चाबी 3. सोने की चाबी 4. सोने की चाबी 5. चांदी की चाबी, तो आप अंत में िकस कमरे में पहुँचेंगे? उदाहरणप्र ितिक्रया: { “state”: “ कमरा D6881” }
+
+IMPORTANT: The sequence has exactly 5 numbered triggers. Process them step by step: for each numbered trigger, find the matching transition rule for your current room and that trigger, then move to the next room. After applying all 5 triggers, report the final room. For example, if the sequence is: 
+
+1. सोने की चाबी 2. चांदी की चाबी 3. सोने की चाबी 
+
+you apply trigger 1 (सोने की चाबी), then trig-ger 2 (चांदी की चाबी), then trigger 3 (सोने की चाबी), and report the room after exactly 3 steps. IMPORTANT: Your response must be a single valid JSON object and nothing else. 
+
+Japanese. 
+
+あなたは異なる部屋がある建物を移動 しています。各部屋には他の部屋に移 動できる鍵があります。 あなたは部屋 E2679 から始めます。 
+
+• 部屋 V9935 で金の鍵を使うと、部 屋 H4657 にたどり着きます。 
+
+• 部屋 V9935 で銀の鍵を使うと、部 屋 A5506 にたどり着きます。 
+
+• 部屋 U2824 で銀の鍵を使うと、部 屋 V9935 にたどり着きます。 
+
+• 部屋 A5506 で金の鍵を使うと、部 屋 V9935 にたどり着きます。 
+
+• 部屋 A5506 で銀の鍵を使うと、部 屋 V9935 にたどり着きます。 
+
+• 部屋 E2679 で銀の鍵を使うと、部 屋 A5506 にたどり着きます。 
+
+• 部屋 H4657 で金の鍵を使うと、部 屋 A5506 にたどり着きます。 
+
+• 部屋 E2679 で金の鍵を使うと、部 屋 A5506 にたどり着きます。 
+
+31 • 部屋 U2824 で金の鍵を使うと、部 屋 E2679 にたどり着きます。 
+
+• 部屋 H4657 で銀の鍵を使うと、部 屋 V9935 にたどり着きます。 次の鍵のシーケンスを使用した場合 :1. 金の鍵 
+
+2. 銀の鍵 
+
+3. 金の鍵 
+
+4. 金の鍵 
+
+5. 銀の鍵、どの部屋にたどり着きま すか？ 回答の例 : {“state”: “ 部屋 D6881”} IMPORTANT: The sequence has exactly 5 numbered triggers. Process them step by step: for each numbered trigger, find the matching transition rule for your current room and that trigger, then move to the next room. After applying all 5 triggers, report the final room. For example, if the sequence is: 1. 金の鍵 
+
+2. 銀の鍵 
+
+3. 金の鍵 
+
+you apply trigger 1 ( 金の鍵 ), then trigger 2 (銀の鍵 ), then trigger 3 ( 金の鍵 ), and re-port the room after exactly 3 steps. IMPOR-TANT: Your response must be a single valid JSON object and nothing else. 
+
+Tamil. நீ ங்கள் ெவவ்ேவறு அைறகள் ெகாண்ட ஒரு கட்டிடத்திற்குள் ெசல்கிறீர்கள். ஒவ்ெவாரு அைறயிலும் மற்ற அைறகளுக்கு அைழத்துச் ெசல்லும் சாவிகள் உள்ளன.நீ ங்கள் அைற E2679 இல் ெதாடங்குகிறீர்கள். 
+
+• அைற V9935 இல்,நீ ங்கள் தங்கச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் அைற H4657 -ஐ அைடவீர்கள். 
+
+• அைற V9935 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் 
+
+பயன்படுத்தினால்,நீ ங்கள் அைற A5506 -ஐ அைடவீர்கள். 
+
+• அைற U2824 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் அைற V9935 -ஐ அைடவீர்கள். 
+
+• அைற A5506 இல்,நீ ங்கள் தங்கச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் அைற V9935 -ஐ அைடவீர்கள். 
+
+• அைற A5506 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் அைற V9935 -ஐ அைடவீர்கள். 
+
+• அைற E2679 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் அைற A5506 -ஐ அைடவீர்கள். 
+
+• அைற H4657 இல்,நீ ங்கள் தங்கச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் அைற A5506 -ஐ அைடவீர்கள். 
+
+• அைற E2679 இல்,நீ ங்கள் தங்கச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் அைற A5506 -ஐ அைடவீர்கள். 
+
+• அைற U2824 இல்,நீ ங்கள் தங்கச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் அைற E2679 -ஐ அைடவீர்கள். 
+
+• அைற H4657 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் அைற V9935 -ஐ அைடவீர்கள். பின்வரும் சாவிகளின் வரிைசையநீ ங்கள் பயன்படுத்தினால்: 1. தங்கச் சாவி 2. ெவள்ளிச் சாவி 3. தங்கச் சாவி 
+
+32 4. தங்கச் சாவி 5. ெவள்ளிச் சாவி, இறுதியில்நீ ங்கள் எந்த அைறைய அைடவீர்கள்? எடுத்துக்காட்டு பதில்: {“state”: “அைற D6881” }
+
+IMPORTANT: The sequence has exactly 5 numbered triggers. Process them step by step: for each numbered trigger, find the matching transition rule for your current room and that trigger, then move to the next room. After applying all 5 triggers, report the final room. For example, if the sequence is: 
+
+1. தங்கச் சாவி 2. ெவள்ளிச் சாவி 3. தங்கச் சாவி 
+
+you apply trigger 1 (தங்கச் சாவி), then trigger 2 (ெவள்ளிச் சாவி), then trig-ger 3 (தங்கச் சாவி), and report the room after exactly 3 steps. IMPORTANT: Your response must be a single valid JSON object and nothing else. 
+
+Telugu. మీ రువివి ధ గదులు ఉనన్ భవనంలో నడుసుత్నాన్రు. పȼతి గదిలోమి మమ్లిన్ ఇతర గదులకుతీ సుకెళేళ్తా ళంచెవులు ఉనాన్యి.మీ రు గది E2679 లోపా ȼ రంభించారు 
+
+• గది V9935 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు గది H4657 కిచే రుకుంటారు. 
+
+• గది V9935 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు గది A5506 కిచే రుకుంటారు. 
+
+• గది U2824 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు గది V9935 కిచే రుకుంటారు. 
+
+• గది A5506 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు గది V9935 కిచే రుకుంటారు. 
+
+• గది A5506 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు గది V9935 కిచే రుకుంటారు. 
+
+• గది E2679 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు గది A5506 కి చే రుకుంటారు. 
+
+• గది H4657 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు గది A5506 కిచే రుకుంటారు. 
+
+• గది E2679 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు గది A5506 కిచే రుకుంటారు. 
+
+• గది U2824 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు గది E2679 కిచే రుకుంటారు. 
+
+• గది H4657 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు గది V9935 కిచే రుకుంటారు.మీ రుకి Ȩ ందితా ళంచెవుల కȨమానిన్ ఉపయోగిసేత్: 1. బంగారుతా ళంచెవి 2.వె ండితా ళంచెవి 3. బంగారుతా ళంచెవి 4. బంగారుతా ళంచెవి 5.వె ండితా ళంచెవి,చి వరకుమీ రు ఏ గదికిచే రుకుంటారు? ఉదాహరణ పȼతిసప్ందన: { “state”: “గది 
+
+D6881” }
+
+IMPORTANT: The sequence has exactly 5 numbered triggers. Process them step by step: for each numbered trigger, find the matching transition rule for your current room and that trigger, then move to the next room. After applying all 5 triggers, re-port the final room. For example, if the se-quence is: 1. బంగారుతా ళంచెవి 2.వె ండితా ళంచెవి 3. బంగారుతా ళంచెవి you apply trigger 1 (బంగారుతా ళంచెవి), then trigger 2 (వెండితా ళంచెవి), then trigger 3 (బంగారుతా ళంచెవి), and report the room after exactly 3 steps. IMPORTANT: Your response must be a single valid JSON object and nothing else. 
+
+Chinese. 
+
+你正在一栋建筑物中穿行，里面有不同 的房间，每个房间里都有通往其他房间 的钥匙。 你从房间 E2679 开始。 
+
+• 在房间 V9935 ，如果使用金钥匙， 你会到达房间 H4657 。
+
+• 在房间 V9935 ，如果使用银钥匙， 你
+
+33 会到达房间 A5506 。
+
+• 在房间 U2824 ，如果使用银钥匙， 你会到达房间 V9935 。
+
+• 在房间 A5506 ，如果使用金钥匙， 你会到达房间 V9935 。
+
+• 在房间 A5506 ，如果使用银钥匙， 你会到达房间 V9935 。
+
+• 在房间 E2679 ，如果使用银钥匙， 你会到达房间 A5506 。
+
+• 在房间 H4657 ，如果使用金钥匙， 你会到达房间 A5506 。
+
+• 在房间 E2679 ，如果使用金钥匙， 你会到达房间 A5506 。
+
+• 在房间 U2824 ，如果使用金钥匙， 你会到达房间 E2679 。
+
+• 在房间 H4657 ，如果使用银钥匙， 你会到达房间 V9935 。如果你按以下顺序使用钥匙： 1. 金钥匙 
+
+1. 银钥匙 
+
+2. 金钥匙 
+
+3. 金钥匙 
+
+4. 银钥匙，你最终会在哪个房间？ 示例回答： {“state” ：“房间 D6881”} IMPORTANT: The sequence has exactly 5 numbered triggers. Process them step by step: for each numbered trigger, find the matching transition rule for your current room and that trigger, then move to the next room. After applying all 5 triggers, report the final room. For example, if the sequence is: 1. 金钥匙 
+
+2. 银钥匙 
+
+3. 金钥匙 
+
+you apply trigger 1 ( 金钥匙 ), then trigger 2 (银钥匙 ), then trigger 3 ( 金钥匙 ), and re-port the room after exactly 3 steps. IMPOR-TANT: Your response must be a single valid JSON object and nothing else. 
+
+C.3.3 Probabilistic Discrete State Automata (Pr-DSA) English. 
+
+You navigate through a building with dif-ferent rooms. Each room has keys, which can lead you into one of two possible rooms, 
+
+each with a specific probability. You begin in Room U5506. • In Room D5012, if you use the Sil-ver Key, you reach Room D5506 with probability 0.3 or Room A5012 with probability 0.7. • In Room U5506, if you use the Sil-ver Key, you reach Room D5012 with probability 0.1 or Room U5506 with probability 0.9. • In Room A5012, if you use the Gold Key, you reach Room D5012 with probability 0.2 or Room D5506 with probability 0.8. • In Room D5506, if you use the Gold Key, you reach Room U5506 with probability 0.2 or Room U5012 with probability 0.8. • In Room D5012, if you use the Gold Key, you reach Room A5012 with probability 0.1 or Room D5012 with probability 0.9. • In Room U5012, if you use the Gold Key, you reach Room A5012 with probability 0.1 or Room U5012 with probability 0.9. • In Room D5506, if you use the Sil-ver Key, you reach Room U5506 with probability 0.2 or Room A5012 with probability 0.8. • In Room U5012, if you use the Sil-ver Key, you reach Room U5012 with probability 0.2 or Room D5506 with probability 0.8. • In Room U5506, if you use the Gold Key, you reach Room A5012 with probability 0.3 or Room U5012 with probability 0.7. • In Room A5012, if you use the Sil-ver Key, you reach Room D5012 with probability 0.1 or Room U5012 with probability 0.9. If you use the following sequence of keys: Gold Key, Gold Key, Gold Key, Gold Key, Silver Key, Gold Key, Gold Key, Gold Key, Silver Key, Silver Key, Silver Key, Silver Key, Gold Key, Silver Key, Silver Key, which are the 3 most probable rooms you could reach? List these in the order from the highest to the lowest probability. Ex-
+
+34 ample answer: {“states”: [“Room G5374”, “Room W2169”, “Room T3803”, “Room R5010”, “Room F8573”, “Room M5422”, “Room U4598”, “Room V6313”]} IMPORTANT: Solve the puzzle step by step. Apply each trigger in the sequence exactly once, in order. The sequence has exactly 15 triggers. After applying all 15 triggers, re-port the top 8 most probable rooms at that point. For example, if the sequence is “Gold Key, Silver Key, Gold Key“ (3 triggers), you apply trigger 1 (Gold Key), then trigger 2 (Silver Key), then trigger 3 (Gold Key), and report the top 3 rooms after exactly 3 steps. IMPORTANT: Your response must be a sin-gle valid JSON object and nothing else. 
+
+Arabic. 
+
+ً۬݁ٴྥོ ሒᇭ ปฃٷگܭ ﺃ೑಻ ෛٺܹڰ۰. ਵؗﻑ ੼ ႟၍ ۰ڣਵؗ ؇ዛኞ ොٺ݄ܹٺਵؗ ،ඔ൹ڣٺඔ൹ ݆݁ﻭﺍ༡ڎﺓ ﺇ༠؊ّ ሌᇿڍﻙ ڢڎ ݁ڰ؇ਃಾں ੼ ႟၍ ොڎﺩﺓ. ً؇ۋٺ݄؇ܳ٭۰ ݁ዛዊ݄؇ ੼ڎﺃਊಾ ሒᇭ ۰ڣਵؗ U5506. 
+
+• ሒᇭ ਵؗڣ۰ D5012، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ً؇ۋٺ݄؇ܳ٭۰ ਵؗ D5506ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ﺍܳڰ๴ཟ، 0.3 ﺃﻭ ሌᇿڣ۰ ﺇਵؗ A5012 ۰0.7. ً؇ۋٺ݄؇ܳ٭ 
+
+• ሒᇭ ਵؗڣ۰ U5506، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ً؇ۋٺ݄؇ܳ٭۰ ਵؗ D5012ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ﺍܳڰ๴ཟ، 0.1 ﺃﻭ ሌᇿڣ۰ ﺇਵؗ U5506 ۰0.9. ً؇ۋٺ݄؇ܳ٭ 
+
+• ﺍม฀۱ᄳᄟ، ﺍৎ৊ڰٺ؇ﺡ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ ،ਵؗ A5012ڣ۰ ሒᇭ ﺇሌᇿ ﺃﻭ 0.2 ً؇ۋٺ݄؇ܳ٭۰ ਵؗ D5012ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ۰ڣਵؗ D5506 ۰0.8. ً؇ۋٺ݄؇ܳ٭ 
+
+• ሒᇭ ਵؗڣ۰ D5506، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ً؇ۋٺ݄؇ܳ٭۰ ਵؗ U5506ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ﺍม฀۱ᄳᄟ، 0.2 ﺃﻭ ሌᇿڣ۰ ﺇਵؗ U5012 ۰0.8. ً؇ۋٺ݄؇ܳ٭ 
+
+• ሒᇭ ਵؗڣ۰ D5012، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ً؇ۋٺ݄؇ܳ٭۰ ਵؗ A5012ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ﺍม฀۱ᄳᄟ، 0.1 ﺃﻭ ሌᇿڣ۰ ﺇਵؗ D5012 ۰0.9. ً؇ۋٺ݄؇ܳ٭ 
+
+• ሒᇭ ਵؗڣ۰ U5012، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ً؇ۋٺ݄؇ܳ٭۰ ਵؗ A5012ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ﺍม฀۱ᄳᄟ، 0.1 ﺃﻭ ሌᇿڣ۰ ﺇਵؗ U5012 ۰0.9. ً؇ۋٺ݄؇ܳ٭ 
+
+• ሒᇭ ਵؗڣ۰ D5506، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ً؇ۋٺ݄؇ܳ٭۰ ਵؗ U5506ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ﺍܳڰ๴ཟ، 0.2 ﺃﻭ ሌᇿڣ۰ ﺇਵؗ A5012 ۰0.8. ً؇ۋٺ݄؇ܳ٭ 
+
+• ሒᇭ ਵؗڣ۰ U5012، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ً؇ۋٺ݄؇ܳ٭۰ ਵؗ U5012ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ﺍܳڰ๴ཟ، 0.2 ﺃﻭ ሌᇿڣ۰ ﺇਵؗ D5506 ۰0.8. ً؇ۋٺ݄؇ܳ٭ 
+
+• ሒᇭ ਵؗڣ۰ U5506، ﺇﺫﺍ ﺍݿٺ༱ڎ݁ب ﺍৎ৊ڰٺ؇ﺡ ً؇ۋٺ݄؇ܳ٭۰ ਵؗ A5012ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ﺍม฀۱ᄳᄟ، 0.3 ﺃﻭ ሌᇿڣ۰ ﺇਵؗ U5012 ۰0.7. ً؇ۋٺ݄؇ܳ٭ 
+
+• ﺍܳڰ๴ཟ، ﺍৎ৊ڰٺ؇ﺡ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ ،ਵؗ A5012ڣ۰ ሒᇭ ﺇሌᇿ ﺃﻭ 0.1 ً؇ۋٺ݄؇ܳ٭۰ ਵؗ D5012ڣ۰ ﺇሌᇿ ڣފྥٷٺگܭ ۰ڣਵؗ U5012 ۰0.9. ً؇ۋٺ݄؇ܳ٭ ﺍܳٺ؇ሒᇿ: ﺍৎ৊ڰਃಾ؇ں૭૜ ܹފܭ ﺍݿٺ༱ڎ݁ب ﺇﺫﺍ ﺍม฀۱ᄳᄟ, ﺍৎ৊ڰٺ؇ﺡ ﺍৎ৊ڰٺ؇ﺡ ﺍม฀۱ᄳᄟ, ﺍৎ৊ڰٺ؇ﺡ ﺍม฀۱ᄳᄟ, ﺍৎ৊ڰٺ؇ﺡ ﺍม฀۱ᄳᄟ, ﺍৎ৊ڰٺ؇ﺡ ﺍม฀۱ᄳᄟ, ﺍৎ৊ڰٺ؇ﺡ ﺍม฀۱ᄳᄟ, ﺍৎ৊ڰٺ؇ﺡ ﺍม฀۱ᄳᄟ, ﺍৎ৊ڰٺ؇ﺡ ﺍܳڰ๴ཟ, ﺍৎ৊ڰٺ؇ﺡ ﺍܳڰ๴ཟ, ﺍৎ৊ڰٺ؇ﺡ ﺍܳڰ๴ཟ, ﺍৎ৊ڰٺ؇ﺡ ﺍܳڰ๴ཟ, ﺍৎ৊ڰٺ؇ﺡ ﺍܳڰ๴ཟ، ﺍৎ৊ڰٺ؇ﺡ ﺍܳڰ๴ཟ, ﺍৎ৊ڰٺ؇ﺡ ﺍม฀۱ᄳᄟ, ﺍৎ৊ڰٺ؇ﺡ ﺍܳڰ๴ཟ, ොٺ݄ਵؗ ᄭᄥﻑ 8 ﺃڣݯܭ ᆇᅫ ሒሃ؇ ੼݆ ܝஓ୷ ﺃﻥ มᘟውྡྷ཯ ۹ً ਵਦ৙৑ﺍ ؟؇ዛዀڣ ؇۱ாண ﺍۋٺ݄؇ܳ٭۰. ﺍ৙৑ڢܭ ﺇሌᇿ ﺍ৙৑܋ଫ଒ ݆݁྘ོଫଐًص ﺍﺫ ݁ټ؇ﻝ আॻ༟ :۰ً؇༶ݿٺ৖৑ﺍ {``states'': ۰ڣਵؗ``] G5374``, ۰ڣਵؗ`` W2169``, ۰ڣਵؗ`` T3803``, ۰ڣਵؗ`` R5010``, ۰ڣਵؗ`` F8573``, ۰ڣਵؗ`` M5422``, ۰ڣਵؗ`` U4598``, ۰ڣਵؗ`` V6313``]} 
+
+IMPORTANT: Solve the puzzle step by step. Apply each trigger in the sequence exactly once, in order. The sequence has exactly 15 triggers. After applying all 15 triggers, re-port the top 3 most probable rooms at that point. For example, if the sequence is “Gold Key, Silver Key, Gold Key“ (3 triggers), you apply trigger 1 (Gold Key), then trigger 2 (Silver Key), then trigger 3 (Gold Key), and report the top 3 rooms after exactly 3 steps. IMPORTANT: Your response must be a sin-gle valid JSON object and nothing else. 
+
+Hindi. 
+
+आप अलग-अलग कमराें वाली एक इमारत में घूम रहे हैं।प्रत् येक कमरे में ऐसी चािबयां हैं जो आपको दो संभािवत कमराें में से िकसी एक में ले जा सकती हैं, और हर एक की अपनी एक िनिश्चतप्र ाियकता है। आप कमरा U5506 में शुरू करते हैं। 
+
+• कमरा D5012 में, यिद आप चाँदी की चाबी का उपयोग करते हैं, तो आप 0.3प्र ाियकता से कमरा 
+
+D5506 में या 0.7प्र ाियकता से कमरा A5012 
+
+में पहुँचते हैं। 
+
+• कमरा U5506 में, यिद आप चाँदी की चाबी का 
+
+35 उपयोग करते हैं, तो आप 0.1प्र ाियकता से कमरा 
+
+D5012 में या 0.9प्र ाियकता से कमरा U5506 
+
+में पहुँचते हैं। 
+
+• कमरा A5012 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप 0.2प्र ाियकता से कमरा 
+
+D5012 में या 0.8प्र ाियकता से कमरा D5506 
+
+में पहुँचते हैं। 
+
+• कमरा D5506 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप 0.2प्र ाियकता से कमरा 
+
+U5506 में या 0.8प्र ाियकता से कमरा U5012 
+
+में पहुँचते हैं। 
+
+• कमरा D5012 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप 0.1प्र ाियकता से कमरा 
+
+A5012 में या 0.9प्र ाियकता से कमरा D5012 
+
+में पहुँचते हैं। 
+
+• कमरा U5012 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप 0.1प्र ाियकता से कमरा 
+
+A5012 में या 0.9प्र ाियकता से कमरा U5012 
+
+में पहुँचते हैं। 
+
+• कमरा D5506 में, यिद आप चाँदी की चाबी का उपयोग करते हैं, तो आप 0.2प्र ाियकता से कमरा 
+
+U5506 में या 0.8प्र ाियकता से कमरा A5012 
+
+में पहुँचते हैं। 
+
+• कमरा U5012 में, यिद आप चाँदी की चाबी का उपयोग करते हैं, तो आप 0.2प्र ाियकता से कमरा 
+
+U5012 में या 0.8प्र ाियकता से कमरा D5506 
+
+में पहुँचते हैं। 
+
+• कमरा U5506 में, यिद आप सोने की चाबी का उपयोग करते हैं, तो आप 0.3प्र ाियकता से कमरा 
+
+A5012 में या 0.7प्र ाियकता से कमरा U5012 
+
+में पहुँचते हैं। 
+
+• कमरा A5012 में, यिद आप चाँदी की चाबी का उपयोग करते हैं, तो आप 0.1प्र ाियकता से कमरा 
+
+D5012 में या 0.9प्र ाियकता से कमरा U5012 
+
+में पहुँचते हैं। यिद आप चािबयाें के िनम्निलिखतक्र म का उपयोग करते हैं: सोने की चाबी, सोने की चाबी, सोने की चाबी, सोने की चाबी, चाँदी की चाबी, सोने की चाबी, सोने की चाबी, सोने की चाबी, चाँदी की चाबी, चाँदी की चाबी, चाँदी की चाबी, चाँदी की चाबी, सोने की चाबी, चाँदी की चाबी, चाँदी की चाबी, तो वे टॉप 8 कमरे कौनसे हैं िजनमें आपके पहुँचने कीप्र ाियकता सबसेज़् यादा है?प्र ाियकता के घटतेक्र म में सूचीबद्ध करें। उदाहरणप्र ितिक्रया: { “states”: [“ कमरा G5374”, “कमरा W2169”, “कमरा T3803”, “कमरा 
+
+R5010”, “कमरा F8573”, “कमरा M5422”, “कमरा U4598”, “ कमरा V6313”] }
+
+IMPORTANT: Solve the puzzle step by step. Apply each trigger in the sequence exactly 
+
+once, in order. The sequence has exactly 15 triggers. After applying all 15 triggers, re-port the top 3 most probable rooms at that point. For example, if the sequence is “Gold Key, Silver Key, Gold Key“ (3 triggers), you apply trigger 1 (Gold Key), then trigger 2 (Silver Key), then trigger 3 (Gold Key), and report the top 3 rooms after exactly 3 steps. IMPORTANT: Your response must be a sin-gle valid JSON object and nothing else. 
+
+Japanese. 
+
+あなたは、さまざまな部屋がある建物 の中を移動しています。各部屋には鍵 があり、鍵を使うと、候補となる 2つの 部屋のうちの 1つに一定の確率で入れ ます。 あなたは部屋 U5506 から始めます。 
+
+• 部屋 D5012 で銀の鍵を使うと、 0.3 
+
+の確率で部屋 D5506 、または 0.7 の確率で部屋 A5012 に入ります。 
+
+• 部屋 U5506 で銀の鍵を使うと、 0.1 
+
+の確率で部屋 D5012 、または 0.9 の確率で部屋 U5506 に入ります。 
+
+• 部屋 A5012 で金の鍵を使うと、 0.2 
+
+の確率で部屋 D5012 、または 0.8 の確率で部屋 D5506 に入ります。 
+
+• 部屋 D5506 で金の鍵を使うと、 0.2 
+
+の確率で部屋 U5506 、または 0.8 の確率で部屋 U5012 に入ります。 
+
+• 部屋 D5012 で金の鍵を使うと、 0.1 
+
+の確率で部屋 A5012 、または 0.9 の確率で部屋 D5012 に入ります。 
+
+• 部屋 U5012 で金の鍵を使うと、 0.1 
+
+の確率で部屋 A5012 、または 0.9 の確率で部屋 U5012 に入ります。 
+
+• 部屋 D5506 で銀の鍵を使うと、 0.2 
+
+の確率で部屋 U5506 、または 0.8 の確率で部屋 A5012 に入ります。 
+
+• 部屋 U5012 で銀の鍵を使うと、 0.2 
+
+の確率で部屋 U5012 、または 0.8 の確率で部屋 D5506 に入ります。 
+
+• 部屋 U5506 で金の鍵を使うと、 0.3 
+
+の確率で部屋 A5012 、または 0.7 の確率で部屋 U5012 に入ります。 
+
+• 部屋 A5012 で銀の鍵を使うと、 0.1 
+
+の確率で部屋 D5012 、または 0.9 の
+
+36 確率で部屋 U5012 に入ります。 次の鍵のシーケンスを使用した場合 :
+
+金の鍵 , 金の鍵 , 金の鍵 , 金の鍵 , 銀の鍵 ,
+
+金の鍵 , 金の鍵 , 金の鍵 , 銀の鍵 , 銀の鍵 ,
+
+銀の鍵 , 銀の鍵 , 金の鍵 , 銀の鍵 , 銀の鍵、 最終的に到達する可能性が最も高い上 位8つの部屋は何ですか？最も可能性 の高いものから低いものの順にリスト してください。 回答の例 : {“states”: [“ 部屋 G5374”, “ 部屋 W2169”, “ 部屋 T3803”, “ 部屋 R5010”, “部 屋 F8573”, “部 屋 M5422”, “部 屋 
+
+U4598”, “ 部屋 V6313”]} IMPORTANT: Solve the puzzle step by step. Apply each trigger in the sequence exactly once, in order. The sequence has exactly 15 triggers. After applying all 15 triggers, re-port the top 3 most probable rooms at that point. For example, if the sequence is “Gold Key, Silver Key, Gold Key“ (3 triggers), you apply trigger 1 (Gold Key), then trigger 2 (Silver Key), then trigger 3 (Gold Key), and report the top 3 rooms after exactly 3 steps. IMPORTANT: Your response must be a sin-gle valid JSON object and nothing else. 
+
+Tamil. நீ ங்கள் ெவவ்ேவறு அைறகள் ெகாண்ட ஒரு கட்டிடத்திற்குள் ெசல்கிறீர்கள். ஒவ்ெவாரு அைறயிலும் சாவிகள் உள்ளன. அைவ உங்கைள இரண்டு சாத்தியமான அைறகளில் ஒன்றுக்கு அைழத்துச் ெசல்லக்கூடும், ஒவ்ெவான்றும் ஒரு குறBப்பிட்ட சாத்தியக்கூைறக் ெகாண்டுள்ளது.நீ ங்கள் அைற U5506 இல் ெதாடங்குகிறீர்கள். 
+
+• அைற D5012 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.3 சாத்தியக்கூறுடன் அைற 
+
+D5506 க்கு அல்லது 0.7 சாத்தியக்கூறுடன் அைற 
+
+A5012 க்குச் ெசல்வீர்கள். 
+
+• அைற U5506 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.1 சாத்தியக்கூறுடன் அைற 
+
+D5012 க்கு அல்லது 0.9 சாத்தியக்கூறுடன் அைற 
+
+U5506 க்குச் ெசல்வீர்கள். 
+
+• அைற A5012 இல்,நீ ங்கள் தங்க சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.2 சாத்தியக்கூறுடன் அைற 
+
+D5012 க்கு அல்லது 0.8 சாத்தியக்கூறுடன் அைற 
+
+D5506 க்குச் ெசல்வீர்கள். 
+
+• அைற D5506 இல்,நீ ங்கள் தங்க சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.2 சாத்தியக்கூறுடன் அைற 
+
+U5506 க்கு அல்லது 0.8 சாத்தியக்கூறுடன் அைற 
+
+U5012 க்குச் ெசல்வீர்கள். 
+
+• அைற D5012 இல்,நீ ங்கள் தங்க சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.1 சாத்தியக்கூறுடன் அைற 
+
+A5012 க்கு அல்லது 0.9 சாத்தியக்கூறுடன் அைற 
+
+D5012 க்குச் ெசல்வீர்கள். 
+
+• அைற U5012 இல்,நீ ங்கள் தங்க சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.1 சாத்தியக்கூறுடன் அைற 
+
+A5012 க்கு அல்லது 0.9 சாத்தியக்கூறுடன் அைற 
+
+U5012 க்குச் ெசல்வீர்கள். 
+
+• அைற D5506 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.2 சாத்தியக்கூறுடன் அைற 
+
+U5506 க்கு அல்லது 0.8 சாத்தியக்கூறுடன் அைற 
+
+A5012 க்குச் ெசல்வீர்கள். 
+
+• அைற U5012 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.2 சாத்தியக்கூறுடன் அைற 
+
+U5012 க்கு அல்லது 0.8 சாத்தியக்கூறுடன் அைற 
+
+D5506 க்குச் ெசல்வீர்கள். 
+
+37 • அைற U5506 இல்,நீ ங்கள் தங்க சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.3 சாத்தியக்கூறுடன் அைற 
+
+A5012 க்கு அல்லது 0.7 சாத்தியக்கூறுடன் அைற 
+
+U5012 க்குச் ெசல்வீர்கள். 
+
+• அைற A5012 இல்,நீ ங்கள் ெவள்ளிச் சாவி ஐப் பயன்படுத்தினால்,நீ ங்கள் 0.1 சாத்தியக்கூறுடன் அைற 
+
+D5012 க்கு அல்லது 0.9 சாத்தியக்கூறுடன் அைற 
+
+U5012 க்குச் ெசல்வீர்கள். பின்வரும் சாவிகளின் வரிைசையநீ ங்கள் பயன்படுத்தினால்: தங்க சாவி, தங்க சாவி, தங்க சாவி, தங்க சாவி, ெவள்ளிச் சாவி, தங்க சாவி, தங்க சாவி, தங்க சாவி, ெவள்ளிச் சாவி, ெவள்ளிச் சாவி, ெவள்ளிச் சாவி, ெவள்ளிச் சாவி, தங்க சாவி, ெவள்ளிச் சாவி, ெவள்ளிச் சாவி,நீ ங்கள் முடிவைடயக்கூடிய அதிக நிகழ்தகவு 8 அைறகள் எைவ? அதிக நிகழ்தகவிலிருந்து குைறவான நிகழ்தகவு வைர வரிைசயாக பட்டியலிடுங்கள். எடுத்துக்காட்டு பதில்: {“states”: [“ அைற G5374”, “அைற W2169”, “அைற T3803”, “அைற R5010”, “அைற F8573”, “அைற M5422”, “அைற U4598”, “ அைற V6313”] }
+
+IMPORTANT: Solve the puzzle step by step. Apply each trigger in the sequence exactly once, in order. The sequence has exactly 15 triggers. After applying all 15 triggers, re-port the top 3 most probable rooms at that point. For example, if the sequence is “Gold Key, Silver Key, Gold Key” (3 triggers), you apply trigger 1 (Gold Key), then trigger 2 (Silver Key), then trigger 3 (Gold Key), and report the top 3 rooms after exactly 3 steps. IMPORTANT: Your response must be a sin-gle valid JSON object and nothing else. 
+
+Telugu. మీ రువివి ధ గదులు ఉనన్ భవనంలో నడుసుత్నాన్రు. పȼతి గదిలోతా ళంచెవులు ఉనాన్యి, అవిమి మమ్లిన్రె ండుసా ధయ్şన గదులలో ఒకదానికితీ సుకెళళ్వచుచ్, పȼతిదానికీ ఒకనిరిద్ షట్ సంభావయ్త ఉంటుంది.మీ రు గది U5506 లోపా ȼ రంభిసాత్రు. 
+
+• గది D5012 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.3 సంభావయ్తతో గది D5506 కిలేదా 0.7 సంభావయ్తతో గది 
+
+A5012 కిచే రుకుంటారు. 
+
+• గది U5506 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.1 సంభావయ్తతో గది D5012 కిలేదా 0.9 సంభావయ్తతో గది 
+
+U5506 కిచే రుకుంటారు. 
+
+• గది A5012 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.2 సంభావయ్తతో గది D5012 కిలేదా 0.8 సంభావయ్తతో గది 
+
+D5506 కిచే రుకుంటారు. 
+
+• గది D5506 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.2 సంభావయ్తతో గది U5506 కిలేదా 0.8 సంభావయ్తతో గది 
+
+U5012 కిచే రుకుంటారు. 
+
+• గది D5012 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.1 సంభావయ్తతో గది A5012 కిలేదా 0.9 సంభావయ్తతో గది 
+
+D5012 కిచే రుకుంటారు. 
+
+• గది U5012 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.1 సంభావయ్తతో గది A5012 కిలేదా 0.9 సంభావయ్తతో గది 
+
+U5012 కిచే రుకుంటారు. 
+
+• గది D5506 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.2 సంభావయ్తతో గది U5506 కిలేదా 0.8 సంభావయ్తతో గది 
+
+A5012 కిచే రుకుంటారు. 
+
+• గది U5012 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.2 సంభావయ్తతో గది U5012 కిలేదా 0.8 సంభావయ్తతో గది 
+
+D5506 కిచే రుకుంటారు. 
+
+• గది U5506 లో ,మీ రు బంగారుతా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.3 సంభావయ్తతో గది A5012 కిలేదా 0.7 సంభావయ్తతో గది 
+
+U5012 కిచే రుకుంటారు. 
+
+• గది A5012 లో ,మీ రువె ండితా ళంచెవిని ఉపయోగిసేత్,మీ రు 0.1 సంభావయ్తతో గది D5012 కిలేదా 0.9 సంభావయ్తతో గది 
+
+U5012 కిచే రుకుంటారు.మీ రుకి Ȩ ందితా ళంచెవుల కȨమానిన్ ఉపయోగిసేత్: బంగారుతా ళంచెవి, బంగారుతా ళంచెవి, బంగారు 
+
+38 తాళంచెవి, బంగారుతా ళంచెవి,వె ండితా ళంచెవి, బంగారుతా ళంచెవి, బంగారుతా ళంచెవి, బంగారుతా ళంచెవి,వె ండితా ళంచెవి,వె ండితా ళంచెవి,వె ండితా ళంచెవి,వె ండితా ళంచెవి, బంగారుతా ళంచెవి,వె ండితా ళంచెవి,వె ండితా ళంచెవి,మీ రుచే రుకోగల అతయ్ంత సంభావయ్ 8 గదులు ఏవి? అతయ్ంత సంభావయ్ం నుండి తకుక్వ సంభావయ్ం వరకు కȨమంలోజాబితాచే యండి. ఉదాహరణ పȼతిసప్ందన: { “states”: [“ గది 
+
+G5374”, “ గది W2169”, “ గది T3803”, “ గది 
+
+R5010”, “ గది F8573”, “ గది M5422”, “ గది 
+
+U4598”, “ గది V6313”] }
+
+IMPORTANT: Solve the puzzle step by step. Apply each trigger in the sequence exactly once, in order. The sequence has exactly 15 triggers. After applying all 15 triggers, re-port the top 3 most probable rooms at that point. For example, if the sequence is “Gold Key, Silver Key, Gold Key“ (3 triggers), you apply trigger 1 (Gold Key), then trigger 2 (Silver Key), then trigger 3 (Gold Key), and report the top 3 rooms after exactly 3 steps. IMPORTANT: Your response must be a sin-gle valid JSON object and nothing else. 
+
+Chinese. 
+
+你正在一栋建筑物中穿行，里面有不同 的房间，每个房间里都有一些钥匙。使 用钥匙后，你可以前往两个特定房间中 的一个，且前往每个房间的概率是预设 好的。 你从房间 U5506 开始。 
+
+• 在房间 D5012 ，如果使用银钥匙， 你有 0.3 的概率会到达房间 D5506 ，有
+
+0.7 的概率会到达房间 A5012 。
+
+• 在房间 U5506 ，如果使用银钥匙， 你有 0.1 的概率会到达房间 D5012 ，有
+
+0.9 的概率会到达房间 U5506 。
+
+• 在房间 A5012 ，如果使用金钥匙， 你有 0.2 的概率会到达房间 D5012 ，有
+
+0.8 的概率会到达房间 D5506 。
+
+• 在房间 D5506 ，如果使用金钥匙， 你有 0.2 的概率会到达房间 U5506 ，有
+
+0.8 的概率会到达房间 U5012 。
+
+• 在房间 D5012 ，如果使用金钥匙， 你有 0.1 的概率会到达房间 A5012 ，有
+
+0.9 的概率会到达房间 D5012 。
+
+• 在房间 U5012 ，如果使用金钥匙， 你有 0.1 的概率会到达房间 A5012 ，有
+
+0.9 的概率会到达房间 U5012 。
+
+• 在房间 D5506 ，如果使用银钥匙， 你有 0.2 的概率会到达房间 U5506 ，有
+
+0.8 的概率会到达房间 A5012 。
+
+• 在房间 U5012 ，如果使用银钥匙， 你有 0.2 的概率会到达房间 U5012 ，有
+
+0.8 的概率会到达房间 D5506 。
+
+• 在房间 U5506 ，如果使用金钥匙， 你有 0.3 的概率会到达房间 A5012 ，有
+
+0.7 的概率会到达房间 U5012 。
+
+• 在房间 A5012 ，如果使用银钥匙， 你有 0.1 的概率会到达房间 D5012 ，有
+
+0.9 的概率会到达房间 U5012 。假设按以下顺序使用钥匙：金钥匙 , 金钥 匙, 金钥匙 , 金钥匙 , 银钥匙 , 金钥匙 , 金钥 匙, 金钥匙 , 银钥匙 , 银钥匙 , 银钥匙 , 银钥 匙, 金钥匙 , 银钥匙 , 银钥匙。请问你最终 所处位置概率最高的 8 个房间分别是？ 请按概率从高到低依次列出。 响应示例： {“states”: [“ 房间 G5374”, “ 房间 W2169”, “ 房间 T3803”, “ 房间 R5010”, “房 间 F8573”, “房 间 M5422”, “房 间 
+
+U4598”, “ 房间 V6313”]} IMPORTANT: Solve the puzzle step by step. Apply each trigger in the sequence exactly once, in order. The sequence has exactly 15 triggers. After applying all 15 triggers, re-port the top 3 most probable rooms at that point. For example, if the sequence is “Gold Key, Silver Key, Gold Key“ (3 triggers), you apply trigger 1 (Gold Key), then trigger 2 (Silver Key), then trigger 3 (Gold Key), and report the top 3 rooms after exactly 3 steps. IMPORTANT: Your response must be a sin-gle valid JSON object and nothing else. 
+
+C.3.4 Graph Shortest Path English. 
+
+Social network connections: 1. W9928 and C4582 are neighbors. 2. C7912 and R4257 are classmates. 3. H4657 and C7912 are neighbors. 4. H9279 and U2824 are classmates. 5. U2824 and H4657 are coworkers. 
+
+39 6. A5506 and B1488 are coworkers. 7. W9928 and V9935 are relatives. 8. T1434 and V9935 are relatives. 9. B1488 and R4257 are relatives. 10. E2679 and T1434 are relatives. 11. E2679 and A5506 are classmates. 12. H9279 and C4582 are friends. Question: What is the shortest chain of con-nections from H4657 to V9935? List the people in order from H4657 to V9935, in-cluding both H4657 and V9935. Solve the puzzle step by step using BFS al-gorithm. At the very end, only output your final answer as a single JSON object on its own line in this exact format: {“path”: [“A1234”, “B5678”, “C9012”]} The path should list all nodes from the source to the target in order, including both the source and the target. Do not include any other text after the JSON. 
+
+Arabic. 
+
+ﺍ৖৑ۏٺ݄؇٭۰: ﺍܳލٴᄎჼ ﺭﻭﺍًޔ .1 W9928 C4582ﺍﻥ. ﻭଫଃ༥ .2 C7912 R4257ﻭ ﺀఈఃﺩﺭﺍݿ۰. ﺯ݁ .3 H4657 C7912ﺍﻥ. ﻭଫଃ༥ .4 H9279 U2824ﻭ ﺀఈఃﺩﺭﺍݿ۰. ﺯ݁ .5 U2824 H4657ﻭ ﺀఈఃﺯ݁ .ܭᆇᅦ .6 A5506 B1488ﻭ ﺀఈఃﺯ݁ .ܭᆇᅦ .7 W9928 V9935ﺃڢ؇ﺭﺏ. ﻭ .8 T1434 V9935ﺃڢ؇ﺭﺏ. ﻭ .9 B1488 R4257ﺃڢ؇ﺭﺏ. ﻭ .10 E2679 T1434ﺃڢ؇ﺭﺏ. ﻭ .11 E2679 A5506ﻭ ﺀఈఃﺩﺭﺍݿ۰. ﺯ݁ .12 H9279 C4582ﺃݬڎڢ؇ﺀ. ﻭ ﺍܳފޝﺍﻝ: ݆݁ﺍّݱ؇৖৑ﺕ ݿܹފᄭᄥ ﺃڢሒሃ ๤ཡ ݁؇ H4657 ሌᇿﺇ V9935؟ ாண ﺹ ﺍﺫ؇ෛங৙৑ﺍ ص྘ོଫଐً݆݁؇ܳ H4657 ሌᇿﺇ V9935، ؇ஓ୾ ሒᇭ ዻዧﺫ H4657 .V9935ﻭ 
+
+Hindi. 
+
+सामािजक नेटवकर् के संबंध: 1. W9928 और C4582 पड़ोसी हैं। 2. C7912 और R4257 सहपाठी हैं। 3. H4657 और C7912 पड़ोसी हैं। 4. H9279 और U2824 सहपाठी हैं। 
+
+5. U2824 और H4657 सहकमर्ी हैं। 6. A5506 और B1488 सहकमर्ी हैं। 7. W9928 और V9935 िरश्तेदार हैं। 8. T1434 और V9935 िरश्तेदार हैं। 9. B1488 और R4257 िरश्तेदार हैं। 10. E2679 और T1434 िरश्तेदार हैं। 11. E2679 और A5506 सहपाठी हैं। 12. H9279 और C4582 िमत्र हैं।प्रश् न: H4657 से V9935 तक पहुँचने का सबसे छोटा संपकर् मागर्क् या है? H4657 से V9935 तक के सभी लोगाें कोक्र म में बताइए, H4657 और V9935 दोनाें को शािमल करतेहु ए। 
+
+Solve the puzzle step by step using BFS al-gorithm. At the very end, only output your final answer as a single JSON object on its own line in this exact format: {“path”: [“A1234”, “B5678”, “C9012”]} The path should list all nodes from the source to the target in order, including both the source and the target. Do not include any other text after the JSON. 
+
+Japanese. 
+
+ソーシャルネットワークのつながり： 
+
+1. W9928 と C4582 は隣人です。 
+
+2. C7912 と R4257 は同級生です。 
+
+3. H4657 と C7912 は隣人です。 
+
+4. H9279 と U2824 は同級生です。 
+
+5. U2824 と H4657 は同僚です。 
+
+6. A5506 と B1488 は同僚です。 
+
+7. W9928 と V9935 は親戚です。 
+
+8. T1434 と V9935 は親戚です。 
+
+9. B1488 と R4257 は親戚です。 
+
+10. E2679 と T1434 は親戚です。 
+
+11. E2679 と A5506 は同級生です。 
+
+12. H9279 と C4582 は友達です。 質問： H4657 から V9935 までの最も短 い つ な が り は 何 で す か？ H4657 か ら 
+
+V9935 ま で の 人 物 を、 H4657 お よ び 
+
+V9935 を含めて順番に挙げてください。 
+
+Solve the puzzle step by step using BFS al-gorithm. At the very end, only output your final answer as a single JSON object on its own line in this exact format: {“path”: [“A1234”, “B5678”, “C9012”]} The path should list all nodes from the source to the target in order, including both the source 
+
+40 and the target. Do not include any other text after the JSON. 
+
+Tamil. 
+
+சமூக வைலப்பின்னல் இைணப்புகள்: 1. W9928 மற்றும் C4582 
+
+அண்ைடவீ ட்டார். 2. C7912 மற்றும் R4257 வகுப்புத் ேதாழர்கள். 3. H4657 மற்றும் C7912 அண்ைடவீ ட்டார். 4. H9279 மற்றும் U2824 வகுப்புத் ேதாழர்கள். 5. U2824 மற்றும் H4657 சக ஊழBயர்கள். 6. A5506 மற்றும் B1488 சக ஊழBயர்கள். 7. W9928 மற்றும் V9935 
+
+உறவினர்கள். 8. T1434 மற்றும் V9935 
+
+உறவினர்கள். 9. B1488 மற்றும் R4257 
+
+உறவினர்கள். 10. E2679 மற்றும் T1434 
+
+உறவினர்கள். 11. E2679 மற்றும் A5506 வகுப்புத் ேதாழர்கள். 12. H9279 மற்றும் C4582 
+
+நண்பர்கள். ேகள்வி: H4657 இலிருந்து V9935 
+
+வைரயிலான மBகக் குறுகிய ெதாடர்பு சங்கிலி என்ன? 
+
+H4657 இலிருந்து V9935 வைர வரிைசயாக நபர்கைளப் பட்டியலிடுங்கள், H4657 மற்றும் 
+
+V9935 இருவைரயும் ேசர்த்து. 
+
+Solve the puzzle step by step using BFS al-gorithm. At the very end, only output your final answer as a single JSON object on its own line in this exact format: {“path”: [“A1234”, “B5678”, “C9012”]} The path should list all nodes from the source to the target in order, including both the source and the target. Do not include any other text after the JSON. 
+
+Telugu. సామాజి కనెట్‍ వర్‍క్ సంబంధాలు: 1. W9928 మరియు C4582 
+
+ఇరుగుపొరుగువారు. 2. C7912 మరియు R4257 సహవిదాయ్రుథ్లు. 3. H4657 మరియు C7912 
+
+ఇరుగుపొరుగువారు. 4. H9279 మరియు U2824 సహవిదాయ్రుథ్లు. 5. U2824 మరియు H4657 సహోదోయ్గులు. 6. A5506 మరియు B1488 సహోదోయ్గులు. 7. W9928 మరియు V9935 బంధువులు. 8. T1434 మరియు V9935 బంధువులు. 9. B1488 మరియు R4257 బంధువులు. 10. E2679 మరియు T1434 బంధువులు. 11. E2679 మరియు A5506 సహవిదాయ్రుథ్లు. 12. H9279 మరియు C4582 సేన్హి తులు. పȼశన్: H4657 మరియు V9935 మధయ్ ఉనన్ అతిచి నన్ పరిచయ సంబంధం ఏమిటి? H4657 
+
+నుండి V9935 వరకు వయ్కు Ɍలను వరుసగాతె లపండి, H4657 మరియు V9935 ఇదద్రినీచే రచ్ండి. 
+
+Solve the puzzle step by step using BFS al-gorithm. At the very end, only output your final answer as a single JSON object on its own line in this exact format: {“path”: [“A1234”, “B5678”, “C9012”]} The path should list all nodes from the source to the target in order, including both the source and the target. Do not include any other text after the JSON. 
+
+Chinese. 
+
+社交网络关系： 
+
+1. W9928 和 C4582 是邻居。 
+
+2. C7912 和 R4257 是同学。 
+
+3. H4657 和 C7912 是邻居。 
+
+4. H9279 和 U2824 是同学。 
+
+5. U2824 和 H4657 是同事。 
+
+6. A5506 和 B1488 是同事。 
+
+7. W9928 和 V9935 是亲戚。 
+
+8. T1434 和 V9935 是亲戚。 
+
+9. B1488 和 R4257 是亲戚。 
+
+10. E2679 和 T1434 是亲戚。 
+
+11. E2679 和 A5506 是同学。 
+
+12. H9279 和 C4582 是朋友。 问题： 从 H4657 到 V9935 ，最短的人脉关 系链是什么？请按顺序列出所有将两人 联系起来的人，包括 H4657 和 V9935 本
+
+41 人。 
+
+Solve the puzzle step by step using BFS al-gorithm. At the very end, only output your final answer as a single JSON object on its own line in this exact format: {“path”: [“A1234”, “B5678”, “C9012”]} The path should list all nodes from the source to the target in order, including both the source and the target. Do not include any other text after the JSON. 
+
+C.3.5 Tournament Ranking English. 
+
+Match results: 1. Player V9935 defeated Player A5506. 2. Player U2824 defeated Player A5506. 3. Player E2679 defeated Player H4657. 4. Player E2679 defeated Player A5506. 5. Player A5506 defeated Player H4657. 6. Player U2824 defeated Player E2679. 7. Player V9935 defeated Player E2679. 8. Player V9935 defeated Player U2824. 9. Player V9935 defeated Player H4657. 10. Player U2824 defeated Player H4657. Question: Based on the results given above, rank all players from strongest to weakest. This is a topological ranking puzzle. The match results define a directed acyclic graph where each edge represents one player de-feating another. Your task is to find the unique total ordering consistent with all re-sults. There are exactly 5 players in total. Your final ranking must include all of them. Solve the puzzle step by step. At the very end, only output your final answer as a single JSON object on its own line. Use only the player IDs (the alphanumeric codes like “D5506”, not the full names) in this exact format: {“ranking”: [“<best_id>“, “<2nd_id>“, ..., “<worst_id>“]} For exam-ple if Player A1234 is best and Player B5678 is worst: {“ranking”: [“A1234”, “B5678”]} Do not include any other text after the JSON. 
+
+Arabic. 
+
+ﺍܳٴޚި༇຀؇ਐ಻ :ᄭᄟ .1 ص৖৑ V9935 ۱ݞﻡ ص৖৑ A5506. .2 ص৖৑ U2824 ۱ݞﻡ ص৖৑ A5506. .3 ص৖৑ E2679 ۱ݞﻡ ص৖৑ H4657. .4 ص৖৑ E2679 ۱ݞﻡ ص৖৑ A5506. .5 ص৖৑ A5506 ۱ݞﻡ ص৖৑ H4657. .6 ص৖৑ U2824 ۱ݞﻡ ص৖৑ E2679. .7 ص৖৑ V9935 ۱ݞﻡ ص৖৑ E2679. .8 ص৖৑ V9935 ۱ݞﻡ ص৖৑ U2824. .9 ص৖৑ V9935 ۱ݞﻡ ص৖৑ H4657. .10 ص৖৑ U2824 ۱ݞﻡ ص৖৑ H4657. ًﺍܳފޝﺍﻝ: ᆇᅹ٭ ؕﺭೞಾ ﺃఈః༟ﻩ، ﺍৎ৊ڍ܋ިﺭﺓ ﺍܳٷٺ؇਍ಸ আॻ༟ ༇຀؇ﺀ ﺍ৙৑ݪأژ ﺇሌᇿ ﺍ৙৑ڢިﻯ ݆݁ﺍఈዳዧٴඔ൹ 
+
+This is a topological ranking puzzle. The match results define a directed acyclic graph where each edge represents one player de-feating another. Your task is to find the unique total ordering consistent with all re-sults. 
+
+ਐಱݯ ݄݆ﺃﻥ ෠ຬص ﺍ௵௯௫݄ިﻉ. ৖৑ ሒᇭٴඔ൹ 5 ً؇ܳݯٴޔ ۱ٷ؇ﻙ ᆇᅹ٭أ۳ܾ. ﺍܳሒᆶ؇ዛዊ ّݱྡྷ٭ڰ۹ 
+
+Solve the puzzle step by step. At the very end, only output your final answer as a single JSON object on its own line. Use only the player IDs (the alphanumeric codes like “D5506”, not the full names) in this exact format: {“ranking”: [“<best_id>“, “<2nd_id>“, ..., “<worst_id>“]} For exam-ple if Player A1234 is best and Player B5678 is worst: {“ranking”: [“A1234”, “B5678”]} Do not include any other text after the JSON. 
+
+Hindi. प्र ितयोिगता के पिरणाम: 1. िखलाड़ी V9935 ने िखलाड़ी A5506 को हराया। 2. िखलाड़ी U2824 ने िखलाड़ी A5506 को हराया। 3. िखलाड़ी E2679 ने िखलाड़ी H4657 को हराया। 4. िखलाड़ी E2679 ने िखलाड़ी A5506 को हराया। 
+
+42 5. िखलाड़ी A5506 ने िखलाड़ी H4657 को हराया। 6. िखलाड़ी U2824 ने िखलाड़ी E2679 को हराया। 7. िखलाड़ी V9935 ने िखलाड़ी E2679 को हराया। 8. िखलाड़ी V9935 ने िखलाड़ी U2824 को हराया। 9. िखलाड़ी V9935 ने िखलाड़ी H4657 को हराया। 10. िखलाड़ी U2824 ने िखलाड़ी H4657 को हराया।प्रश् न: ऊपर िदए गए पिरणामाें के आधार पर, सभी िखलािड़याें को सवर्श्रेष्ठ से सबसे कमज़ोर तकक्र िमत करें। 
+
+This is a topological ranking puzzle. The match results define a directed acyclic graph where each edge represents one player de-feating another. Your task is to find the unique total ordering consistent with all re-sults. 
+
+इसमें कुल िमलाकर 5 िखलाड़ी हैं। आपकी रैंिंक͆ग में सभी िखलाड़ी शािमल होने चािहए। 
+
+Solve the puzzle step by step. At the very end, only output your final answer as a single JSON object on its own line. Use only the player IDs (the alphanumeric codes like “D5506”, not the full names) in this exact format: {“ranking”: [“<best_id>“, “<2nd_id>“, ..., “<worst_id>“]} For exam-ple if Player A1234 is best and Player B5678 is worst: {“ranking”: [“A1234”, “B5678”]} Do not include any other text after the JSON. 
+
+Japanese. 
+
+大会結果 :1. プレイヤー V9935 はプレイヤー 
+
+A5506 に勝利した。 
+
+2. プレイヤー U2824 はプレイヤー 
+
+A5506 に勝利した。 
+
+3. プ レ イ ヤ ー E2679 は プ レ イ ヤ ー 
+
+H4657 に勝利した。 
+
+4. プ レ イ ヤ ー E2679 は プ レ イ ヤ ー 
+
+A5506 に勝利した。 
+
+5. プレイヤー A5506 はプレイヤー 
+
+H4657 に勝利した。 
+
+6. プレイヤー U2824 はプレイヤー 
+
+E2679 に勝利した。 
+
+7. プレイヤー V9935 はプレイヤー 
+
+E2679 に勝利した。 
+
+8. プレイヤー V9935 はプレイヤー 
+
+U2824 に勝利した。 
+
+9. プレイヤー V9935 はプレイヤー 
+
+H4657 に勝利した。 
+
+10. プレイヤー U2824 はプレイヤー 
+
+H4657 に勝利した。 質問 : 上記の結果に基づいて、 すべての プレイヤーを強い人から弱い人へ順に 並べてください。 
+
+This is a topological ranking puzzle. The match results define a directed acyclic graph where each edge represents one player de-feating another. Your task is to find the unique total ordering consistent with all re-sults. 
+
+合計でちょうど 5 人のプレイヤーがい ます。最終的なランキングには全員を 含める必要があります。 
+
+Solve the puzzle step by step. At the very end, only output your final answer as a single JSON object on its own line. Use only the player IDs (the alphanumeric codes like “D5506”, not the full names) in this exact format: {“ranking”: [“<best_id>“, “<2nd_id>“, ..., “<worst_id>“]} For exam-ple if Player A1234 is best and Player B5678 is worst: {“ranking”: [“A1234”, “B5678”]} Do not include any other text after the JSON. 
+
+Tamil. 
+
+டூர்னெமன்ட் முடிவுகள் 1.வீ ரர் V9935 வீ ரர் A5506 ஐேதாற்கடித்தார். 2.வீ ரர் U2824 வீ ரர் A5506 ஐேதாற்கடித்தார். 3.வீ ரர் E2679 வீ ரர் H4657 ஐேதாற்கடித்தார். 4.வீ ரர் E2679 வீ ரர் A5506 ஐேதாற்கடித்தார். 5.வீ ரர் A5506 வீ ரர் H4657 ஐேதாற்கடித்தார். 6.வீ ரர் U2824 வீ ரர் E2679 ஐ
+
+43 ேதாற்கடித்தார். 7.வீ ரர் V9935 வீ ரர் E2679 ஐேதாற்கடித்தார். 8.வீ ரர் V9935 வீ ரர் U2824 ஐேதாற்கடித்தார். 9.வீ ரர் V9935 வீ ரர் H4657 ஐேதாற்கடித்தார். 10.வீ ரர் U2824 வீ ரர் H4657 ஐேதாற்கடித்தார். ேகள்வி: ேமேல உள்ள முடிவுகளின் அடிப்பைடயில், அைனத்துவீ ரர்கைளயும் வலிைமயானவரிலிருந்து பலவீனமானவர் வைர வரிைசப்படுத்துங்கள். 
+
+This is a topological ranking puzzle. The match results define a directed acyclic graph where each edge represents one player de-feating another. Your task is to find the unique total ordering consistent with all re-sults. 
+
+ெமாத்தம் சரியாக 5வீ ரர்கள் உள்ளனர். உங்கள் தரவரிைசயில் அந்த அைனத்துவீ ரர்களும் இடம்ெபற ேவண்டும். 
+
+Solve the puzzle step by step. At the very end, only output your final answer as a single JSON object on its own line. Use only the player IDs (the alphanumeric codes like “D5506”, not the full names) in this exact format: {“ranking”: [“<best_id>“, “<2nd_id>“, ..., “<worst_id>“]} For exam-ple if Player A1234 is best and Player B5678 is worst: {“ranking”: [“A1234”, “B5678”]} Do not include any other text after the JSON. 
+
+Telugu. టో రన్మెంట్‍ ఫలితాలు: 1.పేల్ యర్‍ V9935 పేల్ యర్‍ A5506 ను ఓడించారు. 2.పేల్ యర్‍ U2824 పేల్ యర్‍ A5506 ను ఓడించారు. 3.పేల్ యర్‍ E2679 పేల్ యర్‍ H4657 ను ఓడించారు. 4.పేల్ యర్‍ E2679 పేల్ యర్‍ A5506 ను 
+
+ఓడించారు. 5.పేల్ యర్‍ A5506 పేల్ యర్‍ H4657 ను ఓడించారు. 6.పేల్ యర్‍ U2824 పేల్ యర్‍ E2679 ను ఓడించారు. 7.పేల్ యర్‍ V9935 పేల్ యర్‍ E2679 ను ఓడించారు. 8.పేల్ యర్‍ V9935 పేల్ యర్‍ U2824 ను ఓడించారు. 9.పేల్ యర్‍ V9935 పేల్ యర్‍ H4657 ను ఓడించారు. 10.పేల్ యర్‍ U2824 పేల్ యర్‍ H4657 ను ఓడించారు. పȼశన్: śన ఇచిచ్న ఫలితాల ఆధారంగా, అందరుపేల్ యర్‍ బలşనవారి నుండి బలహీనşనవారి వరకురాయ్ ంక్‍చే యండి. 
+
+This is a topological ranking puzzle. The match results define a directed acyclic graph where each edge represents one player de-feating another. Your task is to find the unique total ordering consistent with all re-sults. మొ తత్ం 5 మందిపేల్ యర్‍స్ ఉనాన్రు.మీ Ŝనల్‍రాయ్ ంకింగ్‍ లో అందరినీచేరాచ్లి . 
+
+Solve the puzzle step by step. At the very end, only output your final answer as a single JSON object on its own line. Use only the player IDs (the alphanumeric codes like “D5506”, not the full names) in this exact format: {“ranking”: [“<best_id>“, “<2nd_id>“, ..., “<worst_id>“]} For exam-ple if Player A1234 is best and Player B5678 is worst: {“ranking”: [“A1234”, “B5678”]} Do not include any other text after the JSON. 
+
+Chinese. 
+
+比赛结果： 
+
+1. 选手 V9935 击败了选手 A5506 。
+
+2. 选手 U2824 击败了选手 A5506 。
+
+3. 选手 E2679 击败了选手 H4657 。
+
+4. 选手 E2679 击败了选手 A5506 。
+
+5. 选手 A5506 击败了选手 H4657 。
+
+6. 选手 U2824 击败了选手 E2679 。
+
+7. 选手 V9935 击败了选手 E2679 。
+
+8. 选手 V9935 击败了选手 U2824 。
+
+9. 选手 V9935 击败了选手 H4657 。
+
+44 10. 选手 U2824 击败了选手 H4657 。问题：根据上述结果，将所有选手按实 力从强到弱进行排序。 
+
+This is a topological ranking puzzle. The match results define a directed acyclic graph where each edge represents one player de-feating another. Your task is to find the unique total ordering consistent with all re-sults. 
+
+共有 5 名选手。您的最终排名必须包括 所有选手。 
+
+Solve the puzzle step by step. At the very end, only output your final answer as a single JSON object on its own line. Use only the player IDs (the alphanumeric codes like “D5506”, not the full names) in this exact format: {“ranking”: [“<best_id>“, “<2nd_id>“, ..., “<worst_id>“]} For exam-ple if Player A1234 is best and Player B5678 is worst: {“ranking”: [“A1234”, “B5678”]} Do not include any other text after the JSON. 
+
+45
