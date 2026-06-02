@@ -6,86 +6,85 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-01
-- 运行时间：2026-06-01 22:26:25 UTC
+- 最新运行日期：2026-06-02
+- 运行时间：2026-06-02 22:33:37 UTC
 - 运行状态：成功
-- 本次总论文数：22
-- 精读区：9
+- 本次总论文数：21
+- 精读区：8
 - 速读区：13
 
 ### 今日简报（AI）
-今日精读9篇、速读13篇，聚焦大模型可解释性与机制解析。最值得关注的是Claude 3 Sonnet的可解释特征提取（10分）及LLM语义结构机制研究（9分）。建议普通读者优先精读这两篇论文，并留意序列重复、翻译误差等速读中揭示的实际问题。
-- 详情：[/202606/01/README](/202606/01/README)
+今日精选21篇NLP论文，精读8篇，聚焦参数高效微调与词表示创新。  
+最值得关注的是LoRA适配器特征几何分析（9.0）与Kronecker字节级结构化表示（9.0），前者揭示微调中表示分歧，后者实现参数高效。  
+建议优先精读这两篇，特别是稀疏自编码器分析LoRA的方法，可迁移至自身微调任务。
+- 详情：[/202606/02/README](/202606/02/README)
 
 ### 精读区论文标签
-1. [Scaling Monosemanticity: Extracting Interpretable Features from Claude 3 Sonnet](/202606/01/2605.29358v1-scaling-monosemanticity-extracting-interpretable-features-from-claude-3-sonnet)  
-   标签：评分：10.0/10、query:llm-lang-rep
-   evidence：使用稀疏自编码器从Claude 3 Sonnet提取可解释特征
-2. [Is Inference Mediated by Distinct Semantic Structures in LLMs? A Mechanistic Interpretation](/202606/01/2605.25520v1-is-inference-mediated-by-distinct-semantic-structures-in-llms-a-mechanistic-interpretation)  
+1. [Feature Geometry of LoRA Adapters: A Sparse Autoencoder Analysis of Representational Divergence in Fine-Tuned Language Models](/202606/02/2605.28896v1-feature-geometry-of-lora-adapters-a-sparse-autoencoder-analysis-of-representational-divergence-in-fine-tuned-language-models)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：通过激活干预对LLM中语义结构进行机械论解释
-3. [QUIET: A Multi-Blank Cascaded Story Cloze Benchmark for LLM Creative Generation Capability](/202606/01/2605.25955v1-quiet-a-multi-blank-cascaded-story-cloze-benchmark-for-llm-creative-generation-capability)  
+   evidence：使用稀疏自编码器分析LoRA微调LLMs的表示变化
+2. [Kronecker Embeddings: Byte-Level Structured Token Representations for Parameter-Efficient Language Models](/202606/02/2605.29459v1-kronecker-embeddings-byte-level-structured-token-representations-for-parameter-efficient-language-models)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：研究词嵌入聚类并揭示语言表征问题
+3. [MLLM-Microscope: Unlocking Hidden Structure Within Multimodal Large Language Models](/202606/02/2606.00909v1-mllm-microscope-unlocking-hidden-structure-within-multimodal-large-language-models)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：分析多模态LLM中隐藏表示的线性度、本征维度和各向异性
+4. [Accuracy, Stability, and Repeated-Run Reliability of Large Language Models on Deterministic Programming Tasks](/202606/02/2606.00920v1-accuracy-stability-and-repeated-run-reliability-of-large-language-models-on-deterministic-programming-tasks)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：QUIET基准评估LLM创造性生成能力
-4. [Beyond Questions: Evaluating What Large Language Models (Actually) Know](/202606/01/2605.26937v1-beyond-questions-evaluating-what-large-language-models-actually-know)  
+   evidence：LLM代码生成稳定性评估的重复运行协议
+5. [Consistent and Distinctive: LLM Benchmark Efficiency via Maximum Independent Set Prompt Selection on Similarity Graphs](/202606/02/2606.01400v1-consistent-and-distinctive-llm-benchmark-efficiency-via-maximum-independent-set-prompt-selection-on-similarity-graphs)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：提出开放式知识评估新范式
-5. [Feature Geometry of LoRA Adapters: A Sparse Autoencoder Analysis of Representational Divergence in Fine-Tuned Language Models](/202606/01/2605.28896v1-feature-geometry-of-lora-adapters-a-sparse-autoencoder-analysis-of-representational-divergence-in-fine-tuned-language-models)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：利用稀疏自编码器分析LoRA适配器的表征几何，属于可解释性研究
-6. [Do Language Models Track Entities Across State Changes?](/202606/01/2605.30233v1-do-language-models-track-entities-across-state-changes)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：语言模型中的实体跟踪机制
-7. [XLGoBench: Detecting cross-lingual skill gaps with algorithmic tasks](/202606/01/2605.30788v1-xlgobench-detecting-cross-lingual-skill-gaps-with-algorithmic-tasks)  
+   evidence：通过基于图的提示选择提升LLM基准评测效率
+6. [Benchmarking LLM-as-a-Judge for Long-Form Output Evaluation](/202606/02/2606.01629v1-benchmarking-llm-as-a-judge-for-long-form-output-evaluation)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：检测LLM跨语言技能差距的新基准
-8. [The Latin Substrate: How Language Models Represent and Mediate Script Choice](/202606/01/2605.31363v1-the-latin-substrate-how-language-models-represent-and-mediate-script-choice)  
+   evidence：提出LongJudgeBench，用于评估LLM评审员在长形式输出上的可靠性
+7. [Multilinguality of Large Language Models From a Structural Perspective](/202606/02/2606.01800v1-multilinguality-of-large-language-models-from-a-structural-perspective)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：直接研究LLM如何表示和中介脚本选择，分析内部表示机制
-9. [Language Models Learn Constructional Semantics, Not To Mention Syntax: Investigating LM Understanding of Paired-Focus Constructions](/202606/01/2605.31586v1-language-models-learn-constructional-semantics-not-to-mention-syntax-investigating-lm-understanding-of-paired-focus-constructions)  
-   标签：评分：9.0/10、query:llm-ling
-   evidence：探究语言模型对配对焦点构式的理解，涉及句法与语义
+   evidence：多语言LLM表征的结构分析
+8. [ProbeScale: Probing Analysis to Optimize Neural Scaling Laws for Efficient Small Language Model Inference](/202606/02/2606.01806v1-probescale-probing-analysis-to-optimize-neural-scaling-laws-for-efficient-small-language-model-inference)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：使用探测分析语言模型中编码的语言知识
 
 ### 速读区论文标签
-1. [Repeated Sequences Reveal Gaps between Large Language Models and Natural Language](/202606/01/2605.24850v1-repeated-sequences-reveal-gaps-between-large-language-models-and-natural-language)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：使用重复子序列分析LLM文本结构的评估框架
-2. [Quantifying the Impact of Translation Errors on Multilingual LLM Evaluation](/202606/01/2605.24904v1-quantifying-the-impact-of-translation-errors-on-multilingual-llm-evaluation)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：量化翻译错误对多语言LLM评测的影响
-3. [H$^{2}$MT: Semantic Hierarchy-Aware Hierarchical Memory Transformer](/202606/01/2605.24930v1-h2mt-semantic-hierarchy-aware-hierarchical-memory-transformer)  
+1. [Tracing Computation Density in LLMs](/202606/02/2605.27033v1-tracing-computation-density-in-llms)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：构建语义层次以结构化长上下文推理
-4. [Mimir: Large-scale Multilingual Concept Modeling](/202606/01/2605.25263v1-mimir-large-scale-multilingual-concept-modeling)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：提出概念建模，超越token级表示，直接关注LLM如何表示意义
-5. [KVoiceBench, KOpenAudioBench, and KMMAU: Agent-Driven Korean Speech Benchmarks for Evaluating SpeechLMs](/202606/01/2605.27984v1-kvoicebench-kopenaudiobench-and-kmmau-agent-driven-korean-speech-benchmarks-for-evaluating-speechlms)  
+   evidence：追踪计算密度以解释LLM内部计算阶段
+2. [Lost in Sampling: Assessing Lexical Reachability in LLMs via the Word Coverage Score (WCS)](/202606/02/2605.27268v1-lost-in-sampling-assessing-lexical-reachability-in-llms-via-the-word-coverage-score-wcs)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：提出韩语语音基准用于评估语音语言模型，直接相关于评测基准
-6. [Representation Without Control: Testing the Realization Effect in Language Models](/202606/01/2605.25151v1-representation-without-control-testing-the-realization-effect-in-language-models)  
-   标签：评分：7.0/10、query:llm-lang-rep
-   evidence：通过线性读取和激活操控研究LLM内部表征
-7. [Same Data, Different Schemas: Robustness of LLM-based Text-to-SQL](/202606/01/2605.25838v1-same-data-different-schemas-robustness-of-llm-based-text-to-sql)  
+   evidence：提出WCS指标评估LLM生成中的词汇多样性
+3. [PromptEmbedder:: Efficient and Transferable Text Embedding via Dual-LLM Soft Prompting](/202606/02/2605.28066v1-promptembedder-efficient-and-transferable-text-embedding-via-dual-llm-soft-prompting)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：通过软提示学习语义表示
+4. [LLMBridge: An LLM Pipeline for End-to-end Referential Bridging Resolution in English](/202606/02/2605.29048v1-llmbridge-an-llm-pipeline-for-end-to-end-referential-bridging-resolution-in-english)  
+   标签：评分：8.0/10、query:llm-ling
+   evidence：应用LLM自然语言推理能力进行指代桥接消解
+5. [UA-Legal-Bench: A Benchmark for Evaluating Large Language Models on Ukrainian Legal Reasoning](/202606/02/2605.29170v1-ua-legal-bench-a-benchmark-for-evaluating-large-language-models-on-ukrainian-legal-reasoning)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：引入乌克兰法律推理的LLM评估基准
+6. [Fine-Tuning Improves Information Conveyance in Language Models](/202606/02/2605.30844v1-fine-tuning-improves-information-conveyance-in-language-models)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：评估和基准测试LLM在Text-to-SQL中对模式变化鲁棒性的框架
-8. [An In-Vitro Study on Cross-Lingual Generalization in Language Models](/202606/01/2605.26683v1-an-in-vitro-study-on-cross-lingual-generalization-in-language-models)  
+   evidence：提出Canopy熵用于评估生成不确定性
+7. [Parameter Alignment Mitigates Catastrophic Forgetting in Multilingual Expert Language Models](/202606/02/2606.00284v1-parameter-alignment-mitigates-catastrophic-forgetting-in-multilingual-expert-language-models)  
    标签：评分：7.0/10、query:llm-ling
-   evidence：使用程序生成语言研究跨语言迁移机制
-9. [Quality Without Usefulness: LLM-Generated XAI Narratives as Trust Heuristics Rather Than Decision Aids](/202606/01/2605.26770v1-quality-without-usefulness-llm-generated-xai-narratives-as-trust-heuristics-rather-than-decision-aids)  
+   evidence：研究多语言持续预训练中的灾难性遗忘，提出参数对齐策略保留语言知识
+8. [On the Limits of LLM Adaptability: Impact of Model-Internalized Priors on Annotation Task Performance](/202606/02/2606.00467v1-on-the-limits-of-llm-adaptability-impact-of-model-internalized-priors-on-annotation-task-performance)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：LLM生成解释的质量与有用性评估
-10. [Inverting the Shield: Systematically Generating Safety Tests from Policy Specifications](/202606/01/2605.24883v1-inverting-the-shield-systematically-generating-safety-tests-from-policy-specifications)  
+   evidence：模型先验对标注任务评估的影响
+9. [Understanding LLM Behavior in Multi-Target Cross-Lingual Summarization](/202606/02/2606.01252v1-understanding-llm-behavior-in-multi-target-cross-lingual-summarization)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：用于理解跨语言摘要中LLM内部行为的分层分析框架
+10. [Are Diffusion Language Models Good Database Analysts?](/202606/02/2605.27791v1-are-diffusion-language-models-good-database-analysts)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：基于策略的系统化LLM安全测试生成
-11. [From Automation to Collaboration: Human-in-the-Loop Methods for Safe and Trustworthy NLP](/202606/01/2605.25226v1-from-automation-to-collaboration-human-in-the-loop-methods-for-safe-and-trustworthy-nlp)  
+   evidence：提出了扩散模型在NL2SQL上的评估框架
+11. [Preference-Aware Rubric Learning for Personalized Evaluation](/202606/02/2605.31545v1-preference-aware-rubric-learning-for-personalized-evaluation)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：综述人机协同方法用于NLP安全性和可信度，涉及探针审计和对抗测试等评估手段
-12. [SemBridge: Language Transfer in Sparse Encoders via Multilingual Semantic Bridges](/202606/01/2605.26002v1-sembridge-language-transfer-in-sparse-encoders-via-multilingual-semantic-bridges)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：稀疏编码器的跨语言语义对齐
-13. [Granuscore: A Reference-Free Measure of Granularity for Text Analysis and Question Answering](/202606/01/2605.26620v1-granuscore-a-reference-free-measure-of-granularity-for-text-analysis-and-question-answering)  
-   标签：评分：6.0/10、query:llm-ling
-   evidence：提出无参考文本粒度度量，与语言结构相关
+   evidence：LLM个性化对齐评估
+12. [Toward Responsible and Epistemically Grounded Multilingual LLMs for Computational Social Science and Humanities](/202606/02/2606.00596v1-toward-responsible-and-epistemically-grounded-multilingual-llms-for-computational-social-science-and-humanities)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：从解释学角度重构多语言LLM的评估范式
+13. [PolySpeech-100: A Large-Scale Benchmark for Speech Understanding Across 100+ Languages and Dialects](/202606/02/2606.01016v1-polyspeech-100-a-large-scale-benchmark-for-speech-understanding-across-100-languages-and-dialects)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：大规模基准用于跨语言评估语音语言模型
 
 
 <div class="dpr-home-promo-card">

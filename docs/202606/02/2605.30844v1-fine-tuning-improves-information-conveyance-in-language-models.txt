@@ -1,0 +1,2303 @@
+Title: Fine-Tuning Improves Information Conveyance in Language Models
+
+URL Source: https://arxiv.org/pdf/2605.30844v1
+
+Published Time: Mon, 01 Jun 2026 00:36:51 GMT
+
+Number of Pages: 26
+
+Markdown Content:
+# Fine-Tuning Improves Information Conveyance in Language Models 
+
+Yuwei Cheng ∗
+
+Department of Statistics University of Chicago Chicago, IL 60637 
+
+yuweicheng@uchicago.edu 
+
+Weiyi Tian ∗
+
+Department of Data Science University of Chicago Chicago, IL 60637 
+
+weiyitian@uchicago.edu 
+
+Haifeng Xu 
+
+Department of Computer Science University of Chicago Chicago, IL 60637 
+
+haifengxu@uchicago.edu 
+
+Abstract 
+
+Fine-tuning is often believed to reduce uncertainty and diversity in large language models, but existing analyses overlook output length, a key confounder, and there-fore fail to capture how uncertainty is distributed across an entire generation rollout. To address this, we propose Canopy Entropy (CE ⋆), a measure that views language generation from a tree perspective, where “canopy” represents the space of all possible rollouts, making CE ⋆ naturally quantify the effective size of the gener-ation space . CE ⋆ jointly captures uncertainty in both the output length N and the generated sequence Y1: N – indeed, we show that it equals to total Shannon entropy H(N, Y 1: N | X), where X denotes the prompt. This formulation yields interpretable metrics, including a length–entropy correlation term ρ(N, r N ), where 
+
+rN is the entropy rate, quantifying information conveyance efficiency by indicat-ing whether longer outputs are more or less informative per token. Empirically, across tasks and model families, we find that fine-tuned models consistently exhibit stronger positive correlation ρ(N, r N ), even when total entropy decreases. Further-more, after controlling for model family, task, prompt, and output-length effects, we find that fine-tuning nearly triples the correlation strength between entropy rate and semantic diversity, suggesting that aligned models convert token uncertainty into semantic diversity more efficiently. Overall, these results demonstrate that fine-tuning does not simply reduce uncertainty, but fundamentally reorganizes it into more informative and semantically meaningful generations. Our code is available at https://github.com/WeiyiTian/canopy-entropy .
+
+1 Introduction 
+
+Large language models (LLMs) have achieved strong performance across tasks such as natural language understanding [ 2 , 12 ], code generation [ 3, 24 ], and mathematical reasoning [ 22 , 19 ]. A key driver of this success is fine-tuning, including instruction tuning [ 36 , 4] and alignment with human preferences [ 22 , 23 ]. While fine-tuning substantially improves helpfulness and task performance, a growing body of work suggests that it may also reduce output diversity and compresses the effective generation space of language models [ 34 , 39 , 17 , 37 ]. Prior studies report that base models 
+
+> ∗Equal contribution. Preprint.
+> arXiv:2605.30844v1 [cs.CL] 29 May 2026
+
+exhibit greater randomness and creativity, whereas aligned models produce more concentrated and similar responses across samples [ 37 ]. Similar conclusions have been drawn using branching factor [ 39 ], lexical diversity [ 17 ], and token-level uncertainty measures [ 1 , 33 ], reinforcing the view that fine-tuning makes language models more deterministic and less diverse. However, existing analyses suffer from an important limitation–they do not control for output length, despite length being a major confounder in diversity measurement [ 26 ]. Classical metrics such as type-token ratio are biased by text length, often making shorter responses appear more diverse [26 ]. Such metrics that ignore generation length cannot distinguish genuinely diverse outputs from statistical artifacts induced by shorter outputs. This limitation is especially problematic in aligned language models because fine-tuning changes not only what models generate, but also how long they generate. Base models often produce shorter responses, while instruction-tuned models generate longer and more structured outputs [ 29 ]. As illustrated in Figure 2, base models typically exhibit decreasing entropy rates over generation, implying that longer continuations become increasingly predictable and redundant. In contrast, fine-tuned models tend to maintain more stable entropy rates across longer trajectories, suggesting that additional tokens remain informative rather than collapsing into low-information continuation. More importantly, prior work largely treats diversity as a static property of outputs, without studying how uncertainty evolves along generation trajectories. To the best of our knowledge, no existing work analyzes the relationship between generation length and entropy rate (see Definition 3)—that is, whether longer generations become more informative or increasingly redundant. Yet this interaction is crucial, since fine-tuning learns not only what to say, but also when to elaborate and when to stop. As a result, output length itself becomes part of the learned generation strategy, making diversity comparisons incomplete without accounting for how uncertainty is allocated across trajectories. Meanwhile, recent studies suggest a more nuanced picture than simple diversity reduction. Fine-tuning can increase certain forms of diversity, such as semantic diversity in code generation, even while reducing lexical variation [ 28 ]. These findings suggest that fine-tuning may reorganize un-certainty and generation structure, rather than uniformly suppress diversity, leaving the relationship between uncertainty allocation, semantic diversity, and generation trajectories still poorly understood. 
+
+Our contribution. In this work, we revisit diversity in language models through a principled information-theoretic lens. We propose Canopy Entropy (CE ⋆), an information-theoretic measure that views language generation from a tree perspective. Just as a biological canopy represents the total spread and reach of a tree’s branches, our metric views the “canopy” as the set of all potential leaves—or finished rollouts—available to the model. This allows CE ⋆ to naturally quantify the effective volume of the generation space by accounting for both how widely the model branches and how deeply it explores. CE ⋆ is introduced to jointly capture output length and content uncertainty, and we show that it admits an exact characterization as the total Shannon entropy H(N, Y 1: N | X),where X denotes the prompt, N is the generated length, and Y1: N is the generated sequence. Building on this formulation, we derive interpretable metrics and introduce a length–entropy correlation term that measures how uncertainty is allocated across generation trajectories (see section 3). Since CE ⋆
+
+exhausts the entire space of rollouts, a key challenge is to estimate it efficiently. Towards that end, we develop Monte Carlo estimators and establish their consistency (see section 4). Empirically, we evaluate multiple model families across sentence completion, mathematical reasoning, coding, and story generation, while explicitly controlling for output length. Our results reveal three consistent findings: (i) fine-tuning generally reduces token-level and trajectory-level uncertainty, although the magnitude of reduction is highly task-dependent; (ii) fine-tuning systematically shifts 
+
+ρ(N, r N ) from negative toward positive, indicating that longer generations become more informative rather than being redundant as often in base models; and (iii) entropy rate becomes a substantially stronger predictor of semantic diversity after fine-tuning, suggesting that aligned models utilize uncertainty more efficiently and translate it more effectively into meaningful semantic diversity (see section 5). Overall, our results suggest that fine-tuning does not simply reduce uncertainty or shrink the generation space. Rather, it restructures how uncertainty is allocated across generation trajectories, producing outputs that are more organized, semantically meaningful, and information-efficient. 22 Related work 
+
+Length as a fundamental confounder in diversity measurement. Recent work [ 29 ] shows that RLHF and instruction tuning systematically increase LLM output length, since longer responses are often positively correlated with human preference scores. This makes output length a critical confounder in diversity evaluation. Metrics that favor shorter generations may therefore unfairly penalize instruct models simply because they produce longer responses. For example, n-gram diversity metrics [ 18 ] naturally decrease with sequence length, as longer texts inevitably reuse a finite vocabulary, reducing the ratio of unique n-grams even when the underlying content remains semantically diverse. Embedding-based semantic diversity measures [ 32 ] suffer from a related issue: longer generation trajectories must be compressed into fixed-dimensional representations, often through mean pooling, which can dilute semantic diversity. Moreover, many existing diversity metrics rely on heuristic sampling procedures and lack a unified probabilistic foundation [ 37 ]. Consequently, current approaches cannot rigorously distinguish whether the increased verbosity of instruct models reflects genuine information gain or merely redundant continuation, motivating the need for a principled length-aware and model-intrinsic measure of generation diversity. 
+
+From local branching to global canopy. Conceptualizing autoregressive generation as a stochastic, path-dependent branching tree, Branching Factor (BF) [ 39 ] was introduced to quantify the probability concentration induced by model alignment. However, their framework lacks a formal heuristic and focuses primarily on the width of the generation tree (branching) while ignoring its depth (length) and the coupling between the two. CE ⋆ addresses this gap by providing a model-intrinsic characterization of the generation space by jointly modeling content uncertainty and stochastic stopping behavior. By deriving the BF as a normalized version of CE ⋆, we provide a principled theoretical foundation for its use. Crucially, our length-uncertainty correlation demonstrates that while fine-tuning reduces the absolute BF, it restructures the generation tree to sustain information density across longer paths while translating uncertainty into semantic diversity more efficiently. To the best of our knowledge, this is the first work to provide a unified measure of the global LLM generation space that accounts for both the local branching uncertainty and the stochasticity of trajectory length, while also studying the redistribution of uncertainty across generation trajectories. 
+
+3 Methodology 
+
+Notation convention. For any discrete random variable Z ∈ with probability q(z) for each z ∈ Z ,its Shannon entropy [ 27 ] is H(Z) = P 
+
+> z∈Z
+
+q(z) log q(z). Let X be another random variable and 
+
+X, Z have joint probability q(z, x ), then H(Z|X = x) = P 
+
+> z∈Z
+
+q(z|x) log q(z|x) is the conditional entropy of Z given realized x, whereas H(Z|X) = P 
+
+> x
+
+H(Z|x)q(x) is the expected conditional entropy of Z.
+
+3.1 Measuring the size of LLM generation space from a tree perspective Autoregressive generation as a stochastic tree. Autoregressive language models induce a stochastic generation process that can naturally be represented as a rooted, path-dependent tree. Let X ∼ pX
+
+denote a prompt sampled from a prompt distribution over a space X , and let V denote the vocabulary. Conditioned on X = x and a decoding policy (e.g., temperature, top-k, or nucleus sampling), generation proceeds sequentially by sampling tokens from a conditional distribution. Formally, let 
+
+Y1, Y 2, . . . , denote the autoregressive token process generated by the model. For each step t ≥ 1,define the generation history as Gt := ( Y1, . . . , Y t−1), with G1 := ∅. The next-step random variable is denoted by Zt ∈ Z := V ∪ { EOS }, where EOS denotes termination. The conditional distribution 
+
+q(Zt | Gt, X ) governs the next-step generation process. 2 Under this construction, each node of the generation tree (see Figure 1) corresponds to a history Gt. Each outgoing edge corresponds to a possible realization of Zt. A complete generated sequence therefore corresponds to a root-to-leaf trajectory. A key feature of this construction is its path dependence. The next-step distribution q
+
+depends on the entire generation history Gt, not merely the most recent token. Thus, two trajectories ending with the same token may evolve very differently if they arise from different histories.       
+
+> 2This formulation is equivalent to a two-stage stochastic decision process Specifically, the model first makes a binary decision between STOP (terminate) and CONT (continue). Conditional on CONT , it then samples the next token from the vocabulary V. We provide a formal proof of this equivalence in subsection A.1.
+
+3Prompt  
+
+> ...
+> ...
+> ...  ...  ...
+> Edges: Leaf Node: History (Pre fi x):
+
+Figure 1: Path-dependent generation tree induced by autoregressive LLMs. 
+
+Width and depth of the generation tree. The size of the generation tree is determined by two complementary factors. First, at each history Gt, the spread of q(· | Gt, X ) determines the number of plausible continuations, capturing the local branching behavior ( width ) of the tree. Second, generation proceeds for a random number of steps before termination, inducing variability in trajectory depth. We define the stopping time N := inf {t ≥ 1 : Zt = EOS }, which represents the generation length (depth ). Under this formulation, the stochastic process jointly models both continuation uncertainty and stopping behavior, together determining the overall size of the generation space. 
+
+A unified measure of generation space. To quantify local uncertainty, we use Shannon entropy [ 27 ]. For a given prompt X = x and a realized generation history Gt = gt, define 
+
+eH(gt | x) := H(Zt | Gt = gt, X = x) = − X
+
+> z∈Z
+
+q(z | gt, x ) log q(z | gt, x ). (1) This quantity measures uncertainty via entropy in the immediate next generation step, including both continuation-token selection and termination. Note that this quantity summarizes only the uncertainty of the next-step generation conditioned on a realized history gt and prompt x. In the following, we slightly overload the notation by also using uppercase Gt and X to denote realized histories and prompts whenever the distinction between random variables and their realizations is clear from context. To jointly account for local branching diversity and random trajectory length, we introduce the following uncertainty measure. 
+
+Definition 1 (Canopy Entropy) . We define Canopy Entropy as CE ⋆ := E
+
+hPN (x) 
+
+> t=1
+
+eH(gt | x)
+
+i
+
+. More formally, 
+
+CE ⋆ = Ex, {gt}N (x)
+
+> t=1
+
+ 
+
+> N(x)
+
+X
+
+> t=1
+
+H(Zt | Gt = gt, X = x)
+
+
+
+where the E is over the randomness of prompt x, N (x) (the length), and {gt}N (x) 
+
+> t=1
+
+(all possible partial histories of rollouts). 
+
+That is, the quantity CE ⋆ aggregates entropy-based uncertainty along generation trajectories and across prompts. A single generated sequence corresponds to a specific traversal from the tree root (prompt X) to a leaf ( EOS termination). The summation PN (X) 
+
+> t=1
+
+thus represents the total uncertainty accumulated along that entire path. By taking the expectation over all trajectories, CE ⋆ captures the aggregate “canopy” of the model’s output distribution across all possible rollouts. As such, it provides a unified measure of generation space by accounting for both local branching width (the diversity of choices at each node) and trajectory depth (the variability in generation length). 
+
+CE ⋆ as the joint entropy of length and content. Besides being an intuitive measure, above construction turns out to also admit a clean information-theoretic characterization. In particular, the 4cumulative uncertainty along a trajectory can be interpreted as the total entropy of the generation process. For ease of reference, we call H(N, Y 1: N |X) the total uncertainty , H(N |X) the length uncertainty , and H(Y1: N | N, X ) the content uncertainty . The following theorem formalizes the connection. 
+
+Theorem 1 (Equivalence of CE ⋆ and total uncertainty) . CE ⋆ = H(N, Y 1: N | X).
+
+Theorem 1 (see subsection A.2 for a detailed proof) shows that the Canopy Entropy coincides with the total uncertainty of the generation process. By the chain rule of entropy, H(N, Y 1: N | X) = H(N |
+
+X) + H(Y1: N | N, X ), which decomposes the total uncertainty into two components. The length uncertainty H(N | X) captures how unpredictable the stopping time is, while the content uncertainty 
+
+H(Y1: N | N, X ) captures how diverse the generated sequences are once the length is fixed. This decomposition aligns naturally with the tree perspective: length uncertainty corresponds to variability in the depth of trajectories, while content uncertainty corresponds to the diversity of paths of a given length. We can interpret exp(CE ⋆) as the effective number of plausible full sequences, analogous to how perplexity represents the effective branching at the token level. 
+
+3.2 Two normalized variants of Canopy Entropy 
+
+While CE ⋆ = H(N, Y 1: N | X) provides a clean characterization of the generation space, it aggre-gates uncertainty across both sequence lengths and content diversity, making its direct interpretation difficult. To obtain more interpretable metrics, we introduce two normalized variants of CE ⋆, respec-tively coined Generation Perplexity and Branching Factor (as introduced in [ 39 ]). Intuitively, the former corresponds to the token-level normalization of CE ⋆, whereas the latter is trajectory-level normalization. In both definitions, the exp function converts entropy uncertainty to bit diversity. 
+
+Definition 2 (GenPPL) . Generation Perplexity is defined as GenPPL := exp 
+
+ P    
+
+> X∼pXH(N,Y 1: N|X=x)
+> P
+> X∼pXE[N|X=x]
+
+
+
+.
+
+Definition 3 (BF, [ 39 ]) . Branching Factor is defined as BF := exp ( EX EN [rN | X = x]) , where 
+
+rN := H(Y1: N |N =n,X =x) 
+
+> n
+
+is the entropy rate (i.e., per-token content uncertainty). 3
+
+Invoking Theorem 1, we observe that the only difference between Canopy Entropy CE ⋆ and GenPPL or BF is that – excluding the “ exp ” function – CE ⋆ does not have the normalization term 1/(P 
+
+> X∼pX
+
+E[N | X = x]) or 1/n . It is worthwhile to think deeper about the difference be-tween GenPPL and BF, due to their different normalization factors. Such difference will be prominent when the generated sequence length N could differ a lot. In such case, GenPPL treats each token equally , regardless of it is from the short and long sequence, through a “global” normalization factor 
+
+1/(P 
+
+> X∼pX
+
+E[N | X = x]) . However, BF as the expectation of rN treats each trajectory equally 
+
+and consequently will discount the influence of tokens in long sequences much more than that in the short sequence. Therefore, at a high level, GenPPL reflects the diversity of a typical token in the generation whereas BF reflects the diversity of a typical trajectory . For further intuition, we refer readers to subsection B.1 for a concrete example illustrating the distinction between GenPPL and BF. GenPPL and BF together provide a more complete view of generation behavior across tasks. In particular, we observe that structured tasks such as mathematical reasoning or coding are better characterized by token-level uncertainty (GenPPL), whereas open-ended tasks like story generation are better captured by trajectory-level diversity (BF). Our framework provides a principled formulation of GenPPL as a generative analogue of perplexity [ 15 ] for variable-length processes, and offers a unified information-theoretic interpretation of BF, initially proposed by Yang et.al [ 39 ], showing that both arise naturally as normalized variants of Canopy Entropy. See Appendix B.2 for guidance on when to use BF or GenPPL, and Appendix B.3 for a comparison with perplexity. 
+
+3.3 The length-entropy correlation: how entropy evolves with generation length 
+
+Aggregate measures such as Canopy Entropy, GenPPL, and BF quantify the overall magnitude of uncertainty. However, they fail to capture how uncertainty evolves across generation rollouts or how effectively uncertainty is translated into meaningful variation as generation length increases. Whether 
+
+> 3In information theory, the entropy rate quantifies the average amount of information produced per generated token by a stochastic process, and can be interpreted as a measure of information density or non-redundancy.
+
+5longer generations remain information-rich or become progressively redundant [ 29 , 26 ] remains poorly understood despite rich previous studies on the diversity of language generation [ 32 , 18 , 8]. Understanding this interaction is crucial for characterizing the information-conveying efficiency of language models—namely, how much uncertainty is maintained per token as generation progresses. To study this phenomenon, we introduce the prompt-controlled correlation ρ(N, r N ) between the length N and entropy rate rN , defined below. 
+
+Definition 4 (The length-entropy correlation) . For each prompt, the length-entropy correlation is defined as 
+
+ρ(N, r N ) = EX∼pX
+
+
+
+Corr (N, r N ) | X = x
+
+
+
+, where rN = H(Y1: N | N = n, X = x)
+
+n
+
+is the entropy rate and Corr is any standard correlation notion from the set {Pearson correlation, Spearman correlation, Kendrall correlation}. 
+
+A positive correlation ρ(N, r N ) indicates that longer sequences remain informative per token, while a negative correlation indicates that longer outputs become increasingly predictable. This quantity characterize uncertainty allocation along trajectories and is later used in section 5 to compare base and fine-tuned models across tasks and model families. In our evaluation, we observe consistent trends across the three standard correlation notions as mentioned in the definition above, which illustrates the robustness of the discovered correlations among generation length and entropy rate. Notably, the correlation ρ(N, r N ) is evaluated over the randomness of rollouts drawn from an exponentially large space; we discuss efficient estimation methods in the section below, with full details deferred to subsection A.6. 
+
+4 Efficient and consistent estimation of CE ⋆
+
+The previous section introduced CE ⋆ = H(N, Y 1: N | X) and its derived metrics such as GenPPL, BP and length-entropy correlation. However, efficiently computing these metrics in practice is challenging since they are expectations over exponentially many trajectories [ 13 , 39 ]. This section develops computationally tractable approaches to estimate CE ⋆ which are also generalizable to estimating the derived metrics. In particular, we introduce a Monte Carlo estimator under a maximum length constraint Tmax , and analyze the consistency of this estimator. For a random prompt X, let N (X) be the generation’s (random) stopping time. Given a maximum length Tmax , define the truncated stopping time Nmax (X) := min {N (X), T max }. The corresponding truncated functional is CE ⋆ 
+
+> max
+
+=: E
+
+hPNmax (X) 
+
+> t=1
+
+eH(Gt | X)
+
+i
+
+. Now suppose x1, . . . , x P are sampled i.i.d. from pX , the prompt distribution. For each prompt xp, we generate M independent rollouts. For the i-th rollout, define the truncated cumulative local entropy by S(p,i )max := PN (p,i )max  
+
+> t=1
+
+eH(G(p,i ) 
+
+> t
+
+| xp),
+
+which measures the total branching uncertainty along the generated trajectory up to truncation. We then define the Monte Carlo estimator (see algorithm 1 for more detail) 
+
+cCE ⋆ 
+
+> max ,P,M
+
+:= 1
+
+P M 
+
+> P
+
+X
+
+> p=1
+> M
+
+X
+
+> i=1
+
+S(p,i )max .
+
+The estimator’s convergence and consistency requires minor technical assumptions. First, let 
+
+g(Tmax ) = CE ⋆ − CE ⋆ 
+
+> max
+
+denote the truncation bias. Naturally, it always satisfies g(Tmax ) ≥ 0.Convergence requires diminishing truncation bias — i.e., g(Tmax ) → 0 as Tmax → ∞ . Sec-ond, in our estimation, Tmax increases as parameter P, M increases. Convergence requires modest truncation length — i.e., the length cap Tmax (P, M ) is picked such that ν2max ( 1 
+
+> P
+
++ 1 
+
+> P M
+
+) → 0
+
+as Tmax = Tmax (P, M ) → ∞ , where ν2max := E Nmax (X)2 is the second raw moment of the truncated stopping time. Both conditions are easily satisfied when the tail of N is not too heavy, which we observe in our empirical evaluation (see Figure 3). The following theorem characterizes the convergence of cCE ⋆ 
+
+> max ,P,M
+
+under these technical conditions. 
+
+Theorem 2 (Consistency and non-asymptotic error bounds of the Monte Carlo estimator) .
+
+Assume diminishing truncation bias g(T ) and modest truncation length. Then cCE ⋆
+
+> max ,P,M
+
+6converges to CE ⋆ in probability when P, M → ∞. Moreover, cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆ =
+
+OP
+
+
+
+νmax 
+
+q 1 
+
+> P
+
++ 1 
+
+> P M
+
++ g(Tmax )
+
+
+
+. where ν2max := E Nmax (X)2 .
+
+Theorem 2 shows that the estimator cCE ⋆ 
+
+> max ,P,M
+
+is consistent, with estimation error naturally decom-posing into a Monte Carlo error term and a truncation bias term. The Monte Carlo error is of order 
+
+OP
+
+ 1√P + 1√P M 
+
+
+
+, arising from sampling P prompts and M rollouts per prompt. The second component is a truncation bias g(Tmax ), which captures the bias introduced by truncating trajectories at length Tmax instead of allowing full generations. Empirically, we observe that the generation length distribution of LLMs typically exhibits exponential decay across tasks and model architectures (see Figure 3). This implies that long trajectories are increasingly rare, so the truncation bias g(Tmax ) decays rapidly with Tmax . We defer the proof of Theorem 2 to Appendix A.5. Notably, the same Monte Carlo framework extends to the estimation of GenPPL, BF, and prompt-controlled correlation. Their consistency follows by the continuous mapping theorem [ 20 ] together with mild integrability and truncation-bias conditions, which are empirically supported by the observed low truncation rates and rapidly decaying active-rollout distributions (see Appendix A.6 for detailed proofs and discussions). 
+
+Remark 4.1 (Connecting truncation bias to the distribution tail of N ). The truncation bias can be expressed as 
+
+g(Tmax ) = CE ⋆ − CE ⋆ 
+
+> max
+
+= E
+
+ 
+
+> N(X)
+
+X
+
+> t=Tmax +1
+
+eH(Gt | X)1{N (X) > T max }
+
+ . (2) 
+
+Let Hmax denote the entropy upper bound, i.e., eH(Gt | X) ≤ Hmax for any 
+
+Gt. Then we have g(Tmax )≤ Hmax EX∼pX [E [( N (X) − Tmax )+|X]] by the tail-sum for-mula E [( N (X) − Tmax )+|X = x] =P∞ 
+
+> t=Tmax +1
+
+P(N (x) ≥ t | X = x). Therefore, 
+
+Hmax EX∼pX
+
+P ∞ 
+
+> t=Tmax +1
+
+P(N (X) ≥ t | X) , with Hmax := log |Z| is a natural upper bound of g(Tmax ), showing that the truncation bias is governed by the prompt-averaged tail behavior of the stopping time. We refer readers to subsection A.4 for examples of prompt-averaged bias decay rates. 
+
+5 Empirical studies 
+
+In this section, we present our experimental results, organized into two complementary parts. First, we examine the global uncertainty structure of the LLM generation space using the metrics introduced in section 3, including CE ⋆, GenPPL, BF, and length–entropy correlation. Second, building on this analysis, we investigate how uncertainty is translated into semantic diversity through a regression framework that links entropy rate to semantic diversity. We evaluate three model families—LLaMA-3.1-8B [ 9], Qwen3-8B [ 38 ], and Gemma-3-12B [ 31 ]—testing both their pre-trained (base) and instruction-tuned (instruct) versions. We evaluate these models on four tasks spanning a spectrum from highly structured settings, including mathematical reasoning [ 5], coding [ 41 ], and sentence completion [ 40 ], to more open-ended creative story generation [ 14 ]. For each task, we sample 
+
+P = 100 prompts, and for each sampled prompt Xp, we generate M = 100 independent rollouts using stochastic decoding with temperature equals 1 and top-k = 100 (renormalized next-token probabilities), 4 where each rollout produces a sequence Y1: N with stopping time N up to a maximum of 4000 new tokens, i.e. Tmax = 4000 (see subsection C.1 for detailed description). To ensure consistent evaluation across model families, we disable the thinking mode in Qwen3-8B Instruct. 
+
+5.1 Global effects of fine-tuning on uncertainty 
+
+Across all model families and tasks, we observe three consistent patterns. 
+
+Fine-tuning reduces both token-level and trajectory-level normalized uncertainty. Instruction fine-tuning consistently reduces both token-level (measured by GenPPL) and trajectory-level (mea-           
+
+> 4Specifically, the one step local entropy ˜H(Gt|X)is computed as −P
+> z∈Z 100 q(z|Gt, X ) log q(z|Gt, X ), where Z100
+> is the set of the top-100 tokens (including EOS if present) and qis the renormalized distribution over the sampled subset.
+
+7Table 1: Task-dependent changes in generation-space uncertainty after instruction tuning across different model families. We report three complementary uncertainty measures: GenPPL, BF, and 
+
+CE ⋆ (see subsection A.6). For each task and model family, we compare the base and instruct variants and report the relative percentage change after instruction tuning. Standard errors (SE) are estimated via prompt-cluster bootstrapping (2K iterations, resampled with replacement) as in subsection C.3. Blue cells indicate reductions in uncertainty after instruction tuning, while red cells indicate increases. Darker color intensity corresponds to larger magnitude changes.                                                                                                                                                                                                                                                                                                                                                 
+
+> Task Type GenPPL BF CE ⋆
+> Qwen3-8B Llama-3.1-8B Gemma-3-12B Qwen3-8B Llama-3.1-8B Gemma-3-12B Qwen3-8B Llama-3.1-8B Gemma-3-12B
+> Math
+> Base 1.23 ±0.0052 3.57 ±0.041 4.56 ±0.052 1.23 ±0.0064 5.31 ±0.12 4.98 ±0.055 55.7 ±2.0 458 ±18 487 ±11 Instruct 1.17 ±0.0067 1.74 ±0.063 1.17 ±0.0098 1.16 ±0.0057 1.57 ±0.024 1.15 ±0.0054 40.5 ±2.5 98.7 ±9.1 59.1 ±5.1 % Change -4.44 ±0.47% -51.2 ±2.0% -74.4 ±0.34% -5.76 ±0.38% -70.5 ±0.73% -76.9 ±0.24% -27.3 ±3.3% -78.4 ±2.2% -87.9 ±1.1%
+> Coding
+> Base 1.68 ±0.017 3.16 ±0.055 2.60 ±0.041 2.08 ±0.034 4.96 ±0.057 3.24 ±0.038 207 ±4.8 326 ±13 492 ±25 Instruct 1.23 ±0.0053 1.31 ±0.0088 1.05 ±0.0039 1.21 ±0.0061 1.31 ±0.0081 1.05 ±0.0021 81.2 ±4.0 135 ±4.3 17.7 ±1.6 % Change -27.1 ±0.79% -58.4 ±0.74% -59.7 ±0.64% -41.9 ±0.99% -73.7 ±0.35% -67.8 ±0.38% -60.7 ±1.6% -58.6 ±1.7% -96.4 ±0.39%
+> Sentence Completion
+> Base 4.77 ±0.16 6.73 ±0.12 8.81 ±0.11 4.20 ±0.11 7.80 ±0.15 9.49 ±0.11 826 ±55 969 ±40 1084 ±36 Instruct 1.68 ±0.025 2.56 ±0.069 1.80 ±0.019 1.55 ±0.018 2.75 ±0.045 1.74 ±0.024 112 ±11 201 ±11 515 ±29 % Change -64.9 ±1.1% -62.0 ±1.3% -79.6 ±0.30% -63.0 ±0.88% -64.8 ±0.83% -81.6 ±0.30% -86.5 ±1.0% -79.3 ±1.3% -52.5 ±2.8%
+> Story Generation
+> Base 3.57 ±0.11 7.40 ±0.071 7.98 ±0.062 4.03 ±0.092 8.24 ±0.073 8.68 ±0.070 445 ±20 1320 ±41 692 ±23 Instruct 2.28 ±0.037 3.24 ±0.092 2.22 ±0.023 2.11 ±0.039 3.37 ±0.083 2.17 ±0.025 454 ±28 543 ±22 925 ±40 % Change -36.0 ±1.3% -56.2 ±1.4% -72.2 ±0.28% -47.6 ±1.3% -59.1 ±1.2% -75.0 ±0.28% 1.92 ±3.5% -58.9 ±1.6% 33.7 ±8.3%
+
+sured by BF) normalized uncertainty, as evidenced by systematic declines in GenPPL and BF across nearly all models and tasks (see Table 1). Nevertheless, the magnitude of this reduction varies substantially across settings. For example, Qwen3-8B on mathematical reasoning exhibits only a mild decrease of roughly 5% , whereas many other model–task combinations show much larger reductions, often in the range of 60% –80% . These results suggest that fine-tuning contracts the effective generation space at both the token and trajectory levels, producing outputs that are more concentrated and deterministic. At the same time, the heterogeneous magnitude of the reduction suggests that alignment does not impose a uniform compression of uncertainty. Instead, the extent of contraction depends on the underlying task structure and model behavior, a phenomenon we discuss in the following paragraph. Overall, our findings are consistent with prior observations that alignment reduces diversity and increases probability concentration [ 34 , 39 , 17 , 37 ], although the shrinkage we observe is less extreme than the order-of-magnitude reductions reported in the previous study [39]. 
+
+The effect of fine-turning on canopy entropy is task-dependent and could exhibit opposite trends. 
+
+In structured domains such as math, coding, and sentence completion, CE ⋆ decreases significantly after fine-tuning. In contrast, story generation exhibits a different pattern: Qwen3-8B shows a slight increase of roughly 2% , while Gemma-3-12B shows a much larger increase of about 34% 
+
+(see Table 1). This suggests that fine-tuning does not uniformly reduce canopy entropy, but instead behaves differently in constrained versus open-ended generation settings. For deterministic tasks such as math and coding, the valid generation space is naturally constrained, so fine-tuning acts as a pruning force that collapses the model’s generation space into a small set of correct trajectories. Consequently, both stopping-time variance and local token-level entropy are significantly reduced. By contrast, on creative tasks, fine-tuned models exhibit a notable rightward shift in sequence length distributions (see Figure 3), reflecting a tendency toward longer and more elaborative generations. In the same domain, the corresponding base models frequently fall into “completion traps,” treating prompts as short text continuation tasks rather than directly answering the underlying questions (see subsection C.2). Although instruction tuning reduces local branching diversity, it also increases stopping-time un-certainty, and sustains generation over much deeper trajectories. As illustrated in Figure 2, while the base model has higher local entropy rates ( width ), it lacks enough trajectory length ( depth ) to accumulate a large Canopy Entropy ( CE ⋆). Since CE ⋆ acts as a measure of the total volume of the generation tree by accumulating uncertainty across the entire rollout, including stopping behavior, the increase in trajectory depth can mathematically outweigh the reduction in local branching. These findings suggest that fine-tuning changes not only the magnitude of uncertainty, but also how uncertainty is distributed across the trajectory, particularly through its interaction with generation length and stopping behavior. 
+
+Fine-turning consistently increases length–entropy correlation. To better understand how uncer-tainty is distributed across trajectories, we analyze the relationship between output length N and entropy rate rN . Empirically, fine-tuning consistently shifts the correlation (see Definition 4) between 80.0                    
+
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> Entropy Rate
+> Coding
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> 2.5
+> Math
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> 2.5
+> Stories
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> 2.5
+> Completion
+> 0400 800 1k
+> Token Position t
+> 0
+> 10k
+> # Active
+> 0400 800 1k 2k
+> Token Position t
+> 0
+> 10k
+> 0300 600 900 1k
+> Token Position t
+> 0
+> 10k
+> 0250 500 750 1k
+> Token Position t
+> 0
+> 10k
+> Qwen3-8B base
+> Qwen3-8B instruct
+> Llama-3.1-8B base
+> Llama-3.1-8B instruct
+> Gemma-3-12B base
+> Gemma-3-12B instruct
+
+Figure 2: Running entropy rate vs. token position. We plot mean running entropy rate ¯R≤t =
+
+1
+
+t
+
+Pts=1 H(Zs | X, G s) averaged across active rollouts at position t, with the corresponding active rollout count beneath. Dashed curves denote base models and solid curves denote fine-tuned models. 10 0 10 1 10 2 10 3          
+
+> Sequence Length (log)
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> 2.5
+> 3.0
+> 3.5
+> Coding
+> 10 010 110 210 3
+> Sequence Length (log)
+> 0
+> 2
+> 4
+> 6
+> Math
+> 10 010 110 210 3
+> Sequence Length (log)
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> 2.5 Stories
+> 10 010 110 210 3
+> Sequence Length (log)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> Completion
+> Density (×10  3)
+> Qwen3-8B base
+> Qwen3-8B instruct
+> Llama-3.1-8B base
+> Llama-3.1-8B instruct
+> Gemma-3-12B base
+> Gemma-3-12B instruct
+
+Figure 3: Kernel density estimates of generated sequence lengths across task domains with sequence length shown on a logarithmic scale. 
+
+N and rN from negative toward positive values in structured tasks, while making the correlation less negative in open-ended tasks such as story generation. Table 2 shows the concrete results under Pearson correlation. Similar results based on Spearman correlation and Kendall’s τ exhibit same trends, and are deferred to Table 6 in the appendix to avoid repetition. This reveals a fundamental change in generation behavior. In base models, longer outputs are often associated with lower entropy rates, meaning later tokens become increasingly redundant and contribute little new information. In contrast, fine-tuned models exhibit much stronger positive length– entropy correlation: longer generations tend to sustain higher entropy rates and remain informative throughout the trajectory (see Figure 2). The distinction is especially important in the presence of length confounding. As shown in Figure 3, fine-tuned models generally produce longer outputs than their base counterparts, consistent with observations in prior work [ 29 ]. Under conventional diversity metrics that do not explicitly account for length [ 32 , 18 ], these longer generations can artificially appear less diverse due to normalization effects or repetition accumulation, potentially biasing diversity comparisons [ 8, 26 ]. The positive length–entropy correlation observed here demonstrates that increased length in fine-tuned models reflects sustained information content rather than simple redundancy. Overall, these results suggest that fine-tuning improves not merely the quantity of uncertainty, but also its organization and efficiency. Rather than uniformly suppressing diversity, fine-tuning restructures uncertainty to better align with task requirements—reducing unnecessary randomness while preserving informative variation across longer trajectories. 
+
+5.2 Fine-tuning more effectively converts token uncertainty into semantic diversity 
+
+After establishing how fine-tuning reshapes entropy allocation, we next investigate how these changes in entropy rate translate into semantic diversity [ 10 ]. Specifically, we study how generation uncertainty is converted into semantic diversity across sampled trajectories. For each task–prompt–model tuple (t, p, m ), we measure semantic diversity by computing the average pairwise cosine distance between generated outputs: Dtpm = 2
+
+M (M −1) 
+
+P
+
+i<j d(et,p,m,i , e t,p,m,j )
+
+[ 32 ], where et,p,m,i denotes the embedding of the i-th Monte Carlo rollout, prepended with the retrieval prefix ( "search_document:" ) to ensure alignment with the encoder’s training objective 9Table 2: Base–instruct comparison of the length–entropy Pearson correlation, measured by ρ(N, r N )
+
+(see Definition 4), for the Qwen3-8B, LLaMA-3.1-8B, and Gemma-3-12B model families. Each entry reports the estimate ± standard error, where the absolute change is computed as the instruct value minus the corresponding base value.                                                                                                                              
+
+> Metric Model MATH CODING SENTENCE COMPLETION STORY GENERATION
+> Base Instruct Abs. Change Base Instruct Abs. Change Base Instruct Abs. Change Base Instruct Abs. Change
+> ρ(N, r N)
+> Qwen -0.018 ±0.016 0.087 ±0.037 0.11 ±0.042 -0.41 ±0.014 0.61 ±0.034 1.0 ±0.037 0.062 ±0.017 0.52 ±0.024 0.46 ±0.027 -0.27 ±0.017 0.16 ±0.021 0.43 ±0.027 Llama -0.27 ±0.016 0.38 ±0.040 0.65 ±0.044 -0.38 ±0.011 0.29 ±0.021 0.67 ±0.021 -0.26 ±0.015 -0.20 ±0.024 0.053 ±0.028 -0.24 ±0.012 -0.10 ±0.020 0.14 ±0.022 Gemma -0.13 ±0.014 0.19 ±0.040 0.32 ±0.043 -0.27 ±0.012 0.39 ±0.035 0.67 ±0.037 -0.23 ±0.015 0.12 ±0.038 0.36 ±0.041 -0.17 ±0.012 -0.049 ±0.027 0.12 ±0.032
+
+Table 3: Beta GLMM with dispersion modeling and interaction effects. For completeness, we direct readers to subsection C.4 for the full conditional mean and dispersion regression tables, along with additional model specifications and regression details. 
+
+Conditional model Estimate Std. Error p-value 
+
+Intercept -0.880 0.070 < 2 × 10 −16 
+
+R 0.708 0.033 < 2 × 10 −16 
+
+Instruct -0.377 0.086 1.23 × 10 −5
+
+ns(invN , 4) 1 0.152 0.041 1.99 × 10 −4
+
+R× Instruct 1.183 0.046 < 2 × 10 −16 
+
+for ModernBERT embedding model (modernbert-embed-large) [ 35 ]. Here d(·, ·) denotes cosine distance. Since cosine distance is bounded in [0 , 1] , we employ the Beta mixed-effects regression, which is a standard method to accommodate bounded responses while allowing flexible modeling of dispersion and hierarchical variation [6]. 5
+
+Formally, we model Dtpm ∼ Beta( μtpm ϕtpm , (1 − μtpm )ϕtpm ) , where μtpm ∈ [0 , 1] denotes the conditional mean and ϕtpm > 0 is the precision parameter. The conditional mean model is specified as 
+
+logit( μtpm ) = α+β1Rtpm +β21{m = FT }+f (invN tpm )+ P 
+
+> k
+
+τk1{t = k}+β3(Rtpm ·1{m =FT }) + g (invN tpm ) 1{m = FT } + up + vm, where Rtpm is the entropy rate, invN tpm is the inverse sequence length, and f (·), g(·) are natural spline functions corresponding to nonlinear length effects and their interaction with instruction tuning. For consistency with the measurement of semantic diversity, the reported sequence length and entropy rate are likewise computed by averaging over the same set of M rollouts for each task–prompt–model combination. The coefficients τk
+
+represent fixed task effects. To account for hierarchical dependence, we include random intercepts 
+
+up ∼ N (0 , σ 2 
+
+> p
+
+), v m ∼ N (0 , σ 2
+
+> m
+
+), for prompt identity and model family, respectively. To capture heteroscedasticity, we also model the precision parameter ϕtpm as a function of task, model variant, entropy rate, sequence length, and model family. Residual diagnostics (see Figure 6) indicate good calibration of the mean structure (Kolmogorov-Smirnov Test [ 21 ]: p = 0 .55 ) and no significant dispersion issues ( p = 0 .068 ) and no outliers ( p = 0 .16 ). 
+
+Main findings. First, entropy rate exhibits a strong and highly significant positive association with semantic diversity. The coefficient on entropy rate is large and significant ( β = 0 .708 , p < 2×10 −16 ), indicating that higher per-token uncertainty leads to substantially greater semantic diversity across generated outputs. More importantly, the interaction between entropy rate and fine-tuning is strongly positive ( η = 1 .183 , p < 2 × 10 −16 ). Under the logit link, this implies a substantial amplification of the slope: ∂ logit( μ)/∂R = 0 .708 (base) , 0.708 + 1 .183 = 1 .891 (fine-tuned) . Thus, fine-tuning nearly triples the sensitivity of semantic diversity to entropy rate. This indicates that uncertainty in fine-tuned models is significantly more semantically productive : small increases in token-level uncertainty translate into much larger increases in trajectory-level diversity. At the same time, the main effect of fine-tuning is negative ( τ = −0.377 , p < 2 × 10 −5), indicating that at fixed entropy rate and length, fine-tuned models produce less baseline semantic diversity. This is consistent with alignment compressing the generation space and enforcing more structured outputs. However, the strong positive interaction shows that the remaining uncertainty is used more efficiently. We observe a nonlinear and generally negative relationship between semantic diversity and sequence length, making length control essential in diversity analysis (see Table 3). 
+
+> 5
+
+In contrast, Gaussian linear models are inappropriate for bounded responses and exhibit clear heteroscedasticity and residual misspecification in diagnostic analyses. 
+
+10 6 Conclusion and limitations 
+
+In this work, we revisit diversity in large language models through a trajectory-level information-theoretic perspective. By introducing Canopy Entropy and length–entropy coupling, we show that fine-tuning does not simply reduce uncertainty or shrink the generation space. Instead, aligned models reorganize uncertainty more efficiently across generation trajectories, producing longer generations that remain more semantically informative. Our results highlight the importance of modeling how uncertainty evolves throughout the rollout process, beyond aggregate diversity metrics alone. Our work also has several limitations. Entropy-based measures characterize uncertainty allocation, but do not directly capture factuality or human preference quality. Our framework is descriptive rather than causal: although we observe systematic changes in length–entropy coupling after fine-tuning, the underlying mechanisms causing this effect remain an important direction for future work. 
+
+References 
+
+[1] Shivam Agarwal, Zimin Zhang, Lifan Yuan, Jiawei Han, and Hao Peng. The unreasonable effectiveness of entropy minimization in llm reasoning. arXiv preprint arXiv:2505.15134 , 2025. [2] Tom B. Brown, Benjamin Mann, Nick Ryder, et al. Language models are few-shot learners. 
+
+NeurIPS , 2020. [3] Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde De Oliveira Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, et al. Evaluating large language models trained on code. arXiv preprint arXiv:2107.03374 , 2021. [4] Hyung Won Chung, Le Hou, Shayne Longpre, Barret Zoph, Yi Tay, William Fedus, Yunxuan Li, Xuezhi Wang, Mostafa Dehghani, Siddhartha Brahma, et al. Scaling instruction-finetuned language models. Journal of Machine Learning Research , 25(70):1–53, 2024. [5] Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168 ,2021. [6] Jorge I Figueroa-Zúñiga, Reinaldo B Arellano-Valle, and Silvia LP Ferrari. Mixed beta regression: A bayesian perspective. Computational Statistics & Data Analysis , 61:137–147, 2013. [7] Gerald B Folland. Real analysis: modern techniques and their applications . John Wiley & Sons, 1999. [8] Dan Friedman and Adji Bousso Dieng. The vendi score: A diversity evaluation metric for machine learning. arXiv preprint arXiv:2210.02410 , 2022. [9] Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 , 2024. [10] Yanzhu Guo, Guokan Shang, and Chloé Clavel. Benchmarking linguistic diversity of large language models. Transactions of the Association for Computational Linguistics , 13:1507–1526, 2025. [11] Florian Hartig. Dharma: residual diagnostics for hierarchical (multi-level/mixed) regression models. CRAN: contributed packages , 2016. [12] Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. Measuring massive multitask language understanding. arXiv preprint arXiv:2009.03300 , 2020. [13] Edward J Hu, Moksh Jain, Eric Elmoznino, Younesse Kaddar, Guillaume Lajoie, Yoshua Bengio, and Nikolay Malkin. Amortizing intractable inference in large language models. arXiv preprint arXiv:2310.04363 , 2023. 11 [14] Mete Ismayilzada, Antonio Laverghetta Jr., Simone A. Luchini, Reet Patel, Antoine Bosselut, Lonneke van der Plas, and Roger E. Beaty. Creative preference optimization, 2025. [15] Fred Jelinek, Robert L Mercer, Lalit R Bahl, and James K Baker. Perplexity—a measure of the difficulty of speech recognition tasks. The journal of the Acoustical Society of America ,62(S1):S63–S63, 1977. [16] Maurice G Kendall. A new measure of rank correlation. Biometrika , 30(1-2):81–93, 1938. [17] Thom Lake, Eunsol Choi, and Greg Durrett. From distributional to overton pluralism: Investi-gating large language model alignment. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 6794–6814, 2025. [18] Jiwei Li, Michel Galley, Chris Brockett, Jianfeng Gao, and William B Dolan. A diversity-promoting objective function for neural conversation models. In Proceedings of the 2016 conference of the North American chapter of the association for computational linguistics: human language technologies , pages 110–119, 2016. [19] Wei Lu, Rachel K Luu, and Markus J Buehler. Fine-tuning large language models for do-main adaptation: Exploration of training strategies, scaling, model merging and synergistic capabilities. npj Computational Materials , 11(1):84, 2025. [20] Henry B Mann and Abraham Wald. On stochastic limit and order relationships. The Annals of Mathematical Statistics , 14(3):217–226, 1943. [21] Frank J Massey Jr. The kolmogorov-smirnov test for goodness of fit. Journal of the American statistical Association , 46(253):68–78, 1951. [22] Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. Training language models to follow instructions with human feedback. Advances in neural information processing systems ,35:27730–27744, 2022. [23] Rafael Rafailov, Archit Sharma, Eric Mitchell, Christopher D Manning, Stefano Ermon, and Chelsea Finn. Direct preference optimization: Your language model is secretly a reward model. 
+
+Advances in neural information processing systems , 36:53728–53741, 2023. [24] Baptiste Roziere, Jonas Gehring, Fabian Gloeckle, Sten Sootla, Itai Gat, Xiaoqing Ellen Tan, Yossi Adi, Jingyu Liu, Romain Sauvestre, Tal Remez, et al. Code llama: Open foundation models for code. arXiv preprint arXiv:2308.12950 , 2023. [25] Walter Rudin. Principles of mathematical analysis. 2021. [26] Chantal Shaib, Venkata S Govindarajan, Joe Barrow, Jiuding Sun, Alexa F Siu, Byron C Wallace, and Ani Nenkova. Standardizing the measurement of text diversity: A tool and a comparative analysis of scores. arXiv preprint arXiv:2403.00553 , 2024. [27] Claude Elwood Shannon. A mathematical theory of communication. The Bell system technical journal , 27(3):379–423, 1948. [28] Alexander Shypula, Shuo Li, Botong Zhang, Vishakh Padmakumar, Kayo Yin, and Osbert Bastani. Does instruction tuning reduce diversity? a case study using code generation. [29] Prasann Singhal, Tanya Goyal, Jiacheng Xu, and Greg Durrett. A long way to go: Investigating length correlations in rlhf. arXiv preprint arXiv:2310.03716 , 2023. [30] Charles Spearman. The proof and measurement of association between two things. 1961. [31] Gemma Team, Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin, et al. Gemma 3 technical report, 2025. [32] Guy Tevet and Jonathan Berant. Evaluating the evaluation of diversity in natural language generation. In Proceedings of the 16th Conference of the European Chapter of the Association for Computational Linguistics: Main Volume , pages 326–346, 2021. 12 [33] Shumin Wang, Yuexiang Xie, Wenhao Zhang, Yuchang Sun, Yanxi Chen, Yaliang Li, and Yanyong Zhang. On the entropy dynamics in reinforcement fine-tuning of large language models. arXiv preprint arXiv:2602.03392 , 2026. [34] Yichen Wang, Chenghao Yang, Tenghao Huang, Muhao Chen, Jonathan May, and Mina Lee. Optimizing diversity and quality through base-aligned model collaboration. arXiv preprint arXiv:2511.05650 , 2025. [35] Benjamin Warner, Antoine Chaffin, Benjamin Clavié, Orion Weller, Oskar Hallström, Said Taghadouini, Alexis Gallagher, Raja Biswas, Faisal Ladhak, Tom Aarsen, Nathan Cooper, Griffin Adams, Jeremy Howard, and Iacopo Poli. Smarter, better, faster, longer: A modern bidirectional encoder for fast, memory efficient, and long context finetuning and inference, 2024. [36] Jason Wei, Maarten Bosma, Vincent Y Zhao, Kelvin Guu, Adams Wei Yu, Brian Lester, Nan Du, Andrew M Dai, and Quoc V Le. Finetuned language models are zero-shot learners. arXiv preprint arXiv:2109.01652 , 2021. [37] Peter West and Christopher Potts. Base models beat aligned models at randomness and creativity. 
+
+arXiv preprint arXiv:2505.00047 , 2025. [38] An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388 , 2025. [39] Chenghao Yang, Sida Li, and Ari Holtzman. Llm probability concentration: How alignment shrinks the generative horizon. arXiv preprint arXiv:2506.17871 , 2025. [40] Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and Yejin Choi. Hellaswag: Can a machine really finish your sentence? In Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics , 2019. [41] Terry Yue Zhuo, Minh Chien Vu, Jenny Chim, Han Hu, Wenhao Yu, Ratnadira Widyasari, Imam Nur Bani Yusuf, Haolan Zhan, Junda He, Indraneil Paul, et al. Bigcodebench: Bench-marking code generation with diverse function calls and complex instructions. arXiv preprint arXiv:2406.15877 , 2024. 13 A Missing proofs and algorithms 
+
+A.1 Equivalence to a two-stage stochastic decision process Theorem 3 (Equivalence between autoregressive generation and a two-stage decision process) . Fix a prompt X = x and a generation history Gt = gt = ( y1, . . . , y t−1). Suppose the autoregressive model defines a probability distribution over the extended vocabulary Z := V ∪ { EOS }, denoted by q(z | gt, x ), z ∈ Z. Then this one-step generation rule is equivalent to the following two-stage stochastic decision process: At ∈ { STOP , CONT }, where P(At = STOP | gt, x ) = q(EOS | gt, x ),
+
+and P(At = CONT | gt, x ) = 1 − q(EOS | gt, x ). Conditional on At = CONT , the next token 
+
+Yt ∈ V is sampled from P(Yt = v | gt, x, A t = CONT ) = q(v|gt,x )1−q(EOS |gt,x ) , v ∈ V , whenever 
+
+1 − q(EOS | gt, x ) > 0. This two-stage process induces the same distribution over generated sequences as the original autoregressive model. Proof. Fix a prompt x and history gt. Under the original autoregressive model, the next outcome is sampled directly from q(z | gt, x ), z ∈ V ∪ { EOS }. In particular, generation terminates at step t
+
+with probability q(EOS | gt, x ). Now consider the two-stage process. The probability of termination is P(At = STOP | gt, x ) = q(EOS | gt, x ), which matches the probability assigned to EOS by the original model. Next, for any token v ∈ V , the probability that the two-stage process generates v is 
+
+P(Yt = v | gt, x ) = P(At = CONT | gt, x ) P(Yt = v | gt, x, A t = CONT )= (1 − q(EOS | gt, x )) q(v | gt, x )1 − q(EOS | gt, x )= q(v | gt, x ).
+
+Thus, the two-stage process assigns exactly the same probability to every possible next outcome: 
+
+P(STOP | gt, x ) = q(EOS | gt, x ), P(Yt = v | gt, x ) = q(v | gt, x ), v ∈ V .
+
+Therefore, the one-step transition distribution is identical under the two formulations. Since this equality holds for every prompt x, every generation history gt, and every generation step t, the induced probability of any finite sequence y1: N terminating at length N is the same under both processes. Thus, the two-stage stochastic decision process is equivalent to the original autoregressive generation model. 
+
+A.2 Proof of Theorem 1 
+
+Proof. Let X ∼ pX denote the prompt distribution. For each realization X = x, consider the sequence of random variables (Zt)t≥1 with Zt ∈ Z := V ∪ { EOS }, where selecting EOS indicates termination. Define the stopping time N := min {t : Zt = EOS }, and let Yt = Zt for t < N . Adopt the convention that Zt = EOS for all t > N , which induces a one-to-one correspondence between the infinite sequence (Z1, Z 2, . . . ) and the pair (N, Y 1: N ), conditional on X. Therefore, 
+
+H(N, Y 1: N | X) = H(Z1, Z 2, . . . | X).
+
+By the chain rule of entropy, H(Z1, Z 2, . . . | X) = P∞ 
+
+> t=1
+
+H(Zt | Z1: t−1, X ). Since the history Gt
+
+is completely determined by (Z1: t−1, X ), we have 
+
+H(Zt | Z1: t−1, X ) = H(Zt | Gt, X ) = EGt,X 
+
+ eH(Gt | X).
+
+Therefore, H(Z1, Z 2, . . . | X) = P∞ 
+
+> t=1
+
+EGt,X 
+
+ eH(Gt | X).
+
+Since eH(Gt | X) ≥ 0, we can apply Tonelli’s theorem [7] to exchange the sum and expectation. 
+
+> ∞
+
+X
+
+> t=1
+
+EGt,X 
+
+ eH(Gt | X) = EGt,X 
+
+" ∞X
+
+> t=1
+
+eH(Gt | X)
+
+#
+
+.
+
+Moreover, for all t > N , Zt = EOS deterministically, so eH(Gt | X) = 0. Therefore, 
+
+P∞ 
+
+> t=1
+
+eH(Gt | X) = PN (X) 
+
+> t=1
+
+eH(Gt | X), almost surely. Combining the above, we have 
+
+H(Z1, Z 2, . . . | X) = EGt,X 
+
+hPN (X) 
+
+> t=1
+
+eH(Gt | X)
+
+i
+
+. Finally, since (Z1, Z 2, . . . ) is in one-to-one cor-respondence with (N, Y 1: N ) given X, we obtain H(N, Y 1: N | X) = EGt,X 
+
+hPN (X) 
+
+> t=1
+
+eH(Gt | X)
+
+i
+
+=CE ⋆.
+
+14 A.3 Algorithms Input: Prompt distribution pX ; number of prompts P ; rollout count per prompt M ; maximum length Tmax ; sampling policy π (e.g. temperature/top-p/top-k). 
+
+for p = 1 to P do 
+
+Sample prompt xp ∼ pX ;
+
+for i = 1 to M do 
+
+Initialize history G(p,i )1 ← xp; set S(p,i )max ← 0;
+
+for t = 1 to Tmax do 
+
+Compute model distribution q(p,i ) 
+
+> t
+
+(· | G(p,i ) 
+
+> t
+
+, x p) under sampling policy π, including 
+
+EOS as an outcome; Compute one-step local entropy 
+
+˜g(p,i ) 
+
+> t
+
+← − P 
+
+> z∈Z
+
+q(p,i ) 
+
+> t
+
+(z | G(p,i ) 
+
+> t
+
+, x p) log q(p,i ) 
+
+> t
+
+(z | G(p,i ) 
+
+> t
+
+, x p); 
+
+Update S(p,i )max ← S(p,i )max + ˜ g(p,i ) 
+
+> t
+
+;
+
+Sample next outcome z(p,i ) 
+
+> t
+
+∼ q(p,i ) 
+
+> t
+
+(· | G(p,i ) 
+
+> t
+
+, x p); 
+
+If z(p,i ) 
+
+> t
+
+= EOS then set N (p,i )max ← t and break; Else update history G(p,i ) 
+
+> t+1
+
+← G(p,i ) 
+
+> t
+
+⊕ z(p,i ) 
+
+> t
+
+.
+
+end 
+
+If no EOS is sampled by Tmax : set N (p,i )max ← Tmax .
+
+end end return cCE ⋆ 
+
+> max ,P,M
+
+= 1
+
+> P M
+
+PPp=1 
+
+PMi=1 S(p,i )max , bE[Nmax ] = 1
+
+> P M
+
+PPp=1 
+
+PMi=1 N (p,i )max .
+
+Algorithm 1: Estimating CE ⋆ 
+
+> max
+
+over a prompt distribution 
+
+A.4 Examples of prompt-averaged bias decay rates Corollary 1. By Remark 4.1, g(Tmax ) admits the following rates. 
+
+Uniform exponential tail. If there exist constants c, λ > 0 such that, for all prompts x ∈ X 
+
+and all t ≥ 1, P(N (x) ≥ t | X = x) ≤ ce −λt , then g(Tmax ) ≤ c log |Z| P∞ 
+
+> t=Tmax +1
+
+e−λt =
+
+c log |Z| e−λ(Tmax+1)  
+
+> 1−e−λ
+
+= O(e−λT max ).
+
+Uniform polynomial tail. If there exist constants c > 0 and α > 1 such that, for all prompts 
+
+x ∈ X and all t ≥ 1, P(N (x) ≥ t | X = x) ≤ ct −α, then g(Tmax ) ≤ c log |Z| P∞ 
+
+> t=Tmax +1
+
+t−α ≤   
+
+> clog |Z|
+> α−1
+
+T 1−α 
+
+> max
+
+= O(T 1−α 
+
+> max
+
+).
+
+A.5 Proof of Theorem 2 and MSE analysis 
+
+Proof. Given any fixed prompt x ∈ X , denote μmax (x) := E[Smax | X = x] , and Smax =
+
+PNmax (x) 
+
+> t=1
+
+eH(Gt | x). Then CE ⋆ 
+
+> max
+
+= EX∼pX [μmax (X)] . Since |Z| < ∞, for all gt, we have 
+
+0 ≤ eH(gt | x) ≤ Hmax := log |Z| . Therefore 0 ≤ Smax ≤ Hmax Nmax (x). Therefore, 
+
+E[S2max ] ≤ H2max E[Nmax (X)2] = H2max ν2max , where ν2max := E[Nmax (X)2].Now decompose the variance of cCE ⋆ 
+
+> max ,P,M
+
+. Conditional on X1, . . . , X p, the M rollouts for each prompt are independent, by law of total variance, we have 
+
+Var 
+
+ cCE ⋆
+
+> max ,P,M
+
+
+
+= Var 1
+
+P
+
+> P
+
+X
+
+> p=1
+
+μmax (Xp)
+
+!
+
++ E
+
+h
+
+Var 
+
+ cCE ⋆ 
+
+> max ,P,M
+
+| X1, . . . , X p
+
+i 
+
+.
+
+By Jensen’s inequality, we have μ2max (X) = H2max E(Nmax (X)) 2 ≤ H2max ν2max , therefore 
+
+Var 1
+
+P
+
+> P
+
+X
+
+> p=1
+
+μmax (Xp)
+
+!
+
+= 1
+
+P Var( μmax (X)) ≤ 1
+
+P E[μmax (X)2] ≤ H2max ν2max 
+
+P .
+
+15 Because, E
+
+h
+
+Var 
+
+ cCE ⋆ 
+
+> max ,P,M
+
+| X1, . . . , X p
+
+i 
+
+≤ H2max ν2max  
+
+> P M
+
+. Thus we have, 
+
+Var 
+
+ cCE ⋆
+
+> max ,P,M
+
+
+
+≤ H2max ν2max 
+
+ 1
+
+P + 1
+
+P M 
+
+
+
+.
+
+Since E
+
+h cCE ⋆
+
+> max ,P,M
+
+i
+
+= CE ⋆
+
+> max
+
+, Chebyshev’s inequality gives that, for any δ ∈ (0 , 1) , with probability at least 1 − δ, cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆ 
+
+> max
+
+≤ Hmax νmax 
+
+q 1
+
+> δ
+
+  1 
+
+> P
+
++ 1
+
+> P M
+
+. By the truncation bias assumption, 0 ≤ CE ⋆ − CE ⋆ 
+
+> max
+
+≤ g(Tmax ). Thus, 
+
+cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆ ≤ Hmax νmax 
+
+s
+
+1
+
+δ
+
+ 1
+
+P + 1
+
+P M 
+
+
+
++ g(Tmax ).
+
+Equivalently, cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆ = OP
+
+
+
+νmax 
+
+q 1 
+
+> P
+
++ 1 
+
+> P M
+
++ g(Tmax )
+
+
+
+. Thus, if Tmax =
+
+Tmax (P, M ) → ∞, g(Tmax ) → 0, and if νmax (P, M )
+
+q 1 
+
+> P
+
++ 1 
+
+> P M
+
+→ 0, then we have 
+
+cCE ⋆
+
+> max ,P,M
+> P
+
+−→ CE ⋆.
+
+Theorem 4 (MSE of the prompt-averaged truncated CE estimator) .
+
+E
+
+ cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆2
+
+≤ H2max 
+
+P Var X∼pX (E[Nmax | X]) + H2max 
+
+P M E[N 2max ] + g2(Tmax ).
+
+In Theorem 4, we further characterize the mean squared error (MSE) of cCE ⋆ 
+
+> max ,P,M
+
+as the sum of the squared truncation bias and the variance of the estimator. The variance decreases with both the number of prompts P and the total number of rollouts P M , highlighting two distinct sources of statistical efficiency: diversity across prompts and repeated sampling within each prompt. The variance admits a hierarchical decomposition with two distinct sources of randomness: a 1/P 
+
+term due to variability across prompts, and a 1/P M term arising from rollout-level stochasticity within each prompt. Importantly, the prompt-level variance cannot be reduced by increasing the number of rollouts per prompt, reflecting the intrinsic hierarchical structure of the estimator. Moreover, the Monte Carlo error is scaled by the effective trajectory length (captured by Tmax or, more precisely, 
+
+Nmax ), since longer generations accumulate more uncertainty along the trajectory. These results reveal a fundamental trade-off. Increasing Tmax reduces the truncation bias by capturing more of the generation process, but also increases computational cost and variance through longer trajectories. 
+
+Proof. Define the per-prompt rollout average ¯S(p)max := 1
+
+> M
+
+PMi=1 S(p,i )max . Then cCE ⋆ 
+
+> max ,P,M
+
+=
+
+> 1
+> P
+
+PPp=1 ¯S(p)max . Conditional on Xp, E[ ¯S(p)max | Xp] = μmax (Xp), and, since the M rollouts are conditionally independent, Var( ¯S(p)max | Xp) = 1 
+
+> M
+
+σ2max (Xp). By the law of total variance, we have 
+
+Var( ¯S(p)max ) = Var Xp
+
+
+
+E[ ¯S(p)max | Xp]
+
+
+
++ EXp
+
+h
+
+Var( ¯S(p)max | Xp)
+
+i
+
+.
+
+Substituting the conditional mean and variance gives Var( ¯S(p)max ) = Var X∼pX (μmax (X)) +  
+
+> 1
+> M
+
+EX∼pX [σ2max (X)] . Since the prompts X1, . . . , X p are i.i.d., the variables ¯S(1) max , . . . , ¯S(P )max 
+
+are i.i.d. Therefore, Var 
+
+ cCE ⋆
+
+> max ,P,M
+
+
+
+= 1 
+
+> P
+
+Var( ¯S(p)max ) = 1 
+
+> P
+
+Var X∼pX (μmax (X)) +  
+
+> 1
+> P M
+
+EX∼pX [σ2max (X)] .
+
+For the MSE, write cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆ =
+
+ cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆
+
+> max
+
+
+
+− g(Tmax ). Taking squares and expectations yields E
+
+ cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆2
+
+= E
+
+ cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆
+
+> max
+
+2
+
++ ( g(Tmax )) 2,
+
+because E[ cCE ⋆ 
+
+> max ,P,M
+
+− CE ⋆
+
+> max
+
+] = 0 .
+
+16 Since pathwise, for any given history gt and prompt x, we have 0 ≤ Smax (x) = PNmax (x) 
+
+> t=1
+
+eH(gt |
+
+x) ≤ Hmax Nmax (x). Thus, conditional on X = x, Var( Smax (x) | X = x) ≤ E[S2max (x) |
+
+X = x] ≤ H2max E[N 2max (x) | X = x]. Averaging over prompts gives EX [σ2max (X)] ≤
+
+H2max EX E[N 2max (X) | X] = H2max E[N 2max ].
+
+Similarly, μmax (X) = E[Smax (X) | X] ≤ Hmax E[Nmax | X]. Since both quantities are non-negative, this gives the prompt-level bound 0 ≤ μmax (X) ≤ Hmax E[Nmax | X]. Therefore, 
+
+Var X (μmax (X)) ≤ H2max Var X (E[Nmax | X]) . Combining these two refined bounds with the exact variance decomposition gives 
+
+Var 
+
+ cCE ⋆
+
+> max ,P,M
+
+
+
+≤ H2max 
+
+P Var X∼pX (E[Nmax | X]) + H2max 
+
+P M E[N 2max ].
+
+Adding the squared truncation bias g2(Tmax ) gives the stated refined MSE upper bound. 
+
+A.6 Estimation and consistency of GenPPL, BF, and length–entropy correlation Lemma 1 (Consistency of the truncated length estimator) . Let bNmax ,P,M := 
+
+> 1
+> P M
+
+PPp=1 
+
+PMi=1 N (p,i )max , where N (p,i )max := min {N (p,i ), T max }. Assume E[N ] < ∞. If 
+
+Tmax = Tmax (P, M ) → ∞ and 
+
+√E[N 2max ] 
+
+> √P
+
+→ 0, then bNmax ,P,M 
+
+> P
+
+−→ E[N ].
+
+Proof. Let ηmax (x) := E[Nmax | X = x]. By the law of total variance, Var( bNmax ,P,M ) =  
+
+> 1
+> P
+
+Var X∼pX (ηmax (X)) + 1 
+
+> P M
+
+EX∼pX [Var( Nmax | X)] . Using Var( ηmax (X)) ≤ E[ηmax (X)2] ≤
+
+E[N 2max ], and E[Var( Nmax | X)] ≤ E[N 2max ], we obtain Var( bNmax ,P,M ) ≤ E[N 2max ]   1 
+
+> P
+
++ 1
+
+> P M
+
+ .
+
+Therefore, under the stated condition, Var( bNmax ,P,M ) → 0.
+
+In addition, E[ bNmax ,P,M ] = E[Nmax ]. Since Nmax = min {N, T max } ↑ N as Tmax → ∞ , the monotone convergence theorem [25] gives E[Nmax ] → E[N ]. Hence, 
+
+bNmax ,P,M − E[N ] = 
+
+ bNmax ,P,M − E[Nmax ]
+
+
+
++ ( E[Nmax ] − E[N ]) .
+
+The first term converges to 0 in probability by Chebyshev’s inequality, and the second term converges to 0 deterministically. Therefore, bNmax ,P,M 
+
+> P
+
+−→ E[N ].
+
+Corollary 2 (Consistency of GenPPL) . Let cCE ⋆ 
+
+> max ,P,M
+
+= 1
+
+> P M
+
+PPp=1 
+
+PMi=1 S(p,i )max be the Monte Carlo estimator of CE ⋆, and let bNmax ,P,M := 1
+
+> P M
+
+PPp=1 
+
+PMi=1 N (p,i )max be the corresponding estimator of E[N ]. Since cCE ⋆
+
+> max ,P,M
+> P
+
+−→ CE ⋆, (by Theorem 2) bNmax ,P,M 
+
+> P
+
+−→ E[N ], (by Lemma 1). Define \GenPPL max ,P,M := exp 
+
+ cCE ⋆
+
+> max ,P,M
+> bNmax ,P,M
+
+
+
+, GenPPL := exp 
+
+ CE ⋆ 
+
+> E[N]
+
+
+
+. Then 
+
+\GenPPL max ,P,M 
+
+> P
+
+−→ GenPPL .
+
+Proof. We first prove consistency of GenPPL. Since we have cCE ⋆
+
+> max ,P,M
+> P
+
+−→ CE ⋆ and bNmax ,P,M 
+
+> P
+
+−→
+
+E[N ]. and E[N ] > 0, the function f (a, b ) = exp( a/b ) is continuous at (CE ⋆, E[N ]) . There-fore, by the continuous mapping theorem [ 20 ], exp 
+
+ cCE ⋆
+
+> max ,P,M
+> bNmax ,P,M
+
+ P
+
+−→ exp 
+
+ CE ⋆ 
+
+> E[N]
+
+
+
+. Hence, 
+
+\GenPPL max ,P,M 
+
+> P
+
+−→ GenPPL , which completes the proof. 
+
+Corollary 3 (Consistency of the BF estimator) . Let bLmax ,P,M := 
+
+> 1
+> P M
+
+PPp=1 
+
+PMi=1  
+
+> S(p,i )max
+> N(p,i )max
+
+, cBF max ,P,M := exp 
+
+bLmax ,P,M 
+
+
+
+, where S(p,i )max = PN (p,i )max  
+
+> t=1
+
+eH(G(p,i ) 
+
+> t
+
+|
+
+xp), N (p,i )max = min {N (p,i ), T max }. Assume that N ≥ 1 almost surely and that the normal-ized truncated entropy variables rmax := Smax  
+
+> Nmax
+
+are integrable. Then, for fixed Tmax , as 
+
+P, M → ∞, bLmax ,P,M 
+
+> P
+
+−→ Lmax := E
+
+h Smax 
+
+> Nmax
+
+i
+
+, and therefore, by the continuous mapping 
+
+17 theorem, cBF max ,P,M 
+
+> P
+
+−→ BF max := exp( Lmax ). Moreover, if Smax 
+
+> Nmax
+> a.s.
+
+−−−−−−→ 
+
+> Tmax →∞
+> SN
+
+and the sequence 
+
+{Smax /N max }Tmax ≥1 is uniformly integrable, then Lmax → L := E
+
+h 1
+
+> N
+
+PNt=1 eH(Gt | X)
+
+i
+
+, and consequently BF max → BF := exp( L). Thus, under these conditions, cBF max ,P,M 
+
+> P
+
+−→ BF as 
+
+P, M → ∞ and Tmax → ∞ .Proof. For fixed Tmax , the variables ˆr(p,i )max = S(p,i )max  
+
+> N(p,i )max
+
+are integrable rollout-level observations. Since 
+
+N ≥ 1 almost surely, the denominator is bounded away from zero. Applying the law of large numbers to the empirical average over prompts and rollouts gives bLmax ,P,M = 1
+
+> P M
+
+PPp=1 
+
+PMi=1 ˆr(p,i )max P
+
+−→
+
+E[rmax ] = Lmax . Since the exponential map is continuous, cBF max ,P,M = exp( bLmax ,P,M ) P
+
+−→
+
+exp( Lmax ) = BF max . Finally, if Smax /N max → S/N almost surely and the normalized entropy ratios are uniformly integrable, then convergence of expectations follows, yielding Lmax → L.Another application of continuity of the exponential function gives BF max → BF .
+
+Empirical support for the truncation condition. The consistency result above requires the truncation bias induced by Tmax to vanish, or at least to be negligible in finite-sample estimation. While this is a population-level condition and cannot be proven from data alone, our diagnostics provide empirical support for it in our experimental setting. With Tmax = 4000 , the observed truncation rates are uniformly small across tasks, model families, and variants: most are below 
+
+1% , and the largest observed rate is 4.32% (see subsection C.1). In addition, the empirical length distributions concentrate well below the truncation threshold (see Figure 3), and the number of active rollouts decays rapidly with token position (see Figure 2). Together with the bounded observed entropy-rate trajectories (see Figure 2), these results suggest that the normalized entropy ratios are well behaved and that the finite-Tmax truncation bias is small in practice. 
+
+Estimating entropy rate. For each rollout (p, i ), Algorithm 1 returns the truncated stopping time N (p,i )max = min {N (p,i ), T max } and the accumulated truncated canopy entropy S(p,i )max =
+
+PN (p,i )max  
+
+> t=1
+
+eH(G(p,i ) 
+
+> t
+
+| xp). We estimate the rollout-level entropy rate by br(p,i )max := S(p,i )max  
+
+> N(p,i )max
+
+. Thus, for each prompt xp, the prompt-specific length–entropy relationship is estimated from the rollout-level pairs 
+
+n 
+
+N (p,i )max , br(p,i )max 
+
+o Mi=1 
+
+.
+
+Length–entropy correlation. Definition 4 introduced the length–entropy correlation ρ(N, r N ) at a conceptual level. We now provide its statistically rigorous formulation together with the corresponding aggregation procedure. 
+
+Definition 5 (length–entropy correlation) . For a fixed prompt X = x, define the prompt-conditional Pearson correlation ρX := ρ(N, r N | X = x) = Cov( N,r N |X=x)
+
+√Var( N |X=x) Var( rN |X=x) . Since the prompt-conditional correlation ρX is bounded and nonlinear, directly averaging correlations across prompts may introduce bias. Therefore, we aggregate the prompt-conditional Pearson correlations on the Fisher-z6 scale to obtain a prompt-averaged correlation measure. Then the (prompt-averaged) length– entropy correlation ρ(N, r N ) := tanh 
+
+ EX∼pX [wX atanh( ρX )]   
+
+> EX∼pX[wX]
+
+
+
+, where wX ≥ 0 is a prompt-specific reliability weight. 
+
+Rank-based length–entropy correlations. In addition to Pearson correlation, which measures linear association, we also report two rank-based measures. Spearman correlation [ 30 ] is Pearson correlation applied to the ranked variables and therefore captures monotone dependence. Kendall’s 
+
+τb [ 16 ] measures ordinal association by comparing concordant and discordant rollout pairs, with tie adjustment. Since Kendall’s τb is defined through pairwise comparisons, we aggregate it using pair-count weights rather than Fisher-z averaging. We estimate and report rank-based length–entropy            
+
+> 6This transformation maps correlation coefficients from [−1,1] to Rand stabilizes their variance, making them approxi-mately normally distributed with variance 1/(np−3) .npis the number of rollouts associated with each prompt p. Directly averaging correlations would lead to biased estimates due to the nonlinear and bounded nature of correlation coefficients. See algorithm 2 for details.
+
+18 correlations to assess the robustness of our findings. The consistently positive relationship across different correlation measures suggests that the observed trend is not an artifact of any particular notion of correlation. 
+
+Input: Prompt distribution pX ; number of prompts P ; rollout counts {np}Pp=1 ; maximum length Tmax ; sampling policy π; clipping constant ϵ > 0.
+
+for p = 1 to P do 
+
+Sample prompt xp ∼ pX ;
+
+for i = 1 to np do 
+
+Generate one rollout using Algorithm 1; Record N (p,i )max = min {N (p,i ), T max }, S (p,i )max = PN (p,i )max  
+
+> t=1
+
+eH(G(p,i ) 
+
+> t
+
+| xp). Compute the rollout-level entropy rate r(p,i )max = S(p,i )max  
+
+> N(p,i )max
+
+.
+
+end 
+
+Compute the prompt-specific Pearson correlation bρP 
+
+> p
+
+= Corr 
+
+
+
+{N (p,i )max }np
+
+> i=1
+
+, {r(p,i )max }np
+
+> i=1
+
+
+
+.
+
+Compute the prompt-specific Spearman correlation 
+
+bρS 
+
+> p
+
+= Corr 
+
+
+
+{rank( N (p,i )max )}np
+
+> i=1
+
+, {rank( r(p,i )max )}np
+
+> i=1
+
+
+
+, using mid-ranks for ties. Compute the prompt-specific Kendall’s τb bτ K 
+
+> p
+
+= KendallTauB 
+
+
+
+{N (p,i )max }np
+
+> i=1
+
+, {r(p,i )max }np
+
+> i=1
+
+
+
+.
+
+Compute the prompt-specific covariance dCov p = dCov 
+
+
+
+{N (p,i )max }np
+
+> i=1
+
+, {r(p,i )max }np
+
+> i=1
+
+
+
+.
+
+end 
+
+Aggregate Pearson and Spearman using Fisher-z weighted averages: wF 
+
+> p
+
+= max {np − 3, 0},
+
+bρPpc = tanh 
+
+ PPp=1 wF 
+
+> patanh
+
+(clip( bρP 
+
+> p,−1+ ϵ, 1−ϵ)
+
+)PPp=1 wF
+
+> p
+
+
+
+, and 
+
+bρSpc = tanh 
+
+ PPp=1 wF 
+
+> patanh
+
+(clip( bρS 
+
+> p,−1+ ϵ, 1−ϵ)
+
+)PPp=1 wF
+
+> p
+
+
+
+.
+
+Aggregate Kendall’s τb using pair-count weights: wK 
+
+> p
+
+= max 
+
+n np(np−1) 2 , 0
+
+o
+
+,bτ Kpc =    
+
+> PPp=1 wK
+> pbτK
+> p
+> PPp=1 wK
+> p
+
+.
+
+Aggregate covariance using degrees-of-freedom weights: wCov  
+
+> p
+
+= max {np − 1, 0}, and 
+
+dCov pc =   
+
+> PPp=1 wCov
+> pdCov p
+> PPp=1 wCov
+> p
+
+.
+
+return bρPpc , bρSpc , bτ Kpc , dCov pc .
+
+Algorithm 2: Estimating prompt-averaged length–entropy correlations 
+
+Proposition 1 (Consistency of prompt-averaged length–entropy correlation estimators) . For each prompt X = x, define rmax (x) := Smax (x) 
+
+> Nmax (x)
+
+, Smax (x) = PNmax (x) 
+
+> t=1
+
+eH(Gt | x), Nmax (x) = min {N (x), T max }. Noted that in this case, Smax (x) and Nmax (x) are random variables which depend on the generated history Gt. Let ρPmax (x) := Corr( Nmax (x), r max (x) | X = x) denote the Pearson correlation, let ρSmax (x) := Corr  FNmax |x(Nmax ), F rmax |x(rmax ) | X = x denote the population Spearman rank correlation, and let τ Kmax (x) denote Kendall’s τb between Nmax and 
+
+rmax conditional on X = x. For sampled prompts x1, . . . , x p, suppose that for each prompt xp we observe np conditionally i.i.d. rollouts and compute the prompt-specific estimates bρP 
+
+> p
+
+, bρS 
+
+> p
+
+, bτ K 
+
+> p
+
+, dCov p
+
+as in Algorithm 2. Assume that Nmax ≥ 1 almost surely. For Pearson and covariance, assume that the conditional fourth moments of Nmax and rmax are uniformly bounded and that 0 < c ≤
+
+Var( Nmax | X = x), 0 < c ≤ Var( rmax | X = x) uniformly over x. For Spearman and Kendall, assume the corresponding rank-correlation functionals are continuous at the conditional law of 
+
+(Nmax , r max ) | X = x, uniformly over x; in particular, ties are either absent or handled by the mid-rank and τb conventions used in Algorithm 2. Finally, assume |ρPmax (x)| ≤ 1−ϵ0, |ρSmax (x)| ≤ 1−ϵ0
+
+for some ϵ0 > 0, and that min p np → ∞ as P → ∞ . Then, as P → ∞ and min p np → ∞ ,
+
+bρPpc ,max 
+
+> P
+
+−→ ρPpc ,max , bρSpc ,max 
+
+> P
+
+−→ ρSpc ,max , where ρPpc ,max = tanh 
+
+ EX [wF(X) atanh {ρPmax (X)}] 
+
+> EX[wF(X)]
+
+
+
+,ρSpc ,max = tanh 
+
+ EX [wF(X) atanh {ρSmax (X)}] 
+
+> EX[wF(X)]
+
+
+
+. Also, bτ Kpc ,max 
+
+> P
+
+−→ τ Kpc ,max := EX [wK(X)τ Kmax (X)]   
+
+> EX[wK(X)]
+
+, and 
+
+dCov pc ,max 
+
+> P
+
+−→ Cov pc ,max := EX [wCov (X) Cov( Nmax ,r max |X)]    
+
+> EX[wCov (X)]
+
+. If additionally Tmax → ∞ and the 
+
+19 corresponding truncated targets converge to their untruncated counterparts, then the same estimators are consistent for the corresponding prompt-averaged untruncated Pearson, Spearman, Kendall, and covariance targets. Proof. We prove the result in two steps: first within each prompt, and then across prompts. For a fixed prompt xp, the rollout-level pairs 
+
+
+
+N (p,i )max , r (p,i )max 
+
+
+
+, i = 1 , . . . , n p, are conditionally i.i.d. By Algorithm 2, both coordinates are observed from the same rollout, with r(p,i )max = S(p,i )max  
+
+> N(p,i )max
+
+.
+
+The moment and nondegeneracy assumptions imply consistency of the sample covariance and variances. Hence, bρP
+
+> p
+> P
+
+−→ ρPmax (xp), dCov p
+
+> P
+
+−→ Cov( Nmax , r max | xp). Similarly, by consis-tency of empirical ranks and the assumed continuity of the rank-correlation functionals, bρS
+
+> p
+> P
+
+−→
+
+ρSmax (xp), bτ K
+
+> p
+> P
+
+−→ τ Kmax (xp). Since |ρPmax (x)| and |ρSmax (x)| are bounded away from one, and the clipping constant is chosen smaller than this margin, the Fisher transform is continuous in a neigh-borhood of the limiting values. Therefore, atanh  clip( bρP 
+
+> p
+
+, −1 + ϵ, 1 − ϵ) P
+
+−→ atanh {ρPmax (xp)},
+
+and atanh  clip( bρS 
+
+> p
+
+, −1 + ϵ, 1 − ϵ) P
+
+−→ atanh {ρSmax (xp)}. Now consider the aggregation across prompts. For Pearson, define ZP 
+
+> p
+
+= atanh {ρPmax (xp)}. By the previous step and the uniform assump-tions,   
+
+> PPp=1 wF
+> p
+
+[atanh (clip( bρP 
+
+> p,−1+ ϵ, 1−ϵ)
+
+)−ZP 
+
+> p
+
+]PPp=1 wF
+
+> p
+> P
+
+−→ 0. Since prompts are sampled i.i.d., the weighted law of large numbers gives    
+
+> PPp=1 wF
+> pZP
+> p
+> PPp=1 wF
+> p
+> P
+
+−→ EX [wF(X) atanh {ρPmax (X)}]  
+
+> EX[wF(X)]
+
+. Applying the continuous mapping theorem with tanh( ·) yields bρPpc ,max 
+
+> P
+
+−→ ρPpc ,max . The Spearman result is identical after replacing 
+
+ρPmax by ρSmax . For Kendall’s τb, Algorithm 2 aggregates directly on the τ scale using pair-count weights wK 
+
+> p
+
+= np(np−1) 2 . Thus, by the prompt-level consistency of bτ K 
+
+> p
+
+and the weighted law of large numbers, bτ Kpc ,max =    
+
+> PPp=1 wK
+> pbτK
+> p
+> PPp=1 wK
+> p
+> P
+
+−→ EX [wK(X)τ Kmax (X)]   
+
+> EX[wK(X)]
+
+. The covariance result follows in the same way, using weights wCov  
+
+> p
+
+= ( np − 1) + and the prompt-level consistency of dCov p. Finally, if Tmax → ∞ and the truncated conditional covariance, variance, and rank-association functionals converge to their untruncated counterparts, then the truncated prompt-averaged targets converge to the corresponding untruncated targets. Combining this approximation step with the fixed-Tmax 
+
+consistency above completes the proof. 
+
+Empirical support for the consistency assumptions. The assumptions underlying Proposition 1 are supported by several empirical diagnostics observed in our experiments. First, the truncation rates under Tmax = 4000 are uniformly small across model families, tasks, and variants, with most rates below 1% and the maximum observed rate equal to 4.32% (see Table 5). This suggests that the truncated quantities (Nmax , r max ) closely approximate their untruncated counterparts (N, r N )
+
+in practice. Second, the empirical sequence-length distributions exhibit rapidly decaying tails, and the number of active rollouts decreases quickly as generation proceeds, providing evidence that the stopping-time distribution is sufficiently light-tailed and that truncation bias is negligible for the chosen Tmax (see Figure 3). Third, the rollout-level entropy rates remain bounded and stable throughout generation trajectories, supporting the bounded-moment and continuity assumptions required for consistency of the covari-ance and correlation estimators (see Figure 2). Finally, substantial variability is consistently observed in both generation length and entropy rate across prompts and rollouts, indicating that the conditional variances of Nmax and rmax are bounded away from zero with high probability (see Figure 4 and Figure 5). Together, these empirical observations suggest that the regularity conditions required for the consistency of the prompt-averaged Pearson, Spearman, Kendall, and covariance estimators are well approximated in our experimental regime. 20 0.0 
+
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> Qwen3-8B
+
+Coding 
+
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+
+Math 
+
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+
+Stories  
+
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+
+Completion           
+
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> 1.25
+> Llama-3.1-8B
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 10 510 410 310 210 110 0
+
+Var( r X) (log)           
+
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> Gemma-3-12B
+> 10 510 410 310 210 110 0
+
+Var( r X) (log)           
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 10 510 410 310 210 110 0
+
+Var( r X) (log)           
+
+> 0.0
+> 0.5
+> 1.0
+> 10 510 410 310 210 110 0
+
+Var( r X) (log) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Qwen3-8B base
+> Qwen3-8B instruct
+> Llama-3.1-8B base
+> Llama-3.1-8B instruct
+> Gemma-3-12B base
+> Gemma-3-12B instruct
+> min observed = 4e-06
+
+Figure 4: Gaussian KDEs of log dVar( r | xp) over P =100 prompts. The dotted vertical marks 
+
+min p dVar( r | xp) ≈ 4×10 −6. All densities sit well to the right of zero, providing empirical support for the bounded-away-from-zero assumption. 0.0 
+
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> Qwen3-8B
+
+Coding 
+
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+
+Math  
+
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+
+Stories 
+
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+
+Completion      
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> Llama-3.1-8B
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 10 110 210 310 410 510 6
+
+Var( N X) (log)      
+
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> Gemma-3-12B
+> 10 110 210 310 410 510 6
+
+Var( N X) (log)      
+
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 10 110 210 310 410 510 6
+
+Var( N X) (log)      
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 10 110 210 310 410 510 6
+
+Var( N X) (log) 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> Qwen3-8B base
+> Qwen3-8B instruct
+> Llama-3.1-8B base
+> Llama-3.1-8B instruct
+> Gemma-3-12B base
+> Gemma-3-12B instruct
+> min observed = 13
+
+Figure 5: Gaussian KDEs of log dVar( N | xp) over P =100 prompts. The dotted vertical line marks min p dVar( N | xp) ≈ 13 , the smallest per-prompt variance observed across all model-dataset combinations. All densities concentrate at dVar( N | xp) ≫ 0, empirically supporting the bounded-away-from-zero assumption. Instruct variants consistently shift to smaller values, indicating that fine-tuning produces tighter length distributions. 
+
+B Discussions 
+
+B.1 How GenPPL and BF capture different notions of diversity: an essay analogy case study 
+
+We illustrate the difference between GenPPL and BF through an essay–word analogy, where tra-jectories correspond to essays and tokens correspond to individual words. For a fixed prompt x,suppose a model generates two types of essays. With probability 1/2, it produces a short essay of length N = 2 , where each word is selected uniformly from 100 plausible words. With probability 
+
+1/2, it produces a long essay of length N = 10 , where each word is selected uniformly from only 2
+
+21 plausible words. For the short essays, H(Y1:2 | N = 2 , x ) = 2 log 100 , r 2 = log 100 . For the long essays, H(Y1:10 | N = 10 , x ) = 10 log 2 , r 10 = log 2 .
+
+BF treats each trajectory equally: log BF = 12 log 100 + 12 log 2 , which yields BF ≈ 14 . This means that a typical generated trajectory behaves as if each token has roughly 14 plausible continuations. Because BF weights trajectories equally, short but highly diverse generations contribute substantially even if they contain relatively few tokens overall. In contrast, GenPPL treats each token equally. Since most generated tokens come from the long low-diversity essays, we obtain GenPPL ≈ 3.
+
+Thus, a token on average has only about 3 plausible continuations. The distinction arises from the averaging mechanism. BF averages uncertainty at the trajectory level, while GenPPL averages at the token level and therefore assigns greater weight to longer generations. Consequently, BF reflects the diversity of a typical trajectory , whereas GenPPL reflects the uncertainty of a typical token . These two measures therefore provide complementary views of generation space that cannot be captured by a single metric alone. 
+
+B.2 When to use BF vs. GenPPL across different tasks. 
+
+We refer readers to Table 4 for a concise practical comparison of when to use BF versus GenPPL across different tasks. Table 4: When to use BF vs. GenPPL across different tasks. 
+
+Task Preferred Metric Level Reason 
+
+MMLU (QA) GenPPL Token Requires selecting a single correct answer. Performance depends on calibrated token probabilities. Diversity across full trajec-tories is unnecessary. Story Generation BF Trajectory Outputs are evaluated as complete units. Diversity across stories reflects creativity and coverage of different narrative possi-bilities. Math GenPPL BF Token Trajectory GenPPL is primary because correctness depends on precise step-by-step reason-ing. BF is secondary and useful for an-alyzing diversity across alternative solu-tion strategies. Coding GenPPL BF Token Trajectory GenPPL is primary because code correct-ness requires token-level precision. BF is secondary and useful for comparing mul-tiple valid implementations. Sentence Completion GenPPL Token This is a next-token prediction task, so GenPPL aligns directly with likelihood and perplexity-based evaluation. 
+
+B.3 Comparison with perplexity. 
+
+Perplexity [ 15 ] is a widely used evaluation metric in the LLM literature. To avoid confusion, we briefly contrast it with GenPPL and BF. Perplexity is defined on a fixed dataset (y1, . . . , y T ), where 
+
+yt ∈ V is the observed token and y<t denotes its context. Given the model distribution q(· | y<t ),it is defined as PPL = exp 
+
+ 1
+
+> T
+
+PTt=1 − log q(yt | y<t )
+
+
+
+, where − log q(yt | y<t ) measures how surprising the true token is under the model. Thus, perplexity evaluates predictive accuracy, with lower values indicating better fit to the data. In contrast, GenPPL and BF are defined with respect to the model’s generative distribution and measure generation capacity. Namely, the size and diversity of the space of possible outputs rather than accuracy on the observed data. 22 Table 5: Empirical Truncation Rates. We report the proportion of Monte Carlo rollouts that reached the maximum generation budget ( Tmax = 4000 tokens) without sampling an EOS token. Rates are calculated over P = 100 prompts with M = 100 rollouts per prompt.                                    
+
+> Model MATH STORY CODING COMPLETION Base Instruct Base Instruct Base Instruct Base Instruct Qwen3-8B 0.0073 0.0000 0.0005 0.0000 0.0008 0.0004 0.0313 0.0000 Llama-3.1-8B 0.0105 0.0006 0.0325 0.0000 0.0095 0.0000 0.0174 0.0000 Gemma-3-12B 0.0036 0.0000 0.0066 0.0000 0.0432 0.0000 0.0119 0.0000
+
+C Experiment details 
+
+In this section, we provide additional experimental and implementation details underlying our empirical analysis. In particular, we discuss the stopping behavior of autoregressive generation and the resulting truncation bias, as well as the statistical modeling procedures used throughout the paper. We further present detailed outputs from the Beta mixed-effects regression analysis, including coefficient estimates, interaction effects, and dispersion modeling results, together with additional discussions on uncertainty allocation, semantic diversity, and length–entropy dynamics across model families and tasks. 
+
+C.1 Stopping criteria and empirical truncation bias 
+
+To ensure the generative process remains consistent with the theoretical framework, we include the 
+
+EOS token in the sampling vocabulary V ∪ { EOS }. Crucially, during top -k sampling, a rollout only terminates if EOS is present within the top k most probable tokens and is subsequently sampled. While our theoretical framework allows for infinite generation length, practical estimation requires a finite truncation point Tmax . To ensure that our estimator cCE ∗ 
+
+> max ,P,M
+
+remains a consistent proxy for the true Canopy Entropy CE ∗, we set a generous token budget of Tmax = 4000 . As shown in Table 5, the empirical truncation rate remains low across all model families and tasks. Notably, fine-tuned models exhibit a 0.00% truncation rate in almost all settings, confirming that aligned models naturally terminate well within the provided budget. While truncation rates are higher for base models, they remain sufficiently low ( ≤ 0.0432 ). Overall, these results demonstrate that the truncation bias term g(Tmax ) defined in Theorem 2 is sufficiently small, ensuring that the observed differences in generation space are not artifacts of the maximum length constraint. 
+
+C.2 Completion traps 
+
+Instead of answering the instruction, base models sometimes treat the prompt as an unfinished text prefix and continue it with a short completion fragment. Here we present some empirical examples where base models fall into such “completion traps”. Some examples are listed below. Prompt: Come up with an original and creative solution for the following real-world prob-lem: Clara, a junior pre-med student, is working part-time and taking a 15 hour credit load at school [...] Clara is not sure how to solve her problem.. Qwen3-8B Base: 
+
+"In order to entice donors, you would like to take the following approach:" 
+
+Llama-3.1-8B Base: 
+
+"How can she decide what steps she should take to solve her problem?" 
+
+Gemma-3-12B Base: 23 Table 6: Base–instruct comparison of length–entropy correlation measured by Spearman’s ρ and Kendall’s τ . Each entry reports estimate ± standard error, and absolute change is computed as instruct minus base. All numbers are rounded to two significant digits. Warm colors indicate increases, while cold colors indicate decreases; darker colors correspond to larger magnitude changes.                                                                                                                                                                                                                                     
+
+> Task Type Spearman’s ρcorrelation Kendall’s τcorrelation Qwen3-8B Llama-3.1-8B Gemma-3-12B Qwen3-8B Llama-3.1-8B Gemma-3-12B MATH Base -0.19 ±0.023 -0.56 ±0.031 -0.27 ±0.023 -0.12 ±0.015 -0.36 ±0.024 -0.17 ±0.015 Instruct 0.039 ±0.032 0.13 ±0.029 0.096 ±0.034 0.026 ±0.020 0.082 ±0.019 0.056 ±0.021 Abs. Change 0.23 ±0.037 0.68 ±0.046 0.36 ±0.045 0.15 ±0.024 0.44 ±0.033 0.22 ±0.028 CODING Base -0.28 ±0.018 -0.66 ±0.014 -0.40 ±0.011 -0.18 ±0.013 -0.47 ±0.012 -0.26 ±0.0079 Instruct 0.49 ±0.030 0.30 ±0.023 0.38 ±0.032 0.32 ±0.021 0.20 ±0.015 0.25 ±0.022 Abs. Change 0.76 ±0.035 0.97 ±0.022 0.78 ±0.033 0.50 ±0.024 0.67 ±0.016 0.51 ±0.023 SENTENCE COMPLETION Base -0.0049 ±0.025 -0.39 ±0.019 -0.32 ±0.016 0.0026 ±0.017 -0.26 ±0.013 -0.22 ±0.011 Instruct 0.52 ±0.024 -0.22 ±0.025 0.13 ±0.035 0.36 ±0.018 -0.14 ±0.017 0.086 ±0.021 Abs. Change 0.53 ±0.033 0.17 ±0.029 0.46 ±0.037 0.35 ±0.023 0.12 ±0.019 0.30 ±0.023 STORY Base -0.36 ±0.015 -0.32 ±0.015 -0.30 ±0.014 -0.25 ±0.011 -0.21 ±0.011 -0.20 ±0.0099 Instruct 0.16 ±0.021 -0.12 ±0.019 -0.049 ±0.027 0.10 ±0.014 -0.081 ±0.012 -0.032 ±0.017 Abs. Change 0.52 ±0.025 0.20 ±0.024 0.25 ±0.032 0.35 ±0.017 0.13 ±0.016 0.16 ±0.021
+
+"There will be partial credit for good ideas that might just work (even if they’re not perfect). Your solution will be judged on its creativity and how well it works." 
+
+Coding prompts were especially vulnerable to premature termination caused by structural delimiters. Prompts ending with a closing code block delimiter ( ‘‘‘ ) frequently produced empty responses from base models, as they likely interpret the closing backticks as an end-of-document signal from the training distribution. To ensure valid evaluations, we manually stripped these trailing delimiters to force the model to generate the intended logic rather than treating the task as already finalized. 
+
+C.3 Bootstrap procedure 
+
+All standard errors and confidence intervals reported in Table 1, Table 2, and Table 6 are estimated using a prompt-level cluster bootstrap with B = 2000 replicates. In each replicate, we sample 
+
+P = 100 prompt indices uniformly with replacement from the original set of prompts. All M = 100 
+
+rollouts associated with a sampled prompt are resampled jointly as a single cluster, preserving the within-prompt rollout structure. Point estimates are always computed on the original, non-resampled data; bootstrap replicates are used only for uncertainty quantification. Reported standard errors correspond to the sample standard deviation of the bootstrap replicates with degree of freedom = n − 1.
+
+C.4 Beta mixed-effects model for semantic diversity 
+
+The analysis is based on 2400 observations, corresponding to 4 tasks, 3 model families, and 2 model variants (base and instruct), with 100 prompts evaluated for each configuration. 
+
+Conditional mean modeling. Formally, we model Dtpm ∼ Beta( μtpm ϕtpm , (1 − μtpm )ϕtpm ) ,
+
+where μtpm ∈ (0 , 1) denotes the conditional mean and ϕtpm > 0 is the precision parameter. The conditional mean model is specified as logit( μtpm ) = α+β1Rtpm +β21{m = FT }+f (invN tpm )+ P 
+
+> k
+
+τk1{t = k} + β3(Rtpm · 1{m = FT }) + g (invN tpm ) 1{m = FT } + up + vm where Rtpm is the entropy rate, invN tpm is the inverse sequence length, and f (·), g(·) are natural spline functions corresponding to nonlinear length effects and their interaction with instruction tuning. The coefficients 
+
+τk represent fixed task effects. To account for hierarchical dependence, we include random intercepts 
+
+up ∼ N (0 , σ 2 
+
+> p
+
+), v m ∼ N (0 , σ 2
+
+> m
+
+), for prompt identity and model family, respectively. In addition to the finding presented in section 5, we also observe strong nonlinear dependence on inverse sequence length. Several spline terms and their interactions with fine-tuning are significant, confirming that the relationship between diversity and length is highly nonlinear and differs between base and fine-tuned models. This reinforces that simple linear controls for length are insufficient. Task-level effects are also pronounced. Relative to completion, mathematical reasoning exhibits significantly higher semantic diversity ( +0 .169 , p < 10 −6), while story generation shows substan-24 Table 7: Full table of conditional mean model estimates for the Beta mixed-effects regression. Term Estimate Std. Error p-value Intercept -0.87953 0.07007 < 2e −16 
+
+R 0.70803 0.03340 < 2e −16 
+
+Instruct -0.37650 0.08609 1.23e −05 ns(invN , 4) 1 0.15197 0.04085 0.000199 ns(invN , 4) 2 0.39690 0.23890 0.096641 ns(invN , 4) 3 0.62065 1.47024 0.672924 ns(invN , 4) 4 0.61022 3.10032 0.843966 
+
+Coding -0.03721 0.03640 0.306726 
+
+Math 0.16948 0.03448 8.83e −07 
+
+Stories -0.27563 0.02864 < 2e −16 
+
+R × Instruct 1.18254 0.04642 < 2e −16 
+
+Instruct ×ns(invN , 4) 1 -0.13029 0.07868 0.097734 
+
+Instruct ×ns(invN , 4) 2 1.35321 0.31701 1.97e −05 
+
+Instruct ×ns(invN , 4) 3 1.00650 1.48303 0.497340 
+
+Instruct ×ns(invN , 4) 4 0.81421 3.10203 0.792954 
+
+Table 8: Estimated random intercept variances... Random effect Group Variance Std. Dev. Intercept prompt_uid 0.013937 0.11806 Intercept model_name 0.006817 0.08256 tially lower embedding-based diversity ( −0.276 , p < 2 × 10 −16 ), despite appearing lexically diverse. This suggests that open-ended generation can remain semantically concentrated even when surface variation is high (see Table 7). Finally, random effects indicate that prompt-level variability remains larger than model-level variabil-ity, highlighting the strong influence of prompt semantics on generation diversity (see Table 8). Table 9: Dispersion model estimates for the Beta mixed-effects regression. The dispersion submodel uses a log link for the precision parameter ϕtpm .Term Estimate Std. Error p-value Intercept 2.7544 0.2328 < 2e −16 
+
+Instruct 1.4153 0.2452 7.83e −09 
+
+Coding 2.5511 0.2186 < 2e −16 
+
+Math 2.1418 0.2149 < 2e −16 
+
+Stories 1.6534 0.1479 < 2e −16 ns(invN , 3) 1 -3.3780 0.5323 2.22e −10 ns(invN , 3) 2 -2.0039 0.8870 0.0239 ns(invN , 3) 3 2.6200 1.8507 0.1569 
+
+R 0.9751 0.1290 4.12e −14 
+
+LLaMA-3.1-8B 1.0091 0.1162 < 2e −16 
+
+Qwen3-8B 0.7270 0.1151 2.71e −10 
+
+Instruct × Coding -2.1969 0.2852 1.32e −14 
+
+Instruct × Math -1.5440 0.2861 6.76e −08 
+
+Instruct × Stories -2.9273 0.2085 < 2e −16 
+
+Instruct ×R -1.6085 0.2047 3.96e −15 
+
+Dispersion modeling. The dispersion model specifies how the precision parameter ϕtpm varies across model variants, tasks, sequence length, entropy rate, and model family. Specifically, we use the log-link specification log( ϕtpm ) = γ0 + γ11{m = FT } + P 
+
+> k
+
+δk1{t = k} + h(invN tpm ) + 
+
+γ2Rtpm + P 
+
+> j
+
+ηj 1{model = j} + P 
+
+> k
+
+ζk1{m = FT }1{t = k} + γ3 (Rtpm · 1{m = FT }) , where 
+
+h(·) is a natural spline function capturing nonlinear length-dependent dispersion effects. The task 25 0.0 0.2 0.4 0.6 0.8 1.0 0.0  0.2  0.4  0.6  0.8  1.0 
+
+> QQ plot residuals
+> Expected Observed
+> KS test: p= 0.55053 Deviation n.s. Outlier test: p= 0.16044 Deviation n.s. Dispersion test: p= 0.068 Deviation n.s.
+
+Figure 6: DHARMa residual diagnostics for the fitted Beta mixed-effects regression model. The QQ plot shows no significant deviation from the expected uniform residual distribution. indicators δk allow the residual precision to vary across tasks, while the model-family indicators 
+
+ηj account for systematic differences in dispersion across model families. The interaction terms between model variant and task allow fine-tuning to affect dispersion differently across tasks, and the interaction between entropy rate and model variant tests whether the relationship between entropy rate and precision changes after instruction tuning. Empirically, the dispersion model reveals substantial heterogeneity in residual precision. Instruction-tuned models have significantly higher baseline precision than base models ( ˆγ1 = 1 .415 , p < 0.001 ), indicating lower conditional variability after accounting for the mean structure. Precision also differs strongly by task, with coding, math, and story generation all showing significantly higher precision relative to the reference task. The spline terms for inverse length indicate that dispersion varies nonlinearly with output length, while the positive main effect of entropy rate ( ˆγ2 = 0 .975 , p < 0.001 )suggests that higher entropy rate is associated with greater precision among base models. However, the negative interaction between instruction tuning and entropy rate ( ˆγ3 = −1.609 , p < 0.001 ) shows that this relationship is substantially weakened or reversed for fine-tuned models. The significant model-variant-by-task interactions further indicate that fine-tuning changes residual variability in a task-dependent manner (see Table 9). 
+
+Residual diagnosis. The figure (see Figure 6) presents a DHARMa residual diagnostic QQ plot [ 11 ] for the fitted Beta mixed-effects regression model, comparing the empirical residual distribution against the expected uniform distribution. The residuals closely follow the diagonal reference line, indicating good overall model calibration and no substantial systematic deviation from the assumed distribution. The associated diagnostic tests further support model adequacy: the Kolmogorov– Smirnov test ( p = 0 .551 ) suggests no significant deviation from uniformity, the dispersion test (p = 0 .068 ) indicates no significant over- or under-dispersion, and the outlier test ( p = 0 .160 ) shows no evidence of excessive outliers. Overall, these diagnostics suggest that the fitted model provides an adequate characterization of the observed data and that the regression results are statistically reliable. 
+
+C.5 Compute resources and runtime 
+
+All experiments were run on a single internal SLURM cluster. Each generation job uses one NVIDIA GPU (A100, H100, or H200), 8 CPU cores, and 100 GB host RAM, with a 6-hour wall-clock timeout per job. Overall, we estimate total project compute at approximately 30-40 GPU-hours, overwhelmingly dominated by rollout generation; metric computation and statistical analysis were negligible by comparison and can be completed on CPU. 26
