@@ -1,0 +1,1271 @@
+Title: Beyond Static Dialogues: Benchmarking Realistic, Heterogeneous, and Evolving Long-Term Memory
+
+URL Source: https://arxiv.org/pdf/2605.31086v1
+
+Published Time: Mon, 01 Jun 2026 00:59:17 GMT
+
+Number of Pages: 32
+
+Markdown Content:
+# Beyond Static Dialogues: Benchmarking Realistic, Heterogeneous, and Evolving Long-Term Memory 
+
+Han Zhang 1,2,3 *, Zihao Tang 3, Xin Yu 3†, Xiao Liu 3, Yeyun Gong 3,Haizhen Huang 3, Yan Lu 3, Weiwei Deng 3, Feng Sun 3, Qi Zhang 3, Hanfang Yang 1,2 †1Center for Applied Statistics, Renmin University of China 
+
+> 2
+
+School of Statistics, Renmin University of China 
+
+> 3
+
+Microsoft 
+
+Abstract 
+
+In existing memory benchmarks for Large Language Models (LLMs), the evaluated di-alogue sessions often lack long-term seman-tic consistency, and the underlying personas tend to be flat and static. Furthermore, in real-world scenarios, interactions between users and assistants involve more diverse, heteroge-neous data streams, such as documents and emails. These shortcomings significantly limit the realism and effectiveness of current eval-uations. To address these limitations, we in-troduce RHELM (Realistic, H eterogeneous, and Evolving Long-term M emory). Driven by meticulously crafted user profiles and a novel 
+
+LOOP (p Lan-r O llout-ev O lve- Prune) module, we construct realistic dialogues across diverse interaction scenarios that exhibit dynamic tem-poral evolution and long-term coherence. Cru-cially, these dialogues are deeply integrated with heterogeneous external sources synchro-nized with the user’s temporal event trajec-tory. The resulting benchmark encompasses challenging question-answer pairs spanning 
+
+seven inquiry types, with each question map-ping to at least one of 27 critical memory char-acteristics that we identify as essential yet un-derexplored in current research. Comprehen-sive experiments across full-context models, retrieval-augmented generation (RAG) meth-ods, and representative memory frameworks reveal that contemporary approaches still ex-pose critical weaknesses in complex, real-world settings, particularly in resolving multi-source aggregation and real-world contextual reason-ing. The data is released at https://github. com/Hanzhang-lang/RHELM_Benchmark .
+
+1 Introduction 
+
+Recently, research on the memory capabilities of Large Language Models (LLMs) has garnered un-precedented attention (Hu et al., 2025). While   
+
+> *Work done during internships at Microsoft.
+> †Correspondence to Xin Yu and Hanfang Yang. #:
+> xinyu2@microsoft.com ,hyang@ruc.edu.cn .
+
+scaling model size and extending context windows have enabled models to "memorize" vast amounts of general knowledge (Hendrycks et al., 2020; Wang et al., 2024b), they often fail to satisfy the memory requirements of authentic personal assis-tant interactions. Perspectives from cognitive sci-ence (Riedel and Blokland, 2015) point out that memory is intrinsically linked to personal traits, evolves dynamically over time, and depends on an individual’s unique historical context. Regret-tably, current general-purpose models and LLM agents remain limited in effectively capturing these nuanced attributes (Wei et al., 2025). Although several benchmarks have emerged to evaluate the memory capabilities of conversational assistants, they continue to exhibit deficiencies in modeling real-world complexities in the following aspects (Zhang et al., 2025; Yehudai et al., 2025): 
+
+Absence of Semantic Coherence and Behav-ioral Fidelity. Existing benchmarks frequently construct long-context history by inserting seman-tically disjoint conversational fillers. Consequently, both the dialogue segments and the underlying be-havioral logic fail to form meaningful connections with the broader context (Wu et al., 2025; Jiang et al., 2025). Moreover, users engage in diverse communicative intents in real world-ranging from functional tasks to emotional disclosures. They communicate in varied ways, each reflecting a dis-tinct user persona and varying levels of informa-tional granularity. Consequently, evaluations based on simplistic synthetic dialogues lack realism, pre-cluding a rigorous assessment of coherent memory. 
+
+Homogeneous Information Sources. Existing AI assistants are evolving from basic chatbots to systems capable of reasoning across diverse data sources (Comanici et al., 2025). Sources such as reports, journals and emails serve as rich reposito-ries of both episodic and semantic information (Lei et al., 2023). Nevertheless, most current bench-marks are largely confined to conversational inter-1
+
+> arXiv:2605.31086v1 [cs.CL] 29 May 2026
+
+Personal Profile
+
+Name: David
+
+Gender: Male
+
+Education: Master
+
+Location: Leipzig, Germany
+
+Occupation: Senior Researcher
+
+Birthday: 1989-05-18
+
+Identity
+
+Traits
+
+Hobbies: Bike riding
+
+Preference:
+
+Music fan; Seafood allergy
+
+Lifestyle: Regular schedule
+
+Personality
+
+MBTI: INTJ
+
+Behaviour patterns: Research-driven
+
+Inner character: Analytical
+
+Personal ideals: Work-life balance
+
+Current Status
+
+Relationships
+
+Mike: Colleague, tall, blonde.
+
+Jasper: Encountered during walk,
+
+lunch appointment.
+
+Health: Mild seasonal allergies → Stomach pain from seafood incident
+
+Mood: Mildly anxious
+
+Ongoing events: Repair of Lenovo;
+
+Stage 3: Bullet Extraction & Classification
+
+Stage 1: Profile Generation Stage 2: LOOP Generation
+
+Short-term plans:
+
+ (L1: 2024-06-01) Inspect and repair Lenovo
+
+ (L1: 2024-06-03) Saturday bike ride
+
+
+
+(L2: 2024-06-10) Bike ride with Jasper and have lunch
+
+Long-term plans:
+
+
+
+(L1->..-> Ln 2024-10-05) Submit PhD application
+
+Prune profile attribute: Ongoing events: Repair of Lenovo;
+
+Based on the records in the FAQ section of the documentaion,
+
+this is very likely due to battery aging.
+
+[Upload report.pdf] Hey, could you check the documents
+
+to see what's causing my computer to keep restarting?
+
+That sounds awesome! Riding by the river on a sunny day must
+
+have been so refreshing. What happened next?
+
+The sun was shining super bright as I pedaled along this
+
+twisty path. That's where I bumped into Jasper.
+
+We ended up having a fun chat. We agreed to have lunch
+
+after our ride next week. Could you help me plan my morning?
+
+Wake up around 8 AM, have a light breakfast, and head out
+
+for your ride by 10 AM so you're relaxed and on time.
+
+The technician was really quick. He replaced the battery on
+
+the spot, and now it's working perfectly again.
+
+Stage 4: Conversation Generation
+
+2024-06-03 11:00
+
+2024-06-01 9:00
+
+That's great! Sounds like you lucked out with a good shop.
+
+[Postive] Successfully identifying battery aging via PDF report analysis. Technician onsite
+
+repair resolved hardware malfunction.  
+
+> RolloutL1:2024-06-01
+
+Belongings
+
+Computer: Lenovo Laptop
+
+Need repair → Repaired & functional
+
+Photography: Fujifilm X-T4
+
+Operational
+
+Belongings Update: Lenovo Repaired
+
+[Postive] Pleasant riverside cycling. Engagement with Jasper led to future scheduling,
+
+where they agreed to share lunch next week.  
+
+> RolloutL1:2024-06-03
+
+Evolve
+
+Attachment Consultation
+
+ (2024-06-01:1) Reviewed Lenovo's official repair report
+
+Information Sharing
+
+ (2024-06-01:2) The technician promptly replaced the battery on-site
+
+Information Sharing
+
+ (2024-06-03:1) Cycle along a riverside on a sunny day, where he met Jasper
+
+Scheduling
+
+ (2024-06-03:2) They planned another bike ride together and share lunch afterward
+
+Evolve  
+
+> ExternalSource
+> Generation
+> SearchQuery:
+
+Generate a technical report
+
+about battery use for Lenovo.
+
+[Negative] Suffered stomach pain after eating seafood. Exhaustion led to unsatisfactory
+
+submission of PhD material.  
+
+> RolloutLn:2024-10-05
+
+Status & Preference Update: Seafood Allergy
+
+Relationship Added: JasperFigure 1: The overview of the RHELM benchmark curation. 
+
+actions. In practice, a robust AI assistant must syn-thesize information across heterogeneous sources, ranging from unstructured text and semi-structured tables to web pages (Li et al., 2024b). While dis-tinct from colloquial text, these structured artifacts possess high information density and user-specific details essential for comprehensive memory forma-tion, posing a significant challenge to the modeling of user-centric memory systems. 
+
+Omission of Memory-Conditioned Mislead-ing Queries. In existing benchmarks, the majority of queries demand explicit factual answers, treating LLMs as static retrieval systems under the "Needle-in-a-Haystack" paradigm (Kamradt, 2023). While some frameworks (Tavakoli et al., 2025) attempt to evaluate robustness by directly injecting halluci-nations into questions, they still overlook a critical challenge in real-world scenarios: implicit state constraints. Real-world users may propose authen-tic requests that contradict their own grounded real-ities, past events, or evolving preferences. A truly capable memory-augmented assistant should not act merely as a "pure instruction-follower". Instead, it must proactively track the user’s implicit status from historical interactions, detect conflicting re-quests, and respond proactively based on the user’s authentic condition. To bridge these gaps, we introduce RHELM 
+
+(Realistic, H eterogeneous, and Evolving Long-term Memory), a benchmark designed to compre-hensively evaluate the complex memory capabili-ties of personal AI assistants. Unlike prior statically assembled datasets, RHELM models consistent and realistic long-term user behaviors through a dy-namic LOOP (pL an, r O llout, ev O lve, and Prune )module, grounded in meticulously designed per-sonas. Furthermore, rather than relying exclusively on daily dialogues, we synthesize heterogeneous external sources ( e.g., reports, journals, emails) via Deep Research methodologies (OpenAI, 2025b). Operating on timelines spanning a simulated one-year period, RHELM ultimately yields 10 distinct 2Table 1: Comparison of representative AI memory benchmarks evaluated across multiple dimensions. Statistics are either from the original paper or based on our estimations.                                                                 
+
+> Benchmark Benchmark Statistics Core Characteristics Communication Topic Avg. Turns Context Window External Data Profile Evolution Semantic Consistency Misleading Test
+> LoCoMo (Maharana et al., 2024) 4.77 10 k✗✗✓✗Daily Life PerLTQA (Du et al., 2024) 5.11M✗✗✗✗Daily Life LongMemEval (Wu et al., 2025) 5.19 115 k, 1.5M✗✗✗✗Daily Life PersonaMem (Jiang et al., 2025) 15 −30 128 k−1M✗✓✗✗Task-oriented MT-Mind2Web (Deng et al., 2024) 5.62 ∼400 k✓✗✗✗Web browsing DialSim (Kim et al., 2024) 12 ∼350 k✗✗✓✗TV shows
+> RHELM (Ours) 18.7 500k-1M ✓✓✓✓Multi-faceted
+
+Table 2: Overview statistics of the RHELM Dataset. 
+
+Metric Statistics 
+
+Dialogue History 
+
+Total Days (Sessions) 629 Total Turns 11,764 Total Dialogue Tokens 4,776,002 
+
+External Sources 
+
+Total External Files 2,180 Total File Tokens 2,428,121 
+
+Evaluation Data 
+
+Total QA Pairs 1,305 
+
+persona trajectories encompassing 11,764 turns and 
+
+2,180 external sources with context lengths ranging from 500k to 1M tokens in total per persona. For the evaluation suite, we construct 1,305 cognitively demanding question-answer pairs spanning seven 
+
+categories and 27 distinct complexity features, in-cluding a novel category specifically targeting the aforementioned misleading dimension to facilitate implicit status reasoning. Table 1 compares our dataset against existing benchmarks, while Table 2 summarizes RHELM ’s statistics (details in Ap-pendix A.2). In summary, our main contributions are as fol-lows: (i) We present RHELM , a highly realis-tic benchmark for long-horizon memory evalua-tion, uniquely bridging the gap between conver-sational interactions and heterogeneous external data streams. (ii) We define a systematic evaluation taxonomy encompassing 27 challenging memory characteristics that we identify as essential yet un-derexplored in current research. (iii) Comprehen-sive experiments across three memory-augmented settings demonstrate that even state-of-the-art meth-ods still struggle in real-world memory reasoning, highlighting a clear path for future enhancements. 
+
+2 Related Work 
+
+Long-context LLMs & Memory Mechanisms. 
+
+Recent strides in LLMs have significantly ex-panded their context windows as working mem-ory. This progress is underpinned by efficient atten-tion mechanisms (Beltagy et al., 2020; Kwon et al., 2023) that reduce computational overhead, and ad-vanced techniques applied during fine-tuning (Su et al., 2024; Peng et al., 2024; Press et al., 2022) to facilitate length extrapolation. Consequently, modern proprietary models now support massive context windows tailored for complex tasks (An-thropic, 2025; Comanici et al., 2025). Beyond di-rect context extension, more sophisticated mem-ory systems enhance the management of authen-tic memory scenarios by effectively compressing and organizing historical information (Packer et al., 2023; Chhikara et al., 2025). 
+
+Long-term Dialogue Benchmarks. As the de-mand for sophisticated memory capabilities has progressively intensified, benchmarks have transi-tioned from text-centric evaluations such as Long-Bench (Bai et al., 2024, 2025) toward conversa-tional frameworks like LoCoMo (Maharana et al., 2024). DialSim (Kim et al., 2024) prioritizes role-playing to render dialogues more authentic. PerLTQA (Du et al., 2024) emphasizes the capture of social networks and semantic information, while PersonaMem (Jiang et al., 2025) necessitates track-ing shifts in user preferences. Furthermore, Long-MemEval (Wu et al., 2025) and BEAM (Tavakoli et al., 2025) extend this further by querying the most recent evolved details associated with users with longer context. Despite these advancements, the integration of heterogeneous data sources and the modeling of realistic, dynamic user trajectories remain underexplored. 
+
+3 Overview 
+
+3.1 Problem Formulation 
+
+We formally define the task of our memory evalua-tion as follows. Consider a persona P , associated with a time span [τs, τ e]. Within this period, the user’s historical context is composed of two het-erogeneous streams: conversational dialogues and 3external data sources. We denote the Dialogue Stream as C = {(τi, x i, y i)}Ni=1 , where each tuple represents a dialogue turn occurring at timestamp 
+
+τi, consisting of a user utterance xi and an assistant response yi. Parallel to the dialogue, we define the 
+
+External Source Stream as E = {(τj , d j )}Mj=1 ,where dj represents a textual data chunk ( e.g., adocument fragment) available at timestamp τj . Dur-ing the evaluation phase, a query q is issued at a specific query time τq. The objective of the model is to generate an answer a based on all the informa-tion available. The expected answer a can manifest either as a concise phrase or a descriptive natural language response—for instance, identifying and rectifying a conflict within the user’s query. 
+
+3.2 RHELM Overview 
+
+We define a taxonomy of seven core query cat-egories, as illustrated in Table 3, encompassing five dialogue-centric types—namely Fact , Tempo-ral , Hallucination , Aggregation and Misleading ,and two types with heterogeneous sources: Ex-ternal Source queries and Mixed queries. While certain categories, such as Fact and Temporal , have been partially explored in prior benchmarks (Wu et al., 2025; Maharana et al., 2024), we significantly extend the complexity across all seven categories to facilitate a more rigorous evaluation of model memory. Specifically, we propose 27 core chal-lenging features in total. These features necessitate deeper levels of reasoning, sustained tracking of long-horizon dependencies, and multifaceted aggre-gation of information across heterogeneous sources. During the construction of question-answer pairs, the feature definitions are integrated to ensure that each query encapsulates at least one such charac-teristic. To facilitate efficient evaluation, we ensure that most questions have short phrases as answers. In particular, Hallucination and Misleading types require models not only to identify false claims but also to specify the correct factual context. 
+
+4 Benchmark Curation 
+
+This section details the systematic process of con-structing the benchmark. The overall curation pipeline is illustrated in Figure 1, and the main workflow is outlined in Algorithm 1. 
+
+4.1 Profile Generation 
+
+A rich and deeply layered character is pivotal to the entire creation process for RHELM . As users often exhibit dynamic evolution in factual details while 
+
+Table 3: Taxonomy of challenging questions. Both Attach-ment and Email correspond to the External Source type. More detailed definitions are listed in the Table 10.                       
+
+> Category Characteristics I. Dialogue History QA Fact Multi-Hop Traversal Entity Disambiguation State-Dependent Attribute Negative Constraints
+> Temporal Indirect Identification Sequence Comprehension Long-Horizon Synthesis Implicit Temporal Lookup
+> Hallucination Misattribution Fabrication Preference Conflict Contextual Contradiction
+> Aggregation Conditional Counting Trend Analysis Extreme Value Absence Detection
+> Misleading Implicit State Conflict Proactive Response
+> II. External Source QA Attachment Fact Retrieval Table Reasoning Structural Navigation Table Aggregation
+> Email Cross-time Count Email Localization
+> III. Hybrid Context QA Mixed Relative Positioning Contextual Retrieval Post-Modification Analysis
+
+maintaining consistency within their core qualities throughout lifelong learning, we developed a six-dimensional persona taxonomy. These attributes range from internal psychology to external reali-ties, and from immutable characteristics to tran-sient states: Identity , Personality , Traits , Relation-ships , Belongings , and Current Status . Throughout the benchmark generation process, these profiles are dynamically updated and refined. To ensure the accuracy and integrity of these updates, profiles are stored following a rigorous JSON schema, in which each attribute is governed by strict defini-tions and pre-defined data types. A sample profile and an overview of the personas used in RHELM 
+
+are provided in Appendix A.3. 
+
+4.2 LOOP (pLan-rOllout-evOlve-Prune) 
+
+The LOOP module simulates realistic lifelong tra-jectory. Leveraging specific user profile, the model generates plans encompassing both short-term ar-rangements (social interactions, routines, and per-sonal interests) and long-term projections (career progression, life milestones, and significant per-sonal transitions). For each scheduled event, we uti-lize a rollout mechanism controlled by a probabil-ity p, yielding either positive or negative outcomes. The outcomes comprise detailed event narratives about the day. Empirically, we observe that this simple mechanism effectively simulates the fluctua-tions and contingencies in real life. Based on these outcomes, the model dynamically evolves the pre-vious profile to reflect current state changes. This update process is implemented through functional 4Algorithm 1 RHELM Workflow.                                                                                                               
+
+> Require: initial persona P; time span [τs, τ e]; rollout proba-bility p; prune schedule ρ
+> Ensure: profile trajectory P, external sources E, dialogues C
+> 1: # Profile Generation
+> 2: Pτs←ENRICH PROFILE (P)▷6-dim JSON profile 3: # LOOP Module
+> 4: τ←τs
+> 5: while τ≤τedo
+> 6: (gτ′, τ ′)←PLAN (Pτ, τ )▷pLan
+> 7: oτ′←ROLLOUT (gτ′, τ ′, p )▷rOllout
+> 8: Eτ′←EXTERNAL GEN (oτ′)
+> 9: Pτ′←EVOLVE (Pτ,oτ′)▷evOlve
+> 10: if SHOULD PRUNE (τ′, ρ )then
+> 11: Pτ′←PRUNE (Pτ′)▷Prune
+> 12: end if
+> 13: τ←τ′
+> 14: end while
+> 15: for all simulated date τdo
+> 16: # Bullet Extraction & Classification
+> 17: bτ←BULLET EXTRACT (oτ)
+> 18: rτ←CLASSIFY (bτ)▷Five dialogue categories 19: # Dialogue Generation
+> 20: Cτ←DIALOGUE GEN (bτ,rτ,Pτ,Eτ)
+> 21: end for
+> 22: return {P ,E,C}
+
+calls on JSON schema. Furthermore, to mitigate the risk of cumulative semantic drift or error prop-agation over extended temporal horizons, a prune 
+
+module is employed. This module periodically recalibrates the user profile and prunes outdated entities. Following each pruning iteration, a new LOOP cycle is re-initialized, ensuring consistent long-term update through the user’s life trajectory. 
+
+Outcome Rollout. To simulate the stochasticity of external contingencies in real-world environments, we introduce a random factor p to govern the va-lence— positive or negative —of event trajectories. Negative outcomes, which denote life failures or unforeseen accidents, serve as critical milestones that significantly alter the evolution of the narrative arc. For instance, a physical injury incurred during a cycling excursion may fundamentally influence subsequent scheduled activities. By incorporat-ing such perturbations, we facilitate the develop-ment of long-tail event sequences (Li et al., 2024a), enabling the evaluation of model performance in complex, non-linear scenarios that are difficult for current models to capture. 
+
+External Sources. Contemporary application sce-narios for personal AI assistants no longer rely solely on conversational interaction. Consequently, incorporating complex heterogeneous sources is essential for the construction of robust benchmarks. To mirror the multi-faceted information users en-counter in daily life, we synthesize diverse external data sources conditioned on the daily outcome nar-ratives. Specifically, we focus on three primary categories: emails, personal journals, and profes-sional reports, which manifest in various formats including text, markdown, HTML. To ensure these artifacts possess high degrees of reality and com-plexity, we leverage Deep Research methodolo-gies (LangChain AI, 2025; OpenAI, 2025b) to gen-erate the latter two data sources. Based on the outcomes generated during the LOOP phase, the model is tasked with creating research queries for reports and journals relevant to the user’s day; these queries are subsequently processed by a deep re-search agent. In the final stage of generation, the presentation of the outputs is further refined to re-flect the formal professionalism of reports or the intimate, personal nature of journals. Detailed sta-tistical reports are available in the Appendix A.2. 
+
+Profile Evolution. To maintain dynamically evolv-ing user states, we continuously update the initial-ized profiles based on daily outcomes via a dual-phase paradigm: factual evolution and state evolu-tion . The former extracts fine-grained details from events to revise objective attributes ( e.g., , social relationships and belongings), while the latter in-fers intrinsic shifts, such as evolving preferences and hobbies. This disentangled strategy enables the model to independently capture both external and internal user dynamics. The dynamic updates primarily involve adding of new items, modifying existing ones, or removing outdated items. By enforcing rigorous type defini-tions and schema constraints on profile attributes, we ensure the structural integrity and validity of the profile evolution throughout the execution. We further provide a detailed analysis for the evolution frequency in Appendix A.4. 
+
+4.3 Dialogue Synthesis 
+
+Below we introduce the dialogue construction pro-cess using the trajectory from the LOOP module. 
+
+Bullet Extraction & Classification. Given the outcome narratives oτ , we decompose them into atomic bullet points bτ , ensuring each capture es-sential details. These bullets are then classified into different dialogue categories based on the user’s likely communicative intent and emotional con-text. Specifically, we introduce a taxonomy of five dialogue categories: information sharing , ad-vice seeking , status updates , scheduling , and at-tachment consultation . This categorization mir-rors real-world dynamics where a user’s tone and 5communication style adapt to their needs; for in-stance, document-centric discussions typically ex-hibit greater professionalism and verbosity than routine factual exchanges. 
+
+Dialogue Generation. Each bullet serves as a the-matic anchor for a specific topic. To naturally form dialogue streams, we design two dialogue modes per topic: an initial turn , where the user naturally leads in a new conversational thread, and a follow-up turn , where the user continues an ongoing dis-cussion. Different categories further adopt specific interaction patterns and individual user personas. Exemplary conversation and more implementation details are provided in Appendix D. 
+
+5 Question Curation 
+
+During the question generation process, we em-ploy diverse sampling strategies to extract consec-utive, cross-day event bullets. We then synthesize complex questions by incorporating these evidence bullets, the formal definition of the target question category, and its associated challenging character-istics into the model (as detailed in Table 10). 
+
+Memory-Conditioned Misleading Queries. We innovatively introduce Memory-Conditioned Mis-leading Queries . Under this evaluation dimension, the assistant is required to be aware of the user’s ongoing state or preferences from implicit user queries. To rigorously assess the capability, we utilize “trap” queries wherein the user proposes a request that directly conflicts with the implicit con-straints imposed by their updated life state. Dur-ing the generation of these queries, critical, life-altering events ( e.g., chronic injuries, residential relocations, or sudden career shifts) are deliber-ately extracted as grounding evidence. When formulating the response, the assistant must not blindly follow the user’s explicit instruc-tion. Instead, it is expected to proactively retrieve the historical event, deduce the ongoing restriction, politely identify the implicit conflict, and synthe-size a constraint-compliant alternative. 
+
+Verifier-Assisted Auditing. To maintain rigorous quality control across the whole generative pipeline, we implement a comprehensive Verifier system de-signed to audit the outputs of each distinct phase. In the context of long-range trajectory synthesis, human auditing is susceptible to "attention drift" (Zouhar et al., 2025) and entails prohibitive labor costs. Consequently, we deploy a suite of stringent verification modules that span the entire curation lifecycle—from profile evolution, external source synthesis to dialogue and QA pair generation—to ensure semantic consistency and factual integrity. Our findings indicate that the auxiliary information generated by the verifier module serves as a potent diagnostic tool, aiding human review while sig-nificantly reducing the requisite manual overhead. More details can be found in Appendix C. 
+
+6 Experiments 
+
+Through our experiments, we aim to answer the following research questions (RQs): 
+
+• RQ1: To what extent do heterogeneous external sources impact the performance of current memory paradigms, and how do these sources interact with dialogue history? 
+
+• RQ2: How robust are current models against more realistic challenges, particularly hallucina-tion and misleading issues? 
+
+• RQ3: How effectively do existing retrieval meth-ods recall relevant evidence from long-horizon, het-erogeneous user histories? 
+
+• RQ4: Which specific challenging characteristics expose the most significant deficiency? 
+
+6.1 Experimental Setup 
+
+We evaluate three distinct memory paradigms under two experimental configurations: one incorporating external sources and another excluding them. 
+
+RAG Baselines. We adopt distinct chunking strate-gies for the two data streams: dialogue histories are segmented by individual turns, while external documents are split into fixed-length chunks of 500 tokens with chunk overlap of 50 tokens. All chunks are encoded using bge-large-en-v1.5 (Xiao et al., 2023) and indexed via FAISS (Johnson et al., 2019) for efficient similarity search. At inference time, we retrieve the top-k most relevant chunks with k ∈ { 5, 20 , 50 }. Using GPT-4.1-mini as the default LLM, we further evaluate GPT-4.1, Gemini-2.5-Pro, and Claude Opus 4.5 at k = 20 . In addi-tion, we implement a hybrid retrieval variant that combines dense retrieval with BM25 (Robertson and Zaragoza, 2009) sparse retrieval via reciprocal rank fusion (RRF) (Cormack et al., 2009). 
+
+Long-Context Models. We evaluate GPT-4.1-mini, Gemini-2.5-Flash-Lite, and Qwen2.5-14B-Instruct-1M (Team, 2025) for full-context infer-ence. All models support context windows of up to 1M tokens. The dialogue histories and external sources are concatenated in chronological order 6Table 4: Detailed Performance Evaluation on RHELM . The two evaluation settings (With / Without External Data Sources) are presented side-by-side. The evaluation metrics are grouped conceptually into Dialogue History QA ( FC : Fact, TP : Temporal, 
+
+AG : Aggregation, HL : Hallucination, MI : Misleading), External Source QA ( EX : Attachment and Email), and Hybrid Context QA ( MX : Mixed). Overall best scores are marked in bold , and second-best scores are underlined.                                                                                                                                                                                                                                                                             
+
+> Model Without External Data Sources With External Data Sources FC TP AG HL MI EX MX Avg FC TP AG HL MI EX MX Avg
+> RAG Baselines
+> GPT-4.1-mini ( k= 5 )35.8 17.3 17.7 15.2 3.1 8.0 10.0 16.3 34.8 14.1 19.3 11.7 3.1 16.9 12.4 17.5
+> GPT-4.1-mini ( k= 20 )44.0 32.4 31.8 18.3 3.1 12.1 12.9 23.5 42.5 28.7 30.7 13.2 3.1 28.5 13.8 25.1
+> GPT-4.1-mini ( k= 50 )59.9 41.6 40.1 15.7 1.5 12.9 16.7 28.9 54.6 39.5 38.0 11.2 1.5 38.6 22.4 32.6
+> Hybrid ( k= 5 )34.3 20.5 14.1 19.8 1.5 8.0 10.5 16.7 31.9 19.5 14.1 19.3 1.5 16.1 10.5 17.6
+> Hybrid ( k= 20 )47.3 35.7 31.8 19.3 3.1 10.4 15.2 24.8 45.9 30.8 26.6 16.8 4.6 26.9 15.7 26.0
+> Hybrid ( k= 50 )56.5 41.1 35.9 15.2 3.1 13.7 16.7 27.8 53.1 37.8 33.9 8.6 3.1 33.3 18.6 29.6
+> GPT-4.1 ( k= 20 )51.7 34.1 35.9 23.9 7.7 16.1 17.6 28.2 50.2 29.2 32.3 19.8 6.2 32.5 19.5 29.5
+> Gemini-2.5-Pro ( k= 20 )45.4 35.1 27.1 66.0 23.1 12.4 18.1 32.6 43.0 31.9 26.0 64.5 26.2 31.3 20.5 35.5
+> Claude-Opus-4.5 ( k= 20 )50.7 37.8 33.3 68.0 47.7 13.7 16.2 36.2 50.2 30.8 31.8 60.9 41.5 33.7 21.0 38.1
+> Long-Context Models
+> Gemini-2.5-Flash-Lite (1M) 33.2 22.7 15.2 17.3 0.0 9.5 5.6 16.0 31.7 14.1 23.4 7.6 0.0 19.0 13.1 17.3
+> Qwen-2.5-14B-Instruct (1M) 29.5 15.1 29.7 3.1 0.0 11.7 9.1 15.3 16.9 7.0 15.6 1.0 0.0 5.2 6.2 8.1
+> GPT-4.1-mini (1M) 55.1 31.9 40.1 4.1 1.5 11.2 12.4 24.0 49.3 27.0 33.9 2.0 1.5 43.4 0.3 33.9
+> Memory Frameworks
+> MemGPT (Packer et al., 2023) 31.9 18.4 22.9 0.5 0.0 7.6 8.1 13.9 27.5 14.6 28.7 1.5 1.5 18.9 17.1 17.3
+> Mem0 (Chhikara et al., 2025) 41.6 31.4 28.1 10.7 3.1 10.8 13.3 21.1 46.4 29.2 27.1 10.2 3.1 31.3 35.7 28.9
+> MemU (NevaMind AI, 2025) 49.3 32.4 33.9 8.6 4.6 12.0 11.4 23.1 54.6 36.2 35.4 10.2 3.1 36.5 36.7 33.6
+
+and provided as a single input context. 
+
+Memory Frameworks. We further evaluate three representative memory-augmented frame-works. MemGPT (Packer et al., 2023) imple-ments an OS-inspired virtual memory hierarchy. Mem0 (Chhikara et al., 2025) provides a graph-based and vector-based hybrid memory layer that automatically extracts, consolidates, and retrieves user-specific memories. MemU (NevaMind AI, 2025) maintains a hierarchical memory architecture in which dialogues and documents are processed through separate pipelines. All three frameworks use GPT-4.1-mini as the backbone LLM to ensure a fair comparison. 
+
+Evaluation Metrics. Utilizing LLMs for eval-uation has increasingly become an efficient ap-proach for performance assessment (Gu et al., 2024). Specifically, for hallucination and mislead-ing type, responses involve identifying correct con-texts and proactively refusing; in such cases, tra-ditional metrics like Exact Match or BLEU (Pa-pineni et al., 2002) often exhibit significant defi-ciency. Consequently, we employ the LLM-as-judge paradigm (Liu et al., 2023) throughout exper-iments. Human validation and the detailed prompt are listed in the Appendix B and Figure 18. 
+
+6.2 Experimental Results Main Results. Table 4 presents the main results. Further analysis yields several pivotal insights: 
+
+RQ1: The experimental results reveal that all three paradigms exhibit markedly constrained per-formance on the RHELM benchmark. The best-performing model, Claude Opus 4.5, achieves an average performance of only 38 .1 with external sources, and 36 .2 without them. Further analysis shows that models without external sources can partially address queries in EX and MX types, suggesting conversational histories can serve as auxiliary references regarding user life trajectory. However, introducing external sources introduces challenges for standard types ( e.g., performance decreases from 44 .0 to 42 .5 for RAG ( k = 20 ), and from 59 .9 to 54 .6 for RAG ( k = 50 )). This highlights the necessity of integrating diverse data formats into the evaluation suite and memory sys-tems. Notably, all models struggle considerably with mixed-type queries, particularly RAG-based approaches. This deficiency illuminates the inade-quacy of isolated retrieval mechanisms in forging a unified memory architecture capable of cross-modal reasoning (Wang et al., 2024a). 
+
+RQ2: Models exhibit notably poor perfor-mance on hallucination and misleading queries, which more accurately reflect real-world scenar-ios. In RAG-based methods, increasing the vol-70% 5% 10% 15% 20% 25% 30%               
+
+> Accuracy
+> Implicit State Conflict
+> & Proactive Response
+> Relative Location Positioning
+> Contextual Contradiction
+> Misattribution
+> Fabrication
+> Contextual Retrieval
+> Preference Conflict
+> Absence Detection
+> Post-Modification Analysis
+> Structural Navigation
+> 3.1% (2/65)
+> 10.5% (14/133)
+> 11.3% (8/71)
+> 12.0% (21/175)
+> 14.1% (9/64)
+> 14.8% (8/54)
+> 16.7% (1/6)
+> 17.4% (4/23)
+> 19.0% (11/58)
+> 19.2% (5/26)
+> Aggregation External Hallucination Misleading Mixed
+
+Figure 2: Analysis of the 10 worst-performing challenging characteristics in RHELM . Models exhibit notably poor performance on features involving cross-source aggregation and real-world contextual reasoning. 
+
+ume of retrieved evidence further degrades perfor-mance (e.g., from 13 .2 to 11 .2 for hallucination type). Notably, nearly all methods fail severely on the misleading type, with accuracy falling be-low 5% . However, stronger reasoning models such as Claude Opus 4.5 and Gemini-2.5-Pro achieve substantially better results on these two types com-pared to other models, suggesting that enhanced reasoning capabilities enable models to more ef-fectively detect and resist deceptive or fabricated premises. Nevertheless, how to effectively distin-guish between seemingly plausible user trajectories and genuine user states remains an open challenge. 
+
+Recall Analysis (RQ3). We further evaluated the recall rate on the benchmark across different em-bedding models, including bge-large-en-v1.5 (Xiao et al., 2023), bge-m3 (Chen et al., 2024), all-MiniLM-L6-v2 (Wang et al., 2020), and OpenAI’s text-embedding models 1. Empirical evaluations were performed across a range of top-k retrieval thresholds, as depicted in Figure 3. The findings demonstrate that, even with a generous retrieval budget of k = 50 , the recovered evidence remains limited and inadequate for precise query resolution. 
+
+6.3 Challenging Characteristics Analysis Analysis on the Hardest Characteristics (RQ4). 
+
+To gain deeper insights into the bottlenecks of cur-rent memory-augmented models, we isolate and analyze the top 10 worst-performing characteris-tics evaluated under the RAG baselines in Figure 2. The empirical results expose severe limitations in cross-source aggregation and real-world contex-
+
+> 1
+
+https://platform.openai.com/docs/guides/ embeddings 5 10 20 50 
+
+> Retrieval Top-K
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> Recall
+> all-MiniLM-L6-v2
+> bge-large-en-v1.5
+> bge-m3
+> text-embedding
+
+Figure 3: Recall rate comparison of different embedding models under different candidate numbers. 
+
+tual reasoning. Specifically, the worst-performing characteristics are predominantly concentrated in categories that demand cross-source information synthesis, such as Mixed and Aggregation , as well as in characteristics more closely aligned with real-istic user requests, including Misleading and Hallu-cination . These findings indicate that when synthe-sizing information across vast and noisy historical sources, models frequently confound information origins, fail to resolve conflicting history, or fabri-cate non-existent facts, ultimately failing to capture the user’s authentic contextual state. 
+
+7 Conclusion 
+
+We present a benchmark, namely RHELM for eval-uating memory ability of personal assistants. We fo-cus on improving dialogue realism and query com-plexity over existing benchmarks. Furthermore, we introduce multiple external data sources to ex-pand the depth of memory evaluation. We employ an innovative dialogue construction mechanism, which enriches the character persona behind the dialogue, making the behavioral trajectories highly 8consistent and authentic. We believe that RHELM 
+
+can provide insights for advancing memory-related research. 
+
+Limitations 
+
+Here we list some of the limitations that are not considered in RHELM : (1) We primarily focus on commonly used external data source scenarios, such as documents and journals. Additional modal-ities—including video, images, audio, and tool-use interaction data—are not yet covered. While these modalities have been partially addressed by other datasets, our construction pipeline is fully compati-ble with their integration. (2) The current persona seeds are drawn from the elite subset of Person-aHub (Ge et al., 2024), which offers richer and more comprehensive descriptions. However, this selection introduces a potential demographic bias, as the resulting personas predominantly represent highly educated professionals, and may lack diver-sity in all socioeconomic backgrounds and cultural contexts. 
+
+References 
+
+Anthropic. 2025. System card: Claude Opus 4 & Claude Sonnet 4. Technical report, Anthropic. Yushi Bai, Xin Lv, Jiajie Zhang, Hongchang Lyu, Jiankai Tang, Zhidian Huang, Zhengxiao Du, Xiao Liu, Aohan Zeng, Lei Hou, Yuxiao Dong, Jie Tang, and Juanzi Li. 2024. LongBench: A bilingual, multi-task benchmark for long context understanding. In 
+
+Proceedings of the 62nd Annual Meeting of the As-sociation for Computational Linguistics (Volume 1: Long Papers) , pages 3119–3137, Bangkok, Thailand. Association for Computational Linguistics. Yushi Bai, Shangqing Tu, Jiajie Zhang, Hao Peng, Xi-aozhi Wang, Xin Lv, Shulin Cao, Jiazheng Xu, Lei Hou, Yuxiao Dong, and 1 others. 2025. Longbench v2: Towards deeper understanding and reasoning on realistic long-context multitasks. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 3639–3664. Iz Beltagy, Matthew E. Peters, and Arman Cohan. 2020. Longformer: The long-document transformer. 
+
+arXiv:2004.05150 .Jianlyu Chen, Shitao Xiao, Peitian Zhang, Kun Luo, Defu Lian, and Zheng Liu. 2024. M3-embedding: Multi-linguality, multi-functionality, multi-granularity text embeddings through self-knowledge distillation. In Findings of the Asso-ciation for Computational Linguistics: ACL 2024 ,pages 2318–2335, Bangkok, Thailand. Association for Computational Linguistics. Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet Singh, and Deshraj Yadav. 2025. Mem0: Building production-ready ai agents with scalable long-term memory. arXiv preprint arXiv:2504.19413 .Gheorghe Comanici, Eric Bieber, Mike Schaekermann, Ice Pasupat, Noveen Sachdeva, Inderjit Dhillon, Mar-cel Blistein, Ori Ram, Dan Zhang, Evan Rosen, and 1 others. 2025. Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities. arXiv preprint arXiv:2507.06261 .Gordon V. Cormack, Charles L. A. Clarke, and Stefan Buettcher. 2009. Reciprocal rank fusion outperforms condorcet and individual rank learning methods. In 
+
+Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Infor-mation Retrieval , pages 758–759. ACM. Yang Deng, Xuan Zhang, Wenxuan Zhang, Yifei Yuan, See-Kiong Ng, and Tat-Seng Chua. 2024. On the multi-turn instruction following for conversational web agents. In Proceedings of the 62nd Annual Meet-ing of the Association for Computational Linguis-tics (Volume 1: Long Papers) , pages 8795–8812, Bangkok, Thailand. Association for Computational Linguistics. Yiming Du, Hongru Wang, Zhengyi Zhao, Bin Liang, Baojun Wang, Wanjun Zhong, Zezhong Wang, and Kam-Fai Wong. 2024. PerLTQA: A personal long-term memory dataset for memory classification, re-trieval, and fusion in question answering. In Pro-ceedings of the 10th SIGHAN Workshop on Chinese Language Processing (SIGHAN-10) , pages 152–164, Bangkok, Thailand. Association for Computational Linguistics. Tao Ge, Xin Chan, Xiaoyang Wang, Dian Yu, Haitao Mi, and Dong Yu. 2024. Scaling synthetic data cre-ation with 1,000,000,000 personas. arXiv preprint arXiv:2406.20094 .Jiawei Gu, Xuhui Jiang, Zhichao Shi, Hexiang Tan, Xuehao Zhai, Chengjin Xu, Wei Li, Yinghan Shen, Shengjie Ma, Honghao Liu, and 1 others. 2024. A survey on llm-as-a-judge. The Innovation .Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. 2020. Measuring massive multitask language under-standing. arXiv preprint arXiv:2009.03300 .Yuyang Hu, Shichun Liu, Yanwei Yue, Guibin Zhang, Boyang Liu, Fangyi Zhu, Jiahang Lin, Honglin Guo, Shihan Dou, Zhiheng Xi, Senjie Jin, Jiejun Tan, Yan-bin Yin, Jiongnan Liu, Zeyu Zhang, Zhongxiang Sun, Yutao Zhu, Hao Sun, Boci Peng, and 28 others. 2025. Memory in the age of ai agents. arXiv preprint arXiv:2512.13564 .Bowen Jiang, Zhuoqun Hao, Young-Min Cho, Bryan Li, Yuan Yuan, Sihao Chen, Lyle Ungar, Camillo J Taylor, and Dan Roth. 2025. Know me, respond to me: Benchmarking llms for dynamic user profiling 
+
+9and personalized responses at scale. arXiv preprint arXiv:2504.14225 .Jeff Johnson, Matthijs Douze, and Hervé Jégou. 2019. Billion-scale similarity search with GPUs. IEEE Transactions on Big Data , 7(3):535–547. Gregory Kamradt. 2023. Needle in a haystack - pressure testing llms. Jiho Kim, Woosog Chay, Hyeonji Hwang, Daeun Kyung, Hyunseung Chung, Eunbyeol Cho, Yohan Jo, and Edward Choi. 2024. Dialsim: A real-time simulator for evaluating long-term multi-party dia-logue understanding of conversational agents. arXiv preprint arXiv:2406.13144 .Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph Gon-zalez, Hao Zhang, and Ion Stoica. 2023. Efficient memory management for large language model serv-ing with pagedattention. In Proceedings of the 29th symposium on operating systems principles , pages 611–626. LangChain AI. 2025. Open deep research. 
+
+https://github.com/langchain-ai/open_ deep_research .Yibin Lei, Liang Ding, Yu Cao, Changtong Zan, An-drew Yates, and Dacheng Tao. 2023. Unsupervised dense retrieval with relevance-aware contrastive pre-training. In Findings of the Association for Computa-tional Linguistics: ACL 2023 , pages 10932–10940, Toronto, Canada. Association for Computational Lin-guistics. Huihan Li, Yuting Ning, Zeyi Liao, Siyuan Wang, Xi-ang Lorraine Li, Ximing Lu, Wenting Zhao, Faeze Brahman, Yejin Choi, and Xiang Ren. 2024a. In search of the long-tail: Systematic generation of long-tail inferential knowledge via logical rule guided search. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing ,pages 2348–2370, Miami, Florida, USA. Association for Computational Linguistics. Yuanchun Li, Hao Wen, Weijun Wang, Xiangyu Li, Yizhen Yuan, Guohong Liu, Jiacheng Liu, Wenx-ing Xu, Xiang Wang, Yi Sun, and 1 others. 2024b. Personal llm agents: Insights and survey about the capability, efficiency and security. arXiv preprint arXiv:2401.05459 .Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. 2023. G-eval: NLG evaluation using gpt-4 with better human align-ment. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing ,pages 2511–2522, Singapore. Association for Com-putational Linguistics. Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov, Mohit Bansal, Francesco Barbieri, and Yuwei Fang. 2024. Evaluating very long-term conversational memory of LLM agents. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 13851– 13870, Bangkok, Thailand. Association for Compu-tational Linguistics. NevaMind AI. 2025. Memu: 24/7 always-on proac-tive memory for ai agents. https://github.com/ NevaMind-AI/memU .OpenAI. 2025a. GPT-4.1. https://openai.com/ index/gpt-4-1/ . Accessed: 2025-04-14. OpenAI. 2025b. Introducing Deep Research. 
+
+https://openai.com/zh-Hans-CN/index/ introducing-deep-research/ . Accessed: 2025-02-05. Charles Packer, Vivian Fang, Shishir_G Patil, Kevin Lin, Sarah Wooders, and Joseph_E Gonzalez. 2023. Memgpt: towards llms as operating systems. Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. 2002. Bleu: a method for automatic evalu-ation of machine translation. In Proceedings of the 40th annual meeting of the Association for Computa-tional Linguistics , pages 311–318. Bowen Peng, Jeffrey Quesnelle, Honglu Fan, and Enrico Shippole. 2024. YaRN: Efficient context window extension of large language models. In Proceedings of ICLR .Ofir Press, Noah Smith, and Mike Lewis. 2022. Train short, test long: Attention with linear biases enables input length extrapolation. In Proceedings of ICLR .Wim J. Riedel and Arjan Blokland. 2015. Declarative memory. Handbook of Experimental Pharmacology ,228:215–236. Stephen Robertson and Hugo Zaragoza. 2009. The probabilistic relevance framework: Bm25 and be-yond. Foundations and Trends in Information Re-trieval , 3(4):333–389. Jianlin Su, Murtadha Ahmed, Yu Lu, Shengfeng Pan, Wen Bo, and Yunfeng Liu. 2024. Roformer: En-hanced transformer with rotary position embedding. 
+
+Neurocomputing , 568:127063. Mohammad Tavakoli, Alireza Salemi, Carrie Ye, Mo-hamed Abdalla, Hamed Zamani, and J Ross Mitchell. 2025. Beyond a million tokens: Benchmarking and enhancing long-term memory in llms. arXiv preprint arXiv:2510.27246 .Qwen Team. 2025. Qwen2.5-1m: Deploy your own qwen with context length up to 1m tokens. Minzheng Wang, Longze Chen, Fu Cheng, Shengyi Liao, Xinghua Zhang, Bingli Wu, Haiyang Yu, Nan Xu, Lei Zhang, Run Luo, Yunshui Li, Min Yang, Fei Huang, and Yongbin Li. 2024a. Leave no document behind: Benchmarking long-context LLMs with ex-tended multi-doc QA. In Proceedings of the 2024 Conference on Empirical Methods in Natural Lan-guage Processing , pages 5627–5646, Miami, Florida, USA. Association for Computational Linguistics. 
+
+10 Wenhui Wang, Furu Wei, Li Dong, Hangbo Bao, Nan Yang, and Ming Zhou. 2020. Minilm: Deep self-attention distillation for task-agnostic compression of pre-trained transformers. Advances in neural in-formation processing systems , 33:5776–5788. Yubo Wang, Xueguang Ma, Ge Zhang, Yuansheng Ni, Abhranil Chandra, Shiguang Guo, Weiming Ren, Aaran Arulraj, Xuan He, Ziyan Jiang, and 1 others. 2024b. Mmlu-pro: A more robust and challenging multi-task language understanding benchmark. Ad-vances in Neural Information Processing Systems ,37:95266–95290. Tianxin Wei, Noveen Sachdeva, Benjamin Coleman, Zhankui He, Yuanchen Bei, Xuying Ning, Mengting Ai, Yunzhe Li, Jingrui He, Ed H Chi, and 1 oth-ers. 2025. Evo-memory: Benchmarking llm agent test-time learning with self-evolving memory. arXiv preprint arXiv:2511.20857 .Di Wu, Hongwei Wang, Wenhao Yu, Yuwei Zhang, Kai-Wei Chang, and Dong Yu. 2025. Longmemeval: Benchmarking chat assistants on long-term interac-tive memory. In The Thirteenth International Con-ference on Learning Representations, ICLR 2025, Singapore, April 24-28, 2025 . OpenReview.net. Shitao Xiao, Zheng Liu, Peitian Zhang, and Niklas Muennighoff. 2023. C-pack: Packaged resources to advance general chinese embedding. Preprint ,arXiv:2309.07597. Asaf Yehudai, Lilach Eden, Alan Li, Guy Uziel, Yilun Zhao, Roy Bar-Haim, Arman Cohan, and Michal Shmueli-Scheuer. 2025. Survey on evaluation of llm-based agents. arXiv preprint arXiv:2503.16416 .Zeyu Zhang, Quanyu Dai, Xiaohe Bo, Chen Ma, Rui Li, Xu Chen, Jieming Zhu, Zhenhua Dong, and Ji-Rong Wen. 2025. A survey on the memory mechanism of large language model-based agents. ACM Transac-tions on Information Systems , 43(6):1–47. Vilém Zouhar, Tom Kocmi, and Mrinmaya Sachan. 2025. AI-assisted human evaluation of machine translation. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Asso-ciation for Computational Linguistics: Human Lan-guage Technologies (Volume 1: Long Papers) , pages 4936–4950, Albuquerque, New Mexico. Association for Computational Linguistics. 
+
+11 A Details of RHELM 
+
+A.1 Implementation Details 
+
+Throughout the construction of RHELM , we em-ploy GPT-4.1 (OpenAI, 2025a) as the backbone language model. We set the rollout probability 
+
+p to 0.7, which means that 70% of the time, the outcome tends to be positive. For the generation of external documents, we adopt the LangChain Open Deep Research (LangChain AI, 2025) frame-work. The following subsections provide further implementation details and statistical analysis. 
+
+A.2 Descriptive Statistics of RHELM 
+
+We provide comprehensive descriptive statistics for RHELM in Table 5 and Figure 4. Addition-ally, we present a detailed statistical overview of the external data sources integrated into RHELM 
+
+in Table 7. To ensure comprehensive coverage, these sources span a wide range of file formats and content types—including emails, personal journals, and professional reports in HTML, Markdown, and text formats—reflecting real-world complexi-ties. Collectively, these statistics demonstrate that 
+
+RHELM exhibits substantial diversity and com-plexity across multiple dimensions, specifically re-garding conversational depth, scenario variety, and the integration of heterogeneous sources. 
+
+Table 5: Statistics of the RHELM Dataset. The dataset comprises diverse interaction types, extensive external sources, and a comprehensive set of QA pairs.                               
+
+> Metric Count Tokens
+> General Overview
+> Total Days (Sessions) 629 –Total Turns 11,764 –User Tokens –690,323 Assistant Tokens –4,085,679 External Source Tokens –2,428,121
+> Total Tokens –7,204,123
+> Interaction Categories (by Turns)
+> Information Sharing 5,316 1,572,764 Status Update 4,128 1,389,067 Attachment Consultation 1,082 952,441 Scheduling 890 682,528 Advice Seeking 348 179,202
+> External Data Format (by Files)
+> Markdown (.md) 729 2,021,181 Email 1,182 132,249 HTML 269 786,242
+
+A.3 Profile Details 
+
+We carefully curate 10 representative individuals from PersonaHub (Ge et al., 2024) as seed descrip-tions, spanning diverse professions including fi-15.9% 
+
+> 14.2%
+> 14.7%
+> 15.1%
+> 5.0%
+> 19.1%
+> 16.1%
+
+# RHELM 
+
+> Fact (207)
+> Temporal (185)
+> Aggregation (192)
+> Hallucination (197)
+> Misleading (65)
+> External Source (249)
+> Mixed (210)
+
+Figure 4: Statistics of utterance types in RHELM .
+
+nance, healthcare, law, music, etc . These seed de-scriptions are subsequently expanded into compre-hensive profiles structured across six dimensions. An exemplary profile is illustrated in Figure 6. In detail, the Identity category encompasses basic de-mographic attributes. The Personality dimension is hierarchically organized into inner character, be-havioral patterns, personal ideals, and MBTI clas-sifications. Traits encompass hobbies, preferences, and lifestyle. Relationships delineate social con-nections, whereas Belongings enumerate asset own-ership. Finally, Current Status monitors daily dy-namic attributes, such as health conditions, mood and ongoing events. The resultant profiles strictly adhere to a rigorous JSON schema, ensuring reli-able and seamless updates throughout subsequent stages of the pipeline. We present comprehensive statistics for the 10 personas established within 
+
+RHELM in Table 6, covering their professions, domains, personality types (MBTI), personal inter-ests, and various other dimensions. 
+
+A.4 Details of Profile Evolution 
+
+We provide a detailed statistical analysis of the pro-file evolution process within RHELM . This anal-ysis encompasses the frequency of key attribute updates during LOOP iteration. Specifically, an up-date is recorded whenever any sub-attribute or list element within a given attribute undergoes a modifi-cation. The results, as illustrated in Table 8, demon-strate that profile updates are not only frequent but also exhibit significant variability across dimen-sions. The Belongings attribute updates most fre-12 quently (average 6.81 times per day), while Prefer-ences attribute under Traits category updates more slowly (average 0.3 times per day). This under-scores the dynamic nature of user profiles in real-world scenarios. 
+
+B Human Evaluation of LLM-as-judge Metric 
+
+To ensure the reliability and robustness of our eval-uation metric utilizing LLM, we conduct a rigorous human verification to measure the alignment be-tween human judgment and the model-based evalu-ator. We employed a stratified sampling strategy to curate a diverse evaluation set. Specifically, we ran-domly extracted 25 samples uniformly from each question category. This resulted in a total of 175 pairs of responses and their corresponding LLM judge scores for manual review. Human experts in-dependently assessed the correctness of the model responses against the ground truth. We then calcu-lated the agreement rate between the human labels and the scores assigned by the LLM judge, as illus-trated in Table 9. The experimental results demon-strate an exceptionally high consistency, with an average agreement rate of 98.3% .We attribute this near-perfect alignment to the specific design of the answer space in RHELM .Unlike traditional long-form generation tasks, where answers are frequently open-ended and se-mantically ambiguous, our benchmark is intention-ally designed to be entity-centric and determinis-tic to facilitate robust evaluation. Ground truth answers predominantly comprise precise entities, such as specific dates, personal names, locations, or numerical counts. For queries necessitating long responses, we devise clear score guideline. This design choice significantly reduces the complex-ity of the evaluation process, mitigating the risk of hallucination by the judge model and ensuring that semantic matching remains objective and strictly grounded in the provided evidence. 
+
+C Details of Verifier-Assisted Auditing 
+
+During the profile update phase, we first verify flags within the JSON-structured update routine to ver-ify function execution. For successfully modified profiles, the verifier identifies potential informa-tion omissions by cross-referencing the updated state with the corresponding outcome narratives. Regarding external data sources, the system de-tects logical inconsistencies between the outcome statements and the synthesized documents, auto-matically pruning artifacts that exhibit factual con-tradictions. In dialogue verification, the module scrutinizes the alignment between daily outcome descriptions and conversational content, while si-multaneously evaluating linguistic coherence and logic. The verifier produces structured reports de-tailing erroneous turns and prescriptive modifica-tion suggestions, which are subsequently finalized via human-in-the-loop refinement. For the validation of QA pairs, we per-form semantic partitioning of all history data stream—encompassing both dialogues and exter-nal sources. The verifier extracts relevant evidence for each query, which is then processed by an ag-gregator verifier for a holistic quality assessment across four dimensions: correctness, uniqueness, consistency and overall quality. These granular metrics and error analyses culminate in comprehen-sive reference reports for each QA pair, facilitating targeted human screening and ensuring the feasibil-ity and scalability of high-fidelity quality control. To ensure high complexity and quality, the final retention rate of questions was approximately 40%. 
+
+D Details of Conversation Generation 
+
+We employ a two-stage dialogue generation pipeline to simulate authentic user-assistant inter-actions. In the first stage, the user simulator intro-duces a new conversational scenario or provides an update, while the second stage delves deeper into the established topic to facilitate multi-turn engagements. We first align the generated bullet points with their most appropriate conversational scenarios. By further integrating these interaction scenarios with the user’s inherent persona—such as the communication style defined in their pro-file—we guide the model toward generating dia-logues of heightened authenticity and contextual appropriateness. To maintain contextual consis-tency across prolonged interactions, we employ a sliding memory window during dialogue genera-tion. Notably, for the attachment consultation cat-egory, we explicitly provide document identifiers, mandating that the conversation involves grounded reasoning over the referenced external documents rather than naively injecting the raw source text into the dialogue context. Figure 5 presents illustrative examples of conversational formats across differ-ent scenarios. Furthermore, the explicit prompt 13 Table 6: Overview of the 10 constructed personas in RHELM. This table highlights representative characteristics extracted from the full profiles, covering diverse domains, personality types (MBTI), and personal interests.                                                                   
+
+> ID Occupation Domain MBTI Inner Character Gender Hobby (Sample)
+> P1 Financial Consultant Finance ENFJ Passionate, Patient MPublic Speaking P2 Research Ecologist Biology INTP Observant, Introverted MBirdwatching P3 Senior Historian & Lecturer History INTP Meticulous, Principled MHill Walking P4 Lead Systems Engineer Engineering ENTJ Resilient, Diplomatic FClassical Piano P5 Public Health Researcher Healthcare INTP Empathetic, Open-minded MCooking P6 Assoc. Prof. of Sociology Sociology INFJ Curious, Persistent FUrban Photography P7 Science Teacher Education ISFJ Nurturing, Creative FGardening P8 Technology Policy Analyst Technology INFP Skeptical, Idealistic MCycling P9 Court Judge Law ISTJ Humble, Integrity FReading History P10 Software Developer Engineering ISTJ Logical, Efficient MBoard Games
+
+Table 7: Detailed statistics of the heterogeneous external sources.           
+
+> Statistic Metric Count
+> By File Format (Total Count)
+> Markdown (.md) 729 HTML (.html) 269 Text (.txt) 625
+> By Content Type (Total Count)
+> Personal Journals 465 Professional Reports 533 Emails 1,182
+> Averages & Distributions
+> Avg. Tokens per Attachment 2,215 Avg. Attachments per Day 2.41 Avg. Emails per Day 1.87
+
+Table 8: Descriptive statistics of profile update fre-quency across personas. We report the mean, standard deviation, minimum, and maximum number of updates per day on 5 key attributes over 10 personas.                               
+
+> Category Mean ±Std Min Max
+> Belongings 6.8 ±2.0 3.9 9.8 Lifestyle 2.2 ±0.7 0.9 3.2 Hobbies 2.0 ±0.5 1.2 2.9 Relationships 1.9 ±0.5 1.2 2.7 Preferences 0.3 ±0.3 0.0 0.9
+
+templates utilized for scenario classification and dialogue construction are provided in Figure 19, Figure 20, and Figure 21. 
+
+E Error Analysis 
+
+In this section, we present representative case stud-ies of model failures across RHELM . To provide insights into the limitations of current memory methods, we qualitatively analyze five distinct fail-ure cases. These error cases highlight the funda-mental gaps between standard retrieval-augmented 
+
+Table 9: Human evaluation results for LLM-as-Judge. The agreement indicates the consistency between model-based evaluation and human annotation.          
+
+> Category Agreement (%)
+> Fact 100.0 (25/25) Temporal 96.0 (24/25) Misleading 96.0 (24/25) Hallucination 100.0 (25/25) Aggregation 96.0 (24/25) External Source 100.0 (25/25) Mixed 100.0 (25/25)
+> Average 98.3
+
+generation (RAG) paradigms, agentic memory sys-tems ( e.g., Mem0), and full-context models. As illustrated in Figure 7, models often fail to discern temporally isolated events. When presented with a misleading premise, the models erroneously merge distinct occurrences ( e.g., a park encounter and a subsequent injury separated by days) into a single hallucinated narrative. Figure 8 demonstrates a critical failure regard-ing implicit constraint adherence. Despite pos-sessing explicit historical evidence of a user’s chronic health condition, models still act as pure instruction-followers. They eagerly fulfill unsafe requests—such as planning extended physical exer-tion—without proactively raising health warnings, highlighting a significant deficit in misleading re-quest handling. Evaluating chronological dependencies reveals a severe vulnerability to frequency bias (Figure 9). When asked to identify an entity based on sequen-tial logic ( e.g., the first book read after a specific event), the models are disproportionately distracted by more frequently mentioned entities appearing elsewhere in the context history, ultimately return-14 ing chronologically incorrect answers. Counting and summarizing scattered instances remains highly challenging. As shown in Figure 10, answering aggregation queries accurately requires exhaustive retrieval of every historical occurrence. Missing even a single sparse entry leads memory systems to undercount. Conversely, while full-context models may deduce the correct final metric, they frequently fabricate unsupported evidential details to justify their reasoning. Figure 11 highlights structural blindness when navigating external attachments. Resolving the query necessitates synthesizing prioritized tabular data across multiple documents. Standard RAG mechanisms suffer from arbitrary chunk-boundary truncations, which inadvertently omit crucial table rows. Furthermore, agentic memory systems gener-ally lack the capability to parse structured external attachments, leading to confident abstentions or severe hallucinations. 
+
+F Challenging Characteristics Definitions 
+
+In this section, we present the detailed definitions of the challenging characteristics used in RHELM .Table 10 provides the detailed definitions of each characteristic. During the QA construction process, these definitions are incorporated into the prompt to guide question design, ensuring that each question encompasses more than one challenging character-istic. The prompt we use for question generation is provided in Figure 22. 
+
+G Prompts 
+
+In this section, we present the prompt templates utilized for profile initialization, plan generation, and automated evaluation. Figure 12 is the prompt for plan generation, including short-term and long-term plans. Figure 13 and Figure 14 illustrate the prompts for dual-stage profile evolution, respec-tively. Figure 15 shows the prompt for generating external attachments query. During response generation, we use different prompt for standard questions requiring short an-swers and more realistic questions requiring long-form answers, as illustrated in Figure 16 and Fig-ure 17. The former is designed to elicit concise, entity-centric responses, while the latter encour-ages more elaborate justifications, thereby pro-viding a more comprehensive evaluation of the model’s capabilities. 15 Table 10: Taxonomy of challenging memory questions in RHELM . The table outlines seven major categories (Fact , Temporal , Hallucination , Aggregation ,Misleading , External Source , Mixed ) and their corresponding complex characteristics requiring advanced reasoning capabilities. 
+
+Category Challenge Characteristic Description I. Dialogue History QA Fact Multi-Hop Traversal Requires retrieving answers via intermediate links. 
+
+Entity Disambiguation Distinguishing between entities with similar attributes. 
+
+State-Dependent Attribute Identifying dynamic properties at a referenced state. 
+
+Negative Constraints Filtering candidates based on exclusion criteria. 
+
+Temporal Indirect Identification Identify specific events via indirect markers. 
+
+Sequence Comprehension Reason about events based on relative ordering relationship. 
+
+Long-Horizon Synthesis Synthesizing distinct temporal facts spanning long periods. 
+
+Implicit Temporal Lookup Deducing specific time of an event described by context or features. 
+
+Hallucination Misattribution Disentangling details linked to incorrect entities, times, or locations. 
+
+Fabrication Addressing queries regarding facts absent from memory ground truth. 
+
+Preference Conflict Resolving requests that violate established user constraints or dislikes. 
+
+Contextual Contradiction Detecting queries logically incompatible with the user’s current state. 
+
+Aggregation Conditional Counting Counting items that meet specific, non-trivial filtering criteria. 
+
+Trend Analysis Comparing quantitative metrics across different contexts. 
+
+Extreme Value Identifying the most or least under specific conditions. 
+
+Absence Detection Identifying items or events that did not occur within a defined scope. 
+
+Misleading Implicit State Conflict Proposing requests that implicitly contradict the user’s evolved state. 
+
+Proactive Response Proactively identifying conflict, refuse the request, and propose a safe, constraint-compliant alternative. 
+
+II. External Source QA Attachment Fact Retrieval Extracts key facts embedded in attachments or tables. 
+
+Table Reasoning Performs multi-step and cross column reasoning on tables. 
+
+Structural Navigation Locates information based on headers or document organization. 
+
+Table Aggregation Performing aggregation operations with conditional filtering. 
+
+Email Cross-time count/Localization Analyzes count, locates senders/recipients within a specific period. 
+
+III. Hybrid Context QA Mixed Relative Location Positioning Identifying the topic content and locate its neighbors or substructure. 
+
+Contextual Retrieval Retrieving context from a different, untouched section. 
+
+Post-Modification Analysis Analyzes the quantitative state of a document resulting from modifications. I just finished the meeting with the                                                                                                             
+
+> marketingteam,andtheyhavefinallyagreed
+> tothenewbudgetproposal.
+> Ugh,honestly,I’mfeelingpretty
+> overwhelmedwiththeserepetitivedata
+> entrytaskstoday.It'sjust...alottohandle
+> allatonce.
+> I’vereceivedaspeakinginvitationthatI
+> needtodecline.Doyouhaveanysuggestions
+> onhowtophrasetheemailpolitely?'
+> Ineedtocompleteaprojectreportand
+> meetmyfriendatlunch,canyoudrafta
+> schedulethatensuresIfinishthereport
+> beforemylunchbreak?
+> [Uploadfinancial_report.md]
+> Pleaseconductacomprehensivereviewoftheattachedfinancialreport.Specifically,Iwouldlikeyouto
+> extractandsummarizetheprimaryrevenuerisksoutlinedintheexecutivesummary.Inaddition,pleaseadd
+> thetotalamounttothefinalsummarysection.
+
+Figure 5: Examples of conversations under 5 different communicative topics 
+
+16 Sample User Profile 
+
+è Name: Sarah Chen Q Birthday: 1991-01-03 
+
+ Nationality: American + Location: San Francisco, CA 
+
+ Education: Master’s in CS l Occupation: Software Engineer at TechCorp 
+
+j Personality 
+
+MBTI: INTJ • Inner Character (List): 
+
+[Thoughtful, analytical, empathetic, quietly con-fident, perfectionist tendencies.] • Behavioral Patterns (dict): – decision style: deliberate, research-driven. 
+
+– communication style: prefers written sum-maries. 
+
+– work style: methodical planning with detailed to-do lists. • Personal Ideals (List): 
+
+[Work-life balance, continuous learning, diver-sity in tech.] 
+
+[ Traits 
+
+Hobbies (List[dict]): 
+
+• Rock Climbing: {"origin": "Started 5 years ago after a friend’s invitation", "frequency": "twice weekly indoor, monthly outdoor trip", "skill level": "intermediate (focus bouldering)"} • Digital Photography: {"origin": "Self-taught since college", "frequency": "weekly shoots", "skill level": "advanced"} 
+
+Preferences List[dict]: 
+
+• ✓ Morning workouts (++), Veg food (++), Craft coffee (+) • p Rock music (–) 
+
+Lifestyle (dict): 
+
+• Sleep: 22:30–06:00 | Diet: Plant-based • Social: Small circle | Digital: Limited social media 
+
+© Relationships 
+
+• Mike Thompson (dict) 
+
+relationship: Climbing partner & close friend 
+
+portrait: Tall, sandy blonde hair, athletic, warm smile. • Lisa Wang (dict) 
+
+relationship: Colleague & mentor 
+
+Portrait: Petite, long black hair, glasses, profes-sional attire. • ... 
+
+g Belongings 
+
+Vehicles (List[dict]): 
+
+• 2020 Toyota Prius ( Status: newly bought )
+
+Musical Instruments (List[dict]): 
+
+• Roland digital piano ( Status: frequently used )• Yamaha acoustic guitar ( Status: accidental dam-age )• ... 
+
+Â Current Status (Dynamic Context) 
+
+Health: Healthy Mood: Calm 
+
+Ongoing Events (List[dict]): 
+
+• Event: Repair of Yamaha acoustic guitar ( Started: 2025-10-20 → Expected End 2025-11-02 )
+
+Figure 6: Visualizing the six dimensions of the initial profile data schema (the top box represents Identity ). 
+
+17 . Error Case 1 Hallucination Type 
+
+® Question 
+
+When I saw Mrs. Patel at the park late in January, did she tell me about hurting her ankle earlier that morning? 
+
+¥ Gold Answer 
+
+Mrs. Patel did not mention any injury when you spoke at Shelby Park on January 29 . She shared a winter gardening tip. Her ankle injury occurred on January 31 .
+
+Û Retrieved Evidence (sample)  
+
+> [1]
+
+User (2024-01-29): “. . . I bumped into Mrs. Patel, and she shared a clever winter gardening tip with me.”  
+
+> [2]
+
+User (2024-01-31): “. . . I spotted Mrs. Patel sitting on the curb—she looked really shaken up . . . that’s when she told me what had happened.”  
+
+> [3]
+
+User (2024-01-31): “She told me she’d slipped on black ice and twisted her ankle—honestly, seeing her so shaken really got to me.” 
+
+Æ Model Predictions 
+
+✗ RAG: Yes, when you saw Mrs. Patel at the park late in January (specifically on the morning of January 31, 2024), she did tell you that she had slipped on black ice and twisted her ankle earlier that morning. You mentioned that she looked shaken up and shared what had happened, and you stopped to check on her and offer help. 
+
+✗ Mem0: Yes, when you saw Mrs. Patel at the park late in January, she did tell you that she had slipped on black ice and twisted her ankle earlier that morning. 
+
+✗ Full-context: Yes, when you saw Mrs. Patel at the park late in January, she told you she had slipped on black ice and twisted her ankle earlier that morning. 
+
+ Failure Analysis 
+
+The retriever returns evidence for both events—the park encounter on Jan. 29and the ankle injury on Jan. 31. However, every model merges the two temporally distinct events into one, accepting the question’s false premise instead of recognizing the two-day gap and correcting the conflation. 
+
+Figure 7: Representative error case from the hallucination split. 
+
+18 . Error Case 2 Misleading Type 
+
+® Question 
+
+My friends are organizing a standing-room-only concert next weekend and want me to join them. Can you draft an excited reply saying I’ll definitely be there and help me plan what to wear for standing all evening? 
+
+¥ Gold Answer 
+
+I need to stop you there—a standing-room-only concert wouldn’t be suitable for you right now given your chronic lower back injury and the fact that you currently require a cane for mobility. Standing for an extended period could seriously aggravate your condition. Instead, I’d suggest either: (1) checking if the venue has accessible seating options you could request, or (2) proposing an alternative activity with your friends that accommodates your current mobility needs. 
+
+Û Retrieved Evidence (sample)  
+
+> [1]
+
+User (2024-07-10): “I had to postpone our neighborhood gathering discussion tonight because of my back—once I’m feeling a bit better, I’d like to revisit the idea . . . especially if I’m still not 100%.”  
+
+> [2]
+
+User (2024-07-12): “It just stings to be on the sidelines, even for a day—I know it’s temporary, but it really drives home how much those little routines matter to me.”  
+
+> [3]
+
+Assistant (2024-07-13): “It sounds like Priya and Monica really put a lot of care into making everyone feel comfortable and welcome . . . especially when you were already managing your own discomfort.” 
+
+Æ Model Predictions 
+
+✗ RAG: Here’s an excited reply you can send to your friends: “Hey! I’m definitely going to be there! I can’t wait to join you all for the concert next weekend.” As for what to wear standing all evening, I’d recommend comfy, supportive shoes since you’ll be on your feet a lot. Maybe breathable, layered clothing so you can adjust if it gets warm or cool inside the venue. 
+
+✗ Mem0: Here’s an excited reply you can send to your friends: “Absolutely, I’ll definitely be there next weekend! Can’t wait for the concert—it’s going to be amazing!” 
+
+✗ Full-context: Hey! I’m definitely in for the concert next weekend! Since it’s standing-room-only, I want to be comfortable all evening. I’m thinking breathable shoes with good support, lightweight layers, and maybe a small crossbody bag to keep my hands free. 
+
+ Failure Analysis 
+
+The user’s memory contains evidence and hint of a chronic lower back injury. Yet all three models uncritically comply with the request, enthusiastically drafting an acceptance and outfit advice without flagging that prolonged standing poses a real health risk. This represents a misleading failure: the model should leverage personal context to proactively warn the user rather than blindly follow instructions. 
+
+Figure 8: Representative error case from the misleading split. 
+
+19 . Error Case 3 Temporal Type 
+
+® Question 
+
+After our neighborly visit that included some time in the garden and a thoughtful homemade gift, which biography did I first begin reading with Jasper at home? 
+
+¥ Gold Answer 
+
+Biography of Katherine Johnson. 
+
+Û Retrieved Evidence (sample)  
+
+> [1]
+
+User (2024-05-19): “This morning after we finished up in the garden, Jasper and I ended up over at Mrs. Patel’s place to help her with her bean trellis. It turned into such a nice little neighborly moment.”  
+
+> [2]
+
+User (2024-05-19): “Seeing how inspired Jasper was by Katherine Johnson’s story made me realize just how powerful these moments can be.”  
+
+> [3]
+
+User (2024-05-31): “We used Mae Jemison’s biography as our reading exercise, and it actually sparked some great questions from him.”  
+
+> [4]
+
+Assistant (2024-04-20): “What a fantastic choice with a biography of Mae Jemison . . . Did Jasper have any particular reason for choosing Mae Jemison’s story?” 
+
+Æ Model Predictions 
+
+✗ RAG: The biography you first began reading with Jasper at home was Mae Jemison’s biography. 
+
+✗ Mem0: You first began reading the biography of Mae Jemison with Jasper at home after your neighborly visit. 
+
+✗ Full-context: The biography of Mae Jemison. 
+
+ Failure Analysis 
+
+The retriever successfully retrieves the key evidence: the neighborly garden visit on May 19 [1] and the Katherine Johnson reading that same evening [2] . However, Mae Jemison’s biography appears more frequently across the conversation history 
+
+> [3–4]
+
+, creating a strong bias .
+
+Figure 9: Representative error case from the temporal split. 
+
+20 . Error Case 4 Aggregation Type 
+
+® Question 
+
+During the first week of March 2024, on how many separate instances did I observe indications of below-ground development in my juniper specimen? 
+
+¥ Gold Answer 
+
+Three occasions (March 1, March 3, and March 6). 
+
+Û Retrieved Evidence (sample)  
+
+> [1]
+
+User (2024-03-01): “Mid-morning check on the juniper bonsai was actually a bit of a surprise— new root growth ,even after all this wind and dryness. I’m feeling cautiously optimistic.”  
+
+> [2]
+
+User (2024-03-03): “I think letting the juniper settle in is the right call for now. The slow progress actually feels grounding—kind of like watching a desert wash recover after a rare rain.”  
+
+> [3]
+
+Attachment (2024-03-01): “The next scheduled observation is set for March 31, 2024, coinciding with the expected start of new growth and routine stress assessment.” 
+
+Æ Model Predictions 
+
+✗ RAG: During the first week of March 2024, you observed indications of below-ground development on at least 
+
+two separate instances: (1) March 1—new root growth despite wind and dryness; (2) March 3—slow progress and settling in. Answer: Two. 
+
+✗ Mem0: Evidence points to at least two separate instances of below-ground development observations within that week, including documented root growth and active root tip emergence noted in field logs. 
+
+✗ Full-context: There were at least three separate instances, including new root tips, increased fine root count, and root vigor improvements documented in the care log and photographic records. 
+
+ Failure Analysis 
+
+The gold answer requires aggregating three distinct observations across March 1, 3, and 6. The critical March 6 entry is absent from the retrieved results. The full-context model, with access to all turns, arrives at the correct count of three but fabricates specific details (“fine root count,” “photographic records”) not present in the source text—producing a hallucinated justification despite a numerically close answer. 
+
+Figure 10: Representative error case from the aggregation split. 
+
+21 . Error Case 5 External Source Type 
+
+® Question 
+
+When reviewing the summary of principal suggestions, how many items are designated with the highest urgency classifica-tion? 
+
+¥ Gold Answer 4 items (sourced from the Action Items table in 29_report and the Key Feedback Points table in 44_report ). 
+
+Û Retrieved Evidence (sample)  
+
+> [1]
+
+Attachment (48_report, 2024-10-30): Action Items table—“Integrate new case studies into next module” ( High ); “Circulate updated EC and academic readings” (High).  
+
+> [2]
+
+Attachment (46_report, 2024-10-28): “Expand digital literacy training for teachers”—Priority Level: High . (chunk cuts off after first row)  
+
+> [3]
+
+Attachment (31_report, 2024-08-15): Action Items table header visible, but row content truncated at chunk boundary. 
+
+Æ Model Predictions 
+
+✗ RAG: At least three items are designated with the highest urgency: (1) “Integrate new case studies into next module”—High; (2) “Circulate updated EC and academic readings”—High; (3) “Expand digital literacy training for teachers”—High. 
+
+✗ Mem0: Based on the available information, it is not possible to determine the number of items classified with the highest urgency. 
+
+✗ Full-context: Three items are designated with the highest urgency classification, based on the Action Items table where “Urgent hotfix” and other critical remediation steps are prioritized. 
+
+ Failure Analysis 
+
+The correct count of four requires cross-document aggregation : “High”-priority items are spread across two separate attachment tables ( 29_report and 44_report ). RAG retrieves partial rows from each [1–3] but chunk-boundary truncation hides the fourth item, leading to an undercount of three. Mem0, lacking structured attachment access, abstains entirely. The full-context model also produces three but fabricates unsupported details (“Urgent hotfix,” “rapid patching”), hallucinating a justification from unrelated security-themed text rather than the actual education-policy tables. 
+
+Figure 11: Representative error case from the external source split. 
+
+22 Prompt for Plan Generation 
+
+Today is {TIMESTAMP} . You will assume the role of the character described below and create acomprehensive, realistic plan list for future events from a first-person perspective. 
+
+Character Background 
+
+<Background> 
+
+{BACKGROUND} 
+
+</Background> 
+
+Existing Commitments 
+
+The following plans are already scheduled. You MUST consider the important existing events in your final plan list. Do not ignore or delete them. If a new plan falls on the same date as an existing plan, you MUST COMBINE them into a single comprehensive plan entry. <ExistingPlans> 
+
+{EXIST} 
+
+</ExistingPlans> 
+
+Planning Guidelines 1. Short-Term Plans (Within Next Few Weeks) 
+
+Generate 2-4 in total daily activities that reflect the character’s routine and personality: - Daily Essentials: Work tasks, meals, commute, exercise, self-care - Social Activities: Meeting friends/family, calls, gatherings - Personal Interests: Hobbies, entertainment, media, shopping - Responsibilities: Errands, appointments, household tasks 
+
+2. Long-Term Plans (Within Next Few Months) 
+
+Create 1-3 in total significant life events or milestones that align with the character’s trajectory: - Career & Education: Promotions, job changes, graduations - Life Milestones: Marriage, birthdays, relocations - Personal Development: Study abroad, skill acquisition - Health & Unexpected: Medical procedures, recovery, accidents 
+
+Mandatory Requirements 
+
+• Date Format: Use DD/MM/YYYY format exclusively. 
+
+• Date Uniqueness: Each date MUST appear exactly ONCE. 
+
+• Activity Consolidation: Multiple activities on the same date must be combined. 
+
+• JSON Structure: Output must be a valid JSON array. 
+
+Example Output format 
+
+[{{ "Plan": "Morning gym session at 6 AM...", "Date": "07/05/2024", "Category": "Short-Term" }}, {{ "Plan": "Submit PhD application...", "Date": "02/09/2024", "Category": "Long-Term" }} ]Directly present your complete plan as a JSON array without other symbols, ensuring each entry is properly formatted and categorized. 
+
+Figure 12: Prompt for Plan Generation Module. This prompt instructs the model to generate a comprehensive plan list for a character based on their background and existing commitments, including short-term and long-term plans. 
+
+23 Profile Update System Prompt 
+
+You are tasked with analyzing an event outcome and the passage of time to identify all necessary factual updates to the user’s profile. Event Outcome: <Outcome> 
+
+{OUTCOME} 
+
+</Outcome> Current Profile below include 3 top-level keys: Identity Information, Relationships, Belongings. <Profile> 
+
+{PROFILE} 
+
+</Profile> 
+
+Update Guidelines 
+
+Updates may include the following aspects: 
+
+1. Basic Information Updates 
+
+Update of basic personal information, such as location changes due to event outcomes. 
+
+2. Relationships Updates 
+
+Identify and track ALL relationship changes, each relationship entry contains three keys: name, portrait, relationship. - New People: ANY person mentioned in outcome who interacts with the user but is NOT in current relationships - Updated Relationships: Changes in relationship status, closeness, or dynamics with existing contacts - Removed Relationships: People no longer in contact or relationships that have ended 
+
+3. Belongings Updates 
+
+Identify and track proper belongings changes: - New Items: New items purchased, received, found, or obtained - Updated Items: Changes in item status (repaired, upgraded, expiry, condition changes) - Removed Items: Items sold, lost, given away, broken, unusable or discarded - Categories: Vehicles, computer, phone, book, pet, art, antiques, clothing, jewelry, shoes, bags, sports gear, musical instruments, hand tools, health-related devices, photography equipment. Do NOT invent new categories. 
+
+Analysis Process 
+
+1. Review Event Outcome: Extract all people, possessions, and factual changes described in the outcome. 2. Review Profile for Changes: Check for any attributes that should be updated due to time progression or event outcomes. 3. Determine Required Operations: For each change, specify whether to add, update, or remove item. 4. Generate Update Function: Create a Python function that implements all necessary changes. 5. Check function correctness: The function can modify existing values or add/delete entries from existing values, but MUST NOT add new top-level keys or change the JSON structure. Avoid replacing the entire attribute with ’=’. Do not add function comments. Output the updates you deem necessary following the output format below. Provide a Python function in the update key that performs all necessary updates and returns the modified persona dict. If no updates are needed, directly return the persona. 
+
+Output format 
+
+{{ "update": "def update_persona(persona): return persona", "reason": "Explanation of the reason..." }} 
+
+Figure 13: Prompt for Profile Update Module. This module handles factual attribute changes (e.g., relationship, beloinginds) and enforces strict JSON schema constraints. 
+
+24 Traits & Status Update System Prompt 
+
+You are tasked with analyzing an event outcome to determine necessary updates to the user’s traits, recent status attributes. Event Outcome: <Outcome> 
+
+{OUTCOME} 
+
+</Outcome> Current Profile below include 4 categories: Identity Information, Traits, Personality, Current Status. <Profile> 
+
+{PROFILE} 
+
+</Profile> 
+
+Update Guidelines 
+
+The words enclosed in ** below are all top-level keys in the JSON profile. 
+
+1. Traits Updates 
+
+Identify key changes in personal characteristics: - hobbies (dictionary list): New activities discovered, abandoned hobbies, or modified hobby descriptions - personal_preferences (dictionary list): Changes in preference levels (Scale: "strongly dislike" to "strongly like") - lifestyle (dictionary): Significant modifications to daily routines or living patterns 
+
+2. Current Status Updates 
+
+Track the character’s current state and recent significant developments: - health_status (string): Update current physical and mental health condition - mood (string): Update current emotional state if significantly affected - ongoing_events (dictionary list): Significant events currently ongoing (work deadlines, trips). Outdated events need to be deleted. 
+
+STRICT KEY REQUIREMENT 
+
+- ongoing_events: Each entry MUST contain EXACTLY these 3 keys: 
+
+– "event": event description (string) 
+
+– "started": start date in "YYYY-MM-DD" format 
+
+– "expected_end": end date in "YYYY-MM-DD" format - hobbies: List of dictionaries containing: 
+
+– "origin": how/when started (string) 
+
+– "frequency": how often practiced (string) 
+
+– "skill_level": proficiency level (string) - personal_preferences: List of dictionaries with one key-value pair. - lifestyle: Dictionary with keys "sleep_pattern", "diet", "exercise", "social", "digital_habits". 
+
+Analysis Process 
+
+1. Extract Changes from Outcome: Identify all traits shifts and status changes. 2. Compare with Current Profile: Review profile to identify attributes needing updates. 3. Determine Update Operations: Specify add, modify, or remove operations. 4. Generate Update Function: Create a Python function implementing changes. 5. Check function correctness: MUST NOT add new top-level keys or change JSON structure. Avoid replacing entire attribute with ’=’. Output the updates you deem necessary following the output format below. 
+
+Output format 
+
+{{ "update": "def update_persona(persona): n return persona", "reason": "Explanation of the reason..." }} 
+
+Figure 14: Prompt for Traits & Status Update. This module handles abstract attribute changes (e.g., mood, lifestyle) and enforces strict JSON schema constraints. 
+
+25 Attachment Generation System Prompt 
+
+You are an expert document analyst tasked with identifying realistic digital attachments that would naturally be associated with a specific event outcome of the user. Your goal is to generate metadata for documents that can later be created by a document generation model. First, carefully analyze the event outcome from the user (using third-person perspective): <Outcome> 
+
+{OUTCOME} 
+
+</Outcome> Based on the outcome, identify the most significant details and specify realistic digital attachments that would logically be associated with this event. Focus ONLY on the most relevant documents that would naturally exist. Format your response as a JSON object with the following categories: - "emails": Email communications related to the event. - "reports": Work and study-related documents (e.g., project reports, meeting minutes). - "notes": Personal daily life notes (e.g., itineraries, shopping lists). 
+
+Use this exact JSON structure 
+
+{{ "emails": [ {{ "sender": "Full Name <email@domain.com>", "recipient": "Full Name <email@domain.com>", "subject": "Descriptive email subject line", "summary": "Detailed summary of email content..." }} ], "reports": [ {{ "type": "Specific document type...", "utterance": "Detailed generation instruction..." }} ], "notes": [ {{ "type": "Specific document type...", "utterance": "Detailed generation instruction..." }} ]}} 
+
+Document Generation Guidelines 
+
+1. Analyze the event outcome thoroughly to determine which attachment types are logically relevant. For irrelevant categories, provide empty arrays. For "reports" and "notes", provide at most 2 items each. 2. Ensure that there are no duplications or inconsistencies between attachments. 3. Each "utterance" field should contain comprehensive instructions including format requirements, real details, and special formatting. Use professional, clear statements throughout in the first-person user perspective. 4. Ensure all attachments are contextually appropriate and would realistically exist. 5. Make attachments practically useful for the character’s situation. Provide your response in JSON format within the Output tags: <Output> [Generate the detailed attachment metadata JSON here] </Output> 
+
+Figure 15: Prompt for Attachment Utterance Generation. The model identifies logical digital artifacts (emails, attachments) implied by the event outcome and generates generation utterances for them. 
+
+26 Standard Query Response Prompt 
+
+You are an AI assistant that helps analyze user history. Based on the relevant evidence below, please provide the answer to the user’s query. Relevant Evidence: 
+
+{CONTEXT} 
+
+Question Date: {DATE} 
+
+User Query: {QUERY} 
+
+Please provide a concise and accurate answer. Answer: 
+
+Figure 16: Prompt for Standard Questions. This template handles general inquiries based on the retrieved user history context. 
+
+Elaborative Query Response Prompt 
+
+You are an AI assistant that helps analyze user history. Based on the relevant evidence below, please provide the answer to the user’s query. Relevant Evidence: 
+
+{CONTEXT} 
+
+Question Date: {DATE} 
+
+User Query: {QUERY} 
+
+1. If the question contains factual errors, false premises, or contradicts the user’s state, explicitly point out the error and propose a compliant alternative. 2. If the question cannot be answered based on the evidence, state that clearly. 3. Otherwise, answer the question directly based on the evidence. Answer: 
+
+Figure 17: Prompt for Elaborative Real-world Questions. This template is used for real-world contextual reasoning questions like Hallucination and Misleading types. 
+
+27 LLM-as-Judge Evaluation Prompt 
+
+You are an expert evaluator assessing an AI assistant’s answer against a reference answer. Question: {QUESTION} 
+
+Expected Answer: {ANSWER} 
+
+AI Assistant’s Answer: {PREDICT} 
+
+Please evaluate the AI assistant’s answer on the following criteria: 
+
+### Accuracy (0 or 1) 
+
+• 1 (Correct) : The assistant’s answer conveys the same key factual information as the reference answer. Minor differences in wording, additional context, or extra details are acceptable as long as the core facts match. 
+
+• 0 (Incorrect) : The assistant’s answer contradicts the reference answer, omits critical facts, provides wrong information, or fails to answer the question. If the question asks about a false premise and the reference answer points out the error, the assistant must also identify the error to be considered correct. 
+
+### Overall Quality (0-10) 
+
+• 9-10 : Accurate, complete, well-structured, and directly addresses the question. 
+
+• 7-8 : Accurate with minor omissions or slightly verbose. 
+
+• 5-6 : Partially correct; contains some relevant information but misses key points. 
+
+• 3-4 : Mostly incorrect but shows some understanding of the topic. 
+
+• 1-2 : Almost entirely wrong or irrelevant. 
+
+• 0: Completely wrong, refuses to answer, or is incoherent. Provide your evaluation in the following JSON format: {{ "accuracy_score": [0 or 1], "overall_score": [0-10] }} Only respond with valid JSON, no other text. 
+
+Figure 18: Prompt for LLM-as-Judge Evaluation. This template instructs the evaluator model to assess the accuracy and quality of the generated response against a ground truth reference. Note we use accuracy as a strict binary metric for better evaluation. 
+
+28 Bullet Point Classification 
+
+You are an expert in conversation design. Your task is to classify bullet points from a user’s day into appropriate message types for a realistic dialogue with their personal assistant. The goal is to simulate a natural and varied interaction. Therefore, deeply analyze the user’s likely intent and emotional state for each event. 
+
+## Available Message Types 
+
+• information_sharing : For sharing what happened, reporting outcomes, giving updates about events 
+
+• advice_seeking : For asking for advice, seeking new ideas, requesting guidance about decisions or problems 
+
+• status_update : For reflecting on experiences, sharing feelings, explaining how perspectives or preferences have changed 
+
+• scheduling : For discussing future plans, coordinating upcoming activities, or planning next steps 
+
+## Bullet Points to Classify {BULLETS} ## Instructions 
+
+For each bullet point, think about the most appropriate message type if the user were to chat with their assistant. Analyze the content to decide: - The natural flow of conversation and the event context - Is the user seeking help, sharing information, expressing feelings, or planning the future? - How does this point fit into the user’s daily life and the emotional context? Please ensure a reasonable and natural distribution of these types based on the content. 
+
+## Output Format 
+
+Please respond in the following JSON format: [{"bullet_point": "exact bullet point text", "message_type": "one of: information_sharing, advice_seeking, status_update, scheduling", "reason": "brief explanation including the likely timing and intent" }]
+
+Figure 19: Prompt for Bullet Point Classification. This prompt classifies daily event bullet points into dialogue categories to guide the generation of diverse, intent-aware conversations between the user and their personal assistant. The attachment consultation type is directly inserted into each day’s conversation. 
+
+29 User Simulation: Conversation Initiator 
+
+You need to play a role as a real user in a conversation with your personal AI assistant. Start sharing about specific topic with what happened today, this is the beginning of a conversation about this topic. 
+
+## Background 
+
+User profile and communicate style: {PROFILE} 
+
+Current time: {TIME} 
+
+What happened during the whole day: 
+
+{OUTCOME} 
+
+Conversation History: —
+
+{HISTORY} 
+
+—Current conversation topic: 
+
+{TOPIC} ## Guidelines 
+
+- Introduce the situation naturally, as if you’re settling in to tell the full story about the topic - Don’t rush to share everything at once - leave room for follow-up - Use your natural speaking style based on your personality - Do NOT repeat factual details or events that have already been explicitly shared in the "Conversation History" above. - Try to include granular details including time, person, event, location: such as "this morning", a colleague’s name, etc. IMPORTANT: FOCUS on and talk about the current topic only. Don’t switch to a different topic or activity happening today. 
+
+Figure 20: Prompt for User Simulator (Initial Turn). This prompt initializes the conversation based on the daily event summary and communication-related user profile attributes (Prompts may vary slightly across different dialogue categories, the overall template remains consistent). 
+
+30 User Simulation: Follow-up Turn 
+
+You are roleplaying as a real user in an ongoing conversation with your personal AI assistant. 
+
+## Background 
+
+User profile and communication style: {PROFILE} 
+
+Current time: {TIME} 
+
+Conversation History: —
+
+{HISTORY} 
+
+—CURRENT TOPIC: 
+
+{TOPIC} ## Your Goal 
+
+Continue the conversation naturally based ONLY on the information provided in the CURRENT TOPIC and Conversation History. 
+
+Critical Anti-Hallucination Rules 
+
+1. NO NEW FACTS: You are STRICTLY FORBIDDEN from inventing, assuming, or adding any factual details (events, names, places, times, objects) that are not explicitly stated in the "CURRENT TOPIC" text above. 2. Deepen, Don’t Expand: Instead of adding new plot points, deepen the conversation by: 
+
+· Expressing your feelings or opinions about the facts already shared. 
+
+· Asking the assistant for advice or analysis based on the known facts. 
+
+· Clarifying or re-emphasizing a detail you already mentioned if the assistant misunderstood. 3. Stay within Boundaries: If you have shared all the factual details from the CURRENT TOPIC, do NOT make up more. Instead, react to the assistant’s last message or ask a subjective question. 
+
+Your Follow-up Options 
+
+Choose ONE approach: 
+
+• Share Remaining Details: If there are specific facts in the "CURRENT TOPIC" you haven’t mentioned yet, share them now. 
+
+• React & Reflect: If all facts are shared, react to the assistant’s advice or comment using your persona’s tone (e.g., agree, disagree, express relief/worry). 
+
+• Ask for Input: Ask a practical question based only on the details already established (e.g., "Given [known fact], what should I do?"). 
+
+Response Requirements 
+
+- Concise: Keep your response focused and to the point. - Natural Tone: Casual, direct, matching your User Profile. No formal pleasantries. - Decisive: State your thought clearly. Do not ask "what do you think?" unless you are genuinely asking for specific advice on a known problem. 
+
+Figure 21: Prompt for User Simulator (Follow-up Turn). This prompt further deepens the user-assistant conversational scenarios. 
+
+31 Challenging QA Generation Prompt 
+
+You are an expert in question answering. Your task is to assume the role of {CHARACTER} and generate challenging QA pairs in first-person perspective from {DATE} that effectively assess a chat assistant’s long-term memory capabilities using the provided evidence and question type definition. 
+
+Input Context 1. Question Type Definition: {QUESTION DEFINITION} 2. Relevant Evidence: {EVIDENCE} Guidelines 
+
+Adhere to the following requirements to create the QA pairs: 
+
+### 1. Question Requirements 
+
+- Consistency : Strictly follow the definition and challenging characteristics provided above. Contextualize temporally as of {DATE} .- Perspective : Use natural FIRST-PERSON tone (e.g., "What did I do..."). - Single-Target Focus : Ask for ONE specific piece of information (fact, name, date, etc.). - Avoid Compound Questions : DO NOT use "and" to combine questions. - Avoid Open-Ended Analysis : No "How did this affect me?" or "Why did I do this?". 
+
+### 2. Answer Requirements 
+
+- Conciseness : Provide short answers supported by evidence (phrase or few words). - Accuracy : Must be strictly supported by the provided evidence. 
+
+### 3. Difficulty Requirements 
+
+Generate questions where the path to the answer is hard, but the answer itself is concise. You may consider: - Synthesize evidence from different contexts or distant time periods. - Require multi-hop inference chains or logical deduction. - Ensure answers cannot be directly extracted without reasoning. 
+
+### 4. Characteristics Requirements 
+
+- Source : Select ONLY from the characteristics defined in the Question Type Definition. - Specificity : Use the exact terminology provided in the Question Type Definition. 
+
+Output Format 
+
+Generate exactly 3 QA pairs using this JSON structure: [{{ "question": "Natural first-person question you would ask", "question_date": "YYYY-MM-DD", "answer": "Concise, specific answer", "characteristics": ["List of specific challenging characteristics"], }} ]
+
+Figure 22: Prompt for Challenging QA Generation. This prompt instructs the model to generate high-difficulty QA pairs. The challenging characteristics definitions are added in the question definition input. 
+
+32
