@@ -1,0 +1,922 @@
+Title: On the Persistent Effects of Lexicality in Large Language Mod
+
+URL Source: https://arxiv.org/pdf/2606.02750v1
+
+Published Time: Wed, 03 Jun 2026 00:06:40 GMT
+
+Number of Pages: 24
+
+Markdown Content:
+# On the Persistent Effects of Lexicality in Large Language Models 
+
+Hammad Rizwan 
+
+Dalhousie University Halifax, NS 
+
+Muhammad Umair Haider 
+
+University of Kentucky Lexington, KY 
+
+Nishant Subramani 
+
+Carnegie Mellon University Pittsburgh, PA 
+
+Mona T. Diab 
+
+Carnegie Mellon University Pittsburgh, PA 
+
+A.B. Siddique 
+
+University of Kentucky Lexington, KY 
+
+Hassan Sajjad 
+
+Dalhousie University Halifax, NS 
+
+Abstract 
+
+Representations extracted from large language models (LLMs) play an important role in many downstream applications. However, the structure of these represen-tations is often influenced by lexical overlap rather than semantic content. Our understanding of the relationship between this lexical influence and semantic con-tent, and its implications for downstream tasks, remains limited. In this work, we investigate representations to quantify the effect of lexical overlap relative to semantic content. We consider several adversarial semantic stress tests and further connect our findings to the information theory perspective. We find that lexical influence extends across the depth of models, consistently across architectures, training regimes, and objective functions, including the models trained for semantic similarity. Moreover, we observe a mid-depth region in which both lexical and semantic signals degrade simultaneously, indicating a transitional regime where rep-resentations are poor for both surface form and meaning. We further demonstrate the effect of lexical influence on downstream uses of LLMs using summarization and model editing as a case study. 
+
+1 Introduction 
+
+Natural Language Processing (NLP) has seen rapid advances with the emergence of LLMs, which now achieve strong performance across a wide variety of benchmarks and downstream tasks. Beyond generating text, these models are increasingly used as general-purpose embedding engines, providing vector representations that underpin retrieval, textual similarity, clustering, and evaluation pipelines. The widespread reliance on LLM embeddings implicitly assumes that, as we progress through model depth, representations gradually move away from local lexical structure and converge toward increasingly abstract sequence-level semantics [Jawahar et al., 2019, Hewitt and Liang, 2019, Haider et al., 2024]. In practice, this assumption is fragile, since it does not imply that lexical cues are eliminated as representations can remain highly similar whenever inputs share tokens, even when their meanings diverge [Dumpala et al., 2024, Rizwan et al., 2025]. When lexical overlap influences embedding geometry, similarity estimates degrade, making it harder to retrieve or classify documents based on meaning rather than wording and weakening systems that depend on meaning-driven representations. We therefore ask how representational geometry evolves along the axes of lexical and semantic information; how training regimes, including pretraining objectives, instruction tuning, and contrastive learning, shape these geometric structures; and how lexical influence propagates to downstream uses of LLMs. 
+
+> Preprint.
+> arXiv:2606.02750v1 [cs.CL] 1 Jun 2026
+
+We treat every layer of a model as a candidate embedding space and organize our study into four components. First , to quantify lexical influence, we use a triplet semantic-equivalence stress test consisting of an anchor, a meaning-preserving paraphrase, and a meaning-changing distractor that shares substantial lexical overlap with the anchor. This construction isolates semantic similarity failures driven by surface-form similarity and localizes the depths at which representations most often conflate lexical overlap with semantic equivalence. Second , to quantify these failures in terms of lexical and semantic signals, we pair the stress tests with two layer-wise measurements: lexical decodability and semantic fidelity. Lexical decodability is quantified by training linear token-identity probes on hidden states, measuring how much surface form remains linearly recoverable at each layer. We hypothesize that a strong token identity corresponds to a salient lexical signal that downstream methods can readily leverage, whether they rely on similarity geometry or learn additional predictors. We quantify semantic fidelity based on the representation’s performance on diverse embedding tasks. Together, these diagnostics distinguish among competing explanations for representation-similarity failures: lexical dominance, weak semantic organization, and transitional regimes in which both lexical and semantic signals are simultaneously low. Third , as layer-wise lexical and semantic geometry does not by itself characterize information processing dynamics , we relate our investigation to these dynamics using input (prompt) entropy across layers. We test whether information compression and decompression shifts correlate with the layer-wise changes in lexical and semantic structure. Fourth , we show the consequences of lexical influence in practical LLM applications, focusing on abstractive summarization evaluation and factual model editing. Our investigation leads to several central insights: 
+
+Lexical influence persists across depth (§ 3). Adversarial stress tests across multiple models reveal that token-overlap-driven similarity errors persist throughout model depth. Although attenuated in deeper layers, the effect is neither fully eliminated nor confined to shallow representations. 
+
+Adaptation regimes improve embeddings, but do not remove lexical influence (§ 3). Instruction tuning and metric learning improve overall embedding quality, yet our stress tests show that metric learning still fails under lexical overlap adversaries. Lexically similar but semantically mismatched pairs continue to receive inflated similarity scores, indicating that the dominant training paradigm for embedding models reduces but does not eliminate lexical bias. 
+
+Lexical decodability is non-monotonic across depth (§ 4.1). The ability to decode exact lexical identity from token representations fluctuates across layers rather than declining monotonically. This is in line with findings by Cheng et al. [2025], indicating that depth does not induce a clean lexical-to-semantic transition [Tenney et al., 2019, Jawahar et al., 2019, Li and Subramani, 2025]. 
+
+A mid-depth valley where lexical and semantic signals both weaken (§ 4, § 5) . Across model families, intermediate layers form a valley-like region where token identity is least recoverable, and semantic performance stagnates or degrades across both raw embedding geometry and linearly probed semantic evaluations. This valley appears to align with a compression–re-expansion point in prompt information across layers; a similar valley shows up under full attention even when representation entropy stays roughly constant with depth, indicating that the effect is not simply an entropy transition. 
+
+Practical implications (§ 6). In embedding-based pipelines, lexical overlap can miscalibrate similar-ity signals, degrading performance. In summarization evaluation, common reference-based metrics systematically reward reference wording, favoring surface overlap over semantic preservation. In weight-space model editing, updates generalize along surface-form similarity, producing correlated shifts for token-overlapping distractors, compromising edit locality. 
+
+2 Experimental Setup and Preliminaries 
+
+We use a common set of datasets and model families to ensure consistency across experiments. 
+
+Datasets. To probe lexical influence, we use two adversarial benchmarks, CounterFact [Meng et al., 2022] and SugarCrepe++ (SCPP) [Dumpala et al., 2024]. Relative to CounterFact, which primarily perturbs entities, SCPP offers a more targeted benchmark for lexical-influence tests, as it introduces systematic shifts in attributes and relations. We additionally use CounterFact for model editing. Dataset details and reference samples are provided in Appendix D.1. To measure lexical decodability, token-identity probes are trained on WikiText [Merity et al., 2017], and to evaluate semantic fidelity, the MTEB benchmark [Muennighoff et al., 2023] is utilized. 2Models. We consider three training paradigms: pretrained , instruction-tuned , and metric learning trained embedding models, spanning multiple model families. 1
+
+3 Measuring Lexical Influence 
+
+In the context of learned representations, we define lexical influence as a semantic failure case in which an anchor prompt is embedded closer to a lexically overlapping distractor than to its meaning-preserving paraphrase, violating the intended triplet ordering. We measure this effect on a dataset of triplets D = {(a, p, d )}, where a is an anchor, p a meaning-preserving paraphrase, and d a lexical distractor. Dataset usage and details are provided in Appendix D.2. For a given model M and input x consisting of tokens t ∈ { 1, . . . , T x} , let HMℓ (x) ∈ RTx×d denote the matrix of token-level hidden states at layer ℓ ∈ L , where the t-th row HMℓ (x)t ∈ Rd corresponds to token position t. Let hMℓ (x) ∈ Rd denote the corresponding sentence-level embedding, obtained via one of two standard choices: mean pooling and last token. 
+
+hM, mean  
+
+> ℓ
+
+(x) = 1
+
+TxTxX
+
+> t=1
+
+HMℓ (x)t, hM, last  
+
+> ℓ
+
+(x) = HMℓ (x)Tx
+
+We then ℓ2-normalize ˜hMℓ (x) = hMℓ (x)/∥hMℓ (x)∥2 and measure euclidean distance, 
+
+dMℓ (x, y ) = ˜hMℓ (x) − ˜hMℓ (y) 2.
+
+For ℓ2-normalized vectors, this is equivalent (up to a monotone transform) to cosine similarity, since 
+
+˜u − ˜v 22 = 2 − 2 ˜ u⊤ ˜v. To quantify lexical influence, we measure a triplet success rate. When representations are driven by lexical overlap, the model is more likely to confuse a paraphrase with a lexically overlapping distractor, yielding a lower success rate. For each triplet (a, p, d ), success occurs when the anchor and paraphrase are closer than either pair involving the distractor. We report the layer-wise success rate 
+
+SR Mℓ = 1
+
+|D| 
+
+X
+
+> (a,p,d )∈D
+
+IdMℓ (a, p ) < min dMℓ (a, d ), d Mℓ (p, d )  .
+
+Figure 1 compares averaged token (mean-pooled) embeddings (1a, 1c) and last-token embeddings (1b, 1d) on CounterFact and SCPP (averaged results are reported for SCPP, task-wise results are provided in Appendix E). Across pretrained and instruction-tuned models, averaged token representa-tions generally outperform last-token embeddings; the gap is clearer on CounterFact, where last-token embeddings consistently underperform, suggesting stronger lexical influence and that single-token summaries are under-contextualized for sentence-level meaning, while on SCPP the last token is more often comparable, and the pooling advantage is typically smaller. This pattern is consistent with prior work suggesting pooling encourages more semantically abstract representations than relying on a single position [Reimers and Gurevych, 2019, Xing et al., 2024]. We also observe a consistent depth effect. Average token embeddings often exhibit a mid-layer valley, where performance briefly declines before recovering and stabilizing in the upper layers. By contrast, last-token representations typically stagnate over the same depth range, or improve only gradually. Only in the later layers do models more reliably separate true paraphrases from lexically similar distractors. Results for Pretrained and Instruction-tuned models suggest that lexical influence is strongly shaped during the core language-model pretraining phase, where the model is optimized for next-token prediction and therefore to match broad corpus statistics. In this regime, next-token prediction can make it statistically efficient for the model to rely on surface-level lexical cues (e.g., entity names, salient attributes) that correlate with the target [Du et al., 2024, Bandel et al., 2022]. This helps explain why lexical-overlap failures appear in both pretrained and instruction-tuned models. Post-training can improve instruction following and response quality [Ouyang et al., 2022, Chung et al., 2024], but it operates on top of a pretrained representation space and may not fully remove lexical shortcuts inherited from pretraining [Serrano et al., 2023].       
+
+> 1Llama 3.2 [Grattafiori et al., 2024] and Gemma 3 [Team et al., 2025] in both pretrained and instruction-tuned variants, along with embedding models including Qwen-3 [Zhang et al., 2025] (Qwen3-Embedding-8B) and KaLM [Zhao et al., 2025] (KaLM-Embedding-Gemma3-12B-2511). Note: KaLM modifies the Gemma3 architecture to use full attention.
+
+30% 20% 40% 60% 80% 100% 
+
+> Relative layer depth (% of model)
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> Success Rate
+> Counterfact (Average Token Embedding)
+
+(a) 0% 20% 40% 60% 80% 100%  
+
+> Relative layer depth (% of model)
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> Success Rate
+> Counterfact (Last Token Embedding)
+
+(b) 0% 20% 40% 60% 80% 100% 
+
+> Relative layer depth (% of model)
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> Success Rate
+> SCPP (Average Token Embedding)
+
+(c) 0% 20% 40% 60% 80% 100%  
+
+> Relative layer depth (% of model)
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> Success Rate
+> SCPP (Last Token Embedding)
+
+(d) Gemma3 12B (Pre) Gemma3 12B (Inst) Llama3.2 3B (Pre) Llama3.2 3B (Inst) Qwen3 8B (Emb) KaLM Gemma3 12B (Emb) 
+
+Figure 1: Success rates for lexical influence tests on CounterFact and SCPP across models using average-token and last-token embeddings. Higher success indicates lower lexical influence. Panels show CounterFact with (a) average-token and (b) last-token embeddings, and SCPP with (c) average-token and (d) last-token embeddings. The layer-wise patterns reinforce this picture. Up to roughly the mid-depth of the model, the success rates of pretrained and instruction-tuned models remain closely aligned, indicating that instruction tuning does not substantially reshape the earlier layers of the representation hierarchy. Beyond this point, the success rate of instruction-tuned models increases more rapidly than that of the purely pretrained model, suggesting that later layers are selectively adapted to support more instruction-following and semantically appropriate behavior [Zhao et al., 2024]. However, lexical failures on SCPP remain high even in the upper layers, suggesting that lexical influences are deeply embedded in the representational structure learned during pretraining. This is consistent with evidence that fine-tuning primarily reweighs features already extractable from the pretrained model [Lovering et al., 2021], and that shortcut reliance can persist in LLMs despite post-training interventions [Yuan et al., 2024]. These findings are robust to prompt variations, as reflected by high distance correlations between layer-wise curves for both average and last-token embeddings (0.993 and 0.78, respectively; Appendix F). 
+
+Embedding models perform near-perfectly on the CounterFact dataset; paraphrases and distractors are almost always correctly separated in the learned embedding space. This is unsurprising given that these models are trained explicitly for semantic textual similarity and the structure of the dataset. CounterFact primarily perturbs entity tokens while keeping the rest of the prompt fixed, so that anchor and lexical distractor pairs differ in a small, highly local way. On the more challenging SCPP benchmark, we observe a different pattern. SCPP introduces sys-tematic edits to objects, attributes, and relations while keeping the rest of the description closely matched, making purely lexical cues much less discriminative. SCPP subtask results are provided in Appendix E. It shows that models perform best in cases where disambiguation can be achieved by tracking changes to the main object of the description, but they struggle substantially when only attributes (e.g., color, size) or relations (e.g., subject–object roles, spatial relations) are modified. This highlights an important limitation of current embedding models, which can perform well on easier entity-level contrasts yet still fail on fine-grained semantic changes under high lexical overlap. Taken together, these results suggest that metric learning approaches tend to exploit the easiest discriminative signal available, often overt differences in entities or salient attributes. This aligns 40% 20% 40% 60% 80% 100%      
+
+> Relative depth (% of layers)
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+> 2.5
+> 3.0
+> Cross-Entropy
+> Training Loss (Cross-Entropy)
+> Llama3.2 3B (Inst)
+> Llama3.2 3B (Pre)
+> Gemma3 12B (Inst)
+> Qwen3 8B (Emb)
+> Gemma3 12B (Pre)
+> KaLM Gemma3 12B (Emb) 0% 20% 40% 60% 80% 100%
+> Relative depth (% of layers)
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> 0.90
+> 0.95
+> 1.00
+> Top-1 Accuracy
+> Top-1 Accuracy
+
+Figure 2: Layer-wise probe performance for lexical decodability on WikiText across model depths and architectures, measured by cross-entropy loss and Top-1 accuracy. with evidence that contrastive/metric objectives can admit “shortcut” solutions and may not reliably force the model to encode the intended features [Robinson et al., 2021]. 
+
+4 Probing Lexical and Semantic Structure 
+
+In this section, we analyze whether the failure patterns of lexical and semantic signals correlate with the accessibility of this information in the representations. We hypothesize that information that is easy to access should be decodable by a linear classifier. To test this, we train linear probing models to measure the lexical and semantic decodability. For lexical decodability , the classifier predicts the corresponding input token from its hidden state (an operational proxy for surface-form information). For semantic structure , we extract sentence embeddings from each layer and evaluate them on MTEB using the benchmark’s standard lightweight heads. As the backbone is kept frozen, differences across layers reflect representational changes rather than task-specific adaptation. Training details for the probes and MTEB dataset are provided in Appendix G. 
+
+4.1 Lexical Probes 
+
+For each layer l ∈ L and token position t ∈ { 1, . . . , T x}, HMl (x)t ∈ Rd denotes the model’s 
+
+d-dimensional hidden representation at position t in layer l. To test whether token identity is linearly recoverable from this representation, we apply a layer-specific affine probe: 
+
+zl,t = WlHMl (x)t + bl,
+
+where Wl ∈ Rd×d and bl ∈ Rd. We score each vocabulary token using the model’s input embedding matrix Ein ∈ RV ×d, whose v-th row ev ∈ Rd is the embedding for token v. We treat Ein as a natural reference basis for surface lexical form, since it is the learned lookup table that maps discrete token identities into continuous vectors at the input. After ℓ2-normalizing both zl,t and the embedding rows 
+
+ev , the score assigned to token v is sl,t,v = ⟨zl,t , e v ⟩. Applying a softmax over v ∈ { 1, . . . , V } gives a probe-induced distribution over token identities. The details regarding training and hyperparameters for the probes is provided in Appendix G.1. Figure 2 reports top-1 accuracy and cross-entropy (CE) for token-identity probes as a function of relative depth. Token identity is highly linearly decodable in the earliest layers (high accuracy / low CE). As depth increases, probe performance degrades, and cross-entropy rises, peaking around mid-depth, roughly the middle half of the network, indicating that token identity is least linearly accessible in these intermediate representations. Notably, this mid-depth regime coincides with the layers where we observe the highest lexical failure rates on CounterFact and SCPP. This points to a transient re-encoding regime in which sensitivity to lexical influence may persist even as linear decodability of token identity decreases. Prior work links intermediate layers to more syntactic abstractions [Jawahar et al., 2019], providing a complementary view of this region of the network. Beyond this point, token-identity decodability partially recovers in later layers before deteriorating again near the final layers, where representations are increasingly shaped by the model’s training objectives. This non-monotonic pattern cautions against treating depth as a smooth lexical to semantic progression. 50% 20% 40% 60% 80% 100% 
+
+> Relative layer depth (% of model)
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> main score
+> Classification
+
+(a) 0% 20% 40% 60% 80% 100%  
+
+> Relative layer depth (% of model)
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> main score
+> Retrieval
+
+(b) 0% 20% 40% 60% 80% 100% 
+
+> Relative layer depth (% of model)
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> main score
+> Reranking
+
+(c) 0 20 40 60 80 100  
+
+> Percentage depth (%)
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> Entropy
+> Prompt Entropy vs Depth (%)
+
+(d) Gemma3 12B (Pre) Gemma3 12B (Inst) Llama3.2 3B (Pre) Llama3.2 3B (Inst) Qwen3 8B (Emb) KaLM Gemma3 12B (Emb) 
+
+Figure 3: MTEB task performance across the full model depth for all evaluated models. For each dataset category, curves show the average task performance as a function of depth l, using layer-wise sentence embeddings. 
+
+4.2 Semantic Probes 
+
+We follow MTEB’s two complementary evaluation settings to probe semantic information in layerwise sentence embeddings. MTEB measures performance either directly from embedding similarities and induced rankings (no task-specific training) or by training a lightweight linear probe to test whether task-relevant information is linearly separable at a given layer. Dataset and evaluation details are provided in Appendix H. Figure 3 reports MTEB results for classification (a), retrieval (b), and reranking (c). We provide the results for clustering, pairwise classification, and STS in Appendix H.1. Although MTEB spans diverse tasks that could yield heterogeneous layerwise trends, we see strong regularity where performance varies with depth, and curve trends cluster into a few characteristic profile types. Across classification, pairwise classification, retrieval, and semantic textual similarity (STS), we consistently observe a non-monotonic, valley-shaped depth profile in all models: performance improves from early to mid layers, degrades in an intermediate regime, and then recovers near the top of the model. In contrast, clustering and reranking do not exhibit the mid-depth valley observed for classification-style tasks. For reranking, performance remains essentially constant across depth. Clustering generally improves with depth, but the trend is noisy under the default MTEB setup (k-means + V-measure), where discrete assignment changes can cause jagged layer-to-layer variation. For embedding models , performance in the intermediate “valley” regime either remains roughly constant or improves slowly, before increasing sharply after this. Peak scores for all models typically occur in the last few layers, but not consistently at the final layer, suggesting that the standard “use the final layer” heuristic can be suboptimal for semantic benchmarks, consistent with findings by Skean et al. [2025], Cheng et al. [2025]. Together with §3, these results identify a shared mid-depth transition: lexical features become least recoverable over a broad intermediate regime, without a compensating semantic gain in MTEB. Performance is often lowest over the same layers and recovers only later, suggesting a phase where surface form is suppressed before semantic structure is fully organized. Consequently, the strongest representations typically emerge in mid-to-late layers. 65 An Information-Theoretic Lens on the Mid-Depth Valley 
+
+To further explore how lexical and semantic structure evolve across depth, we juxtapose our probing results with an information-theoretic view of representations, which frames learning as a trade-off between compression and the preservation of predictive structure [Tishby et al., 2000, Shwartz-Ziv and Tishby, 2017]. Geometric accounts based on intrinsic dimension reach a compatible conclusion from a different direction: hidden representations do not evolve monotonically with depth but instead pass through distinct regimes of expansion, contraction, and abstraction [Valeriani et al., 2023, Cheng et al., 2025, Doimo et al., 2024]. Skean et al. [2025] offer a particularly relevant comparison, showing that Transformer representations follow a characteristic compression–decompression trajectory across layers and arguing that the low-entropy intermediate regime hosts the strongest representations. To connect our probing results to representation geometry, we adopt prompt entropy as a per-layer summary statistic (formal definition in Appendix I). Intuitively, low entropy indicates compressed, low-effective-rank token representations. Figure 3(d) confirms the expected shape: entropy falls into the middle layers and rises again toward the output. Analysing the entropy curves and empirical results in § 3 and § 4 together provides a more precise account of where the strongest representations emerge. The mid-depth valley at 40–60% relative depth aligns with the low-entropy bottleneck and its immediate re-expansion phase, precisely the regime that Skean et al. [2025] associates with the strongest intermediate representations. Yet in our measurements, this is where semantic performance is weak and lexical influence is most pronounced: the model is maximally compressed but not maximally meaningful. Clean semantic separation and reduced lexical-overlap failures only emerge in the later layers, after entropy has begun to rise. This nuances the compression-centric account: the low-entropy bottleneck is not the point of strongest embedding quality. Instead, semantic performance is weak, and lexical influence is most pronounced near the bottleneck and the early re-expansion phase. These findings suggest that the re-expansion phase plays a critical role in producing a more meaning-sensitive embedding geometry. 
+
+6 Practical Implications 
+
+In this section, we explore the impact of lexical influence on practical settings that rely on embedding geometry and representation-sensitive updates. 
+
+6.1 Summarization 
+
+Text summarization compresses a document while preserving its key content. The evaluation of summarization involves the use of both n-gram-based metrics and semantic metrics. The former, such as ROUGE [Lin, 2004] and BLEU [Papineni et al., 2002], reward n-gram overlap as a signal for a better summary, emphasizing phrase matching in contrast to semantic matching. The latter metrics, such as BERTScore and BARTScore, aim at evaluating summaries based on meaning preservation. Here, we show that despite the focus of evaluation methods on semantics, the underlying models possess lexical bias that impacts the correct semantic evaluation of summaries. 
+
+Data. We use the Extreme Summarization benchmark Narayan et al. [2018]. To probe lexical sensitivity, we augment each example with a highly lexicalized non-summary distractor generated by an LLM. Details for dataset construction and experimental methodology are provided in Appendix J.2. 
+
+Experiment. For each document, we score (i) the gold summary and (ii) an LLM-generated lexical distractor with BERTScore and BARTScore . We count a failure when the distractor scores at least as high as the gold summary. BERTScore fails on 64% of examples, consistent with a strong lexical signal in contextual representations, mirroring our earlier findings. BARTScore fails on 20% : despite being likelihood-based, lexical distractors can remain locally plausible and score competitively. This shows that lexical reliance is not limited to contextual representation similarity metrics, and the token-level generative process can reward lexically aligned text as well. 
+
+6.2 Model Editing 
+
+Deploying LLMs in production requires post-training updates to maintain correctness and policy compliance (e.g., incorporating new facts or suppressing harmful associations) Meng et al. [2022], 7Table 1: Summarization ranking results (lexical distractor vs. gold). FR is the fraction of cases where the distractor is scored higher than the gold; ASD/ASG are mean scores for distractor/-gold (method-specific scales).             
+
+> Method FR ↓ASD ↓ASG ↑
+> BERTScore 0.640 0.691 0.649 BARTScore 0.200 -3.918 -2.945
+
+Table 2: Mean (over prompts) distribution-shift metrics for lexically similar (LS) and lexically dissimilar (LD) prompts.                          
+
+> Metric Top-K-20 Top-K-50 LS LD LS LD
+> JSD 0.290 0.242 0.293 0.245 TV 0.561 0.493 0.565 0.499 Kendall τ-0.016 0.030 -0.022 0.028 Edited-Target Presence 0.023 0.021 0.085 0.043 Top-1 Flip Rate (Top-K-indep.) 0.566 0.493
+
+Mitchell et al. [2021]. However, retraining is costly [Hartvigsen et al., 2023, Rizwan et al., 2025], and fine-tuning can induce catastrophic forgetting [Luo et al., 2025, Wang et al., 2024b], while prompt-based methods require routing and are brittle Rosati et al. [2024], Su et al. [2025]. Model editing addresses this gap by enabling targeted, localized updates that satisfy an edit request while preserving behavior on non-target inputs. Formally, given a model Mθ0 , an edit request (xe, y ⋆e ), and a locality set N representing all other behaviors that should remain unchanged, model editing seeks either updated parameters θ′ (weight-modifying) or an auxiliary component parameterized by ϕ (e.g., a learned prefix, adapter, or external memory) while keeping the base weights θ0 fixed (weight-preserving), such that the edit succeeds while non-target behavior is preserved: 
+
+Mθ′ (xe) = y⋆e or Mθ0,ϕ (xe) = y⋆e ,D   Mθ′ Mθ0,ϕ 
+
+(· | x), M θ0 (· | x) ≤ ε ∀x ∈ N .
+
+Rizwan et al. [2025] showed that semantic-similarity based scoping systems can fail in weight-preserving editing due to lexical overlap. We argue that this failure extends to weight-modifying 
+
+editors: surface-token similarity can bring semantically unrelated prompts close in embedding space, so an update targeted at xe also shifts their output distributions. Consequently, lexically similar but semantically mismatched distractors are disproportionately perturbed, producing systematic lexical skew in locality. 
+
+Method and dataset. We use AlphaEdit [Fang et al., 2025] and evaluate on a modified version of the CounterFact benchmark. For each edit, we augment CounterFact with two prompt sets: ( i) lexically similar variants created by substituting distractor entities into the edit prompt, and ( ii ) lexically dissimilar variants that keep the distractor’s semantics but substantially change its surface form. 
+
+Metrics. We quantify distribution shift at the answer position by comparing the base and edited next-token distributions. We compute Jensen–Shannon divergence (JSD) and total variation (TV), i.e. probability change, Kendall’s τ for rank stability, and the Top-1 Flip Rate; all metrics are evaluated on the merged top-K support. The details for method, dataset, metrics, and top-K = 100 results are provided in Appendix K. To measure leakage into distractors, we report E DITED -T ARGET PRESENCE :the fraction of locality prompts whose edited-model top-K contains any relation-specific edited target token. Table 2 reports the results of our locality experiment. Across metrics and Top-K settings, lexically similar (LS) locality prompts are consistently more affected by the edit than lexically dissimilar (LD) locality prompts, even though both prompt families query facts unrelated to the edited target. The effect is stable across K, indicating it is not an artifact of the Top-K cutoff. The effect is clearest in the probability-based shift metrics. Relative to LD, LS exhibits larger changes in both the shape of the distribution (JSD) and the amount of probability mass moved (TV), implying that surface-form overlap amplifies the edit’s collateral redistribution over plausible candidates. Rank-based evidence is consistent with this picture: Kendall’s τ shows greater rank instability under LS, with the separation most apparent at smaller K, where τ more directly reflects reordering among high-likelihood tokens. As K increases, τ becomes less discriminative because it averages over many additional token pairs, which can dilute head reordering by including comparatively stable mid and lower-probability tokens. Finally, behavioral indicators align with these distributional shifts: 8LS distractors exhibit more decision-level changes (Top-1 flips) and more frequent appearance of relation-specific edited targets in the post-edit top-K, consistent with stronger edit leakage under lexical overlap. 
+
+Implication. The results indicate that surface-form overlap systematically increases a prompt’s susceptibility to unintended changes. More broadly, this suggests that any evaluation criterion for model interventions (e.g., steering or activation-based methods, adapters/LoRA, targeted fine-tuning) should stress-test scope using lexically similar control prompts that request different information. 
+
+7 Related Work 
+
+Layer-wise probing studies show that linguistic properties are not uniformly encoded across depth, but peak at different layers [Liu et al., 2019, Tenney et al., 2019, Jawahar et al., 2019]; later work strengthens these analyses with selectivity and control tasks [Hewitt and Liang, 2019]. Comple-mentary geometric and similarity-based approaches study how embedding spaces themselves evolve across layers, including changes in contextual geometry and representational alignment [Ethayarajh, 2019, Kornblith et al., 2019]. Valeriani et al. [2023] further characterizes the geometry of hidden rep-resentations in large transformers, showing that intrinsic dimension and neighborhood structure vary systematically across depth. Recent work extends this with unified depth diagnostics and large-scale evaluations showing that intermediate layers can be especially informative feature sources [Skean et al., 2025], as well as evidence for high-dimensional abstraction phases [Cheng et al., 2025], staged inference dynamics [Lad et al., 2026], and representation-landscape changes induced by few-shot learning and fine-tuning [Doimo et al., 2024]. Related depth-centric work further shows that concepts and knowledge emerge progressively across layers [Haider et al., 2024, Jin et al., 2025], while predictions can stabilize well before the final layers [Sajjad et al., 2023, Fan et al., 2025]. Lexical bias is often framed as shortcut learning, where models exploit surface cues that correlate with labels rather than semantics. In NLI, annotation artifacts introduce exploitable lexical pat-terns [Gururangan et al., 2018, He et al., 2019, Poliak et al., 2018]. Controlled diagnostics like HANS [McCoy et al., 2019] show that high performing models often follow lexical overlap and subsequence heuristics and fail when these heuristics are broken. Large scale evaluations further confirm vulnerabilities to lexical shortcuts [Yuan et al., 2024]. Lexical shortcuts can persist even after mitigation, motivating debiasing objectives that target unknown biases rather than a manually specified cue [Serrano et al., 2023, Utama et al., 2020, Zhou and Bansal, 2020]. 
+
+8 Conclusion 
+
+We study the persistent effects of lexicality on LLM representations by tracking how lexical and semantic structure evolve across depth. We find that instruction tuning and metric-learning objectives improve semantic performance, but do not necessarily overcome lexical influence, so lexical-overlap failures can persist despite gains on standard embedding evaluations: even embedding models trained for semantic similarity struggle on fine-grained attribute and relation changes under high lexical overlap. Connecting the stress test with layer-wise token-identity probes and semantic evaluations across model families and training regimes, we uncover a consistent mid-layer valley in which semantic fidelity remains nearly constant while overlap-driven failures peak, even as token identity is least linearly decodable. Reading these results alongside the entropy curve refines the compression-centric view, showing that the low-entropy bottleneck is not where the strongest semantic representations arise. Instead, stronger meaning-sensitive geometry emerges later, during re-expansion. We further show that this lexical influence propagates into downstream LLM usage, as demonstrated with the use cases of automatic summarization evaluation and model editing. We conclude that lexically controlled stress tests should become a standard check for representation learning, automatic metrics, and model interventions because they reveal whether meaning sensitivity is robust to high-overlap confounds or breaks down through overlap-driven semantic failures. In future work, we will dissect the mid-depth transition regime with nonlinear transformations to identify what structure is formed there and how to prevent overlap-driven similarity errors. 9Acknowledgment 
+
+We acknowledge the support of the Natural Sciences and Engineering Research Council of Canada (NSERC), Canada Foundation of Innovation (CFI), and Research Nova Scotia. Advanced computing resources are provided by ACENET, the regional partner in Atlantic Canada, and the Digital Research Alliance of Canada. 
+
+References 
+
+Elron Bandel, Yoav Goldberg, and Yanai Elazar. Lexical generalization improves with larger models and longer training. In Yoav Goldberg, Zornitsa Kozareva, and Yue Zhang, editors, Findings of the Association for Computational Linguistics: EMNLP 2022, Abu Dhabi, United Arab Emirates, December 7-11, 2022 , pages 4398–4410. Association for Computational Linguistics, 2022. doi: 10.18653/V1/2022.FINDINGS-EMNLP.323. Emily Cheng, Diego Doimo, Corentin Kervadec, Iuri Macocco, Lei Yu, Alessandro Laio, and Marco Baroni. Emergence of a high-dimensional abstraction phase in language transformers. In The Thirteenth International Conference on Learning Representations , 2025. Hyung Won Chung, Le Hou, Shayne Longpre, Barret Zoph, Yi Tay, William Fedus, Yunxuan Li, Xuezhi Wang, Mostafa Dehghani, Siddhartha Brahma, Albert Webson, Shixiang Shane Gu, Zhuyun Dai, Mirac Suzgun, Xinyun Chen, Aakanksha Chowdhery, Alex Castro-Ros, Marie Pellat, Kevin Robinson, Dasha Valter, Sharan Narang, Gaurav Mishra, Adams Yu, Vincent Y. Zhao, Yanping Huang, Andrew M. Dai, Hongkun Yu, Slav Petrov, Ed H. Chi, Jeff Dean, Jacob Devlin, Adam Roberts, Denny Zhou, Quoc V. Le, and Jason Wei. Scaling instruction-finetuned language models. 
+
+J. Mach. Learn. Res. , 25:70:1–70:53, 2024. URL https://jmlr.org/papers/v25/23-0870. html .Diego Doimo, Alessandro Serra, Alessio Ansuini, and Alberto Cazzaniga. The representation landscape of few-shot learning and fine-tuning in large language models. In Amir Globersons, Lester Mackey, Danielle Belgrave, Angela Fan, Ulrich Paquet, Jakub M. Tomczak, and Cheng Zhang, editors, Advances in Neural Information Processing Systems 38: Annual Conference on Neural Information Processing Systems 2024, NeurIPS 2024, Vancouver, BC, Canada, Decem-ber 10 - 15, 2024 , 2024. URL http://papers.nips.cc/paper_files/paper/2024/hash/ 206018a258033def63607fbdf364bd2d-Abstract-Conference.html .Mengnan Du, Fengxiang He, Na Zou, Dacheng Tao, and Xia Hu. Shortcut learning of large language models in natural language understanding. Commun. ACM , 67(1):110–120, 2024. doi: 10.1145/3596490. Sri Harsha Dumpala, Aman Jaiswal, Chandramouli Shama Sastry, Evangelos E. Milios, Sageev Oore, and Hassan Sajjad. SUGARCREPE++ dataset: Vision-language model sensitivity to semantic and lexical alterations. In Amir Globersons, Lester Mackey, Danielle Belgrave, Angela Fan, Ulrich Paquet, Jakub M. Tomczak, and Cheng Zhang, editors, Advances in Neural Information Processing Systems 38: Annual Conference on Neural Information Processing Systems 2024, NeurIPS 2024, Vancouver, BC, Canada, December 10 - 15, 2024 , 2024. Kawin Ethayarajh. How contextual are contextualized word representations? comparing the geometry of bert, elmo, and GPT-2 embeddings. In Kentaro Inui, Jing Jiang, Vincent Ng, and Xiaojun Wan, editors, Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing, EMNLP-IJCNLP 2019, Hong Kong, China, November 3-7, 2019 , pages 55–65. Association for Computational Linguistics, 2019. URL https://doi.org/10.18653/v1/D19-1006 .Siqi Fan, Xin Jiang, Xiang Li, Xuying Meng, Peng Han, Shuo Shang, Aixin Sun, and Yequan Wang. Not all layers of llms are necessary during inference. In Proceedings of the Thirty-Fourth International Joint Conference on Artificial Intelligence, IJCAI 2025, Montreal, Canada, August 16-22, 2025 , pages 5083–5091. ijcai.org, 2025. Junfeng Fang, Houcheng Jiang, Kun Wang, Yunshan Ma, Jie Shi, Xiang Wang, Xiangnan He, and Tat-Seng Chua. Alphaedit: Null-space constrained knowledge editing for language models. In The 
+
+10 Thirteenth International Conference on Learning Representations, ICLR 2025, Singapore, April 24-28, 2025 . OpenReview.net, 2025. URL https://openreview.net/forum?id=HvSytvg3Jh .Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 , 2024. Suchin Gururangan, Swabha Swayamdipta, Omer Levy, Roy Schwartz, Samuel R. Bowman, and Noah A. Smith. Annotation artifacts in natural language inference data. In Marilyn A. Walker, Heng Ji, and Amanda Stent, editors, Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, NAACL-HLT, New Orleans, Louisiana, USA, June 1-6, 2018, Volume 2 (Short Papers) , pages 107–112. Association for Computational Linguistics, 2018. Muhammad Umair Haider, Umar Farooq, AB Siddique, and Mark Marron. Looking into black box code language models. arXiv preprint arXiv:2407.04868 , 2024. Tom Hartvigsen, Swami Sankaranarayanan, Hamid Palangi, Yoon Kim, and Marzyeh Ghassemi. Aging with grace: Lifelong model editing with discrete key-value adaptors. Advances in Neural Information Processing Systems , 36:47934–47959, 2023. He He, Sheng Zha, and Haohan Wang. Unlearn dataset bias in natural language inference by fitting the residual. In Colin Cherry, Greg Durrett, George F. Foster, Reza Haffari, Shahram Khadivi, Nanyun Peng, Xiang Ren, and Swabha Swayamdipta, editors, Proceedings of the 2nd Workshop on Deep Learning Approaches for Low-Resource NLP, DeepLo@EMNLP-IJCNLP 2019, Hong Kong, China, November 3, 2019 , pages 132–142. Association for Computational Linguistics, 2019. doi: 10.18653/V1/D19-6115. URL https://doi.org/10.18653/v1/D19-6115 .Pengcheng He, Xiaodong Liu, Jianfeng Gao, and Weizhu Chen. DeBERTa: Decoding-enhanced BERT with disentangled attention. In International Conference on Learning Representations , 2021. URL https://openreview.net/forum?id=XPZIaotutsD .John Hewitt and Percy Liang. Designing and interpreting probes with control tasks. In Kentaro Inui, Jing Jiang, Vincent Ng, and Xiaojun Wan, editors, Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing, EMNLP-IJCNLP 2019, Hong Kong, China, November 3-7, 2019 ,pages 2733–2743. Association for Computational Linguistics, 2019. doi: 10.18653/V1/D19-1275. URL https://doi.org/10.18653/v1/D19-1275 .Ganesh Jawahar, Benoît Sagot, and Djamé Seddah. What does BERT learn about the structure of lan-guage? In Anna Korhonen, David R. Traum, and Lluís Màrquez, editors, Proceedings of the 57th Conference of the Association for Computational Linguistics, ACL 2019, Florence, Italy, July 28-August 2, 2019, Volume 1: Long Papers , pages 3651–3657. Association for Computational Linguis-tics, 2019. doi: 10.18653/V1/P19-1356. URL https://doi.org/10.18653/v1/p19-1356 .Mingyu Jin, Qinkai Yu, Jingyuan Huang, Qingcheng Zeng, Zhenting Wang, Wenyue Hua, Haiyan Zhao, Kai Mei, Yanda Meng, Kaize Ding, Fan Yang, Mengnan Du, and Yongfeng Zhang. Exploring concept depth: How large language models acquire knowledge and concept at different layers? In Owen Rambow, Leo Wanner, Marianna Apidianaki, Hend Al-Khalifa, Barbara Di Eugenio, and Steven Schockaert, editors, Proceedings of the 31st International Conference on Computational Linguistics, COLING 2025, Abu Dhabi, UAE, January 19-24, 2025 , pages 558–573. Association for Computational Linguistics, 2025. Simon Kornblith, Mohammad Norouzi, Honglak Lee, and Geoffrey Hinton. Similarity of neural network representations revisited. In International conference on machine learning , pages 3519– 3529. PMLR, 2019. Vedang Lad, Jin Hwa Lee, Wes Gurnee, and Max Tegmark. Remarkable robustness of llms: Stages of inference? Advances in Neural Information Processing Systems , 38:130050–130083, 2026. Mike Lewis, Yinhan Liu, Naman Goyal, Marjan Ghazvininejad, Abdelrahman Mohamed, Omer Levy, Veselin Stoyanov, and Luke Zettlemoyer. Bart: Denoising sequence-to-sequence pre-training for natural language generation, translation, and comprehension. arXiv preprint arXiv:1910.13461 ,2019. 11 Michael Li and Nishant Subramani. Model internal sleuthing: Finding lexical identity and inflectional morphology in modern language models. arXiv preprint arXiv:2506.02132 , 2025. Chin-Yew Lin. Rouge: A package for automatic evaluation of summaries. In Text summarization branches out , pages 74–81, 2004. Nelson F. Liu, Matt Gardner, Yonatan Belinkov, Matthew E. Peters, and Noah A. Smith. Linguistic knowledge and transferability of contextual representations. In Jill Burstein, Christy Doran, and Thamar Solorio, editors, Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, NAACL-HLT 2019, Minneapolis, MN, USA, June 2-7, 2019, Volume 1 (Long and Short Papers) , pages 1073–1094. Association for Computational Linguistics, 2019. Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. arXiv preprint arXiv:1711.05101 , 2017. Charles Lovering, Rohan Jha, Tal Linzen, and Ellie Pavlick. Predicting inductive biases of pre-trained models. In 9th International Conference on Learning Representations, ICLR 2021, Virtual Event, Austria, May 3-7, 2021 . OpenReview.net, 2021. URL https://openreview.net/forum?id= mNtmhaDkAr .Yun Luo, Zhen Yang, Fandong Meng, Yafu Li, Jie Zhou, and Yue Zhang. An empirical study of catastrophic forgetting in large language models during continual fine-tuning. IEEE Transactions on Audio, Speech and Language Processing , 2025. Tom McCoy, Ellie Pavlick, and Tal Linzen. Right for the wrong reasons: Diagnosing syntactic heuristics in natural language inference. In Anna Korhonen, David R. Traum, and Lluís Màrquez, editors, Proceedings of the 57th Conference of the Association for Computational Linguistics, ACL 2019, Florence, Italy, July 28- August 2, 2019, Volume 1: Long Papers , pages 3428–3448. Association for Computational Linguistics, 2019. Kevin Meng, David Bau, Alex Andonian, and Yonatan Belinkov. Locating and editing factual associations in GPT. In Sanmi Koyejo, S. Mohamed, A. Agarwal, Danielle Belgrave, K. Cho, and A. Oh, editors, Advances in Neural Information Processing Systems 35: Annual Conference on Neural Information Processing Systems 2022, NeurIPS 2022, New Orleans, LA, USA, November 28 - December 9, 2022 , 2022. Stephen Merity, Caiming Xiong, James Bradbury, and Richard Socher. Pointer sentinel mixture models. In 5th International Conference on Learning Representations, ICLR 2017, Toulon, France, April 24-26, 2017, Conference Track Proceedings . OpenReview.net, 2017. URL https: //openreview.net/forum?id=Byj72udxe .Eric Mitchell, Charles Lin, Antoine Bosselut, Chelsea Finn, and Christopher D Manning. Fast model editing at scale. arXiv preprint arXiv:2110.11309 , 2021. Niklas Muennighoff, Nouamane Tazi, Loïc Magne, and Nils Reimers. MTEB: massive text embedding benchmark. In Andreas Vlachos and Isabelle Augenstein, editors, Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics, EACL 2023, Dubrovnik, Croatia, May 2-6, 2023 , pages 2006–2029. Association for Computational Linguistics, 2023. doi: 10.18653/V1/2023.EACL-MAIN.148. URL https://doi.org/10.18653/v1/2023. eacl-main.148 .Shashi Narayan, Shay B Cohen, and Mirella Lapata. Don’t give me the details, just the summary! topic-aware convolutional neural networks for extreme summarization. In Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing , pages 1797–1807, 2018. Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schulman, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul F. Christiano, Jan Leike, and Ryan Lowe. Training language models to follow instructions with human feedback. In Sanmi Koyejo, S. Mohamed, A. Agarwal, Danielle Belgrave, K. Cho, and A. Oh, editors, Advances in Neural Information Processing Systems 35: Annual Conference on Neural Information Processing Systems 2022, NeurIPS 2022, New Orleans, LA, USA, November 28 - December 9, 2022 , 2022. 12 Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. Bleu: a method for automatic evaluation of machine translation. In Proceedings of the 40th annual meeting of the Association for Computational Linguistics , pages 311–318, 2002. Adam Poliak, Jason Naradowsky, Aparajita Haldar, Rachel Rudinger, and Benjamin Van Durme. Hypothesis only baselines in natural language inference. In Malvina Nissim, Jonathan Berant, and Alessandro Lenci, editors, Proceedings of the Seventh Joint Conference on Lexical and Computational Semantics, *SEM@NAACL-HLT 2018, New Orleans, Louisiana, USA, June 5-6, 2018 , pages 180–191. Association for Computational Linguistics, 2018. doi: 10.18653/V1/ S18-2023. URL https://doi.org/10.18653/v1/s18-2023 .Nils Reimers and Iryna Gurevych. Sentence-bert: Sentence embeddings using siamese bert-networks. 
+
+arXiv preprint arXiv:1908.10084 , 2019. Hammad Rizwan, Domenic Rosati, Ga Wu, and Hassan Sajjad. Resolving lexical bias in model edit-ing. In Forty-second International Conference on Machine Learning, ICML 2025, Vancouver, BC, Canada, July 13-19, 2025 . OpenReview.net, 2025. URL https://openreview.net/forum? id=aPm6SfcMWQ .Joshua Robinson, Li Sun, Ke Yu, Kayhan Batmanghelich, Stefanie Jegelka, and Suvrit Sra. Can contrastive learning avoid shortcut solutions? In Marc’Aurelio Ranzato, Alina Beygelzimer, Yann N. Dauphin, Percy Liang, and Jennifer Wortman Vaughan, editors, Advances in Neural Information Processing Systems 34: Annual Conference on Neural Information Processing Systems 2021, NeurIPS 2021, December 6-14, 2021, virtual , pages 4974–4986, 2021. Domenic Rosati, Robie Gonzales, Jinkun Chen, Xuemin Yu, Yahya Kayani, Frank Rudzicz, and Hassan Sajjad. Long-form evaluation of model editing. In NAACL-HLT , 2024. Hassan Sajjad, Fahim Dalvi, Nadir Durrani, and Preslav Nakov. On the effect of dropping layers of pre-trained transformer models. Comput. Speech Lang. , 77:101429, 2023. Sofia Serrano, Jesse Dodge, and Noah A. Smith. Stubborn lexical bias in data and models. In Anna Rogers, Jordan L. Boyd-Graber, and Naoaki Okazaki, editors, Findings of the Association for Computational Linguistics: ACL 2023, Toronto, Canada, July 9-14, 2023 , pages 8131–8146. Association for Computational Linguistics, 2023. doi: 10.18653/V1/2023.FINDINGS-ACL.516. URL https://doi.org/10.18653/v1/2023.findings-acl.516 .Ravid Shwartz-Ziv and Naftali Tishby. Opening the black box of deep neural networks via information. 
+
+arXiv preprint arXiv:1703.00810 , 2017. Oscar Skean, Md Rifat Arefin, Dan Zhao, Niket Patel, Jalal Naghiyev, Yann LeCun, and Ravid Shwartz-Ziv. Layer by layer: Uncovering hidden representations in language models. In 
+
+Forty-second International Conference on Machine Learning, ICML 2025, Vancouver, BC, Canada, July 13-19, 2025 . OpenReview.net, 2025. URL https://openreview.net/forum? id=WGXb7UdvTX .Weihang Su, Yichen Tang, Qingyao Ai, Junxi Yan, Changyue Wang, Hongning Wang, Ziyi Ye, Yujia Zhou, and Yiqun Liu. Parametric retrieval augmented generation. arXiv preprint arXiv:2501.15915 ,2025. Gemma Team, Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin, Tatiana Matejovicova, Alexandre Ramé, Morgane Rivière, et al. Gemma 3 technical report. arXiv preprint arXiv:2503.19786 , 2025. Ian Tenney, Dipanjan Das, and Ellie Pavlick. BERT rediscovers the classical NLP pipeline. In Anna Korhonen, David R. Traum, and Lluís Màrquez, editors, Proceedings of the 57th Conference of the Association for Computational Linguistics, ACL 2019, Florence, Italy, July 28- August 2, 2019, Volume 1: Long Papers , pages 4593–4601. Association for Computational Linguistics, 2019. URL 
+
+https://doi.org/10.18653/v1/p19-1452 .Naftali Tishby, Fernando C Pereira, and William Bialek. The information bottleneck method. arXiv preprint physics/0004057 , 2000. 13 Prasetya Ajie Utama, Nafise Sadat Moosavi, and Iryna Gurevych. Towards debiasing NLU models from unknown biases. In Bonnie Webber, Trevor Cohn, Yulan He, and Yang Liu, editors, Proceed-ings of the 2020 Conference on Empirical Methods in Natural Language Processing, EMNLP 2020, Online, November 16-20, 2020 , pages 7597–7610. Association for Computational Linguistics, 2020. Lucrezia Valeriani, Diego Doimo, Francesca Cuturello, Alessandro Laio, Alessio Ansuini, and Alberto Cazzaniga. The geometry of hidden representations of large transformer models. Advances in Neural Information Processing Systems , 36:51234–51252, 2023. Peng Wang, Ningyu Zhang, Bozhong Tian, Zekun Xi, Yunzhi Yao, Ziwen Xu, Mengru Wang, Shengyu Mao, Xiaohan Wang, Siyuan Cheng, Kangwei Liu, Yuansheng Ni, Guozhou Zheng, and Huajun Chen. EasyEdit: An easy-to-use knowledge editing framework for large language models. In Yixin Cao, Yang Feng, and Deyi Xiong, editors, Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 3: System Demonstrations) ,pages 82–93, Bangkok, Thailand, August 2024a. Association for Computational Linguistics. doi: 10.18653/v1/2024.acl-demos.9. Song Wang, Yaochen Zhu, Haochen Liu, Zaiyi Zheng, Chen Chen, and Jundong Li. Knowledge editing for large language models: A survey. ACM Computing Surveys , 57(3):1–37, 2024b. Jinming Xing, Dongwen Luo, Chang Xue, and Ruilin Xing. Comparative analysis of pooling mechanisms in llms: A sentiment analysis perspective. arXiv preprint arXiv:2411.14654 , 2024. Yu Yuan, Lili Zhao, Kai Zhang, Guangting Zheng, and Qi Liu. Do llms overcome shortcut learning? an evaluation of shortcut challenges in large language models. In Yaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen, editors, Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing, EMNLP 2024, Miami, FL, USA, November 12-16, 2024 , pages 12188–12200. Association for Computational Linguistics, 2024. doi: 10.18653/V1/2024.EMNLP-MAIN.679. URL https://doi.org/10.18653/v1/2024.emnlp-main.679 .Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin Zhang, Huan Lin, Baosong Yang, Pengjun Xie, An Yang, Dayiheng Liu, Junyang Lin, Fei Huang, and Jingren Zhou. Qwen3 embedding: Advanc-ing text embedding and reranking through foundation models. arXiv preprint arXiv:2506.05176 ,2025. Xinping Zhao, Xinshuo Hu, Zifei Shan, Shouzheng Huang, Yao Zhou, Xin Zhang, Zetian Sun, Zhenyu Liu, Dongfang Li, Xinyuan Wei, Youcheng Pan, Yang Xiang, Meishan Zhang, Haofen Wang, Jun Yu, Baotian Hu, and Min Zhang. Kalm-embedding-v2: Superior training techniques and data inspire a versatile embedding model, 2025. URL https://arxiv.org/abs/2506.20923 .Zheng Zhao, Yftah Ziser, and Shay B Cohen. Layer by layer: Uncovering where multi-task learning happens in instruction-tuned large language models. In Yaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen, editors, Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , Miami, Florida, USA, November 2024. Association for Computational Linguistics. Xiang Zhou and Mohit Bansal. Towards robustifying nli models against lexical dataset biases. In 
+
+Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pages 8759–8771, 2020. 
+
+A Limitations 
+
+Our internal analysis probes representations only at transformer block outputs, so we do not distin-guish contributions from finer-grained components (e.g., attention vs. MLP pathways) or alternative hook points. Finally, the probing results are diagnostic: they indicate what information is recoverable from representations, but do not by themselves establish a causal mechanism. 14 B Impact Statement 
+
+This work characterizes lexical influence in representation spaces, showing that surface-form overlap can distort embedding similarity and miscalibrate similarity-based evaluation under lexical confounds. It also introduces diagnostics that quantify when and where semantic structure degrades. We expect the primary impact to be positive: improving evaluation rigor and informing more robust use of embeddings in retrieval, ranking, and monitoring pipelines. While the findings could in principle be used to stress similarity-based systems via lexically similar distractors, such misuse is likely limited in practice because it generally requires model and pipeline-specific knowledge and sustained control over inputs; more often, the results will help identify and mitigate unintended brittleness. 
+
+C LLM Usage 
+
+LLMs were used only to improve grammar, wording, and prose clarity. All technical content, experimental design, analysis, and conclusions were developed and verified by the authors. 
+
+D Datasets 
+
+For all experiments in the paper, we prioritize large evaluation sets and aggregate layer-wise trends over repeated split-based reruns, given the breadth of the study across models, tasks, and layers. 
+
+D.1 Stress Tests and Model Editing 
+
+Table 3 shows representative examples from CounterFact and SugarCrepe++ (SCPP). Each instance specifies a factual association of the form (subject, relation, object) together with a set of prompts designed to elicit that fact. It includes (i) anchor prompts that directly query the target relation for the subject, (ii) paraphrase prompts that ask for the same fact using alternative surface forms to test generalization beyond a single template, and (iii) distractor prompts that query the same relation for semantically related subjects. For model editing, distractors are used to test specificity/locality (i.e., whether the edit remains localized). After an edit, a successful model should produce the new target object for the anchor/paraphrase prompts while leaving predictions on distractor prompts largely unchanged. SCPP provides image–caption triplets with two semantically equivalent but lexically different posi-tives and a hard negative that is lexically confusable yet semantically incorrect for the image. We utilize only the texts for our paper. It partitions negatives into five subsets based on the perturba-tion used to create the distractor: Swap Object exchanges two object nouns (or noun phrases) in the caption; Swap Attribute swaps attributes between objects (e.g., colors/sizes); Replace Object 
+
+substitutes an object noun with another; Replace Attribute substitutes an attribute term with another; and Replace Relation substitutes the relation predicate (e.g., action or spatial preposition), altering who-does-what-to-whom or the spatial configuration. 
+
+D.2 Stress Test Sample Details 
+
+For the adversarial stress tests, we use the full SCPP dataset, consisting of 4,752 samples, together with 5,000 samples from CounterFact. CounterFact exists in several variants, including the original version released with ROME [Meng et al., 2022], as well as later sampled or updated versions from EasyEdit [Wang et al., 2024a] and PENME [Rizwan et al., 2025]. The original dataset contains two paraphrase prompts per sample, whereas the EasyEdit version contains one paraphrase prompt and one locality/neighborhood prompt per sample. The generation prompts contained in the dataset are not exact paraphrases, but rather prompts that may lead to the edited answer. For example, for the edit prompt “Autonomous University of Madrid, which is located in,” one generation prompt is “The best restaurants around Autonomous University of Madrid include.” Since this is not an exact paraphrase, we cannot use these prompts. We therefore use the version released by PENME [Rizwan et al., 2025], which provides the two original paraphrases along with several paraphrases generated via LLM (3 minimum per sample). There are 10 locality/neighborhood prompts for each sample. For this dataset, we used n-grams to rank locality prompts by lexical similarity to the edit prompt to obtain a clear separation between five 15 Table 3: The table shows samples from CounterFact and SugarCrepe++ (SCPP) datasets. 
+
+Dataset Prompt/Anchor Paraphrase Distractor 
+
+CounterFact Justin Fleming was originally from Justin Fleming was native to Andrew Durante is originally from SCPP++ replace attribute People standing near a table with open pizza boxes Individuals are positioned close to a table with open pizza boxes. People standing near a table with closed pizza boxes. SCPP++ replace relation A motorcycle is parked inside of a building. The building contains the parked motorcycle. A motorcycle is parked outside of a building. SCPP++ swap attribute A person opens a fire hydrant and brown colored water is flowing out. Brown-colored water flows out of the fire hydrant opened by a per-son. A person opens a brown colored hydrant and water is flowing out. SCPP++ replace object Multiple time pieces displayed on the wall and on a flat surface. Several timepieces are exhibited on a surface which is flat, and on the wall. Multiple time pieces displayed on the ceiling and on a flat surface. SCPP++ swap object A child holds a spoon and looks at a cupcake. The child looks at a cupcake while holding a spoon. A child looks at a spoon and holds a cupcake. 0% 20% 40% 60% 80% 100%                               
+
+> Relative layer depth (% of model)
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 0.40
+> 0.45
+> Success Rate
+> SCPP: replace_att Average-token Embedding 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> Success Rate
+> SCPP: replace_obj Average-token Embedding 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 0.40
+> 0.45
+> Success Rate
+> SCPP: replace_rel Average-token Embedding 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> Success Rate
+> SCPP: swap_att Average-token Embedding 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> Success Rate
+> SCPP: swap_obj Average-token Embedding Gemma3 12B (Pre) Gemma3 12B (Inst) Llama3.2 3B (Pre) Llama3.2 3B (Inst) Qwen3 8B (Emb) KaLM Gemma3 12B (Emb)
+
+Figure 4: Results for SCPP average token embeddings lexically similar samples and five dissimilar ones. Using this ranking, we sampled 5,000 samples from the dataset. For the model editing experiments, we used this sampled dataset. For the stress tests, we restricted evaluation to the lexically similar locality prompts, resulting in 25 triplet evaluations per sample and 125 , 000 evaluations in total. 
+
+E Results for Lexical Influence Test on SCPP (subtasks) 
+
+Figure 4, 5 shows performance for the selected averaged and last token embeddings, respectively, for models referenced in § 2. 
+
+F Effect on Lexical Influence Test on Prompt Variation 
+
+To gauge the impact of baseline prompt variation on the instruction-tuned model, we evaluate the Gemma-3-12b-it on the CounterFact model under multiple instruction prompts. The list of prompts evaluated includes the following: (”query: ” (query), ”Represent this sentence for searching relevant passages: ” (Rept), ”Instruct: Represent this text for retrieval. Query: ” (Inst), (Paper) contains no instruction other than the base structure for the instruction models. The results are shown in Figure 6. The results indicate that the overall pattern is preserved across prompt variations. To measure the correlation between the resulting curves, we compute the pairwise average distance correlation (dCor). For mean-pooled embeddings, both the pattern and performance are nearly unchanged, with dCor = 0.993. For last-token embeddings, variation is larger in the second 16 0% 20% 40% 60% 80% 100%                               
+
+> Relative layer depth (% of model)
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> Success Rate
+> SCPP: replace_att Last-token Embedding 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Success Rate
+> SCPP: replace_obj Last-token Embedding 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> Success Rate
+> SCPP: replace_rel Last-token Embedding 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> Success Rate
+> SCPP: swap_att Last-token Embedding 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> 0.40
+> Success Rate
+> SCPP: swap_obj Last-token Embedding Gemma3 12B (Pre) Gemma3 12B (Inst) Llama3.2 3B (Pre) Llama3.2 3B (Inst) Qwen3 8B (Emb) KaLM Gemma3 12B (Emb)
+
+Figure 5: Results for SCPP last token embeddings 0% 20% 40% 60% 80% 100%      
+
+> Relative layer depth (% of model)
+> 0.55
+> 0.60
+> 0.65
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> 0.90
+> Success Rate
+> Counterfact (Average Token Embedding)
+> Inst
+> Rept
+> Query
+> Paper 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> Success Rate
+> Counterfact (Last Token Embedding)
+> Inst
+> Rept
+> Query
+> Paper
+
+Figure 6: Results of prompt variations on the lexical influence test using the Gemma-12B-IT model on the CounterFact dataset. half of the network, where the model moves closer to its generation objective, but the overall trend remains the same; the dCor is 0.78 in this case. 
+
+G Lexical and Semantic Probes 
+
+G.1 Lexical probe Data We train the probe on raw WikiText (WikiText-103-raw). We tokenize the corpus with the same tokenizer as the base model, discard empty/whitespace-only lines, and concatenate text segments with an end-of-sequence boundary token to avoid creating spurious cross-document contexts. From this token stream, we construct fixed-length sequences of L = 50 tokens (each sequence is used both as input and as next-token supervision with a standard causal language-modeling shift). To mitigate degenerate solutions that rely disproportionately on high-frequency function words (e.g., stop words) rather than meaningful contextual cues, we promote diversity in the training signal by sampling sequences from a shuffled stream of documents (and, in the streaming setting, shuffling with a buffer) before chunking into length-L windows. We additionally cap the number of extracted sequences per split (typically 3,000 ) to control compute while maintaining broad topical coverage. Validation and test data are preprocessed identically but are never used for sampling or shuffling decisions. 
+
+Training and Hyperparameters 
+
+17 We train one probe independently for each selected layer while keeping the backbone language model frozen. For a given layer l, the probe applies a learned affine transformation to the layer’s hidden states, 
+
+zl,t = WlHMl (x)t + bl,
+
+where Wl is initialized to the identity and bl is initialized to zero. The transformed features are then 
+
+ℓ2-normalized and scored against a row-normalized, frozen copy of the model’s input embedding matrix . Thus, the probe acts as a cosine-similarity classifier over the input vocabulary. We additionally learn a bounded per-layer logit scale to keep optimization stable. We train the probe by minimizing the token-level cross-entropy loss L(l)CE between the probe’s scores and the ground-truth token IDs, ignoring padded positions. For causal models, we use the EOS token as the pad token. We also apply a weak ℓ2 penalty that encourages Wl to remain close to the identity. This regularizer primarily stabilizes training and provides a mild preference for identity-like mappings, discouraging large remappings that can confound probe-based interpretation [Hewitt and Liang, 2019]. Consequently, probe accuracy reflects the linear accessibility of token identity in a space aligned with the model’s input embedding geometry, which we use as an operational reference for surface form. The resulting objective at layer l is 
+
+Ll = LCE ,l + λ∥Wl − I∥2 
+
+> F
+
+, (1) where λ > 0 is the identity-regularization coefficient. We optimize the probe parameters with AdamW [Loshchilov and Hutter, 2017], using learning rate 10 −3, weight decay 10 −4, identity regularization λ = 10 −6, and gradient-norm clipping to stabilize optimization. 
+
+H Semantic Probe 
+
+Following the findings in Figure 1, we use the average token (mean-pooled) for pretrained and instruction-tuned models and the last-token representation for embedding models. We evaluate on a suite of English tasks from the Massive Text Embedding Benchmark (MTEB) and cache each task locally to ensure deterministic reruns. We perform subsampling for the few 
+
+massive cases to keep runtime bounded. For MedRxivClusteringS2S.v2 (37,500 test instances), we uniformly sample 10,000 test points without replacement using a fixed seed and cache the resulting subset. For extremely large reranking data such as MindSmallReranking , we cap the cached data to 10,000 queries and 200,000 corpus documents; we then filter relevant_docs and top_ranked 
+
+to remove any entries that reference dropped query or document IDs, ensuring internal consistency. The datasets used and their categorization is provided in Table 4. 
+
+H.1 Results MTEB 
+
+Figure 8 shows the results for STS, Pairwise Classification, and Clustering. Pairwise classification and sts follow the same geometric pattern discussed in the main text, while clustering diverges from the pattern. We hypothesize that this issue is related to the data and how evaluation is performed for this task; we leave this as future work. 
+
+H.2 Word Sense Disambiguation 
+
+To validate the mid-depth degradation on token-level semantic tasks, we evaluate word sense disam-biguation (WSD) on the SemCor corpus. We use token-level sense labels and restrict the prediction space to the 1,000 most frequent senses in the training set. For each layer, we train a linear probe and evaluate its performance. Figure 7 shows a similar geometric pattern: performance degrades at intermediate depths and partially recovers in the latter half of the network. However, the later layers do not outperform the earlier ones. This is expected, as token representations in higher layers tend to become increasingly aligned with sequence-level semantics rather than preserving fine-grained token-specific information. 18 0% 20% 40% 60% 80% 100% 
+
+Relative layer depth (% of model) 
+
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> Test Accuracy
+
+Word Sense Disambiguation 
+
+> Gemma3 12B (Pre)
+> Gemma3 12B (Inst)
+
+Figure 7: Results for WSD on Gemma-12B-IT and Gemma-12B-PT model. Table 4: MTEB task categories and datasets used. 
+
+Category Datasets 
+
+Classification Banking77Classification; ToxicConversationsClassification; MTOPDomain-Classification Pair Classification ArguAna; SprintDuplicateQuestions; TwitterSemEval2015 Reranking MindSmallReranking; AskUbuntuDupQuestions Retrieval HotpotQAHardNegatives; TRECCOVID; SCIDOCS Semantic Textual Similarity (STS) STS22.v2; STSBenchmark; SICK-R; BIOSSES 0% 20% 40% 60% 80% 100%                
+
+> Relative layer depth (% of model)
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> main score
+> STS 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> main score
+> PairClassification 0% 20% 40% 60% 80% 100%
+> Relative layer depth (% of model)
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> main score
+> Clustering Gemma3 12B (Pre) Gemma3 12B (Inst) Llama3.2 3B (Pre) Llama3.2 3B (Inst) Qwen3 8B (Emb) KaLM Gemma3 12B (Emb)
+
+Figure 8: Performance of the models on MTEB tasks. sts (a), pairwise classification (b), and clustering (c). 
+
+I Input/Prompt Entropy 
+
+Extracted from [Skean et al., 2025]. For an input (prompt) p with Tp tokens, let Zℓ(p) ∈ RTp×d be the matrix of layer-ℓ token embeddings (rows correspond to token positions). Define the Gram matrix 
+
+Kℓ(p) = Zℓ(p) Zℓ(p)⊤, ˜Kℓ(p) = Kℓ(p)tr( Kℓ(p)) .
+
+19 Let {μi}Tp 
+
+> i=1
+
+be the eigenvalues of ˜Kℓ(p) (so P 
+
+> i
+
+μi = 1 ). The input (prompt) entropy is the matrix-based Rényi entropy 
+
+H(ℓ)in (p) = 11 − α log 
+
+
+
+> Tp
+
+X
+
+> i=1
+
+μαi
+
+ , α > 0, α ̸ = 1 ,
+
+with the α → 1 limit (von Neumann/Shannon) 
+
+H(ℓ)in (p) = −
+
+> Tp
+
+X
+
+> i=1
+
+μi log μi.
+
+J Summarization 
+
+J.1 Details of Metrics BERTScore. BERTScore leverages contextual embeddings from a pre-trained Transformer (e.g., BERT) to compute semantic similarity between a candidate summary and a reference summary. Unlike n-gram metrics such as ROUGE, it captures synonymy and paraphrasing by computing cosine similarity between contextual token embeddings with greedy matching. Given a reference summary x = ⟨x1, . . . , x Tx ⟩ and a candidate summary ˆx = ⟨ˆx1, . . . , ˆxTˆx ⟩, let 
+
+vi ∈ Rd and ˆvj ∈ Rd denote their contextual token embeddings. Define the cosine similarity 
+
+sij = v⊤ 
+
+> i
+
+ˆvj
+
+∥vi∥2 ∥ˆvj ∥2
+
+.
+
+Then the recall ( RBERT ), precision ( PBERT ), and F1 ( FBERT ) are 
+
+RBERT = 1
+
+TxTxX
+
+> i=1
+
+max 
+
+> 1≤j≤Tˆx
+
+sij , (2) 
+
+PBERT = 1
+
+TˆxTˆxX
+
+> j=1
+
+max 
+
+> 1≤i≤Tx
+
+sij , (3) 
+
+FBERT = 2 · PBERT RBERT 
+
+PBERT + RBERT 
+
+. (4) We report the F1 score ( FBERT ). We follow the official BERTScore configuration and use the default DeBERTa layer (40), which is tuned for WMT16 human-correlation. 
+
+BARTScore. BARTScore treats the evaluation of generated text as a sequence-to-sequence generation task. It utilizes the log-probability of the target sequence (the candidate summary) conditioned on a source sequence (either the reference or the original document) using a pre-trained BART model. This allows the metric to capture aspects like faithfulness and informativeness more effectively than surface-level matching. The score is defined as the average log-likelihood of the target sequence y given the source sequence 
+
+x:BARTScore = 1
+
+m
+
+> m
+
+X
+
+> t=1
+
+log P (yt|y<t , x, θ ) (5) where θ represents the parameters of the pre-trained BART model, and m is the length of the target sequence. 20 J.2 Data and Models Data. We use the standard extreme summarization[Narayan et al., 2018] benchmark. We utilize randomly sampled 500 samples from the dataset. To probe lexical sensitivity, we augment each example with a highly lexicalized non-summary distractor generated by an LLM(gpt-5.2-mini, Temperature = 0.7). The prompt used for the generation of the distractor is as follows: 
+
+prompt = f " " " You are generating adversarial evaluation data to test lexical bias in summarization systems . Source Document : { document } Target Length : { target_length } characters (+/ -5%) TASK : Generate a text that has HIGH lexical overlap with the source document but NO semantic overlap with it . CRITICAL DEFINITION : " NO semantic overlap " means that the text must not convey the topic , purpose , claims , events , or conclusions of the source in any form . A reader should be unable to infer what the source document is about from your text . CONSTRAINTS ( hard requirements ) : 1. Lexical Overlap : - Reuse distinctive words , phrases , and named entities from the source . - Do not introduce new terminology . - Try to use all words from the source . 2. Semantic Orthogonality : - Do NOT describe , summarize , or restate any part of the source ’s meaning .- Do NOT preserve relations , causality , chronology , or argumentation . - The text must be about something else entirely , despite using the same words . 3. Length : - Approximately { target_length } characters . VALIDATION CHECK ( internal ) : If the output allows a reader to identify the subject or purpose of the source document , it fails . OUTPUT FORMAT : Return a JSON object with exactly one field : {{ " lexical_non_summary " : " < text > " }} 
+
+Listing 1: Prompt for Lexical Distractor Non-Summary Generation 
+
+Models. For BERTScore, DeBERTa-XLarge He et al. [2021] is used. For BARTScore, we utilize the 
+
+bart-large Lewis et al. [2019] model fine-tuned on the CNN/Daily Mail summarization dataset. 
+
+K Model Editing 
+
+K.1 Method and dataset. AlphaEdit (null-space constrained editing). AlphaEdit is a simple refinement that can be applied on top of a base locate–then–edit method (e.g., ROME/MEMIT). Suppose the base editor proposes an update ∆base to a weight matrix W to enforce the desired edit. AlphaEdit additionally builds a 21 preservation set of inputs whose behavior should remain unchanged, and extracts their corresponding key vectors {ki}mi=1 at the edited layer. Let K0 ∈ Rd×m be the matrix with columns ki. AlphaEdit then projects the base update onto the subspace orthogonal to span( K0):
+
+∆α = Π ⊥ ∆base , where Π⊥ projects onto span( K0)⊥.
+
+This guarantees 
+
+∆αK0 = 0 ,
+
+so the refined update leaves the model’s mapping on the preservation keys unchanged, while retaining the base editor’s effect on the target edit. 
+
+CounterFact dataset. CounterFact’s distractor prompts are already partially lexically aligned with the anchor/edit prompt. To more directly quantify the effect of model editing under controlled lexical overlap, we augment CounterFact with two additional prompt sets: ( i) lexically similar prompts, obtained by substituting the subject entity in the original anchor/edit template with distractor entities; and ( ii ) lexically dissimilar prompts, which preserve the distractor’s semantics while substantially rewriting its surface form. We generate the lexically dissimilar prompts using an LLM (gpt-5.2-mini) with the following prompt: 
+
+prompt = f " " " You are a language expert tasked with rewriting prompts . Input fields : - o riginal_locality_prompt : the prompt whose meaning must be preserved exactly - edit_prompt : a reference prompt whose wording you must avoid copying Task : Produce THREE rewritten variants of original_locality_prompt . STRICT meaning preservation ( each variant ) : 1) Ask for the exact same fact as original_locality_prompt : same entity name ( s ) + same attribute / relation . 2) Copy entity name ( s ) EXACTLY as in original_locality_prompt ( same spelling / casing ) . Do not replace entities with descriptions . 3) Do NOT add / remove qualifiers ( time , certainty , official / current , " capital " , " city of " , etc .) . No hints , no assumptions . Cloze formatting ( each variant ) : 4) Each prompt must be a PREFIX such that the correct answer should be the next text generated immediately after the final space . 5) End with exactly ONE trailing ASCII space and NO trailing punctuation ( no . , ? , ! , : , ; , ,) . 6) Do NOT end with the entity name ( s ) . 7) No interrogatives : do NOT use WH - words ( what / which / where / who / when / how ) . Use declarative stems only . 8) Validity check : appending the correct answer immediately after the final space must yield a complete grammatical result without adding any extra words . Anti - copy / maximize lexical difference from edit_prompt ( each variant ) : 9) Hard ban : Do NOT reuse any contiguous 2+ word sequence found in edit_prompt ( exception : entity tokens ) . 10) Content - word taboo : Avoid reusing ANY non - entity content word from edit_prompt ( verbs / nouns / adjectives / adverbs ) . - Allowed function - word set ( may repeat ) : { the , a , an , of , to , in , on , at , from , for , with , by , is , are , was , were , be , been , being , as } - If a relation word from original_locality_prompt also appears in edit_prompt , you should paraphrase it using a synonym NOT present in edit_prompt , while preserving meaning . 11) Target : minimize overlap of non - entity content words with edit_prompt to 0 whenever possible . MANDATORY structural diversity ( across the 3 variants ) : Generate exactly one from each frame : A ) ENTITY - SUBJECT frame : 
+
+22 " < ENTITY > < connector > "B ) POSSESSIVE / ownership frame : " < ENTITY > ’s < attribute phrase > < connector >" OR " < attribute phrase > of <ENTITY > < connector >" C ) ATTRIBUTE - SUBJECT frame : " The < attribute phrase > for < ENTITY > < connector >" Additional diversity constraints : 12) No shared opening 3 tokens across variants . 13) Use three different connector tails ( the last 1 to 4 words before the final space must differ across variants ) . 14) Across the three outputs , do not reuse the same key content words (besides the entity and unavoidable attribute noun ) . Prefer different synonym sets . Search - and - select requirement ( important ) : 15) For EACH frame ( A / B / C ) , internally draft at least 5 candidate rewrites , then choose the best one that : - satisfies all constraints , - has the fewest non - entity content words overlapping with edit_prompt , - and differs most from the other selected variants . Forbidden : - Do not include the literal strings " original_locality_prompt " or "edit_prompt ". - Output JSON only ; no extra text . Output JSON only ( exactly these keys , no extras ) : {" rewritten_prompts ":["... " ,"... " ,"... "]} """ 
+
+Listing 2: Data generation prompt for lexicalLy similar distractor/locality We perform editing on 2,000 sequential edit samples using the Llama-3-8B model, which is directly supported by the AlphaEdit codebase and evaluated with the default base settings. 
+
+K.2 Metrics 
+
+Let M0 be the base model and M1 the edited model. For an input x, let τx denote the answer position. Let pMx (v) = PM (v | x, T x) be the next-token distribution over the vocabulary V.
+
+Merged top-K support. For K ∈ { 20 , 50 , 100 }, define 
+
+SK (x) = Top − K pM0
+
+> x
+
+ ∪ Top − K pM1
+
+> x
+
+, ZMx (K) = X 
+
+> u∈SK(x)
+
+pMx (u),
+
+and the renormalized distributions on the merged support 
+
+˜pMx,K (v) = pMx (v)max {ZMx (K), ε stab } , v ∈ SK (x),
+
+with εstab = 10 −12 . All @K divergence metrics are computed on (˜ pM0 
+
+> x,K
+
+, ˜pM1 
+
+> x,K
+
+).
+
+Jensen–Shannon divergence (JSD@K). Let mx,K = 12
+
+ ˜pM0 
+
+> x,K
+
++ ˜ pM1
+
+> x,K
+
+. Then 
+
+JSD K (x) = 12 KL 
+
+
+
+˜pM0 
+
+> x,K
+
+∥ mx,K 
+
+
+
++ 12 KL 
+
+
+
+˜pM1 
+
+> x,K
+
+∥ mx,K 
+
+
+
+,
+
+where 
+
+KL( r∥s) = X 
+
+> v∈SK(x)
+
+r(v) log max {r(v), ε stab }
+
+max {s(v), ε stab } .
+
+Total variation distance (TV@K). 
+
+TV K (x) = 12
+
+X 
+
+> v∈SK(x)
+
+˜pM0 
+
+> x,K
+
+(v) − ˜pM1 
+
+> x,K
+
+(v) .
+
+23 Table 5: Distribution-shift metrics on lexically similar and dissimilar prompts (Top-K-100). 
+
+Metric LS LD 
+
+JSD 0.294 0.246 TV 0.568 0.502 Kendall τ 0.001 0.039 Edited-Target Presence 0.142 0.072 Top-1 Flip Rate (Top-K-independent) 0.566 0.493 
+
+Kendall’s τ (rank stability on SK (x)). Let rMx,K (v) be the rank of token v ∈ SK (x) when sorting 
+
+pMx (v) in descending order. Over unordered pairs {u, v } ⊂ SK (x), define 
+
+a = rM0 
+
+> x,K
+
+(u) − rM0 
+
+> x,K
+
+(v), b = rM1 
+
+> x,K
+
+(u) − rM1 
+
+> x,K
+
+(v).
+
+Pairs with a = 0 or b = 0 (ties in either ranking) are skipped. Let C and D be the number of remaining concordant and discordant pairs, where concordant means ab > 0 and discordant means 
+
+ab < 0. Then 
+
+τK (x) = 
+
+( C−DC+D , C + D > 0,
+
+0, C + D = 0 .
+
+Top-1 flip rate. 
+
+Flip( x) = 1
+
+
+
+arg max  
+
+> v∈V
+
+pM0 
+
+> x
+
+(v)̸ = arg max  
+
+> v∈V
+
+pM1 
+
+> x
+
+(v)
+
+
+
+.
+
+Edited-Target Presence@K (leakage onto locality prompts). Let T ⊂ V be the set of relation-specific edited target token ids, and let L be the set of locality/distractor inputs. For x ∈ L ,
+
+ETP K (x) = 1Top − K pM1
+
+> x
+
+ ∩ T̸ = ∅ , ET P K = 1
+
+|L| 
+
+X
+
+> x∈L
+
+ETP K (x).
+
+Results Results for top-K 100 are provided in Table 5. 
+
+L Compute Resources 
+
+All experiments are conducted on an NVIDIA H100 GPU with 96 GB of VRAM. Several experiments, including the semantic probing evaluations, require storing intermediate embeddings on disk; these runs used up to 512 GB of storage and 128 GB of system RAM. 24
