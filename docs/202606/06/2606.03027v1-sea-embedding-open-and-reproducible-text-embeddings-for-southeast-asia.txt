@@ -1,0 +1,298 @@
+Title: SEA-Embedding: Open and Reproducible Text Embeddings for Southeast Asia
+
+URL Source: https://arxiv.org/pdf/2606.03027v1
+
+Published Time: Wed, 03 Jun 2026 00:25:57 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+## SEA-Embedding: Open and Reproducible Text Embeddings for Southeast Asia 
+
+Peerat Limkonchotiwat 1, Raymond Ng 1, Sarana Nutanong 2, Jian Gang Ngui 1
+
+> 1
+
+AI Singapore 2School of Information Science and Technology, VISTEC 
+
+peerat@aisingapore.org 
+
+§ GitHub Hugging Face 
+
+Abstract 
+
+Text embeddings are fundamental to many downstream applications, making robustness important for real-world NLP. However, most recent state-of-the-art embedding models are not reproducible because they rely on closed or undisclosed training data, and they remain insufficiently robust for Southeast Asian lan-guages. We present SEA-Embedding, a fully open and reproducible text-embedding pipeline for Southeast Asian languages trained only on publicly available data, and use it to study three core factors of robust embedding design: data composition, training objective, and base en-coder initialization. SEA-Embedding achieves state-of-the-art results on SEA-BED while en-abling systematic and reproducible analysis of robust text embeddings for the region. 
+
+1 Introduction 
+
+Text embeddings aim to build a semantic space that preserves meaning across tasks and languages. For Southeast Asian (SEA) languages, linguistic diversity is high, and gains from high-resource settings may not transfer (Singh et al., 2025; Su-santo et al., 2025). Recent results from SEA-BED (Ponwitayarat et al., 2025) show that models that perform strongly on global benchmarks such as MMTEB (Enevoldsen et al., 2025) still lag in SEA evaluations, motivating a focused study of robust, reproducible embeddings for the region. Prior work improves multilingual text em-beddings by (i) scaling or diversifying training data (Wang et al., 2024b,c; Zhang et al., 2025; Hu et al., 2025; Akram et al., 2026), (ii) strengthen-ing contrastive/distillation objectives (Chen et al., 2024; Wang et al., 2024c; Hu et al., 2025; Zhao et al., 2026), and (iii) initializing from stronger pre-trained encoders (Wang et al., 2024a,c). Together, these map to three core questions: what the model learns from, how it learns, and where it starts. In this paper, we introduce SEA-Embedding: a transparent, reproducible text-embedding pipeline for Southeast Asian languages trained solely on public data (245M text pairs; 14M instruction texts). Table 1 contrasts prior high-performing mul-tilingual embedding models with our open pipeline, enabling systematic, controlled comparisons. This transparency matters in practice: open code ex-poses objectives and training details, open data sup-ports re-training and ablations, and a reproducible 
+
+environment makes comparisons and failure analy-sis reliable.                          
+
+> Model Open Code Open Data Reprod. Env. SEA-BED Lang-Avg
+> Qwen3-Embedding No No No 0.607 BGE-M3 Partial Full Full 0.765
+> mE5-Large-Instruction No Partial Fully 0.789 Jina-Embedding-v5 No No No 0.694 harrier-oss-v1 No No No 0.781 SEA-Embedding (Ours) Full Full Full 0.800
+
+Table 1: Comparison with prior multilingual text em-beddings (all models are 0.6B parameters). SEA-Embedding achieves the best SEA-BED language-average score while also providing open code, open data, and a fully reproducible experimental environment. 
+
+Using this pipeline, we study robustness as per-formance consistency across languages and task types on benchmarks. We analyze three design factors: data composition, objective design, and base-encoder initialization under different pretrain-ing conditions. Our model achieves state-of-the-art results on the held-out SEA-BED benchmark with fully reproducible experiments. Our contributions are (i) Reproducible frame-work : SEA-Embedding is a public-data-only pipeline with released artifacts for re-training and controlled comparisons. (ii) Empirical insights :We isolate the effects of data composition, ob-jective design, and base-encoder initialization on SEA robustness. (iii) Robust performance : We achieve state-of-the-art SEA-BED results and dis-till a reusable design recipe. 
+
+> arXiv:2606.03027v1 [cs.CL] 2 Jun 2026
+
+2 Proposed SEA-Embedding Pipeline 
+
+Figure 1 presents our training pipeline for SEA-Embedding. This structure serves as a conceptual framework for systematically examining three crit-ical components of robust text embeddings: RQ1: 
+
+Data Composition, RQ2: Objective Design, and 
+
+RQ3: Base Model. 
+
+Figure 1: The overview of SEA-Embedding 
+
+2.1 RQ1: Data Composition 
+
+We propose that robust SEA text embeddings re-quire training data with both broad regional cover-age and task-oriented supervision. Broad coverage helps a shared semantic space capture linguistic variation across Southeast Asian languages, while task-oriented supervision supports diverse down-stream applications. We therefore use two data categories: general datasets (245M samples) for SEA language coverage and instruction datasets 
+
+(14M samples) for task awareness and generaliza-tion. For general datasets , we use SEA-language resources such as FineTranslations (Penedo et al., 2026), CCMatrix (Schwenk et al., 2021), etc. For 
+
+instruction datasets , we use multilingual down-stream datasets such as MIRACL (Zhang et al., 2023), SEA-Instruct, etc., prepending task-specific instructions to improve task awareness and gener-alization. Both data types are formatted as triplets (anchor, positive, negative) or text pairs (anchor, positive), following the original dataset format. 
+
+2.2 RQ2: Objective Design 
+
+We propose that robust SEA text embeddings re-quire both local discrimination and global consis-tency. Accordingly, we use a two-stage objective: Symmetric Contrastive Learning (SCL) and Simi-larity Distribution Matching (SDM). 
+
+2.2.1 Symmetric Contrastive Learning (SCL) 
+
+SCL learns text embeddings that are robust across languages and downstream tasks. Unlike prior works that rely on vanilla contrastive learn-ing (Chen et al., 2024; Wang et al., 2024c; Hu et al., 2025; Zhao et al., 2026), we adopt symmetric In-foNCE (Günther et al., 2024) with focal reweight-ing. We define hs(·) as the encoder that maps an input text to a d-dimensional embedding using mean pooling over the last layer. For each training sample, we assume an anchor ( a), a positive ( p), and optionally a negative ( n). Given a batch of N
+
+triplets {(ai, p i, n i)}Ni=1 , we obtain ℓ2-normalized embeddings zai , zpi , and, when available, zni from 
+
+hs(·) : X → Rd. Lscl is defined as follows:                    
+
+> Lscl =−12N
+> NX
+> i
+> wi
+> "
+> log es(zai,z pi)
+> PNjes(zai,z pj)+es(zai,z ni)
+> + log es(zpi,z ai)
+> PNjes(zpi,z aj)
+> #
+> ,
+> (1)
+
+where s(u, v) = u⊤v/τ , τ is a temperature param-eter, and wi = (1 − ji)γ is the focal weight (Zhao et al., 2026), with ji denoting the softmax proba-bility assigned to the anchor-positive pair. When 
+
+γ = 0 , the loss reduces to uniform weighting, while a larger γ places more emphasis on harder exam-ples. We train first on general texts, then continue on instruction texts with the same objective. With-out explicit negatives, the loss reduces to the stan-dard in-batch symmetric contrastive objective. 
+
+2.2.2 Similarity Distribution Matching (SDM) 
+
+We further improve SEA-Embedding with Simi-larity Distribution Matching (SDM). Unlike prior text-embedding distillations (Akram et al., 2026; Zhao et al., 2026), SDM explicitly matches student and teacher similarity distributions over a large memory queue. Let hs(·) and ht(·) denote the stu-dent and teacher encoders. 1 In addition, we use the model from Section 2.2.1 as the student model and Wang et al. (2024c) as the teacher model. We maintain a first-in-first-out memory queue P of size 65,536. At each training step, we update P
+
+by encoding positive ( p) and negative ( n) samples with ht(·), adding them to the queue, and removing the oldest entries. We then compute the similarity distribution between an anchor ( a) and P as:            
+
+> [D(h(a),P, τ )] k=es(h(a),pk)/τ
+> P
+> pk∈P es(h(a),pk)/τ (2)
+
+where pk ∈ P denotes the k-th queue entry. We define the student and teacher similarity dis-tributions as Ds = D(hs(a), P, τ s) and Dt =                                                                                                                                    
+
+> 1To match the teacher embedding size, we add a linear projection to the student output. Model Ind Tha Vie Fil Mya Tam Khm Zsm Lao Tet Avg.
+> ≤300M parameters
+> embeddinggemma-300m 0.802 0.806 0.764 0.704 0.571 0.761 0.641 0.792 0.530 0.673 0.704 harrier-oss-v1-270m 0.779 0.765 0.745 0.774 0.724 0.745 0.739 0.830 0.753 0. 679 0.753 SEA-Embedding-MondernBERT-300M (Ours) 0.787 0.789 0.761 0.774 0.739 0.774 0.773 0.838 0.802 0.563 0.760 †
+> >300M parameters
+> multilingual-e5-large-instruct 0.795 0.811 0.780 0.784 0.792 0.771 0.781 0.846 0.839 0.694 0.789 Qwen3-Embedding-0.6B 0.756 0.759 0.751 0.491 0.631 0.610 0.441 0.695 0.298 0.634 0.607 Qwen3-Embedding-8B 0.797 0.815 0.790 0.749 0.781 0.760 0.755 0.824 0.782 0.674 0.773 bge-m3 (Dense) 0.781 0.776 0.759 0.731 0.758 0.775 0.762 0.825 0.823 0.655 0.765 Cohere-embed-multilingual-v3.0 0.797 0.810 0.789 0.761 0.790 0.789 0.770 0.824 0.833 0.668 0.783 jina-embeddings-v5 0.764 0.779 0.761 0.619 0.726 0.742 0.615 0.784 0.474 0.674 0.694 harrier-oss-v1-0.6b 0.809 0.794 0.783 0.795 0.742 0.777 0.759 0.859 0.769 0.722 0.781 SEA-Embedding-E5-Large-600M (Ours) 0.808 0.813 0.795 0.808 0.785 0.806 0.797 0.853 0.841 0.697 0.800 †
+
+Table 2: Performance of all models on SEA-BED using language-average scores. † indicates significant improvement over the previous SOTA within each group using McNemar’s test. Task-level results are reported in Appendix C. 
+
+D(ht(a), P, τ t), with τ s < τ t so that the student distribution is sharper, making it more challeng-ing for the student model to match the distribu-tion. We then let the student’s distribution mimic the teacher’s distribution using KL Divergence: 
+
+Lsdm = KL( Dt∥Ds).
+
+2.2.3 Comparison with Prior Works 
+
+Prior text embeddings (Wang et al., 2024c; Hu et al., 2025; Zhao et al., 2026) typically use standard con-trastive learning with anchor-positive optimization and one-way in-batch negatives. In contrast, Lscl 
+
+uses symmetric querying and focal reweighting to better exploit batch samples and emphasize hard pairs. Lsdm further matches soft similarity distri-butions over a 65k-sample memory queue P, en-couraging a more globally consistent embedding space than batch-level contrastive learning alone. However, Lsdm requires a strong teacher encoder, as unreliable teacher similarities can destabilize training. Thus, we use Lsdm only for knowledge distillation, rather than replacing Lscl .
+
+2.3 RQ3: Base Models 
+
+For RQ3, we test whether our pipeline transfers across starting encoders. We instantiate it on 300M and 600M models, namely SEA-LION-ModernBERT-300M and E5-Large (Wang et al., 2024a), to study efficiency–performance trade-offs. Section 3 further evaluates XLMR-Large, mmBERT-base, and SEA-LION-ModernBERT-base to test whether gains generalize beyond spe-cific initializations. Dataset details, task-specific instructions, data leakage, and hyperparameters are provided in Appendices A and B. 
+
+3 Experimental Setup and Results 
+
+Benchmarks. We evaluate robustness on SEA-BED (Ponwitayarat et al., 2025), an out-of-domain benchmark for SEA-Embedding covering 10 South-east Asian languages, 2 9 task types, and 169 datasets. We report average language- and task-level scores. English (MTEB) and Chinese (CMTEB) results are given in Appendix D. 
+
+Competitive Methods. We compare SEA-Embedding against the top models on the SEA-BED leaderboard: 3 multilingual-e5-large-instruct (Wang et al., 2024c), Qwen3-Embedding-0.6 and -8B (Zhang et al., 2025), Cohere embed-multilingual-v3.0, BGE-M3 (Dense) (Chen et al., 2024), embeddinggemma-300m (Schechter Vera et al., 2025), harrier-oss-v1-270M and 0.6B, and jina-embeddings-v5 (Akram et al., 2026). 
+
+3.1 Main Results 
+
+Table 2 reports results for small (≤300M) and large ( >300M) models. For small mod-els, SEA-Embedding-ModernBERT-300M outper-forms harrier-oss-v1-270M on average (0.760 vs. 0.753), achieving the best results on 8 of 10 SEA languages, with especially large gains on lower-resource languages such as Lao and Khmer. More-over, compared to embeddinggemma-300m, which performs well on high-resource SEA languages such as Indonesian, Thai, and Vietnamese, our model shows stronger performance on resource-constrained SEA languages, including Myanmar, Khmer, and Lao. For large models, SEA-Embedding-E5-Large-600M achieves the best overall result with an aver-age score of 0.800, improving over multilingual-e5-large-instruct (0.789) and outperforming the much larger Qwen3-Embedding-8B. It also outperforms multilingual-e5-large-instruct on 9 of 10 languages. 
+
+> 2
+
+Indonesian: Ind, Thai: Tha, Vietnamese: Vie, Filipino: Fil, Burmese: Mya, Tamil: Tam, Khmer: Khm, Malay: Zsm, Lao: Lao, Tetum: Tet. 
+
+> 3
+
+We omit the leaderboard link to preserve anonymity. Compared with the second-best model, harrier-oss-v1-0.6b, our model achieves higher average per-formance, with stronger gains on lower-resource languages, consistent with the small-model group. 
+
+3.2 Ablation Study 
+
+We conduct an ablation study to answer our re-search questions: RQ1: Data Composition, RQ2: 
+
+Objective Design, and RQ3: Base Model. These three factors capture the main levers that practi-tioners can realistically control when developing embedding models: data determines language cov-erage and task diversity, the objective determines what geometry the model is trained to preserve, and the base encoder determines the starting mul-tilingual capacity and the achievable performance, efficiency trade-off.                                      
+
+> Setup SEA-BED Lang-Avg Task-Avg
+> SEA-Embedding-E5-Large [Before: 44.29, 37.6 ]0.800 0.754
+> Dataset choices
+> Use only general datasets 0.714 0.688 Use only instruction datasets 0.733 0.701 Use only SEA instruction datasets 0.755 0.721
+> Lscl
+> w/o focal weight 0.792 0.750 Change to vanilla CL (Gao et al., 2021) 0.750 0.699
+> Lsdm
+> w/o Lsdm 0.776 0.728 Change to L2-KD (Reimers and Gurevych, 2020) 0.720 0.672 Change to CKD (Zhao et al., 2026) 0.775 0.724 Change the teacher to Qwen3-Embedding-8B 0.778 0.734
+> τt<τs0.781 0.745
+> Change base models to other models (600M parameters)
+> Change to XLMR-Large [Before: 0.425, 0.343] 0.791 0.748 Change to mmBERT-base [Before: 0.457, 0.386] 0.751 0.716 Change to SL-MB-base [Before: 0.433, 0.377 ]0.784 0.745
+
+Table 3: The ablation study to answer our three RQs. 
+
+[Before] indicates pre-finetuning performance. 
+
+3.2.1 Dataset Analysis 
+
+Table 3 shows that using only general or instruction datasets substantially reduces performance; both are needed for robust text embeddings. Moreover, removing non-SEA-language samples from the in-struction datasets causes a large drop from 0.800 to 0.755. This suggests that non-SEA instruction data provides complementary task and knowledge diversity; for example, MIRACL samples in Thai and Arabic capture different contexts, and training on both improves robustness in downstream tasks. Overall, robust SEA text embeddings benefit from both SEA-specific data and broader multilingual instruction data. 
+
+3.2.2 Training Objective Analysis 
+
+The training objective is critical to the performance, especially Lsdm . Removing Lsdm reduces scores from 0.800 to 0.776 in Lang-Avg and from 0.754 to 0.728 in Task-Avg. Replacing Lsdm with alter-native KD losses also consistently degrades perfor-mance, including L2-KD (0.720) and CKD (0.775). Replacing either Lscl or Lsdm with standard alterna-tives consistently degrades performance. The tem-perature design also matters: when using τ t < τ s
+
+instead of τ s < τ t, performance drops to 0.781, suggesting that a sharper student distribution is im-portant for learning a stronger embedding space. 
+
+3.2.3 Model Architecture Analysis 
+
+We further examine whether our pipeline remains effective across base models with different pretrain-ing conditions. Across all tested bases, including MLM- and contrastive-pretrained initializations, we observe substantial improvements over their starting models, with gains of +0.294 to +0.366 on Lang-Avg and +0.330 to +0.405 on Task-Avg. E5-Large achieves the best final performance, while XLMR-Large remains competitive, showing that the pipeline is not tied to a single pretraining set-ting. These results suggest that strong SEA text embeddings require not only multilingual coverage but also a training pipeline that transfers across diverse base-model initializations. 
+
+3.3 Synthesis: Reproducible Recipe 
+
+Our ablations tell a simple story (Table 3): robust SEA embeddings require both region-focused cov-erage and multilingual instruction supervision, and the largest gains come from the training objec-tive , especially Lsdm and its temperature. While the base encoder sets the ceiling, the same recipe consistently improves diverse initializations. 
+
+4 Conclusion 
+
+We present SEA-Embedding, an open, repro-ducible text-embedding framework for Southeast Asian languages trained only on public data. Con-trolled studies of data composition, training objec-tive, and base-encoder initialization yield a simple recipe: pair region-focused coverage with multilin-gual instruction supervision, prioritize the objective (especially Lsdm and temperature), and reuse the same procedure across pretrained bases, achieving state-of-the-art SEA-BED results. Although we focus on SEA, the pipeline is region-agnostic and can be adapted to other underserved regions. Limitation 
+
+Similar to previous text embedding works, our study does not exhaustively cover all languages in SEA and training settings relevant to a specific do-main task, e.g., adding financial datasets for finan-cial text embedding. Although we evaluate SEA-Embedding on a large-scale benchmark spanning multiple SEA languages and tasks, there remain many underexplored settings, such as dialectal vari-ation, domain-specific retrieval, and other region-specific downstream applications. As this paper focuses on building a robust and reproducible SEA text embedding model, we leave broader evaluation challenges for future work on benchmarking and evaluation in Southeast Asian languages. More-over, our analysis focuses on the effects of training data, objectives, and backbone models, but does not fully examine other factors such as data scaling laws, annotation quality, or inference-time trade-offs. These remain important directions for future work. 
+
+References 
+
+Mohammad Kalim Akram, Saba Sturua, Nastia Havriushenko, Quentin Herreros, Michael Günther, Maximilian Werk, and Han Xiao. 2026. jina-embeddings-v5-text: Task-targeted embedding distil-lation. Preprint , arXiv:2602.15547. Jianlyu Chen, Shitao Xiao, Peitian Zhang, Kun Luo, Defu Lian, and Zheng Liu. 2024. M3-embedding: Multi-linguality, multi-functionality, multi-granularity text embeddings through self-knowledge distillation. In Findings of the Asso-ciation for Computational Linguistics: ACL 2024 ,pages 2318–2335, Bangkok, Thailand. Association for Computational Linguistics. Kenneth Enevoldsen, Isaac Chung, Imene Kerboua, Márton Kardos, Ashwin Mathur, David Stap, Jay Gala, Wissam Siblini, Dominik Krzemi´ nski, Genta Indra Winata, Saba Sturua, Saiteja Utpala, Mathieu Ciancone, Marion Schaeffer, Diganta Misra, Shreeya Dhakal, Jonathan Rystrøm, Roman Solo-matin, Ömer Veysel Ça˘ gatan, and 63 others. 2025. MMTEB: Massive multilingual text embedding benchmark. In The Thirteenth International Con-ference on Learning Representations .Tianyu Gao, Xingcheng Yao, and Danqi Chen. 2021. SimCSE: Simple contrastive learning of sentence em-beddings. In Proceedings of the 2021 Conference on Empirical Methods in Natural Language Process-ing , pages 6894–6910, Online and Punta Cana, Do-minican Republic. Association for Computational Linguistics. Michael Günther, Jackmin Ong, Isabelle Mohr, Alaed-dine Abdessalem, Tanguy Abel, Mohammad Kalim Akram, Susana Guzman, Georgios Mastrapas, Saba Sturua, Bo Wang, Maximilian Werk, Nan Wang, and Han Xiao. 2024. Jina embeddings 2: 8192-token general-purpose text embeddings for long documents. 
+
+Preprint , arXiv:2310.19923. Xinshuo Hu, Zifei Shan, Xinping Zhao, Zetian Sun, Zhenyu Liu, Dongfang Li, Shaolin Ye, Xinyuan Wei, Qian Chen, Baotian Hu, Haofen Wang, Jun Yu, and Min Zhang. 2025. Kalm-embedding: Supe-rior training data brings a stronger embedding model. 
+
+Preprint , arXiv:2501.01028. Guilherme Penedo, Hynek Kydlíˇ cek, Amir Hossein Kargaran, and Leandro von Werra. 2026. Fine-translations. https://huggingface.co/datasets/ HuggingFaceFW/finetranslations .Wuttikorn Ponwitayarat, Raymond Ng, Jann Railey Montalan, Thura Aung, Jian Gang Ngui, Yosephine Susanto, William Tjhi, Panuthep Tasawong, Erik Cambria, Ekapol Chuangsuwanich, Sarana Nu-tanong, and Peerat Limkonchotiwat. 2025. Sea-bed: Southeast asia embedding benchmark. Preprint ,arXiv:2508.12243. Nils Reimers and Iryna Gurevych. 2020. Making monolingual sentence embeddings multilingual us-ing knowledge distillation. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP) , pages 4512–4525, Online. Association for Computational Linguistics. Henrique* Schechter Vera, Sahil* Dua, Biao Zhang, Daniel Salz, Ryan Mullins, Sindhu Raghuram Pa-nyam, Sara Smoot, Iftekhar Naim, Joe Zou, Feiyang Chen, Daniel Cer, Alice Lisak, Min Choi, Lucas Gonzalez, Omar Sanseviero, Glenn Cameron, Ian Ballantyne, Kat Black, Kaifeng Chen, and 69 others. 2025. Embeddinggemma: Powerful and lightweight text representations. Holger Schwenk, Guillaume Wenzek, Sergey Edunov, Edouard Grave, Armand Joulin, and Angela Fan. 2021. CCMatrix: Mining billions of high-quality parallel sentences on the web. In Proceedings of the 59th Annual Meeting of the Association for Compu-tational Linguistics and the 11th International Joint Conference on Natural Language Processing (Vol-ume 1: Long Papers) , pages 6490–6500, Online. As-sociation for Computational Linguistics. Shivalika Singh, Angelika Romanou, Clémentine Four-rier, David Ifeoluwa Adelani, Jian Gang Ngui, Daniel Vila-Suero, Peerat Limkonchotiwat, Kelly Marchi-sio, Wei Qi Leong, Yosephine Susanto, Raymond Ng, Shayne Longpre, Sebastian Ruder, Wei-Yin Ko, Antoine Bosselut, Alice Oh, Andre Martins, Leshem Choshen, Daphne Ippolito, and 4 others. 2025. Global MMLU: Understanding and addressing cultural and linguistic biases in multilingual evalua-tion. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Vol-ume 1: Long Papers) , pages 18761–18799, Vienna, Austria. Association for Computational Linguistics. Yosephine Susanto, Adithya Venkatadri Hulagadri, Jann Railey Montalan, Jian Gang Ngui, Xian-bin Yong, Wei Qi Leong, Hamsawardhini Ren-garajan, Peerat Limkonchotiwat, Yifan Mai, and William Chandra Tjhi. 2025. SEA-HELM: South-east Asian holistic evaluation of language models. In 
+
+Findings of the Association for Computational Lin-guistics: ACL 2025 , pages 12308–12336, Vienna, Austria. Association for Computational Linguistics. Liang Wang, Nan Yang, Xiaolong Huang, Binx-ing Jiao, Linjun Yang, Daxin Jiang, Rangan Ma-jumder, and Furu Wei. 2024a. Text embeddings by weakly-supervised contrastive pre-training. Preprint ,arXiv:2212.03533. Liang Wang, Nan Yang, Xiaolong Huang, Linjun Yang, Rangan Majumder, and Furu Wei. 2024b. Improv-ing text embeddings with large language models. In 
+
+Proceedings of the 62nd Annual Meeting of the As-sociation for Computational Linguistics (Volume 1: Long Papers) , pages 11897–11916, Bangkok, Thai-land. Association for Computational Linguistics. Liang Wang, Nan Yang, Xiaolong Huang, Linjun Yang, Rangan Majumder, and Furu Wei. 2024c. Mul-tilingual e5 text embeddings: A technical report. 
+
+Preprint , arXiv:2402.05672. Xinyu Zhang, Nandan Thakur, Odunayo Ogundepo, Ehsan Kamalloo, David Alfonso-Hermelo, Xi-aoguang Li, Qun Liu, Mehdi Rezagholizadeh, and Jimmy Lin. 2023. MIRACL: A multilingual retrieval dataset covering 18 diverse languages. Transactions of the Association for Computational Linguistics ,11:1114–1131. Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin Zhang, Huan Lin, Baosong Yang, Pengjun Xie, An Yang, Dayiheng Liu, Junyang Lin, Fei Huang, and Jingren Zhou. 2025. Qwen3 embedding: Advancing text embedding and reranking through foundation models. 
+
+Preprint , arXiv:2506.05176. Xinping Zhao, Xinshuo Hu, Zifei Shan, Shouzheng Huang, Yao Zhou, Xin Zhang, Zetian Sun, zhenyu liu, Dongfang Li, Xinyuan Wei, Youcheng Pan, Yang Xiang, Meishan Zhang, Haofen Wang, Jun Yu, Bao-tian Hu, and Min Zhang. 2026. KaLM-embedding-v2: Superior training techniques and data inspire a versatile embedding model. In The Fourteenth Inter-national Conference on Learning Representations .Appendix A Hyperparameters 
+
+The hyperparameters are posted in Table 4. Note that we train all models using 64 of H200, where the first step (general datasets using SCL) requires 
+
+∼6 Hrs, the second step (instruction datasets us-ing SCL) requires ∼2 Hrs, and the last step (in-struction datasets using SDM) requires ∼3 Hrs, for SEA-Embedding-E5-Large-600M. In addition, the training speed of SEA-Embedding-MondernBERT-300M is half that of SEA-Embedding-E5-Large-600M. For the inference cost, all models in the same size group have the same inference speed since we did not change any model architectures. We will include all dependencies and library ver-sions in our model card for reproducibility.                    
+
+> Hyperparameter Value
+> Lscl Lsdm
+> batch size 600M: 96 300M: 160 600M: 20 300M: 42 LR 1e-5 Ep 1Temperature(s) 0.03 τt:0.07
+> τs:0.03 LR_scheduler Cosine
+> γ0.5 -Context length 512 Warm-up steps 10% Pooling Mean pooling Optimizer AdamW Precision bf16 Teacher model -multilingual-e5-large-instruct
+
+Table 4: Hyperparameters in this paper. 
+
+B Datasets Details 
+
+B.1 Data Leakage 
+
+We want to emphasize that there is no data leakage or using any test set in our model; we did check by scanning through all samples in SEA-BED and our training dataset and found some duplicate exam-ples, such as a question from our training dataset: “When is the deadline of this question?” is dupli-cated with a question in the iAPP-SQuAD dataset. However, the document or answer to that question is not the same since it is a different dataset, just a question that is too simple and easy to duplicate. 
+
+B.2 Datasets 
+
+We summarize the full datasets in our work in Ta-bles 5 and 10. Comparing with previous work, the pre-training datasets were significantly different in terms of datasets and numbers of samples: Wang et al. (2024c) used more than 1B text pairs, while our work used only 490 M. On the other hand, Zhao et al. (2026) proposes a small pre-training dataset with only 46M text pairs. However, using a small pre-training dataset yields poor results, lead-ing to low performance on SEA languages. For the downstream or instruction datasets, we found that most recent works used closed datasets (Wang et al., 2024c,b; Zhang et al., 2025; Schechter Vera et al., 2025), making it hard to compare the size of the training dataset.                                                      
+
+> Dataset Type Categ. Language Pairs
+> kalm_pretraining Retrieval s2p English 23,670,898 finetranslation BitextMining s2s SEA 61,263,694 wikipedia Retrieval s2s SEA 4,039,056 c4 Retrieval s2s SEA 51,711,918 s2orc Retrieval s2p English 41,769,185 tatoeba BitextMining s2s SEA 70,215 talks BitextMining s2s SEA 704,527 jw300 BitextMining s2s SEA 2,772,088 wikimatrix BitextMining s2s SEA 842,334 opensubtitles BitextMining s2s SEA 10,473,771 opus-100 BitextMining s2s SEA 5,136,077 ccmatrix Retrieval s2s SEA 43,113,828
+> Total size 245,567,591
+
+Table 5: The general text datasets, where no instructions were included in these datasets. 
+
+B.3 Instructions 
+
+To induce task-specific instruction-following be-havior in the embeddings, we prepend a task in-struction to each query. Formally, the instructed query is written as: 
+
+Input = Instruct: {task instruction} Query: q. 
+
+(2) 
+
+We add instructions to all samples in Table 10, where we applied {task instruction} for differ-ent task types from Table 6. For both asymmet-ric and symmetric tasks, in contrast to previous works (Zhao et al., 2026; Schechter Vera et al., 2025), we use the same instruction without adding additional prepends to the instruction. We found that it is simpler, easier to reproduce, and does not affect any downstream task performances.        
+
+> Task Instruction
+> BitextMining Retrieve parallel sentences Retrieval Given a passage that is guaranteed to contain the answer, retrieve relevant passages that answer the query PairClassification Retrieve semantically similar text Classification Classify text into its appropriate category STS Retrieve semantically similar text InstructionRetrieval Given a instruction and a output, retrieve the most relevant output that answer the instruction
+
+Table 6: The instruction examples. 
+
+C SEA-BED Results 
+
+We report the task score in Table 7 using the same models as Table 2. We found that the performance Model STS Classification PairClassification QARetrieval InstructionRetrieval BitextMining MultiLabelClassification Reranking Clustering Avg. 
+
+≤300M parameters 
+
+embeddinggemma-300m 0.681 0.772 0.696 0.771 0.707 0.729 0.892 0.784 0.402 0.715 harrier-oss-v1-270m 0.712 0.753 0.667 0.745 0.625 0.831 0.883 0.695 0.446 0.706 SEA-Embedding-ModernBERT-300M 0.739 0.758 0.661 0.736 0.639 0.862 0.894 0.726 0.493 0.723 †
+
+>300M parameters 
+
+multilingual-e5-large-instruct 0.756 0.777 0.666 0.772 0.691 0.879 0.878 0.772 0.581 0.752 Qwen3-Embedding-0.6B 0.657 0.745 0.604 0.762 0.658 0.565 0.882 0.750 0.439 0.674 Qwen3-Embedding-8B 0.753 0.786 0.631 0.820 0.708 0.848 0.906 0.785 0.529 0.752 bge-m3 (Dense) 0.733 0.760 0.687 0.736 0.585 0.862 0.899 0.760 0.422 0.716 Cohere-embed-multilingual-v3.0 0.731 0.785 0.661 0.782 0.656 0.883 0.900 0.778 0.490 0.741 jina-embeddings-v5 0.730 0.729 0.533 0.683 0.855 0.632 0.765 0.767 0.705 0.711 harrier-oss-v1-0.6b 0.740 0.772 0.691 0.773 0.685 0.870 0.890 0.737 0.454 0.735 SEA-Embedding-E5-Large-600M 0.765 0.761 0.673 0.778 0.700 0.896 0.894 0.781 0.540 0.754 
+
+Table 7: The performance of all models on SEA-BED using the task average metric. In addition, † represents the significant improvement from the previous SOTA in each group using McNemar’s test. 
+
+Model Classification Clustering Pair Classification Reranking Retrieval STS Summarization Mean (Task) Mean (Task Type) 
+
+≤300M parameters 
+
+embeddinggemma-300m 0.875 0.533 0.848 0.469 0.546 0.829 0.378 0.684 0.640 
+
+harrier-oss-v1-270m 0.765 0.472 0.812 0.444 0.410 0.766 0.240 0.596 0.558 SEA-LION-ModernBERT-Embedding-300M 0.776 0.484 0.832 0.446 0.448 0.818 0.270 0.624 0.582 
+
+>300M parameters 
+
+multilingual-e5-large-instruct 0.753 0.517 0.862 0.464 0.536 0.846 0.306 0.657 0.612 Qwen3-Embedding-8B 0.904 0.583 0.880 0.509 0.676 0.887 0.352 0.748 0.685 
+
+bge-m3 (Dense) 0.774 0.407 0.845 0.460 0.496 0.809 0.348 0.622 0.591 jina-embeddings-v3 0.854 0.480 0.840 0.480 0.526 0.857 0.329 0.669 0.623 harrier-oss-v1-0.6b 0.883 0.566 0.867 0.470 0.586 0.851 0.315 0.706 0.648 SEA-LION-E5-Embedding-600M 0.778 0.511 0.874 0.471 0.502 0.848 0.316 0.655 0.614 
+
+Table 8: The performance of all models on MTEB. 
+
+Model Classification Clustering Pair Classification Reranking Retrieval STS Mean (Task) Mean (Task Type) 
+
+≤300M parameters 
+
+embeddinggemma-300m 0.725 0.504 0.733 0.589 0.642 0.469 0.600 0.610 
+
+harrier-oss-v1-270m 0.696 0.494 0.606 0.621 0.589 0.403 0.561 0.568 SEA-LION-ModernBERT-Embedding-300M 0.713 0.512 0.650 0.563 0.590 0.464 0.576 0.582 
+
+>300M parameters 
+
+multilingual-e5-large-instruct 0.706 0.532 0.668 0.611 0.642 0.482 0.602 0.607 Qwen3-Embedding-8B 0.771 0.799 0.840 0.682 0.781 0.634 0.739 0.751 
+
+bge-m3 (Dense) 0.743 0.536 0.682 0.620 0.557 0.508 0.595 0.608 jina-embeddings-v3 0.723 0.502 0.669 0.606 0.686 0.525 0.621 0.618 harrier-oss-v1-0.6b 0.754 0.647 0.712 0.656 0.713 0.501 0.657 0.664 SEA-LION-E5-Embedding-600M 0.710 0.527 0.666 0.607 0.650 0.488 0.605 0.608 
+
+Table 9: The performance of all models on CMTEB. 
+
+of our model in the small group significantly out-performs SOTA. In addition, unlike the language metric in Table 2, some models perform poorly in this metric, such as harrier-oss-v1. In contrast, our model consistency outperform all models similar to the language metric for both small and large groups. 
+
+D MTEB and CMTEB Results 
+
+Since people in the SEA region also widely speak Chinese and English, we report the English (MTEB) and Chinese (CMTEB) results in Tables 8 and 9 to align with real-world scenarios. Note that we reproduce all scores using the default settings of MTEB and CMTEB. However, we found that, when the codes or settings from the original model are not available for reproducible, we cannot re-produce the same score as reported, making the Reprod. Env. in Table 1 marked “No”. This high-lights the important of open-science, which makes all papers reproducible. The experimental results demonstrate that compared to the small model group, our model performs the second-best, only behind embeddinggemma-300m. For the large model group, our model still performs better than the teacher model, multilingual-e5-large-instruct, in the average score. In addition, we notice that mod-els that performs poor on SEA-BED achieve a bet-ter score on English and Chinese datasets. This emphasizes that the model is supported well for En-glish and Chinese, both of which are high-resource languages, but lacks robustness in low-resource languages, especially for SEA languages. Source Type Categ. Language Pairs Source Type Categ. Language Pairs CodeFeedback Retrieval s2p en 49,090 ELI5 Retrieval s2p en 76,408 ExpertQA Retrieval s2p en 1,252 GooAQ Retrieval s2p en 49,833 MEDI2BGE Retrieval s2p en 71,790 OpenOrca Retrieval s2p en 38,623 PAQ Retrieval s2p en 49,849 PubMedQA Retrieval s2p en 79,954 SearchQA Retrieval s2p en 9,988 arxiv_qa Retrieval s2p en 17,927 CC-News Retrieval s2p en 28,246 TREC-COVID Retrieval s2p en 48,517 DBpedia-Entity Retrieval s2p en 96,792 ESCI Retrieval s2p en 26,043 FEVER Retrieval s2p en 87,216 FiQA Retrieval s2p en 4,689 HotpotQA Retrieval s2p en 150,153 MLDR Retrieval s2p en 31,097 MSMARCO Retrieval s2p en 174,190 MSMARCO-v2 Retrieval s2p en 258,617 NFCorpus Retrieval s2p en 10,471 rag-dataset-12000 Retrieval s2p en 9,272 SciFact Retrieval s2p en 794 SQuAD 2.0 Retrieval s2p en 125,816 TriviaQA Retrieval s2p en 44,442 WebGPT Comparisons Retrieval s2p en 18,924 Natural Questions Retrieval s2p en 56,377 Yahoo Answers Retrieval s2p en 21,724 CQADupStack Retrieval s2p en 7,356 ContractNLI PairClassification s2s en 628 MultiNLI PairClassification s2s en 63,701 NLLB STS s2s en 26,504 Quora STS s2s en 89,558 WikiAnswers STS s2s en 47,686 SimCSE NLI PairClassification s2s en 217,099 SNLI PairClassification s2s en 16,480 arXiv Classfication s2s, p2s en 14,529 Biorxiv Classfication s2s, p2s en 6,787 Medrxiv Classfication s2s, p2s en 1,999 Reddit-Clustering Classfication s2s en 25,600 Reddit-Clustering-P2P Classfication p2s en 42,480 Stackexchange-Clustering Classfication s2s en 50,530 Stackexchange-Clustering-P2P Classfication p2s en 48,800 TwentyNewsgroups-Clustering Classfication s2s en 6,233 AmazonPolarity Classfication s2s en 9,007 IMDB Classfication s2s en 8,575 banking77 Classfication s2s en 9,937 EmotionClassification Classfication s2s en 10,000 TweetSentimentExtraction Classfication s2s en 10,000 ToxicConversations Classfication s2s en 7,800 AdvertiseGen Retrieval s2p zh 17,526 CHEF Retrieval s2p zh 4,824 ChatMed-Dataset Retrieval s2p zh 18,608 CMRC 2018 Retrieval s2p zh 9,753 DRCD Retrieval s2p zh 4,714 LCSTS Retrieval s2p zh 19,535 LIMA Retrieval s2p zh 1,991 Multi-CPR Retrieval s2p zh 234,587 PAWS-X (zh) Retrieval s2p zh 19,289 RefGPT Retrieval s2p zh 49,896 T2Ranking Retrieval s2p zh 188,606 THUCNews Retrieval s2p zh 19,288 UMETRIP-QA Retrieval s2p zh 2,537 WebCPM Retrieval s2p zh 1,602 cCOVID-News Retrieval s2p zh 4,727 cMedQA-V2.0 Retrieval s2p zh 88,109 CSL Retrieval s2p zh 19,945 DuReader Retrieval s2p zh 79,229 DuReader_checklist Retrieval s2p zh 97,764 law-gpt Retrieval s2p zh 500 lawzhidao Retrieval s2p zh 6,784 mMARCO (zh) Retrieval s2p zh 379,870 retrieval_data_llm Retrieval s2p zh 32,551 webqa Retrieval s2p zh 4,988 AFQMC STS s2s zh 3,876 ATEC STS s2s zh 11,387 BQ STS s2s zh 10,000 CAIL2019-SCM STS s2s zh 648 CINLID STS s2s zh 2,883 ChineseSTS STS s2s zh 2,497 CMNLI PairClassification s2s zh 119,029 nli_zh PairClassification s2s zh 185,787 OCNLI PairClassification s2s zh 11,937 QBQTC STS s2s zh 47,223 SimCLUE STS s2s zh 290,699 XNLI (zh) PairClassification s2s zh 74,252 CSL Classfication s2s, p2s zh 12,249 THUCNews Classfication s2s zh 9,690 TNews Classfication s2s zh 6,762 JDReview Classfication s2s zh 1,232 IFlyTek Classfication s2s zh 8,221 OnlineShopping Classfication s2s zh 7,600 Waimai Classfication s2s zh 7,376 Aya Dataset Retrieval s2p multilingual 26,292 MIRACL Retrieval s2p multilingual 39,946 Mr. TyDi Retrieval s2p multilingual 46,997 PAWS-X STS s2s multilingual 128,398 AmazonReviews Classfication s2s multilingual 7,721 AmazonCounterfactual Classfication s2s multilingual 8,323 MultilingualSentiment Classfication s2s multilingual 9,804 Amazon Massive Intent Classfication s2s multilingual 7,832 AmazonMassiveScenario Classfication s2s multilingual 7,078 MTOPDomain Classfication s2s multilingual 9,610 MTOPIntent Classfication s2s multilingual 7,952 Bible_nlp BitextMining s2s multilingual 71,027 OPUS_TED2020 BitextMining s2s multilingual 12,556 SEA-Instruct-2602 InstructionRetrieval s2p SEA 6,831,383 Iapp_wiki_qa_squad Retrieval s2p th 5,761 UIT-ViQuAD2.0 Retrieval s2s vi 28,454 Ac_iquad_simple_source Retrieval s2s id 116,640 Content_search_vietnamese Retrieval s2p vn 1,600,983 Covid_qa_dataset Retrieval s2s my 454 Squdid_nli PairClassification s2s id 236,890 Newsph_nli_dataset PairClassification s2s fil 281,321 Indonli_dataset PairClassification s2s id 3,476 Wangchan120k InstructionRetrieval s2p th 118,898 Wangchaninstruction InstructionRetrieval s2p th 32,207 Alpaca_indo_instruct InstructionRetrieval s2p id 52,002 Emotes_3k Classfication s2s fil 2,905 Generated_review_th_en Classfication s2s th 141,369 Total 14,316,233 
+
+Table 10: The instruction text datasets. Note that we did not update any instances in the datasets; we only added instructions for each sample to make it specific for text embeddings.

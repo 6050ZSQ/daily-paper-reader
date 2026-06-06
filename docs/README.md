@@ -6,59 +6,61 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-05
-- 运行时间：2026-06-05 22:04:57 UTC
+- 最新运行日期：2026-06-06
+- 运行时间：2026-06-06 21:25:42 UTC
 - 运行状态：成功
 - 本次总论文数：13
-- 精读区：3
-- 速读区：10
+- 精读区：5
+- 速读区：8
 
 ### 今日简报（AI）
-今日聚焦长期记忆基准与词汇性效应，揭示LLM记忆与语言处理新发现。最值得看的两篇：长期记忆基准测试从静态迈向动态；词汇性对模型影响持久存在。建议关注长期记忆和词汇性对实际应用的影响。
-- 详情：[/202606/05/README](/202606/05/README)
+1) 今日13篇论文精读5篇，聚焦语言模型语法泛化延迟与法国知识映射基准两大突破。  
+2) 最值得关注：预训练阶段发现类似Grokking的延迟语法泛化现象，以及覆盖全法的CARTE知识基准评测。  
+3) 建议：深入探究语言模型语法学习机制，或尝试将本地化LLM应用于生物制药领域的自然语言转SQL查询。
+- 详情：[/202606/06/README](/202606/06/README)
 
 ### 精读区论文标签
-1. [Beyond Static Dialogues: Benchmarking Realistic, Heterogeneous, and Evolving Long-Term Memory](/202606/05/2605.31086v2-beyond-static-dialogues-benchmarking-realistic-heterogeneous-and-evolving-long-term-memory)  
+1. [A Pre-Training Analogue of Grokking in Language Models: Tracing Delayed Grammatical Generalization](/202606/06/2606.00230v1-a-pre-training-analogue-of-grokking-in-language-models-tracing-delayed-grammatical-generalization)  
+   标签：评分：10.0/10、query:llm-ling
+   evidence：利用BLiMP最小对研究LLM中的延迟语法泛化，揭示预训练过程中语言结构神经表征的出现
+2. [CARTE: A Benchmark for Mapping Language Model Knowledge Across France](/202606/06/2606.01995v1-carte-a-benchmark-for-mapping-language-model-knowledge-across-france)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：基于真实对话的LLM长期记忆基准测试
-2. [On the Persistent Effects of Lexicality in Large Language Models](/202606/05/2606.02750v2-on-the-persistent-effects-of-lexicality-in-large-language-models)  
+   evidence：包含语言变异的LLM知识评估基准
+3. [Forget Attention: Importance-Aware Attention Is All You Need](/202606/06/2606.02332v2-forget-attention-importance-aware-attention-is-all-you-need)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：量化LLM表征中词汇与语义内容的相对影响
-3. [ReverseEOL: Improving Training-free Text Embeddings via Text Reversal in Decoder-only LLMs](/202606/05/2606.05858v1-reverseeol-improving-training-free-text-embeddings-via-text-reversal-in-decoder-only-llms)  
+   evidence：提出基于状态空间模型的重要性感知注意力机制，改进语言编码
+4. [TalkTag: Fine-Grained Morphosyntactic Error Annotation for Transcribed Speech](/202606/06/2606.01820v1-talktag-fine-grained-morphosyntactic-error-annotation-for-transcribed-speech)  
+   标签：评分：8.0/10、query:llm-ling
+   evidence：基于LLM的形态句法错误标注工具，计算语言学
+5. [Depth-Attention: Cross-Layer Value Mixing for Language Models](/202606/06/2606.05014v1-depth-attention-cross-layer-value-mixing-for-language-models)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：通过反转输入解决因果注意力偏差，提升文本嵌入
+   evidence：跨层值混合改进Transformer中的神经表示流动
 
 ### 速读区论文标签
-1. [What Gets Unmasked First? Trajectory Analysis of Diffusion Models for Graph-to-Text Generation](/202606/05/2605.31564v1-what-gets-unmasked-first-trajectory-analysis-of-diffusion-models-for-graph-to-text-generation)  
-   标签：评分：7.0/10、query:llm-ling
-   evidence：分析掩码扩散语言模型的生成顺序
-2. [On the Limits of LLM Adaptability: Impact of Model-Internalized Priors on Annotation Task Performance](/202606/05/2606.00467v1-on-the-limits-of-llm-adaptability-impact-of-model-internalized-priors-on-annotation-task-performance)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：模型先验对标注任务性能的影响
-3. [Question Type, Cognitive Load, and CEFR Alignment: Evaluating LLM-Generated EFL Grammar Drill Exercises](/202606/05/2606.01592v2-question-type-cognitive-load-and-cefr-alignment-evaluating-llm-generated-efl-grammar-drill-exercises)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：使用学生表现数据评估LLM生成的语法练习
-4. [Beyond "To whom it may concern": Tailoring Machine Translation to Audience and Intent](/202606/05/2606.03259v1-beyond-to-whom-it-may-concern-tailoring-machine-translation-to-audience-and-intent)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：基于LLM的意图驱动机器翻译评估
-5. [CaliDist: Calibrating Large Language Models via Behavioral Robustness to Distraction](/202606/05/2606.05799v1-calidist-calibrating-large-language-models-via-behavioral-robustness-to-distraction)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：LLM校准方法
-6. [Generative Criticality in Large Language Model Temperature Scaling](/202606/05/2606.06238v1-generative-criticality-in-large-language-model-temperature-scaling)  
+1. [Towards Understanding Modality Interaction in Multimodal Language Models via Partial Information Decomposition](/202606/06/2606.00959v1-towards-understanding-modality-interaction-in-multimodal-language-models-via-partial-information-decomposition)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：观察到临界温度下语义方向塌缩现象
-7. [Not All Explanations Simulate Equally: Comparing Verbalized Feature Attributions and Self-Generated Rationales](/202606/05/2606.01148v1-not-all-explanations-simulate-equally-comparing-verbalized-feature-attributions-and-self-generated-rationales)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：比较不同解释源对模型可解释性的影响
-8. [Learning from Saturated Data: Signals Beyond Correctness for LLM Training](/202606/05/2606.01436v1-learning-from-saturated-data-signals-beyond-correctness-for-llm-training)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：使用超越正确性的细粒度信号进行LLM训练
-9. [Forget Attention: Importance-Aware Attention Is All You Need](/202606/05/2606.02332v2-forget-attention-importance-aware-attention-is-all-you-need)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：影响Transformer中语言编码的新型注意力机制
-10. [Domain-Adapted Small Language Models with Hybrid Post-Processing: Achieving Cost-Efficient, Low-Latency Multi-Label Structured Prediction via LoRA Fine-Tuning on Scarce Data](/202606/05/2606.05781v1-domain-adapted-small-language-models-with-hybrid-post-processing-achieving-cost-efficient-low-latency-multi-label-structured-prediction-via-lora-fine-tuning-on-scarce-data)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：利用LLM进行成本高效的结构化评估
+   evidence：多模态大模型语言表征的可解释性框架
+2. [Benchmarking Local LLMs for Natural-Language-to-SQL Querying in Biopharmaceutical Manufacturing: An Empirical Benchmark on Consumer-Grade Hardware](/202606/06/2606.01338v1-benchmarking-local-llms-for-natural-language-to-sql-querying-in-biopharmaceutical-manufacturing-an-empirical-benchmark-on-consumer-grade-hardware)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：评估本地LLM在自然语言转SQL任务上的表现，属于自然语言理解
+3. [Question Type, Cognitive Load, and CEFR Alignment: Evaluating LLM-Generated EFL Grammar Drill Exercises](/202606/06/2606.01592v1-question-type-cognitive-load-and-cefr-alignment-evaluating-llm-generated-efl-grammar-drill-exercises)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：评估LLM生成的EFL练习在认知负荷和CEFR对齐方面的表现
+4. [SVHalluc: Benchmarking Speech-Vision Hallucination in Audio-Visual Large Language Models](/202606/06/2606.02642v1-svhalluc-benchmarking-speech-vision-hallucination-in-audio-visual-large-language-models)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：用于评估音频-视觉LLM中语音-视觉幻觉的基准
+5. [SEA-Embedding: Open and Reproducible Text Embeddings for Southeast Asia](/202606/06/2606.03027v1-sea-embedding-open-and-reproducible-text-embeddings-for-southeast-asia)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：提出完全开放的嵌入流程并在SEA-BED基准上评估
+6. [Benchmarking Speech-to-Speech Translation Models](/202606/06/2606.03241v1-benchmarking-speech-to-speech-translation-models)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：统一的评测框架
+7. [Multilingual Fine-Tuning via Localized Gradient Conflict Resolution](/202606/06/2606.05613v1-multilingual-fine-tuning-via-localized-gradient-conflict-resolution)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：LLM多语言表征学习中的冲突解决
+8. [Dense Contexts Are Hard Contexts: Lexical Density Limits Effective Context in LLMs](/202606/06/2606.06203v1-dense-contexts-are-hard-contexts-lexical-density-limits-effective-context-in-llms)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：词汇密度对LLM性能影响的基准研究，评估方法
 
 
 <div class="dpr-home-promo-card">
