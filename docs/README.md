@@ -6,61 +6,63 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-06
-- 运行时间：2026-06-06 21:25:42 UTC
+- 最新运行日期：2026-06-07
+- 运行时间：2026-06-07 20:14:53 UTC
 - 运行状态：成功
 - 本次总论文数：13
-- 精读区：5
-- 速读区：8
+- 精读区：6
+- 速读区：7
 
 ### 今日简报（AI）
-1) 今日13篇论文精读5篇，聚焦语言模型语法泛化延迟与法国知识映射基准两大突破。  
-2) 最值得关注：预训练阶段发现类似Grokking的延迟语法泛化现象，以及覆盖全法的CARTE知识基准评测。  
-3) 建议：深入探究语言模型语法学习机制，或尝试将本地化LLM应用于生物制药领域的自然语言转SQL查询。
-- 详情：[/202606/06/README](/202606/06/README)
+今日精读6篇、速读7篇，重点聚焦自动解释标签的跨语言泛化与LLM长文本评估基准。
+
+最值得关注的两项研究：自动解释标签在语言、文字和改写下的泛化边界，以及LLM作为长文本评审者的标准化测试。
+
+建议关注标签解释的跨语言鲁棒性，并留意LLM评估长文本的能力，后续可尝试探索TLA+规范的自动生成。
+- 详情：[/202606/07/README](/202606/07/README)
 
 ### 精读区论文标签
-1. [A Pre-Training Analogue of Grokking in Language Models: Tracing Delayed Grammatical Generalization](/202606/06/2606.00230v1-a-pre-training-analogue-of-grokking-in-language-models-tracing-delayed-grammatical-generalization)  
-   标签：评分：10.0/10、query:llm-ling
-   evidence：利用BLiMP最小对研究LLM中的延迟语法泛化，揭示预训练过程中语言结构神经表征的出现
-2. [CARTE: A Benchmark for Mapping Language Model Knowledge Across France](/202606/06/2606.01995v1-carte-a-benchmark-for-mapping-language-model-knowledge-across-france)  
-   标签：评分：9.0/10、query:llm-eval
-   evidence：包含语言变异的LLM知识评估基准
-3. [Forget Attention: Importance-Aware Attention Is All You Need](/202606/06/2606.02332v2-forget-attention-importance-aware-attention-is-all-you-need)  
+1. [How Far Do Auto-Interpretation Labels Generalize: A Controlled Study Across Languages, Scripts, and Rewordings](/202606/07/2606.00356v1-how-far-do-auto-interpretation-labels-generalize-a-controlled-study-across-languages-scripts-and-rewordings)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：提出基于状态空间模型的重要性感知注意力机制，改进语言编码
-4. [TalkTag: Fine-Grained Morphosyntactic Error Annotation for Transcribed Speech](/202606/06/2606.01820v1-talktag-fine-grained-morphosyntactic-error-annotation-for-transcribed-speech)  
-   标签：评分：8.0/10、query:llm-ling
-   evidence：基于LLM的形态句法错误标注工具，计算语言学
-5. [Depth-Attention: Cross-Layer Value Mixing for Language Models](/202606/06/2606.05014v1-depth-attention-cross-layer-value-mixing-for-language-models)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：跨层值混合改进Transformer中的神经表示流动
+   evidence：LLM可解释性中自编码器特征标签的跨语言泛化
+2. [Benchmarking LLM-as-a-Judge for Long-Form Output Evaluation](/202606/07/2606.01629v2-benchmarking-llm-as-a-judge-for-long-form-output-evaluation)  
+   标签：评分：9.0/10、query:llm-eval
+   evidence：评估LLM作为评判者对长文本生成输出的基准
+3. [Unveiling the Limits of Large Language Models in Inferring Pragmatic Meaning from Non-Verbal Responses](/202606/07/2606.01845v1-unveiling-the-limits-of-large-language-models-in-inferring-pragmatic-meaning-from-non-verbal-responses)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：评估LLM从非语言回应中推断语用意义的能力
+4. [Not What, But How: A Communicative Audit of LLM Response Framing](/202606/07/2606.02493v1-not-what-but-how-a-communicative-audit-of-llm-response-framing)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：审计LLM响应框架用于自然语言生成评估
+5. [Not What, But How: A Framework for Auditing LLM Responses across Positioning, Generalization, Anthromorphism, and Maxims](/202606/07/2606.02493v2-not-what-but-how-a-framework-for-auditing-llm-responses-across-positioning-generalization-anthromorphism-and-maxims)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：审计LLM响应框架用于自然语言生成评估
+6. [Evaluating Stochastic Collapse and Implicit Bias in Multimodal Large Language Models](/202606/07/2606.05874v1-evaluating-stochastic-collapse-and-implicit-bias-in-multimodal-large-language-models)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：针对多模态大语言模型随机行为的评测基准
 
 ### 速读区论文标签
-1. [Towards Understanding Modality Interaction in Multimodal Language Models via Partial Information Decomposition](/202606/06/2606.00959v1-towards-understanding-modality-interaction-in-multimodal-language-models-via-partial-information-decomposition)  
+1. [Short-form Text Rewriting with Phi Silica](/202606/07/2606.00462v1-short-form-text-rewriting-with-phi-silica)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：使用LLM作为评判评估短文本改写
+2. [Localizing Prompt Ambiguity in Large Language Models with Probe-Targeted Attribution](/202606/07/2606.05486v1-localizing-prompt-ambiguity-in-large-language-models-with-probe-targeted-attribution)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：多模态大模型语言表征的可解释性框架
-2. [Benchmarking Local LLMs for Natural-Language-to-SQL Querying in Biopharmaceutical Manufacturing: An Empirical Benchmark on Consumer-Grade Hardware](/202606/06/2606.01338v1-benchmarking-local-llms-for-natural-language-to-sql-querying-in-biopharmaceutical-manufacturing-an-empirical-benchmark-on-consumer-grade-hardware)  
+   evidence：使用梯度归因探测LLM中的提示歧义
+3. [Can LLMs Write Correct TLA+ Specifications? Evaluating Natural-Language-to-TLA+ Generation](/202606/07/2606.05792v1-can-llms-write-correct-tla-specifications-evaluating-natural-language-to-tla-generation)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：评估本地LLM在自然语言转SQL任务上的表现，属于自然语言理解
-3. [Question Type, Cognitive Load, and CEFR Alignment: Evaluating LLM-Generated EFL Grammar Drill Exercises](/202606/06/2606.01592v1-question-type-cognitive-load-and-cefr-alignment-evaluating-llm-generated-efl-grammar-drill-exercises)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：评估LLM生成的EFL练习在认知负荷和CEFR对齐方面的表现
-4. [SVHalluc: Benchmarking Speech-Vision Hallucination in Audio-Visual Large Language Models](/202606/06/2606.02642v1-svhalluc-benchmarking-speech-vision-hallucination-in-audio-visual-large-language-models)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：用于评估音频-视觉LLM中语音-视觉幻觉的基准
-5. [SEA-Embedding: Open and Reproducible Text Embeddings for Southeast Asia](/202606/06/2606.03027v1-sea-embedding-open-and-reproducible-text-embeddings-for-southeast-asia)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：提出完全开放的嵌入流程并在SEA-BED基准上评估
-6. [Benchmarking Speech-to-Speech Translation Models](/202606/06/2606.03241v1-benchmarking-speech-to-speech-translation-models)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：统一的评测框架
-7. [Multilingual Fine-Tuning via Localized Gradient Conflict Resolution](/202606/06/2606.05613v1-multilingual-fine-tuning-via-localized-gradient-conflict-resolution)  
+   evidence：评估LLM从自然语言生成正确TLA+规范
+4. [LLM Self-Recognition: Steering and Retrieving Activation Signatures](/202606/07/2606.06315v1-llm-self-recognition-steering-and-retrieving-activation-signatures)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：LLM多语言表征学习中的冲突解决
-8. [Dense Contexts Are Hard Contexts: Lexical Density Limits Effective Context in LLMs](/202606/06/2606.06203v1-dense-contexts-are-hard-contexts-lexical-density-limits-effective-context-in-llms)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：词汇密度对LLM性能影响的基准研究，评估方法
+   evidence：通过激活引导进行LLM可解释性研究，分析语言表征
+5. [SALSA: Speech Aware LLM Adaptation via Learned Steering Activation Vectors](/202606/07/2606.00460v1-salsa-speech-aware-llm-adaptation-via-learned-steering-activation-vectors)  
+   标签：评分：6.0/10、query:llm-lang-rep
+   evidence：通过学习导向向量进行语音域LLM自适应，通过激活操作实现可解释性
+6. [SANE Schema-aware Natural-language Evaluation of Biological Data](/202606/07/2606.04500v1-sane-schema-aware-natural-language-evaluation-of-biological-data)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：提出基于模式的LLM文本到SQL评估基准
+7. [Almieyar-Oryx-BloomBench: A Bilingual Multimodal Benchmark for Cognitively Informed Evaluation of Vision-Language Models](/202606/07/2606.05531v1-almieyar-oryx-bloombench-a-bilingual-multimodal-benchmark-for-cognitively-informed-evaluation-of-vision-language-models)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：用于VLM认知评估的双语多模态基准
 
 
 <div class="dpr-home-promo-card">
