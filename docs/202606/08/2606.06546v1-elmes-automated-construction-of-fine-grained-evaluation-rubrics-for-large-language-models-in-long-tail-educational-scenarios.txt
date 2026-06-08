@@ -1,0 +1,541 @@
+Title: Elmes*: Automated Construction of Fine-Grained Evaluation Rubrics for Large Language Models in Long-Tail Educational Scenarios
+
+URL Source: https://arxiv.org/pdf/2606.06546v1
+
+Published Time: Mon, 08 Jun 2026 00:02:00 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+## ELMES +: Automated Construction of Fine-Grained Evaluation Rubrics for Large Language Models in Long-Tail Educational Scenarios 
+
+Tao Liu 1,2 , Ye Lu 1,2 , Ruohua Zhang 1,2 , Siyu Song 1,2 , Wentao Liu 1,2,3 , Aimin Zhou 1,2,3 , and Hao Hao 1,* 
+
+> 1
+
+Shanghai Institute of AI for Education, East China Normal University, Shanghai 200062, China 
+
+> 2
+
+School of Computer Science and Technology, East China Normal University, Shanghai 200062, China 
+
+> 3
+
+Shanghai Innovation Institute, Shanghai 200231, China  
+
+> Corresponding author: Hao Hao ( hhao@mail.ecnu.edu.cn )
+
+Abstract 
+
+Evaluating large language models (LLMs) for education requires measuring how mod-els teach, not only what they know. Existing benchmarks emphasize domain-general correct-ness or depend on manually designed rubrics that scale poorly to long-tail pedagogical sce-narios. We introduce E LMES +, an end-to-end framework for constructing, refining, and ap-plying fine-grained scenario-specific rubrics. ELMES + combines a declarative multi-agent engine for teacher–student–judge interactions with S CENE GEN , a self-evolving module that co-optimizes evaluation criteria and test data from expert-defined pedagogical dimensions. Using E LMES +, we build Edu-330, covering 330 scenarios across 11 subjects, 3 grade bands, and 10 task types, with over 1,000 second-level indicators. Experiments on Edu-330 and four expert-authored gold-standard scenarios show that educational capability is multidimen-sional: top-tier LLMs differ mainly in creativ-ity and values integration, knowledge-strong models may fail at Socratic scaffolding, and the education-specialized InnoSpark achieves the best human-evaluated average score. LLM judges preserve human-comparable rankings with much lower scoring variance, but exhibit judge-specific biases such as self-preference. Ablations show that expert-scored few-shot anchoring improves human–LLM alignment, while reasoning enforcement and greedy de-coding are model-dependent. ELMES + thus provides scalable diagnostic infrastructure for pedagogically grounded LLM evaluation. 
+
+1 Introduction 
+
+Large language models have rapidly entered edu-cational technology, powering intelligent tutoring, lesson planning, and personalized content genera-tion (Kasneci et al., 2023; Yan et al., 2024). Yet evaluating whether an LLM is genuinely effective as a pedagogical agent remains difficult: unlike fac-tual question answering, educational tasks are sub-jective, multi-dimensional, and context-dependent, requiring models to balance content accuracy, scaf-folding, emotional sensitivity, and cultural appro-priateness (Wang et al., 2024a). Existing evaluation paradigms remain insuf-ficient. General-purpose benchmarks such as MMLU-Pro (Wang et al., 2024b), C-Eval (Huang et al., 2023), and GSM8K (Cobbe et al., 2021) emphasize knowledge or reasoning rather than ped-agogical process quality; interactive frameworks such as MT-Bench (Zheng et al., 2023) and Chat-bot Arena (Chiang et al., 2024) provide coarse preference signals; and education-specific bench-marks (Dan et al., 2023; Xu et al., 2025) cover limited scenarios with manually curated rubrics. The core challenge is the rubric construction bot-tleneck: fine-grained criteria require pedagogical expertise, while educational scenarios grow combi-natorially with subject, grade, and task type. We address this challenge with E LMES +, which automates educational LLM evaluation from rubric generation to scoring and refinement. Our design principle is that evaluation metrics and test data should co-evolve: score distributions can reveal overly strict, overly lenient, or weakly discrimina-tive rubrics, while test data can be regenerated to better exercise target pedagogical dimensions. ELMES + makes the following contributions: 1. Multi-Agent Evaluation Engine. We design a declarative YAML-to-DAG engine that sup-ports teacher–student–judge role configurations, conditional routing, trajectory-level scoring, and expert-in-the-loop scenario refinement for both single-turn and multi-turn educational tasks. 2. Self-Evolving Rubric Synthesis (S CENE GEN ). 
+
+We introduce a closed-loop synthesis module that starts from 4 expert-defined dimensions and co-evolves rubrics and test data by diag-nosing overly strict, overly lenient, or low-1
+
+> arXiv:2606.06546v1 [cs.LG] 4 Jun 2026
+
+discrimination metrics, producing over 1,298 second-level indicators for 330 scenarios. 3. Large-scale Benchmark and Expert-level Evaluation. We construct Edu-330 , a bench-mark spanning 330 core scenarios, and com-plement it with 4 expert-designed pedagogical scenarios to reveal model-specific educational profiles and trade-offs overlooked by domain-agnostic benchmarks. 4. Consistency Enhancement and Human-AI Alignment. We analyze and improve LLM-as-a-judge reliability through expert anchoring and reasoning constraints, reducing mean-score de-viation from human experts by approximately 30% while maintaining high inter-rater reliabil-ity. 
+
+2 Related Work 
+
+2.1 General-Purpose LLM Benchmarks 
+
+LLM evaluation has been dominated by knowledge- and reasoning-centric bench-marks. MMLU (Hendrycks et al., 2021) and MMLU-Pro (Wang et al., 2024b) assess broad factual knowledge, C-Eval (Huang et al., 2023) targets Chinese-language knowledge under-standing, and GSM8K (Cobbe et al., 2021) and MATH (Hendrycks et al., 2021) evaluate mathematical reasoning. While effective at measuring what a model knows, these benchmarks do not assess how well it can teach, which requires evaluating pedagogical process quality rather than outcome correctness alone. 
+
+2.2 Interactive and Judge-Based Evaluation 
+
+The LLM-as-a-Judge paradigm (Zheng et al., 2023) addresses the scalability limitations of human eval-uation by using strong LLMs to assess weaker ones. MT-Bench (Zheng et al., 2023) evaluates multi-turn conversational quality, while Chatbot Arena (Chiang et al., 2024) crowdsources pairwise preferences at scale. However, their holistic or pairwise preference signals lack the dimensional granularity needed for educational diagnostics; a model may “win” overall while failing in specific pedagogical dimensions ( e.g. , metacognition culti-vation or emotional support). Several studies have documented systematic bi-ases in LLM judges, including position bias, ver-bosity bias, and self-preference (Wang et al., 2026; Zheng et al., 2023). Prometheus (Kim et al., 2024) trains dedicated judge models with fine-grained, rubric-based evaluation. Auto-J (Li et al., 2024) generates critique-based training data for judge models. We build on this line of work through multi-judge ensembling and expert-anchored cal-ibration, while automatically generating rubrics rather than assuming them as given. 
+
+2.3 Education-Specific LLM Evaluation 
+
+Recent work has begun addressing educational evaluation specifically. EduChat (Dan et al., 2023) provides a pedagogically aligned chatbot but lacks systematic evaluation rubrics, while EduBench (Xu et al., 2025) focuses on educational knowledge rather than teaching process quality. EQGBench (Zhou et al., 2025) targets educational question generation, MathDial (Macina et al., 2023) evaluates mathematical tutoring dialogues, and Tu-torBench (Srinivasa et al., 2025) assesses tutoring quality with process-level metrics but fixed, manu-ally designed rubrics. These efforts still cover limited educational sce-narios and often depend on manually designed rubrics, making extension difficult. E LMES + ad-dresses both limitations through automated rubric generation and iterative refinement that can scale to hundreds of scenarios with minimal expert effort. 
+
+3 The E LMES + Framework 
+
+ELMES + comprises two integrated components (Figure 1): a multi-agent evaluation engine (§3.1) and a self-evolving rubric synthesis module (§3.2). 
+
+3.1 Multi-Agent Evaluation Engine 3.1.1 Declarative Configuration System 
+
+A central design principle of E LMES + is to spec-ify evaluation scenarios declaratively rather than programmatically. Each YAML file defines an edu-cational scenario by binding a model to an instruc-tional role, injecting task-specific content, speci-fying the interaction flow, and attaching a rubric-based judge, allowing experts to adapt scenarios without changing framework code. Figure 2 shows a simplified question-generation scenario. 
+
+3.1.2 DAG-Based Interaction and Evaluation 
+
+The directions specification is compiled into a LangGraph state graph, where each node repre-sents an agent and edges define the conversation flow. Edges can either forward one agent’s out-put directly to the next agent or invoke a router that selects the next node from the current dialogue 2Expert-injected Pedagogical Dimensions  
+
+> Values Integration Personalization Teaching Method Professionalism Creativity Stimulation Multi-Agent Sandbox Simulation Judges Declarative YAML-to-DAG Teacher Student
+> Sandbox
+> Self-Evolving Rubric Synthesis Score Distribution Analysis Initial Metric Generation QA Data Generation Model-as-Judge Scoring Prompt & Metric Evolution
+> K iterations
+> Consistency Enhancement Chain-of-Thought Constraints Few-Shot Expert Anchoring Multi-Judge Ensembling Edu Benchmark & Model Rankings
+> 330 Scenarios 1,298 Metrics Interactive Ul Comparison Radar Chart
+
+Figure 1: Overview of E LMES +. SCENE GEN evolves rubrics and test data from expert-defined pedagogical dimensions, while the multi-agent engine orchestrates interactions among teachers, students, and judges and improves consistency with expert anchoring and multi-judge ensembling.  
+
+> models: test_model: judge_model: agents: test_model: model: test_model role: educational question generator
+> content: "Generate a contextualized math problem for {question}"
+> tasks: mode: iter content:
+> - question: "Design a Grade 4 problem on equilateral-triangle perimeter ...." (Generated by SceneGen)
+> directions: [START to test_model, test_model to END] evaluation: model: judge_model format: [ Generated by SceneGen ]
+
+Figure 2: Simplified YAML configuration for defining an educational question-generation scenario. 
+
+state, with built-in support for keyword-based ter-mination and multi-condition gates. For multi-turn scenarios such as Socratic tutoring, teacher and student agents interact in a loop controlled by a maximum turn budget Tmax and task-specific exit conditions. The resulting dialogue trajec-tory τ = ( m1, m 2, . . . , m n) is then evaluated by the judge agent under the scenario-specific rubric. Given a rubric R = {(di, w i)}Di=1 , where each di
+
+is a pedagogical evaluation dimension generated or refined by S CENE GEN and wi is its weight, the overall score is computed as: Score (τ, R) = 
+
+DX
+
+i=1 
+
+wi · si(τ, d i) (1) where si(τ, d i) denotes the judge-assigned score for trajectory τ on dimension di.
+
+3.1.3 Interactive Human Expert Interface for Scenario Configuration 
+
+To support expert-in-the-loop refinement, E LMES +
+
+provides a Gradio-based interface that lets educa-tors and curriculum designers load, inspect, edit, and rerun scenario configurations without writing code. Experts can inject domain knowledge into SCENE GEN -generated rubrics, adjust vague or mis-aligned criteria, and calibrate test cases through immediate evaluation feedback. In practice, edu-cators typically converge after 2–3 rounds of con-figuration updates. The full interface is shown in Appendix A, Figure 6. 
+
+3.2 Self-Evolving Rubric Synthesis: SCENE GEN 
+
+Another key innovation of E LMES + is S CENE GEN ,a module that automatically generates and itera-tively refines evaluation rubrics for educational sce-narios. The core design is to let evaluation metrics and test data co-evolve: deficiencies in one can be detected through analysis of the other and corrected in subsequent iterations. 3Expert-Defined Dimensions + Scene Configuration                         
+
+> e.g., “middle school – mathematics – function concepts” Personalization (w=0.3) Values (w=0.1) Creativity (w=0.2) Professionalism (w=0.4)
+> Convergence Assurance Mechanisms Anchor QA Calibration Best-Version Tracking Early Stopping Initial Metric Generation
+> •Dual-Question Mechanism
+> •4 levels length control
+> •Persona augmentation(30%)
+> QA Data Generation Parallel Judge Scoring
+> Score∈[1,5]+Reasoning
+> Model-as-Judge Scoring Pathology Detection
+> Overly Strict Overly Lenient Low Discrimination
+> Score Distribution Analysis Prompt & Metric Evolution
+> 𝓜 𝐤 ← 𝐄𝐯𝐨𝐥𝐯𝐞𝐌𝐞𝐭𝐫𝐢𝐜𝐬 𝓜 𝐤ି𝟏 ,𝐒 𝐤 ,𝐨𝐛𝐬 𝐏 𝐬𝐲𝐧 𝐤 ←𝐄𝐯𝐨𝐥𝐯𝐞𝐒𝐲𝐧𝐭𝐡𝐞𝐬𝐢𝐬 𝐏 𝐬𝐲𝐧 𝐤ି𝟏 ,𝐒 𝐤 ,ŝ𝐰 𝐤 ,𝐫𝐚𝐧𝐤𝐞𝐝 𝐐𝐀𝐬
+> Iteration k=1,2...,K kOptimized Outputs
+> 𝐏 𝐬𝐲𝐧 ∗(Optimal Synthesis Prompts set)
+> 𝓜 ∗(Final Evaluation Metrics set) 330 Scenes
+
+Figure 3: S CENE GEN workflow. From expert-defined dimensions, this pipeline generates initial metrics and iteratively co-refines synthesis prompts and evaluation criteria with anchor calibration, early stopping, and best-version rollback. 
+
+3.2.1 Expert-Defined Dimensional Framework 
+
+Rather than generating evaluation criteria from scratch, S CENE GEN begins with a compact set of initial pedagogical dimensions. In this work, the initial dimensions are derived from no fewer than 70 interviews with education experts and grounded in established theories, including Shulman’s ped-agogical content knowledge (PCK), Vygotsky’s zone of proximal development, and the TPACK model (Vygotsky, 1978; Mishra and Koehler, 2006). This process yields four starting dimensions with expert-assigned weights: • Personalization (w1 = 0.3): Adaptation to learner profiles, cognitive levels, and individual needs. • Teaching Method Professionalism (w2 = 0 .4): Quality of pedagogical strategies, scaffolding, and domain expertise. • Creativity Stimulation (w3 = 0 .2): Encourage-ment of critical thinking, divergent reasoning, and intellectual curiosity. • Values Integration (w4 = 0 .1): Incorporation of positive societal values and cultural sensitivity. These weighted dimensions seed SCENE -GEN ’s generation of fine-grained, scenario-specific rubrics, with larger weights assigning a higher pro-portion of customized metrics to the corresponding seed dimension. The seed dimensions are replace-able inputs, making S CENE GEN a general rubric synthesis framework; this paper instantiates it with the four dimensions above for Edu-330 and all ex-periments. 
+
+3.2.2 Initial Metric Generation 
+
+For each educational scenario s, S CENE GEN gen-erates an initial set of fine-grained metrics from the scenario description and the weighted seed dimen-sions: 
+
+M(0) = MetricGen  s, {(di, w i, desc i)}4
+
+i=1 
+
+ (2) Here, s specifies the educational context ( e.g. ,“middle school mathematics: function concepts”), and each generated metric m ∈ M (0) is repre-sented as: 
+
+m = ( name , dim , weight , desc , pos_ex , neg_ex )
+
+(3) where name labels the metric, dim links it to a seed dimension, weight inherits the corresponding wi,and desc gives an operational scoring criterion. The positive and negative examples act as scoring anchors, helping the judge calibrate scores against concrete quality references rather than abstract de-scriptions alone. 
+
+3.2.3 QA Data Generation 
+
+Given the current synthesis prompt P (k−1) 
+
+syn , the data generator produces N QA pairs with diverse learner personas and question openings. To balance controllability and realism, each test case uses a dual-question design: an internal question qint with explicit length and formatting constraints guides 4answer generation, while a semantically equivalent user-facing question qusr removes such mechanical instructions to simulate real queries. The resulting pairs (qusr , a ) are evaluated by the multi-agent en-gine under the current metric set M(k−1) , produc-ing an aggregate score that measures data quality and guides the update to M(k) after this round. 
+
+3.2.4 Dual-Track Evolution 
+
+Based on the scores and judge rationales from the base loop, S CENE GEN jointly evolves the synthesis prompt and the evaluation metrics. 
+
+Synthesis Prompt Evolution The prompt opti-mizer receives the lowest-scoring QA pairs, includ-ing the original question, generated answer, and judge rationale, and rewrites Psyn to address recur-ring failure patterns. The revised prompt adds con-straints for under-performing dimensions while pre-serving instructions associated with high-scoring cases. 
+
+Evaluation Metric Evolution In parallel, S CE -
+
+> NE
+
+GEN uses per-metric averages and score dis-tributions to identify overly strict, overly lenient, or weakly discriminative criteria. It only revises metric descriptions and scoring examples while preserving each metric’s name, parent dimension, and weight, so scores remain comparable across iterations. 
+
+3.2.5 Convergence Safeguards 
+
+A key risk in co-evolution is that changes in score may reflect either better generated data or changed evaluation standards. S CENE GEN therefore uses three safeguards implemented in the workflow. First, it freezes a small set of QA pairs after the first iteration and re-scores them with later metrics; large changes in their weighted scores indicate pos-sible metric drift. Second, it tracks the best synthe-sis prompt and evaluation prompt according to the weighted average score ¯sw and rolls back to that version when a later update degrades performance. Third, it stops early when recent weighted-score im-provements remain below a configured threshold, avoiding unnecessary iterations after convergence. 
+
+4 Experiments 
+
+4.1 Evaluation Results on Edu-330 Benchmark 
+
+We formulate the educational scenario space as a Cartesian product S = D × L × T , compris-ing 11 disciplines (Chinese, Mathematics, English, Physics, Chemistry, Biology, Geography, History, Politics, Physical Education, Moral Education), 3 grade bands (elementary, middle, high school), and 10 pedagogical task types (e.g., concept ex-planation and problem-solving). Applying S CE -
+
+> NE
+
+GEN to this space gives Edu-330; for detailed model comparison, we evaluate a representative 66-scenario subset that preserves the original disci-pline and grade distributions. Figure 4 summarizes performance across 6 LLMs, including GPT-5, Claude-Opus-4.5, Qwen-2.5-72B-Instruct, Qwen3-235B-A22B, DeepSeek-R1, and Kimi-k2.5. All models are evaluated with the same inputs, rubrics, and primary judge model (Gemini-2.5-Pro) under 5-point scoring. The Figure 4 show clear performance differ-ences across Tier-1 models like GPT-5 from weaker models such as Qwen-2.5-72B, demonstrating Edu-330 provides strong discriminative power. Further-more, radar chart reveals that the primary perfor-mance gap lies not in Professionalism, but rather in the Creativity and Values. This indicates that current model limitations in educational scenarios stem from a deficiency in pedagogical delivery and teaching methodology, rather than a lack of factual knowledge. 
+
+4.2 Evaluation Results on Expert-in-the-Loop Scenarios 
+
+The marginal performance differences among top-tier models suggest a difficulty ceiling in purely LLM-generated datasets, which highlights the criti-cal importance of an expert-in-the-loop approach. To establish a "gold standard" for consistency veri-fication, we invited experts to manually author four enhanced scenarios through our E LMES + system: 
+
+Guided Tutoring , Knowledge Explanation , Inter-disciplinary Lesson Planning , and Scenario-based Question Generation . These hand-written tasks are designed to comprehensively cover educational dimensions across diverse user roles (teachers, stu-dents, and parents), various interaction modalities (single-turn and multi-turn), and a wide range of content formats (see Appendix B for detailed defi-nitions). We collected responses from four representa-tive target models (DeepSeek-R1, Gemini-2.5-Pro, GPT-4o, and the education-vertical model In-noSpark) across the four gold-standard scenarios. Then we invited 11 human experts to conduct a blind scoring of the outputs, without knowing the source models, as the ground-truth baseline scores. 5Figure 4: Performance comparison of mainstream models on the Edu-330 benchmark. 
+
+The expert panel achieved Cronbach’s α between 0.87 and 0.89 across scenarios, indicating very high inter-rater reliability. As shown in Table 1, several conclusions emerged: • Difficulty and Potential : The expert-authored scenarios significantly raised the difficulty, result-ing in a general decline in model scores. Further-more, the education-vertical model, InnoSpark, achieved the highest average score (3.98), indicat-ing the room for deeper exploration in specialized pedagogical applications. • Knowledge vs. Pedagogical : Scores in the Pro 
+
+dimension are consistently higher than those in 
+
+Cre . This trend echoes our earlier findings from the synthesized Edu-330 benchmark, reaffirming the primary bottleneck for current LLMs in edu-cational scenarios is engaging teaching method-ologies and pedagogical adaptability. 
+
+4.3 Consistency and Stability of E LMES +
+
+To further investigate the accuracy and stabil-ity of E LMES +, we introduced a panel of rep-resentative models to serve as judges: GPT-4.1, Claude-4-Sonnet, Gemini-2.5-Pro, and Kimi-k2-turbo-preview. We assess scoring stability by eval-uating the same samples 10 times. The comparative results in Table 2 reveal critical patterns in stability: 
+
+Relative Ranking Alignment : Overall, LLM judges demonstrate comparable capability to hu-man experts in distinguishing high-performing models. Specifically, models such as Gemini and InnoSpark receive consistently higher average scores, while GPT-4o and DeepSeek-R1 exhibit relatively lower mean scores across evaluations. From a scenario-specific perspective, this align-ment is further substantiated. For instance, GPT-4o shows significantly depressed performance in 
+
+Scenario-based Question Generation . Conversely, Gemini’s exceptionally strong performance in 
+
+Knowledge Explanation . These findings validate the effectiveness of the E LMES + in conducting reli-able evaluations of LLM educational capabilities. 
+
+Superior Stability and Reproducibility From the perspective of variance, all LLM judges demon-strate significantly higher stability than human ex-perts. While human scoring variance typically ranges from 0.11 to 0.45, LLM judges consistently maintain a variance around 0.01, with some values approaching zero. This indicates that the ELMES framework effectively eliminates common uncer-tainties and fatigue-induced errors inherent in hu-man subjective evaluation, providing results that are highly reproducible. 
+
+Different models exhibit unique evaluative ten-dencies GPT-4.1 demonstrates a lenient scoring pattern, frequently assigning near-ceiling scores (e.g., 4.884 for Gemini-2.5 in Knowledge Explana-tion and 5.000 in Scenario-based Question Gener-ation ). In contrast, Claude-4-Sonnet applies con-sistently stringent standards, particularly in chal-lenging scenarios like Guided Tutoring where it assigns notably low scores. These divergent ten-dencies manifest primarily as systematic additive biases rather than rank-altering distortions, as rel-ative model ordering remains consistent despite absolute score variations. 6Table 1: Human expert evaluation results across 4 scenarios and 4 dimensions (5-point scale). GT: Guided Tutoring, SQ: Scenario-based Question Generation, KE: Knowledge Explanation, IL: Interdisciplinary Lesson Plan. Per: Personalization, Cre: Creativity, Val: values, Pro: Professionalism. 
+
+Model Typical Scenarios Core Dimensions Avg GT SQ KE IL Per Cre Val Pro 
+
+DeepSeek-R1-0325 2.76 3.96 4.26 3.16 3.34 2.97 3.22 3.66 3.53 Gemini-2.5-Pro 3.93 4.07 4.50 3.94 3.81 3.57 3.68 3.97 3.92 GPT-4o 3.45 2.81 3.39 3.45 3.48 3.17 3.51 3.50 3.41 InnoSpark 4.03 3.98 3.93 4.03 3.95 3.67 3.97 4.08 3.98 
+
+> Figure 5: Effects of Prompting and Sampling Strategies on the Mean-Score Bias and Variance Bias of Different Judge Models on Guided Tutoring.
+
+The "self-preference" phenomenon It is note-worthy to address the issue of self-preference bias, where Gemini exhibited ‘problem misinterpreta-tion’ in the Guided Tutoring, providing explana-tions that deviated from the intended question. Hu-man experts, while noting the error by giving low scores for thematic relevance, awarded relatively high marks (3.936) for other pedagogical indica-tors. In contrast, most LLM judges demonstrated a "zero-tolerance" policy toward factual errors, lead-ing to systematically lower aggregate scores. Para-doxically, when Gemini-2.5-Pro served as its own judge, it exhibited severe self-preference. Despite the factual error that other models detected, it as-signed itself a score of 4.008—surpassing even the human experts’ lenient average and ranking itself higher than any other judge did. These findings underscore the necessity of intro-ducing methods in automated evaluation to neutral-ize the baseline deviations and "blind spots" of any model. 
+
+4.4 Prompt Strategy Ablation 
+
+We ablate three scoring optimization strategies on the most complex scenario (Guided Tutoring): few-shot anchoring via expert-scored examples, reasoning enforcement requiring explicit chain-of-thought analysis prior to scoring, and greedy de-coding by setting the temperature to 0. Figure 5 presents the ablation results on prompt strategies: • Few-shot anchoring is effective but costly : Pro-viding few-shot examples consistently improves alignment (e.g., reducing mean deviation by 20% for Claude and GPT-4.1). However, this perfor-mance gain comes at the direct cost of additional human expert labor required to craft high-quality reference examples. • Reasoning enforcement is model-dependent :While reasoning enforcement helps lower evalu-ation variance, whether it improves consistency is highly model-dependent (e.g., providing a sig-nificant +0 .992 alignment shift for GPT-4.1, but 7Table 2: Comparison of Variance (Var) and Mean Scores(Mean) Across Four Educational Scenarios for Various LLM Judges and Human Experts. The highest Mean values are highlighted in green, and the lowest are in red.                                                                                                                                                                            
+
+> DeepSeek-R1 Gemini-2.5 GPT-4o InnoSpark Judge Var Mean Var Mean Var Mean Var Mean
+> Guided Tutoring
+> Claude-4-Sonnet 0.067 1.864 0.054 1.580 0.016 4.006 0.015 3.121 Gemini-2.5-Pro 0.036 2.104 0.024 4.008 0.011 4.008 0.103 3.961 GPT-4.1 0.039 1.907 0.011 1.569 0.033 2.909 0.063 3.520 Kimi-k2-Turbo 0.006 1.790 0.060 2.662 0.013 3.303 0.024 4.132 Human Experts 0.112 2.757 0.157 3.936 0.202 3.453 0.163 4.033
+> Knowledge Explanation
+> Claude-4-Sonnet 0.004 4.103 0.001 4.475 0.001 4.064 0.002 4.127 Gemini-2.5-Pro 0.010 4.240 0.002 4.656 0.008 4.053 0.013 4.297 GPT-4.1 0.002 4.756 0.001 4.884 0.002 4.714 0.006 4.566 Kimi-k2-Turbo 0.003 3.893 0.009 4.348 0.004 3.771 0.007 3.671 Human Experts 0.161 4.256 0.195 4.502 0.458 3.389 0.236 3.934
+> Interdisciplinary Lesson Planning
+> Claude-4-Sonnet 0.002 3.476 0.002 4.226 0.000 3.229 0.001 4.036 Gemini-2.5-Pro 0.009 4.449 0.000 4.717 0.002 4.095 0.001 4.739 GPT-4.1 0.000 4.386 0.000 4.845 0.002 4.353 0.000 4.872 Kimi-k2-Turbo 0.008 3.925 0.001 4.360 0.003 3.385 0.002 4.486 Human Experts 0.180 3.161 0.157 3.936 0.202 3.453 0.163 4.033
+> Scenario-based Question Generation
+> Claude-4-Sonnet 0.002 4.522 0.000 4.826 0.002 3.594 0.000 4.418 Gemini-2.5-Pro 0.007 4.574 0.000 4.874 0.005 3.524 0.009 4.670 GPT-4.1 0.000 4.984 0.000 5.000 0.001 4.724 0.000 4.938 Kimi-k2-Turbo 0.002 4.602 0.001 4.860 0.001 3.628 0.003 4.658 Human Experts 0.128 3.958 0.171 4.069 0.387 2.815 0.295 3.982
+
+remaining marginal for others). • Zero temperature yields limited utility : Due to the low baseline variance, the variance reduction achieved by greedy decoding is barely notice-able. More critically, it risks trapping the model in suboptimal choices, which can significantly widen the consistency gap from expert scores (e.g., Gemini: −0.962 , GPT: −0.615 ). 
+
+5 Conclusion 
+
+This paper presented E LMES +, an end-to-end framework for scalable, pedagogically grounded evaluation of LLMs in education. By combining a declarative teacher–student–judge engine with the self-evolving S CENE GEN module, E LMES +
+
+automatically constructs and refines fine-grained, scenario-specific rubrics while supporting both single-turn and multi-turn assessment. Experiments on Edu-330 and four expert-authored gold-standard scenarios show that educa-tional capability is a multidimensional diagnostic problem rather than a single ranking task. Model gaps are most visible in creativity, values integra-tion, and guided tutoring; the education-specialized InnoSpark achieves the strongest human-evaluated average, while LLM judges provide stable rel-ative rankings but still exhibit biases such as self-preference.Ablations further show that expert-scored few-shot anchoring improves human–LLM alignment, whereas reasoning enforcement and greedy decoding remain model-dependent. Future work will extend E LMES + beyond text-only set-tings by incorporating multimodal interactions, real learner outcome data, broader expert review, and curriculum-adaptive rubric generation. 
+
+Limitations 
+
+While E LMES + provides a scalable approach for evaluating educational LLMs, we acknowledge a few boundaries in its current scope: 8• Simulated Environments: ELMES + evaluates pedagogical capabilities within an offline, sim-ulated setting. Although our synthetic student profiles are realistic, they cannot fully capture the unpredictable cognitive dynamics of actual learners. Future work will need to align these syn-thetic metrics with empirical learning outcomes in real-world deployments. • Modality Constraints: The current framework focuses exclusively on text-based interactions. It does not yet evaluate multimodal educational scenarios, such as voice-based conversational tu-toring or handwritten homework analysis. 
+
+References 
+
+Wei-Lin Chiang, Lianmin Zheng, Ying Sheng, Anasta-sios Nikolas Angelopoulos, Tianle Li, Dacheng Li, Hao Zhang, Banghua Zhu, Michael Jordan, Joseph E Gonzalez, and 1 others. 2024. Chatbot arena: An open platform for evaluating llms by human prefer-ence. arXiv preprint arXiv:2403.04132 .Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, and 1 others. 2021. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168 .Yuhao Dan, Zhikai Lei, Yiyang Gu, Yong Li, Jianghao Yin, Jiaju Lin, Linhao Ye, Zhiyan Tie, Yougen Zhou, Yilei Wang, and 1 others. 2023. Educhat: A large-scale language model-based chatbot system for intel-ligent education. arXiv preprint arXiv:2308.02773 .Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Ja-cob Steinhardt. 2021. Measuring mathematical prob-lem solving with the math dataset. arXiv preprint arXiv:2103.03874 .Yuzhen Huang, Yuzhuo Bai, Zhihao Zhu, Junlei Zhang, Jinghan Zhang, Tangjun Su, Junteng Liu, Chuancheng Lv, Yikai Zhang, Yao Fu, and 1 others. 2023. C-eval: A multi-level multi-discipline chinese evaluation suite for foundation models. Advances in neural information processing systems , 36:62991– 63010. Enkelejda Kasneci, Kathrin Seßler, Stefan Küchemann, Maria Bannert, Daryna Dementieva, Frank Fischer, Urs Gasser, Georg Groh, Stephan Günnemann, Eyke Hüllermeier, and 1 others. 2023. Chatgpt for good? on opportunities and challenges of large language models for education. Learning and individual dif-ferences , 103:102274. Seungone Kim, Jay Shin, Joel Jang, Shayne Longpre, Hwaran Lee, Sangdoo Yun, Ryan Shin, Sungdong Kim, James Thorne, Minjoon Seo, and 1 others. 2024. Prometheus: Inducing fine-grained evaluation capa-bility in language models. In International Con-ference on Learning Representations , volume 2024, pages 29927–29962. Junlong Li, Shichao Sun, Weizhe Yuan, Run-Ze Fan, Pengfei Liu, and 1 others. 2024. Generative judge for evaluating alignment. In International Conference on Learning Representations , volume 2024, pages 27547–27574. Jakub Macina, Nico Daheim, Sankalan Chowdhury, Tan-may Sinha, Manu Kapur, Iryna Gurevych, and Mrin-maya Sachan. 2023. Mathdial: A dialogue tutoring dataset with rich pedagogical properties grounded in math reasoning problems. In Findings of the Associ-ation for Computational Linguistics: EMNLP 2023 ,pages 5602–5621. Punya Mishra and Matthew J Koehler. 2006. Tech-nological pedagogical content knowledge: A frame-work for teacher knowledge. Teachers college record ,108(6):1017–1054. Rakshith S Srinivasa, Zora Che, Chen Bo Calvin Zhang, Diego Mares, Ernesto Hernandez, Jayeon Park, Dean Lee, Guillermo Mangialardi, Charmaine Ng, Ed-Yeremai Hernandez Cardona, and 1 others. 2025. Tutorbench: A benchmark to assess tutoring capa-bilities of large language models. arXiv preprint arXiv:2510.02663 .Lev S Vygotsky. 1978. Mind in society: The develop-ment of higher psychological processes , volume 86. Harvard university press. Peiyi Wang, Lei Li, Liang Chen, Zefan Cai, Dawei Zhu, Binghuai Lin, Yunbo Cao, Lingpeng Kong, Qi Liu, Tianyu Liu, and 1 others. 2024a. Large language models are not fair evaluators. In Proceedings of the 62nd Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) , pages 9440–9450. Shen Wang, Tianlong Xu, Hang Li, Chaoli Zhang, Joleen Liang, Jiliang Tang, Philip S Yu, and Qing-song Wen. 2026. Large language models for educa-tion: A survey and outlook. IEEE Signal Processing Magazine , 42(6):51–63. Yubo Wang, Xueguang Ma, Ge Zhang, Yuansheng Ni, Abhranil Chandra, Shiguang Guo, Weiming Ren, Aaran Arulraj, Xuan He, Ziyan Jiang, and 1 others. 2024b. Mmlu-pro: A more robust and challenging multi-task language understanding benchmark. Ad-vances in Neural Information Processing Systems ,37:95266–95290. Bin Xu, Yu Bai, Huashan Sun, Yiguan Lin, Siming Liu, Xinyue Liang, Yaolin Li, Zhuangzhi Dong, Jingren Zhang, Yufan Deng, and 1 others. 2025. Edubench: A comprehensive benchmarking dataset for evalu-ating large language models in diverse educational scenarios. arXiv preprint arXiv:2505.16160 .
+
+9Lixiang Yan, Lele Sha, Linxuan Zhao, Yuheng Li, Roberto Martinez-Maldonado, Guanliang Chen, Xinyu Li, Yueqiao Jin, and Dragan Gaševi´ c. 2024. Practical and ethical challenges of large language models in education: A systematic scoping review.     
+
+> British Journal of Educational Technology , 55(1):90– 112. Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric Xing, and 1 others. 2023. Judging llm-as-a-judge with mt-bench and chatbot arena. Advances in neural information pro-cessing systems , 36:46595–46623. Chengliang Zhou, Mei Wang, Ting Zhang, Qiannan Zhu, Jian Li, and Hua Huang. 2025. From an-swers to questions: Eqgbench for evaluating llms’ educational question generation. arXiv preprint arXiv:2508.10005 .
+
+Appendix A Interactive UI 
+
+1. Visual Configuration Generator. Experts con-struct evaluation scenarios through a structured form-based interface rather than editing raw YAML files. The panel provides accordion sec-tions for global settings (concurrency, retry poli-cies), model configuration (teacher, student, and judge models with API endpoints), prompt edit-ing (system and user prompts for each agent role), task data entry (via an interactive spread-sheet supporting student personas and test ques-tions), and evaluation rubric design (dimension names, types, and descriptions). A one-click example loader populates all fields with a com-plete working configuration, allowing experts to start from a template and iteratively customize. 2. Advanced Configuration Editor. For experts comfortable with YAML, a syntax-highlighted editor allows direct manipulation of configura-tion files. Experts can load existing configura-tions from a dropdown menu, modify any pa-rameter, and save updated versions. This panel also serves as the bridge between the visual gen-erator (which outputs YAML) and the execution engine (which consumes YAML), enabling ex-pert review of the generated configuration be-fore execution. 3. One-Click Execution Console. Experts can trigger individual pipeline stages ( generate ,
+
+export , eval ) or the full pipeline with a sin-gle button click. Real-time streaming output displays the evaluation progress, including per-scenario scores and any errors encountered. This eliminates the need for command-line in-teraction and makes the evaluation workflow accessible to non-technical educators. 4. Evaluation Results Dashboard. After evalu-ation completes, the results panel renders in-teractive HTML reports with radar charts com-paring model performance across evaluation di-mensions, per-task score breakdowns with judge reasoning, and expandable case panels showing complete dialogue trajectories alongside their scores. Experts can browse evaluation directo-ries, navigate to specific scenarios, and visually identify where models succeed or fail. 10 (a) Code-free configuration interface (b) Automatically generated visualization     
+
+> Figure 6: The proposed interface for code-free scenario configuration and automated visualization. (a) Experts configure educational evaluation scenarios through an intuitive visual dashboard, defining content and parameters without programming. (b) The framework automatically generates a structured schematic diagram visualizing the configured scenario.
+
+B Evaluation Scenarios 
+
+We instantiate E LMES + across four representa-tive pedagogical task types that span the spectrum from single-turn generation to multi-turn interac-tive teaching. 
+
+B.1 Knowledge Point Explanation 
+
+The teacher agent provides a systematic, personal-ized explanation of a specific knowledge point to a learner with a defined cognitive profile. This is a 
+
+single-turn task evaluated on 6 dimensions: role adherence, emotional support, knowledge mastery, teaching method appropriateness, content design quality, and responsiveness to learner characteris-tics. 
+
+B.2 Guided Problem-Solving Teaching 
+
+The teacher agent engages in a multi-turn Socratic dialogue with a simulated student agent, guiding the student to solve a problem through scaffolded questioning rather than direct answer provision. This scenario is evaluated on 14 dimensions or-ganized into four categories: content fidelity (ac-curacy, role consistency, topic relevance), guided instruction (guidance quality, directionality, person-alization, metacognition cultivation), values (cul-tural integration, value orientation), and affective support (emotional awareness, appropriateness, in-clusivity). 
+
+B.3 Interdisciplinary Lesson Plan Generation 
+
+The teacher agent produces a comprehensive lesson plan integrating concepts from multiple academic disciplines. This single-turn task is evaluated on 15 dimensions covering thematic coherence, activ-ity design, assessment system quality, implementa-tion feasibility, and logical structure. 
+
+B.4 Contextualized Question Generation 
+
+The teacher agent generates an examination ques-tion embedded in an authentic real-world context, along with a complete solution. This single-turn 
+
+task is evaluated on 5 dimensions: problem content quality, solution quality, context quality, pedagogi-cal utility, and value alignment. 
+
+B.5 Human Expert Scoring Guidelines 
+
+To ensure the empirical rigor of our baseline, the human expert panel was provided with the exact scenario definitions and fine-grained rubrics de-tailed above. Evaluators conducted a strict double-blind review, where the identity of the source model for each pedagogical response was completely con-cealed and randomized. Experts graded each gener-ated output on a 5-point Likert scale (1: Completely Fails to Meet Criteria, 5: Perfectly Meets Criteria) across every individual sub-dimension. These fine-grained annotations were subsequently aggregated and averaged to derive the four consolidated core dimensions presented in our main text evaluation: Professionalism, Personalization, Creativity, and Values. 
+
+C Self-Evolving Algorithm D Case Study: Scenario Configuration Details 
+
+To provide a concrete illustration of our evaluation framework, Figure 7 presents the YAML configura-tion for a scenario: Chinese - Elementary - Ancient Poetry Enlightenment .11 Algorithm 1 SCENE GEN : Self-Evolving Rubric Synthesis 
+
+Require: Scene s ∈ S , dimensions {(di, w i)}, max iterations K, QA count N , patience p, threshold ϵ 
+
+> 1:
+
+P (0)  
+
+> syn
+
+← InitialSynthesisPrompt  
+
+> 2:
+
+M(0) ← MetricGen (s, {(di, w i)}) ▷ 6–10 metrics with dimension labels and weights  
+
+> 3:
+
+P ∗
+
+> syn
+
+, M∗, ¯s∗ 
+
+> w
+
+← P (0)  
+
+> syn
+
+, M(0) , −∞ ▷ Best-version tracking  
+
+> 4:
+
+for k = 1 to K do  
+
+> 5:
+
+{(qint  
+
+> j
+
+, q usr  
+
+> j
+
+, a j )}Nj=1 ← GenerateQA (s, P (k−1)  
+
+> syn
+
+, personas, lengths ) ▷ Dual-Q + length control  
+
+> 6:
+
+S(k) ← ∅  
+
+> 7:
+
+for parallel j = 1 to N , m ∈ M (k−1) do ▷ Model-as-Judge  
+
+> 8:
+
+sj,m , r j,m ← JudgeScore (qusr  
+
+> j
+
+, a j , m ) ▷ Score ∈ [1 , 5] + reasoning  
+
+> 9:
+
+S(k) ← S(k) ∪ { (j, m, s j,m , r j,m )} 
+
+> 10:
+
+end for  
+
+> 11:
+
+¯sm ← 1
+
+> N
+
+P 
+
+> j
+
+sj,m ▷ Per-metric averages  
+
+> 12:
+
+¯s(k) 
+
+> w
+
+←    
+
+> P
+> mwm¯smP
+> mwm
+
+▷ Weighted average score  
+
+> 13:
+
+if k = 1 then  
+
+> 14:
+
+A ← SelectAnchors ({(qj , a j )}) ▷ Freeze anchor QA set  
+
+> 15:
+
+else  
+
+> 16:
+
+S(k) 
+
+> A
+
+← ScoreAnchors (A, M(k−1) ) ▷ Re-score frozen anchors  
+
+> 17:
+
+if |¯s(k) 
+
+> A
+
+− ¯s(k−1)  
+
+> A
+
+| > τ then  
+
+> 18:
+
+warn “metric semantic drift detected” ▷ Anchor calibration  
+
+> 19:
+
+end if  
+
+> 20:
+
+end if  
+
+> 21:
+
+if ¯s(k) 
+
+> w
+
+> ¯s∗ 
+
+> w
+
+then ▷ Best-version tracking  
+
+> 22:
+
+P ∗
+
+> syn
+
+, M∗, ¯s∗ 
+
+> w
+
+← P (k−1)  
+
+> syn
+
+, M(k−1) , ¯s(k) 
+
+> w
+> 23:
+
+else  
+
+> 24:
+
+P (k−1)  
+
+> syn
+
+, M(k−1) ← P ∗
+
+> syn
+
+, M∗ ▷ Rollback to best  
+
+> 25:
+
+end if  
+
+> 26:
+
+if k > p and max i∈[k−p,k )(¯ s(i+1)  
+
+> w
+
+− ¯s(i) 
+
+> w
+
+) < ϵ then  
+
+> 27:
+
+break ▷ Early stopping  
+
+> 28:
+
+end if  
+
+> 29:
+
+obs ← AnalyzePathologies (¯ sm, S(k)) 
+
+> 30:
+
+P (k) 
+
+> syn
+
+← EvolveSynthesis (P (k−1)  
+
+> syn
+
+, S(k), ¯s(k) 
+
+> w
+
+, all QAs ranked ) ▷ Enhanced signal  
+
+> 31:
+
+M(k) ← AlignMetrics (EvolveMetrics (M(k−1) , S(k), obs )) ▷ Constrained evolution  
+
+> 32:
+
+end forreturn P ∗
+
+> syn
+
+, M∗, {(qj , a j )} ▷ Return best version 12 models: test_model: judge_model: agents: test_model: model: test_model prompt: - role: system content: You are a helpful assistant. - role: user 
+
+content: "Your task is scenario: Chinese - Elementary - Ancient Poetry Enlightenment and Imagination Teaching. {question}" 
+
+tasks: mode: iter content: 
+
+- question: "I am a teacher named Pan Tie, 33 years old, male. My hobbies are stargazing, astrophotography, and DIY computer assembly. Professionally, my logic is average, and I tend to rely on authority but am open to feedback. I am currently responsible for teaching ancient poetry to third graders. I found that students cannot understand the exaggeration technique in ’pluck the stars with my hand’ from the poem ’Lodging at a Mountain Temple’. Their specific confusion is that they insist hands can truly touch the stars. As an ancient poetry enlightenment expert, please first analyze the specific cognitive barriers of these students in poetry learning, and then provide a targeted solution. Can you explain this comprehensively and deeply? It would be best to design some cross-disciplinary teaching activities combining my astronomy hobbies, including four complete instructional stages: situational introduction, confusion deconstruction, interactive exploration, and consolidation/transfer." - question: "I am a parent of a second-grade student, female, 35 years old, with a busy career, having only 20 minutes of companion time each evening. My child has a sensitive personality, is responsive to visual learning but resists mechanical memorization. The specific confusion is interpreting ’yu qiong qian li mu’ (desiring to exhaust the thousand-mile vision) as ’wanting a thousand miles of poor eyes’, failing to understand the ancient-modern semantic shift of the character ’qiong’ (exhaust/poor). As an ancient poetry enlightenment expert, please first analyze the specific cognitive barriers of this student, and then give a targeted solution. I want to learn in depth how to design short, highly effective home tutoring games, including thorough discussion, examples, and analysis." - question: "I am MillerJose, 14 years old, an eighth-grade student, male. My hobbies are Chess and Robot Making. I have low confidence, focus on academics but am hesitant in social interactions, and prefer solitary activities. I want to help my younger brother, who is in the fourth grade, learn ’Looking at the Lushan Waterfall’. My brother’s specific confusion is the inability to imagine the sense of spatial height in ’flying down three thousand feet’. As an ancient poetry enlightenment expert, please first analyze his specific cognitive barriers in poetry learning, and then provide a targeted solution. Tell me how to use my robot-making hobby to design auxiliary teaching aids, including necessary details and examples." (Remaining 7 multi-profile evaluation queries synthesized by SceneGen) 
+
+directions: - START -> test_model - test_model -> END evaluation: name: judge model: judge_model prompt: - role: user content: | 
+
+You are an expert in education, specializing in evaluating scenarios for Chinese-Elementary-Ancient Poetry Enlightenment. Please rate the following response using a 1-5 scale... 
+
+format: 
+
+- field: Accuracy of Poetry Knowledge - field: Heuristic Teaching Guidance - field: Grade-level Language Adaptability - field: Completeness of Instructional Stages - field: Student Profile Alignment - field: Format Instruction Compliance - field: Personalized Problem Diagnosis - field: Stimulation and Guidance of Imagination - field: Integration of Traditional Cultural Values (Comprehensive fine-grained rubrics generated by SceneGen) 
+
+Figure 7: YAML configuration samples for the elementary school ancient poetry enlightenment scenario. 
+
+13
