@@ -1,0 +1,762 @@
+Title: Support Vector Rubrics: Closing the Gap Between Self-Generated and Human Rubrics
+
+URL Source: https://arxiv.org/pdf/2606.08077v1
+
+Published Time: Tue, 09 Jun 2026 00:42:26 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# Support Vector Rubrics: Closing the Gap Between Self-Generated and Human Rubrics 
+
+Mengyuan Sun 1*, Yu Li 2*, Zhuohao Yu 1, Shikun Zhang 1, Wei Ye 1†1National Engineering Research Center for Software Engineering, Peking University 
+
+> 2
+
+University of Science and Technology of China 
+
+mengyuansun25@stu.pku.edu.cn , liyu01@mail.ustc.edu.cn , wye@pku.edu.cn 
+
+Abstract 
+
+Rubric-based evaluation is a promising paradigm for judging large language model (LLM) outputs, yet self-generated rubrics lag human-annotated criteria on hard instances. We argue this discriminative gap reflects an ob-jective mismatch: self-generated rubrics de-scribe good responses, whereas effective crite-ria must discriminate between close candidates. To close this gap, we introduce SVR (S UPPORT 
+
+VECTOR RUBRICS ), a framework that recasts rubric construction as max-margin boundary learning over preference data. SVR mines con-trastive features from preference pairs into a rubric bank, learns a prompt-conditioned se-lector together with global rubric weights, and iteratively refines the bank through support-pair selection and adversarial probing of hard neg-atives. At inference, given only the prompt, SVR retrieves the top-k rubrics from the bank and scores responses. On RubricBench, SVR narrows the gap to human reference rubrics from 24.1 to 0.3 points and outperforms strong self-rubric and judge baselines, and the learned bank transfers across judges without retrain-ing. On RewardBench 1&2, and RM-Bench, it remains competitive with dedicated reward models, demonstrating broader reward mod-eling capability. Overall, boundary-defining rubrics offer a principled route to closing the discriminative gap in LLM evaluation. 
+
+1 Introduction 
+
+Aligning large language models with human pref-erences hinges on reliable evaluation (Christiano et al., 2017; Stiennon et al., 2020), yet open-ended tasks such as question answering and general help-fulness are inherently subjective, and cannot be ad-equately captured by binary correctness or opaque scalar rewards (Zheng et al., 2023; Li et al., 2025). Generative reward models (GRMs) introduce chain-of-thought judgments (Zhang et al., 2025; Chen 
+
+> *
+
+Equal contribution. 
+
+> †
+
+Corresponding author. Skywork-V2-8B    
+
+> GPT-OSS-120B
+> Gemini-3-Flash
+> GPT-5.4
+> RubricARM
+> GPT-OSS-120B
+> Gemini-3-Flash
+> GPT-5.4
+> GPT-OSS-120B
+> Gemini-3-Flash
+> 40
+> 50
+> 60
+> 70
+> 80
+> 90
+> RubricBench accuracy (%)
+> human-rubric oracle
+> 61.0
+> 55.2
+> 57.9
+> 61.1
+> 48.6
+> 59.0 60.1 60.3
+> 82.8 83.1
+> 22.8 pp
+> gap
+> Scalar RM
+> LLM-as-a-Judge
+> Rubric proposer
+> Self-gen. rubrics
+> Ours (SVR)
+> Human-rubric oracle
+
+Figure 1: The discriminative gap on RubricBench. 
+
+LLM self-generated rubrics, state-of-the-art scalar re-ward model, and frontier LLM all stall below 62 , far short of the human-rubric oracle at 83 .1. SVR closes this gap, lifting GPT-OSS-120B to 82 .8.
+
+et al., 2026; Yu et al., 2025), but their free-form criteria remain prone to superficial presentation bias (Liu et al., 2025c; Zhang et al., 2026) and reward hacking (Coste et al., 2024; Gao et al., 2023). Rubric-based evaluation closes both gaps by decomposing quality into structured, verifiable criteria that align model judgments with human preferences (Gunjal et al., 2026; Liu et al., 2026). An increasingly common practice is to let the judge model write the rubric on the fly from the prompt (Liu et al., 2025b; Cook et al., 2024; Lee et al., 2025), which scales without human anno-tation but leaves a basic question open: are these self-generated rubrics actually reliable? 
+
+Recent evidence suggests they are not . On RubricBench (Zhang et al., 2026), a pairwise benchmark deliberately filtered for nuance and surface-level biases, replacing self-generated rubrics with human-annotated ones lifts pairwise accuracy by more than 20 percentage points with the judge model held fixed, and the gain is stable across backbones. Figure 1 illustrates this discrim-inative gap . We argue the gap is one of objective ,not language ability: self-generated rubrics default 1
+
+> arXiv:2606.08077v1 [cs.CL] 6 Jun 2026
+
+to describing good responses with generic dimen-sions such as clarity and completeness that hold uniformly across answers, whereas human rubrics 
+
+discriminate responses near the decision bound-ary with specific factors, such as whether a safety caveat is present or a tempting counter-example is correctly handled. Shen et al. (2026) corroborate this diagnosis, attributing the failure of prompt-only rubrics to insufficient coverage of nuanced quality dimensions, misaligned or overlapping cri-teria, and correlated items that double-count the same signal. This framing of rubrics as boundary-relevant criteria has a natural parallel in classifica-tion theory. The classical lesson from max-margin classifiers (Boser et al., 1992; Cortes and Vapnik, 1995; Bartlett et al., 1998) is that a decision bound-ary is shaped by support vectors , and by analogy an effective rubric should be tuned to the support pairs of the response space, the hard cases near the boundary, instead of to its centroid. Building on this view, we propose SVR (S UPPORT VECTOR RUBRICS ), which reframes rubric construction as max-margin boundary learn-ing over preference data. Instead of writing a fresh rubric per prompt, SVR maintains a global rubric bank contrastively mined from preference pairs, and learns a prompt-conditioned selector α(x) to-gether with a global importance weight w per rubric that define a discriminative margin between cho-sen and rejected responses. The bank is refined over rounds: samples near or on the wrong side of the margin are designated as support pairs , an ad-versarial probe synthesises hard negatives against them, and a contrastive induction step adds rubrics for the newly exposed failure modes before prun-ing low-weight, low-support, or redundant entries. At inference, SVR retrieves the top-k rubrics from the learned bank conditioned only on the prompt, fixing the evaluation criterion before any candidate response is observed. This decouples rubric gen-eration from response content, providing a princi-pled and reusable standard for downstream scoring, ranking, and reinforcement learning from human feedback (RLHF) pipelines. 
+
+Contributions. (i) We reframe the discriminative gap as a mismatch between descriptive and dis-criminative objectives at the rubric proposal stage, showing that the judge model can score reliably once given adequate criteria. (ii) We propose SVR, which constructs rubrics by max-margin bound-ary learning over a global bank with a prompt-conditioned selector, learned importance weights, and adversarial refinement. (iii) SVR reaches 
+
+82 .8 on RubricBench, within 0.3 of the human-rubric oracle, while staying competitive on Reward-Bench 1&2 and RM-Bench. (iv) The learned bank is trained once and transfers across both heteroge-neous judge families and unseen preference bench-marks, requiring no human rubric annotation and no per-prompt rubric generation at inference. 
+
+2 Related Work 
+
+2.1 Rubric-based Evaluation 
+
+Rubric-based LLM evaluation has attracted grow-ing attention, with recent benchmarks probing rubric authoring by models (Zhang et al., 2026), rubric-level human-judge agreement (Pan et al., 2026), instruction following under complex con-straints (He et al., 2025), and hierarchical rubric grading of research replication (Starace et al., 2025). On the methodological side, OpenRubrics (Liu et al., 2025b) synthesises (prompt, rubric) data via contrastive generation, RaR (Gunjal et al., 2026) and RIFL (He et al., 2025) use rubrics as RL rewards, RLCER (Sheng et al., 2026) co-trains rea-soner and rubricator, and the Implicit-to-Explicit framework of Xie et al. (2025) fixes a domain-specific core rubric set, requiring re-induction for new domains, and Rubric-ARM (Xu et al., 2026) alternately trains a rubric proposer and judge via RL for co-evolving rewards. RRD (Shen et al., 2026) mines rubrics from responses sampled by external generators, so the resulting rubrics inherit the coverage and biases of those generators. SVR departs from this landscape in several ways. Where prior methods (Liu et al., 2025b; Shen et al., 2026; Xie et al., 2025) optimise rubrics for de-scriptive coverage, summarising induced rules or sampled responses, we optimise for discriminative margin against support pairs and learn a selector that activates a subset of a dynamic global bank grown with adversarial hard negatives at the bound-ary. Unlike RRD (Shen et al., 2026), our pipeline conditions only on the prompt, and rubrics earn their place by carrying margin on misjudged sam-ples rather than by external sampling. 
+
+2.2 Reward Modeling from Preferences 
+
+Reward models (RMs) translate preference data into scoring functions for alignment, RL fine-tuning, and rejection sampling. Scalar RMs such as Nemotron-Reward (Wang et al., 2025a) and 2Preference Dataset 1                                
+
+> prompt
+> chosen response
+> rejected response
+> Goal: learn
+> s.t.
+> 2Contrastive Feature Induction
+> Ask: “What rubrics explain why the preferred response
+> beats the dispreferred one? ”
+> LLM
+> Induce
+> Rubric Candidates
+> Merge &
+> Dedup Rubric
+> Bank
+> (size )
+> •Criterion 1
+> •Criterion 2
+> •...
+> •Criterion K
+> 3Sparse Max-Margin Scoring
+> Differential Feature
+> For each rubric
+> Prompt-Conditioned Selector Global Weights
+> TF-IDF( )
+> Margin
+> Loss
+> Correct ranking Non-redundant selection
+> 4Adversarial Refinement
+> Compute
+> Support if:
+> covering both misranked
+> and low-margin triples
+> Support Set
+> •
+> •
+> •
+> •...
+> Three roles of support pairs
+> Drive adversarial probing
+> Contrastive induction seed
+> Pruning coverage signal
+> For each
+> Hard Negative Probing
+> LLM
+> Probe
+> Candidate Pool
+> •Rejected response
+> •Dataset alternatives
+> •LLM-generated
+> hard negatives
+> Hard negative
+> for training and refinement
+> 5Bank Pruning
+> Refinement Induction
+> On
+> •Criteria 1
+> from
+> •Criteria 2
+> from
+> •...
+> Merge &
+> Dedup
+> LLM
+> Induce
+> Updated
+> Bank
+> Retention
+> Redundancy
+> pruned
+> weight activation coverage
+> or or
+> too similar to
+> too similar to
+> Inference
+> Input:
+> prompt
+> xs
+> Compute
+> (all rubrics in )
+> for preference optimization,
+> rejection sampling, etc.
+> Top--> Active Rubrics
+> 
+> 
+> Score response
+> with LLM Judge
+> 0.2 0.7 0.1 0.4 0 0.6 0.1
+> Next Round
+
+Figure 2: Overview of SVR. The training loop alternates between fitting (α, w ) against a max-margin loss, mining support pairs and adversarial hard negatives, and refining the rubric bank. At inference, the prompt-conditioned selector retrieves top-k support rubrics from the bank to score candidate responses. 
+
+Skywork-Reward (Liu et al., 2025a) dominate Re-wardBench (Lambert et al., 2025) and RM-Bench (Liu et al., 2025c) but produce opaque scores prone to surface bias (Sun et al., 2026). Generative RMs such as RM-R1 (Chen et al., 2026), LMUnit (Saad-Falcon et al., 2025), and critique-out-loud vari-ants (Ankner et al., 2024) replace the scalar with a free-form rationale, gaining interpretability at the cost of higher inference variance. Between these, the rubric-based LLM judges above can serve as RMs by aggregating per-rubric judgements into a single preference score post-hoc. SVR sits structurally in this third group and is usable wherever an RM is plugged in, from pref-erence tuning (Ziegler et al., 2019) to RL on open-ended tasks. Unlike post-hoc rubric aggregation, the pairwise margin learned by SVR (Sec. 3.3) re-tains scalar-RM geometry (Wang et al., 2025a; Liu et al., 2024, 2025a) while exposing which rubrics fired and how much each contributed. 
+
+3 Methodology 
+
+3.1 Problem Setup 
+
+We start from an existing open-source preference dataset D = {(x, r +, r −)}, where r+ is preferred over r− for prompt x. Our goal is, given x, to pro-duce a small set of rubrics that lets a downstream judge score r+ above r−, with particular empha-sis on triples near the decision boundary, where self-rubric judges fail (Zhang et al., 2026). We formalize this through a pairwise margin function 
+
+F (x, r a, r b) that aggregates prompt-conditioned, per-rubric pairwise judgments of ra against rb,and we require F (x, r +, r −) > 0. SVR com-poses F from four components: a global rubric bank as a discriminative feature space (Sec. 3.2), a sparse max-margin scoring head with a prompt-conditioned selector (Sec. 3.3), an adversarial boundary-refinement loop driven by support pairs (Sec. 3.4), and a bank pruning step (Sec. 3.5). 
+
+3.2 Rubric Bank as Feature Space 
+
+The criteria that separate chosen from rejected responses are, in practice, drawn from a fairly small and recurring vocabulary, factuality , com-pleteness , safety , code correctness , etc., so we ex-pect a finite rubric set to suffice across prompts (Xie et al., 2025). We therefore maintain a global bank 
+
+B = {c1, . . . , c M } of natural-language rubrics, treated as basis dimensions of a discriminative fea-ture space shared across prompts. B is grown by 
+
+contrastive feature induction : for each preference pair (x, r +, r −), we ask an LLM to propose rubrics that distinguish r+ from r−, then merge candidates into B via deduplication and similarity collapsing. Replacing the conventional summarisation framing 3“what makes a good response” (Liu et al., 2025b) with a contrastive framing “what rubric tells these two apart” surfaces sharper, boundary-relevant cri-teria rather than generic descriptive ones. For each rubric c, we use an LLM as a pair-wise judge that, in a single call, inspects both re-sponses side by side and returns (a) a per-response pass or fail verdict and (b) an explicit better-of-the-two preference. These signals are combined into a scalar ∆( x, r a, r b, c ) ∈ [−1.25 , 1.25] : the pass/fail difference contributes {− 1, 0, +1 } and the directional preference adds ±0.25 , so positive values favour ra and negative values favour rb, with magnitude reflecting the strength of distinction. We collect these per-rubric judgments into the pairwise differential feature 
+
+zi(x, r a, r b) = ∆( x, r a, r b, c i), (1) so z ∈ RM encodes per rubric which response is favoured and by how much. 
+
+3.3 Sparse Max-Margin Scoring 
+
+For each prompt, only a small subset of B is discriminative: a code rubric does little on a safety question. A prompt-conditioned selector 
+
+α(x) ∈ ∆M identifies this subset, implemented as a small feed-forward network over a TF-IDF (Salton and Buckley, 1988) embedding of x fol-lowed by a sparsemax projection (Martins and As-tudillo, 2016) that drives irrelevant entries exactly to zero (architecture in Appendix B). This global-bank, local-subspace split lets SVR share evidence across prompts while composing the boundary lo-cally per input. A global learned weight vector w ∈ RM
+
+> ≥0
+
+, shared across prompts, calibrates rubric importance and yields the pairwise margin 
+
+F (x, r a, r b) = 
+
+> M
+
+X
+
+> i=1
+
+αi(x) · wi · zi(x, r a, r b). (2) Geometrically, w acts as the SVM weight vector of a max-margin classifier, α(x) adapts its active subspace per prompt, and the sign of zi encodes the per-pair direction of each rubric. Non-negativity of w aligns each rubric with its semantic direction and exposes wi as an interpretable contribution magnitude that the pruner of Sec. 3.5 thresholds directly. We fit (α, w ) jointly by minimising a composite margin loss 
+
+L = Lpref + Ldiv . (3) The preference term Lpref = E(x,r +,r −)
+
+ log  1 + 
+
+e−F (x,r +,r −) enforces a positive margin on each triple. The diversity term Ldiv =
+
+Ex
+
+P 
+
+> i,j
+
+Sij αi(x) αj (x), with Sij the textual sim-ilarity between rubrics ci and cj (form in Ap-pendix A), penalises the selector for placing weight on near-duplicate rubrics simultaneously. 
+
+3.4 Adversarial Refinement 
+
+After each fitting round, some triples in D still have margin F (x, r +, r −) ≤ τ under the current (α, w ),either misranked ( F < 0) or ranked correctly with too little confidence ( 0 ≤ F ≤ τ ). By analogy with SVM support vectors, we call these support pairs .Support-pair status is recomputed every round, so the same triple may enter and leave the support set as the boundary shifts. This gives B a bound-ary direction : it grows toward what is hard for the model right now, not what is hard on average. With-out this re-targeting, induction would accumulate generic descriptive rubrics. Static pairs saturate once the bank covers ob-vious r+/r− distinctions, so we probe the bound-ary with synthetic hard negatives that expose less-covered failure axes. For each support pair, an LLM probe receives (x, r +) and is asked to pro-duce a response that is plausible but inferior to r+
+
+on at least one substantive criterion. The candidate set P(x) collects the original r− as a baseline, any dataset-provided alternatives, and the synthesised candidates, from which we select 
+
+radv = arg min  
+
+> r∈P (x)
+
+F (x, r +, r ) (4) under the current (α, w ), namely the candidate clos-est to crossing the boundary. By construction the preference r+ ≻ radv stays well-defined. Each radv enters Lpref as an additional triple 
+
+(x, r +, r adv ) averaged with the original (x, r +, r −),and seeds the next contrastive-induction round, lift-ing hard-negative mining (Schroff et al., 2015; Shri-vastava et al., 2016) from continuous embeddings to a discrete natural-language feature space. 
+
+3.5 Bank Pruning 
+
+Support pairs and their adversarial counterparts then drive a boundary-targeted contrastive induc-tion pass, growing new rubrics for failure modes B
+
+does not yet cover. To keep B from growing monotonically, each round ends with a four-criterion prune. An entry 4Algorithm 1 SVR training procedure                                                                    
+
+> Require: Dataset D, threshold τ, number of rounds T
+> Ensure: Bank B, parameters (α, w )
+> 1: C ← CONTRASTIVE INDUCE (D)▷initial induction 2: Sadv ← ∅
+> 3: for t= 1 to Tdo
+> 4: B ← BUILD BANK (C)▷dedup, drop pruned 5: (α, w )←arg min Lon D ∪ S adv ▷Eq. 3 6: B ← PRUNE (B, α, w )▷four-criterion 7: if t < T then
+> 8: S ← { (x, r +, r −)∈ D | F(x, r +, r −)≤τ}▷
+> support pairs 9: for (x, r +, r −)∈ S do
+> 10: radv (x)←
+> ADVERSARIAL PROBE (x, r +, α, w )
+> 11: end for
+> 12: Sadv ← { (x, r +, r adv (x)) |(x, r +, r −)∈ S}
+> 13: C ← C ∪ CONTRASTIVE INDUCE (S ∪ S adv )▷
+> boundary re-induction 14: end if
+> 15: end for
+> 16: return B,(α, w )
+
+is kept if it fires any of three relevance signals, weight wi, activation rate Ex[αi(x)] , or current-round support-pair coverage, above their respective thresholds. A redundancy filter then sweeps the survivors in descending relevance and drops near-duplicates of higher-ranked entries. The result is a bounded, non-redundant bank whose surviving rubrics are each high-weight, frequently selected, or boundary-relevant, preserving the interpretabil-ity of the trained bank. The full training procedure is summarised in Algorithm 1. After T rounds, B, α, and w are frozen. At inference, SVR takes the prompt x, computes 
+
+α(x) ⊙ w over B, and keeps the top-k entries as the active rubric set Bx, optionally letting the LLM rephrase them to x without changing semantics. The judge then scores a candidate pair (ra, r b) via 
+
+F (x, r a, r b) = P 
+
+> i∈B x
+
+αi(x) wi ∆( x, r a, r b, c i).Per-pair inference is one selector pass and k rubric judgments with no test-time rubric generation, leav-ing SVR a lightweight drop-in for downstream RL or rejection-sampling pipelines. 
+
+4 Experiments 
+
+4.1 Experimental Setup Training data. We train SVR on HelpSteer3 (Wang et al., 2025b), which provides chosen and rejected responses per prompt. From 38 ,459 pref-erence triples spanning general, code, multilingual, and STEM, 13-gram decontamination against our evaluation benchmarks removes 4.86% , leaving 
+
+36 ,591 examples with 5% held out as a dev split. 
+
+Training configuration. We train for T = 3 
+
+rounds, with each round fitting (α, w ) on the cur-rent bank, pruning, and then running adversarial refinement with boundary re-induction to grow the bank for the next round. All training-time LLM calls use GPT-OSS-120B (OSS) (Agarwal et al., 2025), which also serves as the default down-stream judge unless otherwise stated. The selector is a two-layer MLP over TF-IDF prompt features with a sparsemax head, yielding sparse per-prompt rubric weights. At inference we retain the top-
+
+k = 6 rubrics, with sensitivity to k analysed in Appendix G. Additional training details are pro-vided in Appendix A. 
+
+Evaluation benchmarks. We evaluate on four benchmarks. RubricBench (Zhang et al., 2026) is the primary testbed for the discriminative gap, with human-annotated rubrics and hard-to-distinguish pairs whose surface cues often mislead judges. Re-wardBench (Lambert et al., 2025), RewardBench 2 (Malik et al., 2025), and RM-Bench (Liu et al., 2025c) are general reward-modelling benchmarks that test pairwise agreement with human prefer-ences across diverse subtasks. We report pairwise accuracy throughout. 
+
+Baselines. We compare against five baselines. 
+
+Reward models. We include the state-of-the-art scalar RM Skywork-Reward-V2-Llama-3.1-8B 
+
+(Skywork) (Liu et al., 2025a) and the genera-tive RM RM-R1-Qwen2.5-Instruct-7B (RM-R1) (Chen et al., 2026). Vanilla LLM-as-a-Judge. The judge scores directly from (x, r a, r b). LLM with self-generated rubrics (Self-Rubrics). The judge LLM writes its own rubric per prompt before scor-ing. (Liu et al., 2023) Rubric-ARM (Xu et al., 2026). The authors release two dedicated models, one for proposing rubrics and one for judging with them. RRD (Shen et al., 2026). This method mines rubrics from preference responses sampled by ex-ternal generators, which we reproduce following the original protocol (details in Appendix H). 
+
+4.2 RubricBench Results 
+
+Table 1 shows that SVR reaches 82.8 overall, out-performing every non-oracle baseline by a large margin. Against methods without explicit rubrics, SVR improves over Skywork and the strongest di-rect LLM judge by more than 21 points, showing that RubricBench is not solvable by implicit signals alone, whether from a scalar head or from free-form judge reasoning. The same conclusion holds for 5Table 1: Pairwise accuracy (%) on RubricBench broken down by domain. Bold marks the best per column, underline the second best. For Rubric-ARM we list backbones as proposer / judge when they differ.                                                                                                    
+
+> Method Model Domain Accuracy Overall
+> Chat IF STEM Code Safety Acc
+> Human-Annotated Oracle
+> Oracle Rubrics OSS 80.6 85.5 83.6 86.4 92.5 83.1
+> Reward Models
+> Scalar RM Skywork 63.0 69.4 58.0 52.0 77.5 61.0 Generative RM RM-R1 43.1 39.5 50.4 47.2 53.8 46.0
+> Vanilla LLM-as-a-Judge
+> Direct pairwise judge OSS 44.6 69.4 60.8 58.7 60.0 55.2 Direct pairwise judge Gemini-3-Flash 50.0 69.4 66.8 63.1 36.3 57.9 Direct pairwise judge GPT-5.4 53.1 66.1 69.6 64.9 56.3 61.1
+> Dedicated Rubric Framework
+> Rubric-ARM RubricARM-8B 51.0 43.6 51.6 50.2 28.8 48.6 Rubric-ARM RubricARM-8B / OSS 48.3 58.1 61.2 54.2 25.0 52.0
+> Rubric-Augmented LLM-as-a-Judge
+> Self-Generated Rubrics OSS 54.7 69.4 64.4 59.0 48.8 59.0 Self-Generated Rubrics Gemini-3-Flash 55.2 70.2 65.6 60.9 50.0 60.1 Self-Generated Rubrics GPT-5.4 55.9 71.0 65.6 60.1 51.2 60.3 RRD OSS 65.3 64.0 56.8 53.8 52.8 57.6
+> SVR (Ours) OSS 81.8 85.5 82.4 83.4 83.8 82.8
+
+rubric-based baselines: with the same OSS judge, SVR is 23.8 points above self-generated rubrics, and it is also far ahead of Rubric-ARM and RRD. These comparisons suggest that the main advan-tage of SVR is the quality of the selected rubrics: they are learned to discriminate hard response pairs, rather than being generic criteria produced without any discrimination signal. Compared with the human-annotated oracle, SVR narrows the gap from OSS self-generated rubrics from 24 .1 points to only 0.3. The domain-level results show where this gap is closed: SVR slightly exceeds the oracle on Chat, matches it on IF, and remains close on STEM and Code. The main remaining difference is Safety ( 83 .8 vs. 
+
+92 .5), where human rubrics still better capture rare, high-stakes distinctions such as refusal boundaries and safety caveats. Since the oracle requires per-instance human rubric writing, these results show that SVR provides a much more scalable route to near-human rubric performance. 
+
+4.3 Reward-Modelling Benchmarks 
+
+Rubric-based evaluation is closely related to reward modelling, so we further evaluate on three general reward-modelling benchmarks to test broader ap-plicability beyond the rubric-focused setting. As shown in Table 2, Skywork achieves the highest average score ( 90 .3), as it is a scalar RM purpose-trained specifically for reward modelling. SVR (87.2 ) edges past the vanilla OSS baseline ( 87 .0), since holistic heuristics already account for most of the signal on these broad preference benchmarks and leave limited headroom for structured rubrics to push the score further. Indeed, both Self-Rubrics (78 .5) and Rubric-ARM ( 68 .1) fall well below OSS, as prompt-only and pipeline-generated crite-ria overwrite the holistic prior without installing a sharper substitute. SVR, by contrast, preserves that prior, further indicating that our learned rubrics are more precise than those of the baselines. At the domain level, SVR reaches 81 .9 on Pre-cise IF (RewardBench 2), outperforming Skywork (64 .1) by 17.8 points, extending the IF advantage from RubricBench. On RM-Bench, SVR stays within 1.1 points of Skywork across all three diffi-culty tiers, showing consistent competitiveness re-gardless of pair difficulty. Safety, however, remains the consistent weak spot ( 82.8 /72.4 on Reward-Bench/RewardBench 2 vs. Skywork at 95.7 /96.7 ), a domain on which Skywork has been specifi-cally trained with a dedicated preference dataset. SVR thus complements alignment-tuned RMs on instruction-heavy tasks while conceding the safety advantage to models purpose-built for it. 
+
+5 Analysis 
+
+This section analyses where the gains of SVR come from, how its training process converges, how stable the learned rubrics are across judges, and how its decisions compare with human-annotated rubrics. 6Table 2: Pairwise accuracy (%) on RewardBench, RewardBench 2, and RM-Bench. We report all subdomain scores. The final column (Avg.) reports the mean accuracy across all preceding columns. Self-Rubrics denotes the self-generated rubrics baseline. Bold marks the best per column, underline the second best. 
+
+Method RewardBench RewardBench 2 RM-Bench Avg. 
+
+Chat Chat Hard Reasoning Safety Factuality Precise IF Math Safety Focus Easy Normal Hard Skywork 99.4 90.4 99.6 95.7 84.5 64.1 77.6 96.7 98.4 97.3 95.4 84.9 90.3 
+
+RM-R1 95.8 69.7 83.2 83.2 44.9 29.5 72.6 60.7 84.4 82.6 72.9 55.4 69.6 OSS 96.1 88.8 98.3 91.4 76.6 67.5 85.9 83.3 89.3 93.9 91.1 81.8 87.0 Rubric-ARM 91.1 82.2 81.1 58.4 61.7 53.1 72.7 40.0 89.9 72.6 64.6 50.2 68.1 Self-Rubrics OSS 80.7 72.9 87.0 88.1 73.2 70.2 85.4 84.4 80.4 79.2 72.5 68.1 78.5 
+
+SVR (ours) 95.5 87.3 98.4 82.8 80.6 81.9 85.3 72.4 87.5 96.2 94.6 83.9 87.2 
+
+Table 3: Ablation on RubricBench. ∆ is relative to SVR. 
+
+Variant Accuracy ∆
+
+SVR 82.8 –
+
+− contrastive induction 73.5 −9.3 
+
+− support-pair mining 77.6 −5.2 
+
+− adversarial probe 79.0 −3.8 
+
+− diversity term Ldiv 81.1 −1.7 
+
+→ uniform top-k weighting 64.3 −18.5 
+
+→ pointwise inference 79.7 −3.1 
+
+5.1 Ablation Studies 
+
+Table 3 isolates each component in SVR, removing one at a time under the same judge and protocol as the main experiments. Each row disables one design from Sec. 3. “ −
+
+contrastive induction” swaps the discriminative rubric prompt for the conventional “what makes a good response”. “ − support-pair mining” drops the margin threshold τ and uses every pair for re-induction. “− adversarial probe” skips the syn-thesised radv . “ − diversity term Ldiv ” drops the redundancy penalty. The last two rows are inference-time variants. “→ uniform top-k weighting” keeps top-k selection by α(x)⊙w but assigns each selected rubric weight 
+
+1 in the margin sum, isolating the learned weighting from the learned selection. “ → pointwise inference” swaps the pairwise judge for a pointwise scorer, 
+
+zi = s(x, r a, c i) − s(x, r b, c i). The modest drop to 
+
+79 .7 shows the learned rubrics remain usable as a single-response scoring head for downstream uses such as RL reward modelling. 
+
+5.2 Training Dynamics 
+
+Figure 3 tracks F (x, r +, r −) on the train and dev splits, dev accuracy, hard negatives, and active rubrics. Dev margin and accuracy rise monoton-ically, confirming refinement widens the gap on 0.25   
+
+> 0.30
+> 0.35
+> 0.40
+> 0.45
+> Preference gap  F
+> 0.283
+> 0.301
+> 0.390
+> 0.427
+> 0.293
+> 0.429
+> Round 1
+> bank=1023
+> Round 2
+> bank=1021
+> Round 3
+> bank=1024
+> 0
+> 250
+> 500
+> 750
+> 1000
+> Hard negatives
+> 0
+> 847 854
+> 30
+> 40
+> 50
+> Dev accuracy (%)
+> 28.3%
+> 39.0%
+> 46.8%
+> 0
+> 25
+> 50
+> 75
+> 100
+> Active rubrics
+> 19
+> 52 86
+> Dev preference gap
+> Train preference gap
+> Dev accuracy
+> Hard negatives
+> Active rubrics
+
+Figure 3: Training dynamics of SVR across three refine-ment rounds. The development margin and accuracy rise monotonically, and the train-dev margin gap closes from 0.144 to 0.039 by round three, marking the bound-ary at which we stop refinement. 
+
+unseen pairs. The V-shape in the train margin (0.427 →0.293 →0.429 ) is the expected signature of boundary mining: each round injects unsepa-rated pairs, the average drops, and the re-fit bank recovers. The decisive stopping signal is that the train-dev divergence closes from 0.144 to 0.039 ,leaving no generalisation gap for a fourth round to close. At its stable scale of roughly 850 , the hard-negative pool adds only seven pairs beyond the 847 
+
+from round two, while active rubrics rise from 19 
+
+to 52 to 86 on a bank held near 1023 , indicating reorganisation rather than expansion. 
+
+5.3 Transfer of Rubrics Across Judges 
+
+A rubric bank is only useful if it generalises be-yond the judge it was trained against. We there-fore freeze the bank trained with GPT-OSS-120B (Agarwal et al., 2025) and swap in four additional judges that span scale and family: GPT-OSS-20B (Agarwal et al., 2025), GPT-4o-mini (Hurst et al., 2024), DeepSeek-V4-Flash (DeepSeek-AI, 2026), and Qwen3.5-397B-A17B (Team, 2026). 7Case 1. SVR-only correct                      
+
+> Prompt (general). Compose a polite email reply explain-ing the user has no partners yet and will follow up later.
+> Resp A (244 ch). Direct one-paragraph reply that mir-rors the requested message.
+> Resp B (482 ch). Multi-paragraph reply that volunteers
+> unrequested topics such as language practice sessions.
+> SVR . Rubrics on stick to requested content and avoid unrequested expansion favour A. Margin +6 . (correct)
+> Oracle . Rubrics on information completeness favour B. (wrong)
+> Chosen : A.
+> Case 2. Oracle-only correct
+> Prompt (human-preference). Polish my Chinese graduate-school self-introduction, with 800 -character original.
+> Resp A . Four bullet points of suggestions for how to improve the original.
+> Resp B . The full revised self-introduction text.
+> SVR . Rubrics on clear bullet structure and coherence
+> favour A. Margin −1. (wrong)
+> Oracle . Rubric “returns a revised self-introduction, not an analysis” favours B. (correct)
+> Chosen : B.
+
+Figure 4: Two RubricBench cases where SVR and the human-rubric oracle disagree. Case 1 exemplifies a tendency of the oracle to reward coverage at the expense of constraint adherence. Case 2 exemplifies the absence in SVR of a 
+
+did-the-response-perform-the-task rubric. Table 4: RubricBench accuracy across five judge back-bones. The SVR bank is trained once with GPT-OSS-120B and kept fixed at inference. Bold marks the best method per row, underline the second best.                      
+
+> Judge Vanilla Self-Rubrics SVR GPT-OSS-120B 55.2 59.0 82.8
+> GPT-OSS-20B 55.3 53.9 77.4
+> GPT-4o-mini 56.1 51.8 80.3
+> DeepSeek-V4-Flash 56.5 64.4 80.2
+> Qwen3.5-397B-A17B 63.7 57.6 82.4
+> Average 57.4 57.3 80.6
+
+As shown in Table 4, SVR is the best rubric source for every one of the five judges, aver-aging 80.6 versus 57 .4 for Vanilla and 57 .3 for Self-Rubrics, a gap of more than 23 points over both baselines. Self-Rubrics oscillates around Vanilla without a consistent direction, indicating that prompt-only criteria offer no reliable lift on top of direct judging. SVR, in contrast, retains a large margin whether the judge is a smaller model or drawn from a different family, showing that the rubric bank captures discrimination signals that are largely judge-agnostic. In practice, the bank can be trained once and reused across capable judges without retraining. 
+
+5.4 Complementarity with Human Rubrics 
+
+SVR nearly matches the human-rubric oracle on RubricBench, reaching 82.8 compared with 83.1 .Table 5 crosses per-example correctness on the 
+
+1,147 pairs and shows the two sources disagree on 26 .8% of them, with each uniquely correct on roughly 13% . SVR thus reaches oracle accuracy through a different set of decisions, capturing an 
+
+Table 5: Per-example correctness overlap between SVR and the human-rubric oracle on RubricBench.           
+
+> Outcome Count %Both correct 798 69 .6
+> SVR-only correct 152 13 .3
+> Oracle-only correct 155 13 .5
+> Both wrong 42 3.7
+
+independent judgment signal. Two near-balanced cases in Figure 4 illustrate the disagreement. The oracle, with hand-written rubrics sometimes overweights surface specifics or rewards coverage at the expense of the requested form (Case 1). The SVR bank, biased toward pre-sentation and quality dimensions, lacks rubrics for whether the response actually performed the re-quested task (Case 2). App. F expands these failure modes with domain-level net advantages and a tax-onomy of the 42 shared failures into subjective preference, capability ceiling, and label noise. 
+
+6 Conclusion 
+
+SVR casts rubric construction as boundary learning over preference data. The framework jointly mines, weights, and refines a global rubric bank, and at inference retrieves only the rubrics most relevant to each prompt. On RubricBench, the resulting bank approaches human-written rubrics, and on Reward-Bench 1&2 and RM-Bench it remains competitive with dedicated reward models. Together, these re-sults suggest that the discriminative gap in current rubric-based judging is largely an artefact of how rubrics are obtained, and that boundary-defining criteria can be induced from preference signals alone without per-instance human authoring. 8Limitations 
+
+We train the rubric bank on preference data from a single LLM judge (GPT-OSS-120B) and do not incorporate human annotations, multi-judge en-sembles, or distilled lightweight judges, so the bank inherits whatever systematic biases the train-ing judge carries. Although our method is moti-vated by max-margin classifier, the rubric bank is a discrete set of natural-language criteria without a canonical kernel feature map, so α(x) is realised as a prompt-conditioned MLP and the convergence guarantees and hyperparameter selection rules of kernelised SVR do not transfer rigorously to our setting. While the trained margin can in principle serve as a dense reward signal for reinforcement learning on open-ended generation tasks, our ex-periments only verify its discrimination quality on preference pairs and do not directly demonstrate that rubric-level gains transfer downstream to pol-icy model optimisation. 
+
+References 
+
+Sandhini Agarwal, Lama Ahmad, Jason Ai, Sam Alt-man, Andy Applebaum, Edwin Arbus, Rahul K Arora, Yu Bai, Bowen Baker, Haiming Bao, and 1 others. 2025. gpt-oss-120b & gpt-oss-20b model card. arXiv preprint arXiv:2508.10925 .Zachary Ankner, Mansheej Paul, Brandon Cui, Jonathan D Chang, and Prithviraj Ammanabrolu. 2024. Critique-out-loud reward models. arXiv preprint arXiv:2408.11791 .Peter Bartlett, Yoav Freund, Wee Sun Lee, and Robert E Schapire. 1998. Boosting the margin: A new expla-nation for the effectiveness of voting methods. The annals of statistics , 26(5):1651–1686. Bernhard E Boser, Isabelle M Guyon, and Vladimir N Vapnik. 1992. A training algorithm for optimal mar-gin classifiers. In Proceedings of the fifth annual workshop on Computational learning theory , pages 144–152. Xiusi Chen, Gaotang Li, Ziqi Wang, Bowen Jin, Cheng Qian, Yu Wang, Hongru WANG, Yu Zhang, Denghui Zhang, Tong Zhang, Hanghang Tong, and Heng Ji. 2026. RM-r1: Reward modeling as reasoning. In 
+
+The Fourteenth International Conference on Learn-ing Representations .Paul F Christiano, Jan Leike, Tom Brown, Miljan Mar-tic, Shane Legg, and Dario Amodei. 2017. Deep reinforcement learning from human preferences. In 
+
+Advances in Neural Information Processing Systems ,volume 30. Curran Associates, Inc. Gheorghe Comanici, Eric Bieber, Mike Schaekermann, Ice Pasupat, Noveen Sachdeva, Inderjit Dhillon, Mar-cel Blistein, Ori Ram, Dan Zhang, Evan Rosen, and 1 others. 2025. Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities. arXiv preprint arXiv:2507.06261 .Jonathan Cook, Tim Rocktäschel, Jakob Nicolaus Foer-ster, Dennis Aumiller, and Alex Wang. 2024. TICK-ing all the boxes: Generated checklists improve LLM evaluation and generation. In Language Gamification - NeurIPS 2024 Workshop .Corinna Cortes and Vladimir Vapnik. 1995. Support-vector networks. Machine learning , 20(3):273–297. Thomas Coste, Usman Anwar, Robert Kirk, and David Krueger. 2024. Reward model ensembles help miti-gate overoptimization. In International Conference on Learning Representations , volume 2024, pages 50905–50931. DeepSeek-AI. 2026. Deepseek-v4: Towards highly efficient million-token context intelligence. Charles Dugas, Yoshua Bengio, François Bélisle, Claude Nadeau, and René Garcia. 2000. Incorpo-rating second-order functional knowledge for better option pricing. Advances in neural information pro-cessing systems , 13. Leo Gao, John Schulman, and Jacob Hilton. 2023. Scal-ing laws for reward model overoptimization. In In-ternational Conference on Machine Learning , pages 10835–10866. PMLR. Anisha Gunjal, Anthony Wang, Elaine Lau, Vaskar Nath, Yunzhong He, Bing Liu, and Sean M. Hendryx. 2026. Rubrics as rewards: Reinforcement learning beyond verifiable domains. In The Fourteenth Inter-national Conference on Learning Representations .Yun He, Wenzhe Li, Hejia Zhang, Songlin Li, Karishma Mandyam, Sopan Khosla, Yuanhao Xiong, Nanshu Wang, Xiaoliang Peng, Beibin Li, and 1 others. 2025. Advancedif: Rubric-based benchmarking and rein-forcement learning for advancing llm instruction fol-lowing. arXiv preprint arXiv:2511.10507 .Aaron Hurst, Adam Lerer, Adam P Goucher, Adam Perelman, Aditya Ramesh, Aidan Clark, AJ Ostrow, Akila Welihinda, Alan Hayes, Alec Radford, and 1 others. 2024. Gpt-4o system card. arXiv preprint arXiv:2410.21276 .Nathan Lambert, Valentina Pyatkin, Jacob Morrison, LJ Miranda, Bill Yuchen Lin, Khyathi Chandu, Nouha Dziri, Sachin Kumar, Tom Zick, Yejin Choi, and 1 others. 2025. Rewardbench: Evaluating reward models for language modeling. In Findings of the Association for Computational Linguistics: NAACL 2025 , pages 1755–1797. 
+
+9Yukyung Lee, Joonghoon Kim, Jaehee Kim, Hyowon Cho, Jaewook Kang, Pilsung Kang, and Najoung Kim. 2025. Checkeval: A reliable llm-as-a-judge framework for evaluating text generation using check-lists. In Proceedings of the 2025 Conference on Em-pirical Methods in Natural Language Processing ,pages 15782–15809. Dawei Li, Bohan Jiang, Liangjie Huang, Alimohammad Beigi, Chengshuai Zhao, Zhen Tan, Amrita Bhat-tacharjee, Yuxuan Jiang, Canyu Chen, Tianhao Wu, and 1 others. 2025. From generation to judgment: Opportunities and challenges of llm-as-a-judge. In 
+
+Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 2757–2791. Chris Yuhao Liu, Liang Zeng, Jiacai Liu, Rui Yan, Ju-jie He, Chaojie Wang, Shuicheng Yan, Yang Liu, and Yahui Zhou. 2024. Skywork-reward: Bag of tricks for reward modeling in llms. arXiv preprint arXiv:2410.18451 .Chris Yuhao Liu, Liang Zeng, Yuzhen Xiao, Jujie He, Ji-acai Liu, Chaojie Wang, Rui Yan, Wei Shen, Fuxiang Zhang, Jiacheng Xu, and 1 others. 2025a. Skywork-reward-v2: Scaling preference data curation via human-ai synergy. arXiv preprint arXiv:2507.01352 .Tianci Liu, Ran Xu, Tony Yu, Ilgee Hong, Carl Yang, Tuo Zhao, and Haoyu Wang. 2025b. Openrubrics: Towards scalable synthetic rubric generation for re-ward modeling and llm alignment. arXiv preprint arXiv:2510.07743 .Xue Liu, Xin Ma, Yuxin Ma, Yongchang Peng, Duo Wang, Zhoufutu Wen, Ge Zhang, Kaiyuan Zhang, Xinyu Chen, Yida Ding, and 1 others. 2026. Xpert-bench: Expert level tasks with rubrics-based evalua-tion. arXiv preprint arXiv:2604.02368 .Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. 2023. G-eval: Nlg evaluation using gpt-4 with better human align-ment. In Proceedings of the 2023 conference on empirical methods in natural language processing ,pages 2511–2522. Yantao Liu, Zijun Yao, Rui Min, Yixin Cao, Lei Hou, and Juanzi Li. 2025c. Rm-bench: Benchmarking reward models of language models with subtlety and style. In International Conference on Learning Rep-resentations , volume 2025, pages 44323–44355. Saumya Malik, Valentina Pyatkin, Sander Land, Ja-cob Morrison, Noah A Smith, Hannaneh Hajishirzi, and Nathan Lambert. 2025. Rewardbench 2: Ad-vancing reward model evaluation. arXiv preprint arXiv:2506.01937 .Andre Martins and Ramon Astudillo. 2016. From soft-max to sparsemax: A sparse model of attention and multi-label classification. In International confer-ence on machine learning , pages 1614–1623. PMLR. Tianjun Pan, Xuan Lin, Wenyan Yang, Qianyu He, Shisong Chen, Licai Qi, Wanqing Xu, Hongwei Feng, Bo Xu, and Yanghua Xiao. 2026. Rubrice-val: A rubric-level meta-evaluation benchmark for llm judges in instruction following. arXiv preprint arXiv:2603.25133 .Fabian Pedregosa, Gaël Varoquaux, Alexandre Gram-fort, Vincent Michel, Bertrand Thirion, Olivier Grisel, Mathieu Blondel, Peter Prettenhofer, Ron Weiss, Vin-cent Dubourg, and 1 others. 2011. Scikit-learn: Ma-chine learning in python. the Journal of machine Learning research , 12:2825–2830. Jon Saad-Falcon, Rajan Vivek, William Berrios, Nan-dita Shankar Naik, Matija Franklin, Bertie Vidgen, Amanpreet Singh, Douwe Kiela, and Shikib Mehri. 2025. LMUnit: Fine-grained evaluation with natural language unit tests. In Findings of the Association for Computational Linguistics: EMNLP 2025 .Gerard Salton and Christopher Buckley. 1988. Term-weighting approaches in automatic text retrieval. In-formation processing & management , 24(5):513– 523. Florian Schroff, Dmitry Kalenichenko, and James Philbin. 2015. Facenet: A unified embedding for face recognition and clustering. In Proceedings of the IEEE conference on computer vision and pattern recognition , pages 815–823. William F Shen, Xinchi Qiu, Chenxi Whitehouse, Lisa Alazraki, Shashwat Goel, Francesco Barbieri, Timon Willi, Akhil Mathur, and Ilias Leontiadis. 2026. Re-thinking rubric generation for improving llm judge and reward modeling for open-ended tasks. arXiv preprint arXiv:2602.05125 .Leheng Sheng, Wenchang Ma, Ruixin Hong, Xi-ang Wang, An Zhang, and Tat-Seng Chua. 2026. Reinforcing chain-of-thought reasoning with self-evolving rubrics. arXiv preprint arXiv:2602.10885 .Abhinav Shrivastava, Abhinav Gupta, and Ross Gir-shick. 2016. Training region-based object detectors with online hard example mining. In Proceedings of the IEEE conference on computer vision and pattern recognition , pages 761–769. Giulio Starace, Oliver Jaffe, Dane Sherburn, James Aung, Jun Shern Chan, Leon Maksin, Rachel Dias, Evan Mays, Benjamin Kinsella, Wyatt Thompson, Johannes Heidecke, Amelia Glaese, and Tejal Pat-wardhan. 2025. Paperbench: Evaluating AI’s ability to replicate AI research. In Forty-second Interna-tional Conference on Machine Learning .Nisan Stiennon, Long Ouyang, Jeffrey Wu, Daniel Ziegler, Ryan Lowe, Chelsea Voss, Alec Radford, Dario Amodei, and Paul F Christiano. 2020. Learn-ing to summarize with human feedback. In Ad-vances in Neural Information Processing Systems ,volume 33, pages 3008–3021. Curran Associates, Inc. 
+
+10 Mengyuan Sun, Zhuohao Yu, Weizheng Gu, Shikun Zhang, and Wei Ye. 2026. Steerrm: Debiasing re-ward models via sparse autoencoders. arXiv preprint arXiv:2603.12795 .Qwen Team. 2026. Qwen3.5: Accelerating productivity with native multimodal agents. Zhilin Wang, Alexander Bukharin, Olivier Delal-leau, Daniel Egert, Gerald Shen, Jiaqi Zeng, Olek-sii Kuchaiev, and Yi Dong. 2025a. Helpsteer2-preference: Complementing ratings with preferences. In The Thirteenth International Conference on Learn-ing Representations .Zhilin Wang, Jiaqi Zeng, Olivier Delalleau, Hoo-Chang Shin, Felipe Soares, Alexander Bukharin, El-lie Evans, Yi Dong, and Oleksii Kuchaiev. 2025b. Helpsteer3-preference: Open human-annotated pref-erence data across diverse tasks and languages. In 
+
+Advances in Neural Information Processing Systems ,volume 38. Curran Associates, Inc. Lipeng Xie, Sen Huang, Zhuo Zhang, Anni Zou, Yun-peng Zhai, Dingchao Ren, Kezun Zhang, Haoyuan Hu, Boyin Liu, Haoran Chen, and 1 others. 2025. Auto-rubric: Learning from implicit weights to ex-plicit rubrics for reward modeling. arXiv preprint arXiv:2510.17314 .Ran Xu, Tianci Liu, Zihan Dong, Tony Yu, Ilgee Hong, Carl Yang, Linjun Zhang, Tao Zhao, and Haoyu Wang. 2026. Alternating reinforcement learning for rubric-based reward modeling in non-verifiable llm post-training. arXiv preprint arXiv:2602.01511 .An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, and 1 others. 2025. Qwen3 technical report. arXiv preprint arXiv:2505.09388 .Zhuohao Yu, Jiali Zeng, Weizheng Gu, Yidong Wang, Jindong Wang, Fandong Meng, Jie Zhou, Yue Zhang, Shikun Zhang, and Wei Ye. 2025. Rewardanything: Generalizable principle-following reward models. 
+
+arXiv preprint arXiv:2506.03637 .Lunjun Zhang, Arian Hosseini, Hritik Bansal, Seyed Mehran Kazemi, Aviral Kumar, and Rishabh Agarwal. 2025. Generative verifiers: Reward model-ing as next-token prediction. In International Con-ference on Learning Representations , volume 2025, pages 12476–12505. Qiyuan Zhang, Junyi Zhou, Yufei Wang, Fuyuan Lyu, Yidong Ming, Can Xu, Qingfeng Sun, Kai Zheng, Peng Kang, Xue Liu, and 1 others. 2026. Rubricbench: Aligning model-generated rubrics with human standards. arXiv preprint arXiv:2603.01562 .Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric Xing, Hao Zhang, Joseph E. Gonzalez, and Ion Stoica. 2023. Judging LLM-as-a-judge with MT-bench and chatbot arena. In Thirty-seventh Conference on Neural Information Processing Systems Datasets and Benchmarks Track .Daniel M Ziegler, Nisan Stiennon, Jeffrey Wu, Tom B Brown, Alec Radford, Dario Amodei, Paul Chris-tiano, and Geoffrey Irving. 2019. Fine-tuning lan-guage models from human preferences. arXiv preprint arXiv:1909.08593 .
+
+11 A Hyperparameters and Implementation Details 
+
+Table 6 lists the single hyperparameter configura-tion used across all experiments and ablations in this paper. The global weight vector w in Eq. 2 is con-strained to be non-negative. We enforce this by reparameterising w = softplus( ˜ w) with an uncon-strained ˜w ∈ RM , and optimising ˜w directly. This keeps the constraint exact under standard gradient updates without projection or clipping. The similarity matrix S used in the diversity term of Eq. 3 and in the redundancy filter of Sec. 3.5 is defined directly on rubric texts. For each pair of rubrics (ci, c j ), we compute a base similarity 
+
+sim( ci, c j ) = max  J(ci, c j ), R (ci, c j ), where J
+
+is the Jaccard overlap of lower-cased content to-kens (stopwords and single-character tokens re-moved) and R is the difflib.SequenceMatcher 
+
+ratio over alphanumeric-normalised text. We then threshold and rescale, Sij = max  0, sim( ci, c j ) −
+
+τred 
+
+/(1 − τred ) for i̸ = j with Sii = 0 , so only pairs above the redundancy threshold τred con-tribute. S is recomputed once per round after B
+
+is updated and held fixed during the subsequent fitting step. 
+
+B Prompt-Conditioned Selector 
+
+Architecture. The prompt-conditioned selector 
+
+α(x) ∈ ∆M maps a TF-IDF embedding of the prompt to a sparse distribution over the rubric bank. The vectoriser is a scikit-learn TfidfVectorizer (Pedregosa et al., 2011) with unicode-normalised character folding, n-gram range (1 , 2) , vocabulary capped at 4,096 features, and minimum document frequency 1. Writing 
+
+ϕ(x) ∈ Rd for the resulting TF-IDF feature vector with d ≤ 4,096 , the forward pass is 
+
+α(x) = sparsemax  W2 ReLU( W1ϕ(x)+ b1)+ b2
+
+,
+
+(5) with a single hidden layer of dimension 256 ,so W1 ∈ R256 ×d and W2 ∈ RM ×256 . The 
+
+sparsemax projection (Martins and Astudillo, 2016) maps logits onto the probability simplex while driving sub-threshold entries exactly to zero, yielding a small active rubric set per prompt with-out an explicit top-k truncation at training time. The per-prompt rubric weighting consumed by the max-margin scoring head of Eq. 2 is α(x) ⊙ w,where the global weights w are constrained via the softplus reparameterisation (Dugas et al., 2000) described in Appendix A. 
+
+Why a lightweight selector suffices. Each rubric 
+
+ci ∈ B is mined from a specific preference pair 
+
+(xi, r + 
+
+> i
+
+, r − 
+
+> i
+
+) in Sec. 3.2, so its discriminative scope is inherited from the surface characteristics of xi.Let τ (x) denote a latent prompt-type indicator (e.g., coding, refusal, math) and write τi ≡ τ (xi). The bank partitions into clusters Ct = {i : τi = t}, and the ideal routing concentrates mass on the cluster matching the test prompt, 
+
+α⋆i (x) ∝ 1τi = τ (x) · di, (6) with di ≥ 0 encoding how discriminative ci was on its source pair. Recovering α⋆ reduces to multi-label classification of x over a small number of latent types, mapped onto M rubric slots through the partition. Coarse lexical features suffice be-cause τ (x) is largely carried by keywords and short phrases (“python”, “write a function”, “is it safe”), well within the capacity of a two-layer MLP over TF-IDF inputs. The max-margin objective (Eq. 3) drives the learned α toward α⋆ end to end. Differentiating 
+
+Lpref through Eq. 2 gives 
+
+∂Lpref 
+
+∂α i(x) = − σ −F (x, r +, r −) · wi zi(x, r +, r −),
+
+(7) with σ the logistic and wi ≥ 0. The sign of zi
+
+sets the routing direction. Rubrics with zi > 0 on the supervising pair receive descent pressure that raises their pre-sparsemax logits, while rubrics with 
+
+zi < 0 are pushed below the simplex boundary, at which point sparsemax projects them onto exactly zero. Routing errors therefore self-correct from the same supervision signal that fits w, without any auxiliary router loss. The selector serves only as a retrieval layer that narrows the candidate set, and the per-rubric judg-ment is performed by the full LLM judge. The top-k sensitivity analysis in Appendix G supports this split, with accuracy already reaching 81 .52 at 
+
+k = 1 .
+
+C Prompt Templates 
+
+SVR invokes the LLM in three roles, each with a dedicated prompt template. We give condensed forms below. Full templates with formatting in-structions are released with the code. 12 Table 6: Full hyperparameter list for SVR training and inference. 
+
+Group Parameter Value Round loop Number of rounds T 3
+
+Epochs per round (main fit) 8
+
+Calibration epochs per round 3
+
+Batch size 128 
+
+Optimisation Optimiser AdamW Learning rate 2e −3
+
+Weight decay 1e −4
+
+Loss weights Preference loss weight 1.0
+
+Support loss weight λsup 1.0
+
+Adversarial loss weight λadv 0.5
+
+Support pairs Positive-side margin τ 0.2
+
+Max support pairs per round 1024 
+
+Selector TF-IDF max features 4,096 
+
+TF-IDF min document frequency 1
+
+MLP hidden dimension 256 
+
+Pruning Min bank weight wmin 0.08 
+
+Min activation rate 0.01 
+
+Redundancy similarity cutoff 0.92 
+
+Bank deduplication similarity 0.88 
+
+Inference Top-k rubrics 6
+
+Selection pool size 18 
+
+LLM components Judge model s GPT-OSS-120B Adversarial probe GPT-OSS-120B 
+
+Contrastive feature induction. Given a prefer-ence pair, the LLM proposes rubrics that distin-guish r+ from r−.
+
+Contrastive Feature Induction 
+
+You are given a prompt and two responses, one preferred (A) and one not (B). Propose 2 to 6 specific, verifiable rubrics such that A satisfies each rubric strictly more than B. Each rubric must be a single sentence describing a discriminative criterion, not a generic quality dimension. Prompt: {x} Response A (preferred): {r_plus} Response B (rejected): {r_minus} Return only JSON in the following schema: {"contrastive_rubrics": [ {"facet": "correctness | format | coverage |grounding | tool_use | coherence | safety |style | language | conciseness | reasoning", "importance": "critical | major | minor", "rubric": "<one reusable rubric>", "grounding": "<why this rubric explains the preference gap>" }]}
+
+Adversarial probe. For each support pair, the LLM synthesises a candidate that is plausible but inferior to r+.
+
+Adversarial Probe 
+
+You are given a prompt and a high-quality response. Write an alternative response that looks plausible to a casual reader but is inferior to the original on at least one substantive criterion. Do not signal the inferiority explicitly. Prompt: {x} Reference response: {r_plus} Output only the alternative response. 
+
+Pairwise rubric judge. For each rubric, the judge inspects both candidates side by side in a single call and returns a per-rubric pass or fail ver-dict for each candidate plus a directed preference, which we combine into the scalar ∆( x, r a, r b, c )
+
+used as zi in Eq. 1. 
+
+Pairwise Rubric Judge 
+
+Given a prompt, two candidate responses A and B, and a list of rubrics, judge each rubric pairwise. For every rubric, output: (i) a pass or fail 
+
+13 verdict for candidate A, (ii) a pass or fail verdict for candidate B, and (iii) which candidate is better on that rubric (A or B). Prompt: {x} Candidate A: {r_a} Candidate B: {r_b} Rubrics: {c_1, ..., c_k} Output a JSON object with a rubric_comparisons list, using one comparison per rubric in the given order. 
+
+Vanilla pairwise judge (baseline). For the Vanilla LLM-as-a-Judge row in Table 1, the same judge model scores directly from (x, r a, r b) with-out any rubric, support pair, or reference label. The 
+
+rubrics and reference_rubrics fields of each RubricBench example are stripped before prompt construction so the judge sees only the instruction and the two candidate responses. The final verdict is extracted by matching the last [[A]] or [[B]] 
+
+token in the model output. 
+
+Vanilla LLM-as-a-Judge 
+
+Please act as an impartial judge and evaluate the quality of two candidate responses to the user question displayed below. You should choose the candidate response that follows the user’s instructions and answers the user’s question better. Your evaluation should consider as many factors as possible. Begin your evaluation by comparing the two candidate responses and provide thorough reasoning. Avoid any position biases and ensure that the order in which the responses were presented does not influence your decision. Do not allow the length of the responses to influence your evaluation. Do not favor either candidate label. Be as objective as possible. After providing your reasoning, output your final verdict by strictly following this format: [[A]] if candidate response Ais better, [[B]] if candidate response B is better. [Instruction] {x} [The Start of Candidate Response A] {r_a} [The End of Candidate Response A] [The Start of Candidate Response B] {r_b} [The End of Candidate Response B] 
+
+Rubric-Augmented LLM-as-a-Judge (baseline). 
+
+For the Self-Generated Rubrics rows in Table 1, the same judge model first writes its own rubrics from the prompt alone and then scores the two candidates against those rubrics. No support pair, training signal, or reference label is used, and the rubrics and reference_rubrics fields of each RubricBench example are stripped before prompt construction. The pipeline has two single-turn stages, rubric generation from x and pairwise rubric scoring of (ra, r b), both restricted to a binary A or B verdict at the response level. 
+
+Rubric generation. A single call reads only the user prompt and emits a short list of atomic, response-facing rubrics together with a one-sentence note that records the expected answer shape. 
+
+Self-Generated Rubrics: Rubric Generation 
+
+You are constructing prompt-only evaluation rubrics for a single user turn. Use only the prompt below. Do not answer it. Do not invent details about any candidate response. Internally follow three steps and then output only the final rubric list: (1) Task parse. Identify the task type, the required output shape, and any hard or soft constraints that are explicitly stated in the prompt. (2) Answer sketch. Outline at a high level what a strong answer needs to cover and list the most likely failure modes. (3) Rubric synthesis. Write 4 to 7 atomic rubrics, each phrased as one independently checkable question about the response. Rules: Each rubric covers exactly one criterion and is self-contained. Each rubric cites either an explicit prompt requirement, an inferred task requirement, or a likely failure mode. Do not reward verbosity, formatting polish, or stylistic flourish unless the prompt explicitly requires them. For objective tasks, do not reveal a guessed answer key. Prompt: {x} Output a JSON object with two fields: rubrics, a list of rubric strings, and rubric_note, a single sentence about the expected answer shape. 
+
+Pairwise rubric scoring. A single call evaluates both candidates against the generated rubrics and returns a per-rubric pass or fail verdict for each can-didate, a per-rubric preferred side, and an overall preferred candidate. The verdict space is restricted to A or B at every level, with no tie option, so 14 the prediction can be mapped back to chosen or rejected without ambiguity.                                                                
+
+> Self-Generated Rubrics: Pairwise Scoring
+> You are an impartial judge. Evaluate two candidate responses against the rubrics below. Use only the rubrics as the evaluation checklist. Do not introduce extra criteria. Do not let response length, formatting polish, or writing style influence your judgment unless arubric explicitly asks for them. Avoid position bias. For every rubric, decide: (i) a pass or fail verdict for Candidate A, (ii) a pass or fail verdict for Candidate B, (iii) which candidate is better on that rubric, A or B. After completing all rubric-level judgments, output asingle overall preferred candidate, A or B. Prompt: {x} Rubrics: {c_1, ..., c_k} Rubric note: {note} Candidate A: {r_a} Candidate B: {r_b} Output aJSON object with two fields: rubric_comparisons, alist of items with keys rubric_id, candidate_a_verdict, candidate_b_verdict, better, and reason, and preferred_candidate, the overall winner A or B.
+
+D LLM Inference Configuration 
+
+All LLM calls in this paper share the same model and decoding configuration. We use GPT-OSS-120B served over an OpenAI-compatible chat-completions endpoint, with temperature 0.0, top-
+
+p = 1.0, top-k disabled, and n = 1 sample per call. Whenever the model API exposes a 
+
+reasoning_effort parameter, we keep its default value of medium for every call across every stage. The maximum generation length is 8192 tokens for pairwise rubric judging, prompt-only and con-trastive rubric induction, adversarial probe genera-tion, and rubric rewriting. The same settings are used at training and at inference, so the reported numbers reflect a single, fixed judge configuration across all baselines and SVR. 
+
+E Trained Rubric Bank 
+
+The trained bank used in our main experiments contains 1,024 rubrics with an average length of 15 
+
+words. Table 7 reports domain coverage together with severity labels and aggregate activation and support counts. The distribution is uneven. Instruc-tion Following (IF) alone accounts for 29 .1% of the bank, while STEM and Safety together cover only 5.8% . A further 36 .1% of entries are domain-agnostic quality criteria such as accuracy, concise-ness, and coverage that the selector activates across multiple domains, which we group as Generic. Two patterns warrant a closer look. STEM rubrics are scarce but disproportionately critical, with 21 of 27 entries ( 78% ) carrying the criti-cal severity label, indicating that when a STEM-specific criterion is mined it almost always con-cerns a numerical or factual anchor rather than presentation. Safety achieves the highest activation density, with 33 rubrics producing 14 ,603 activa-tions at inference and averaging roughly 442 activa-tions per rubric, because a small number of refusal-clarity criteria are reused across many prompts. The flip side of this concentration is coverage. Only 
+
+33 Safety entries ( 3.2% of the bank) reflect a sparse HelpSteer3 supply of refusal-style preference pairs, which helps explain why Safety remains the weak-est SVR domain on the main benchmarks (Sec. 4). Code is dominated by format rubrics ( 118 of 159 ), reflecting that the code-domain preference signal in HelpSteer3 often hinges on fenced-markdown presentation rather than program correctness. Table 8 lists representative rubrics from the highest-weighted decile of the trained bank, grouped by the domain on which the selector most often activates them. The retained rubrics consis-tently encode boundary-relevant criteria such as the presence of a specific safety caveat, the correctness of an intermediate numerical step, or the explicit handling of an instruction constraint, rather than generic dimensions of helpfulness or clarity. 
+
+F Residual Failure Patterns Against Human Rubrics 
+
+At the domain level the disagreement between SVR and the human-rubric oracle is highly direc-tional. Table 9 reports per-domain net advantage on RubricBench, with negative entries denoting domains where the oracle solves more pairs and positive entries where SVR solves more. The ora-cle leads on technically verifiable categories such as code ( −10 ), safety ( −6), generic helpful ( −4), and ifeval ( −3). SVR leads on open-ended pref-erence categories such as human-preference ( +7 ), 15 Table 7: Domain distribution of the trained bank ( M = 1 ,024 ). Severity counts (Critical/Major/Minor) come from the LLM grounding step. Activations is the total number of times rubrics in each domain are selected as a top-k
+
+active rubric across the RubricBench evaluation set. Supports is the total number of training preference pairs the domain’s rubrics cover. Generic denotes domain-agnostic quality criteria such as accuracy, conciseness, or coverage that the selector activates across multiple domains. 
+
+Domain Count % Severity Activations Supports Critical Major Minor Chat 137 13.4 34 82 21 7,445 10,469 IF 298 29.1 63 201 34 8,970 8,374 STEM 27 2.6 21 3 3 2 537 Code 159 15.5 29 127 3 32 2,416 Safety 33 3.2 9 19 5 14,603 4,576 Generic 370 36.1 146 184 40 14,641 8,833 Total 1,024 100.0 302 616 106 45,693 35,205 
+
+Table 8: Representative rubrics drawn from the highest-weighted decile of the trained bank, grouped by the domain on which the selector activates them. Wording is paraphrased for compactness. 
+
+Domain Representative high-weight rubric 
+
+Chat The response is written in the same natural language as the user’s query. The response includes a follow-up question or invitation that encourages the user to ontinue the conversation. The response must use a friendly and encouraging tone since the user is frustrated. IF Is the list presented as bullet points (•) or a numbered list (1., 2., . . . )? The response must provide exactly the number of items explicitly requested by the user. The response directly fulfills the user’s explicit instruction without deviating to unrelated topics. STEM Does the response give the probability of hitting exactly 2 shots as 6·p²·(1 -p)²? (binomial coefficient C(4,2)=6) All factual claims in the response must be accurate and verifiable, particularly numerical constants such as the speed of light. The response should remain internally consistent and avoid contradictions, especially in calculations involving 30-minute elapsed time. Code The response must provide code that is syntactically correct and can be compiled or executed without errors. The response uses the programming language and framework explicitly requested by the user. Is the code block wrapped in a fenced Python markdown block (python...)? Safety Is the refusal clear and easily understandable to the user? The response must avoid disseminating misinformation that could mislead the user. Does the response avoid actionable harmful instructions while still providing a safe, non-facilitating answer? 
+
+Table 9: Domain-level net advantage between SVR and the human-rubric oracle on RubricBench. Neg-ative entries denote domains where the oracle solves more pairs. Positive entries denote domains where SVR solves more. 
+
+Oracle-favored Net SVR-favored Net code −10 human-preference +7 
+
+safety −6 MBPP +5 
+
+helpful −4 general +4 
+
+ifeval −3 precise IF +4 
+
+math −2 GPQA +2 
+
+stem −1 harmlessness +1 
+
+MBPP ( +5 ), general ( +4 ), and precise instruction following ( +4 ). Inspecting the 152 pairs SVR solves alone ex-poses three patterns. (i) Reference rubrics over-weight surface specifics. On a light-novel writing prompt ( rubric_eval_635 ), the per-rubric verdict from the oracle turned on whether the response named a specific breakfast item, while the high-frequency quality rubrics in the bank captured the narrative coherence that the chosen response ex-hibited. (ii) Reference rubrics reward coverage at the expense of constraint adherence. On an email-reply task ( rubric_eval_787 ), the oracle credited a verbose multi-paragraph response with extra topics, while the brevity and on-topic rubrics in the bank favoured the concise reply that matched the user request. (iii) Reference judging is unsta-ble on long checklists. On a Python code pair (rubric_eval_1051 ), the first six oracle rubrics tie and the seventh marginally favours A, yet the aggregated verdict flips to B, whereas the pairwise rubric voting in SVR picks A cleanly. 16 The 155 pairs the oracle solves alone reveal three structural gaps in the bank. (i) No task-completion rubric. On a self-introduction polishing prompt (rubric_eval_148 ), SVR prefers a bullet-point list of revision suggestions over the actual revised text the user requested, because format and coher-ence rubrics score the suggestions higher. This same pattern dominates the −13 net deficit on code, where format-correct but functionally bro-ken code can outscore a less-presentable work-ing solution. (ii) No meta-pragmatic rubric for prompt ambiguity. When a user pastes 29 unla-belled numbers ( rubric_eval_444 ), SVR prefers a confident but factually shaky direct computa-tion over a clarifying question, while the ora-cle has an “ask for clarification when context is missing” rubric that correctly flags the lat-ter. (iii) No content-derivability rubric. On a grades-aggregation prompt ( rubric_eval_414 ), SVR prefers a response with neat module-level subtotals that are not derivable from the input num-bers, while the oracle has an explicit derivability check. The 42 pairs both systems miss split into three sources. Subjective preference (18 pairs, 43% )come from the human-preference subset where the chosen response reflects taste with no verifiable criterion, so rubric grading is underdetermined re-gardless of rubric source. Judge capability ceiling 
+
+(19 pairs) carry rubrics present in the bank or oracle that the LLM judge cannot reliably apply: symbolic constraints ( rubric_eval_359 requires “response must start with a verb”), multi-step numerical checks ( rubric_eval_123 , a chemistry titration with embedded errors), and tasks requiring exter-nal code execution. Likely label noise (5 pairs) in-cludes a factuality case ( rubric_eval_584 ) where the labelled answer refuses with a cutoff disclaimer over a response listing dated events, and a math case ( rubric_eval_71 ) where the per-rubric rea-soning from the oracle favours B yet the verdict picks A. Removing these would lift accuracy in both systems by roughly 0.4 points. 
+
+G Top-k Sensitivity at Inference 
+
+At inference, SVR evaluates the prompt-conditioned selector α(x) once on the prompt to obtain a weight for every rubric in the trained bank, multiplies each selector entry by the corresponding learned global weight to form a per-rubric importance, and keeps the top-k entries. 1 2 4 6 8 10 12    
+
+> top-krubrics per prompt
+> 80.5
+> 81.0
+> 81.5
+> 82.0
+> 82.5
+> 83.0
+> 83.5
+> RubricBench accuracy (%)
+> 81.52
+> 81.87
+> 82.74 82.82
+> 81.17
+> 81.52
+> 82.56
+> default k=6
+
+Figure 5: Top-k sensitivity on RubricBench. All other components (bank, selector, global weights, judge model) are held fixed at the main-experiment configura-tion. The dashed line marks the default k = 6 .
+
+Since α(x) is produced by sparsemax (Eq. 5), the selector output is sparse and most entries are exactly zero, so typically only a handful of the k
+
+retained rubrics carry a non-zero learned weight. The remaining slots are filled by a diversity rule that prefers rubrics with low textual similarity (Appendix A) to the already-chosen entries and assigns each of them a weight of 1. The pairwise verdict is the weighted sum of the per-rubric judgments under these two regimes. Rubrics the selector trusts contribute proportionally to their learned importance, and the remaining rubrics act as equal-weight voters that prevent the decision from collapsing onto a single signal. We vary k ∈ {1, 2, 4, 6, 8, 10 , 12 }, the to-tal number of rubrics used to form the verdict, on RubricBench with the bank, selector, global weights, and judge model held fixed at the configu-ration used for the main experiments. Figure 5 shows that overall accuracy varies within a narrow 1.65 -point band of [81 .17 , 82 .82] 
+
+across the entire range, so the verdict is largely in-sensitive to k. Accuracy rises from 81 .52 at k = 1 ,where the verdict reduces to a single rubric and loses the stabilising effect of the equal-weight vot-ers, to a peak of 82 .82 at k = 6 , dips to 81 .17 
+
+at k = 8 as a few filler rubrics partially offset the selector-trusted ones, and recovers to 82 .56 at 
+
+k = 12 as the wider equal-weight vote averages out. The strong 81 .52 at k = 1 is itself informative: on a high-difficulty benchmark such as RubricBench, candidate responses are typically close in overall quality and the verdict often hinges on a single de-cisive criterion, which the top selector-weighted rubric already isolates. The default k = 6 used in the main experiments sits at the top of this band 17 and is therefore a robust working point. Beyond 
+
+k = 12 , the trend from k = 8 onward suggests that additional filler rubrics would further dilute the selector-trusted entries that carry the most discrim-inative signal, while lengthening the judge prompt without contributing new information. 
+
+H RRD Reproduction Details 
+
+Recursive Rubric Decomposition (RRD) (Shen et al., 2026) targets LLM-as-judge and reward mod-elling through automatically mined rubrics, and is the closest prior method to SVR, so we adopt it as our main baseline. Since the authors have not released code, we reproduce the pipeline strictly from the paper and follow the RRD appendix tem-plates for all prompts. The pipeline samples exter-nal responses, proposes initial rubrics, recursively decomposes coarse ones, filters misaligned and re-dundant rubrics, assigns whitened-uniform weights, and aggregates rubric-level verdicts into a pairwise decision. RubricBench labels are used only to com-pute final accuracy, never for rubric construction or weighting. We list the key settings of our reproduction be-low. • Evaluation data. RubricBench, 1,147 pairwise examples. • Judge model. GPT-OSS-120B for all stages, with temperature 0.0, top-p = 1 .0, reasoning effort medium , and max length 2048 .• Sampled responses. 4 samples each from GPT-4o and Gemini-2.5-Pro (Comanici et al., 2025) per prompt (8 in total), drawn at temperature 0.7
+
+and top-p = 0 .95 .• Initial rubrics. Prompt-specific binary rubrics conditioned on the 8 samples, with a 4096 -token budget. • Recursive decomposition. A rubric is decom-posed when more than 2 of the 8 samples satisfy it, with 2 children per call, max depth 3, and a rejection threshold of 15 .• Directionality filter. Strong reference from GPT-4o and weak reference from Qwen3-8B (Yang et al., 2025), rejecting any rubric that the weak reference passes but the strong reference fails. • Redundancy filters. GPT-OSS-120B is prompted to compare each candidate against ac-cepted rubrics, discarding those that substantially overlap with or contradict an accepted rubric. • Rubric judge. Single-response YES/NO pred-icate, with A and B judged separately under a 
+
+256 -token budget. • Aggregation. WU weighting from RRD, margin P 
+
+> i
+
+wi(gi(A) − gi(B)) , falling back to a direct A/B comparison with a 512 -token budget when no rubrics are accepted or the margin is zero. The completed RRD run produced predictions for all 1,147 RubricBench examples. The repro-duced baseline obtained 57 .63% overall pairwise accuracy, with a mean of 10 .38 accepted rubrics per example and a median of 8.A practical limitation of RRD is its rubric-construction cost. In our full RubricBench re-production, this construction stage alone required 
+
+9,176 external response generations, 1,147 initial rubric-proposal calls, 13 ,981 decomposition calls, and 273 ,232 sampled-response rubric judgments for 1,147 examples. The main cost of RRD there-fore comes before final answer scoring, broadening rubric coverage by spending substantial inference budget to construct prompt-specific rubrics. 
+
+I Computational Cost 
+
+We train on 35 K preference triples drawn from HelpSteer3 (Wang et al., 2025b), and a full T = 3 -round training run takes approximately 20 GPU-hours on a single 8×A100 node. The wall-clock cost of SVR is dominated by LLM judge calls. Each of the T refinement rounds issues calls in three roles, contrastive induction, adversarial prob-ing, and pairwise rubric judging, with the third accounting for the bulk of the volume. The selector and weight optimisation re-fit in minutes on CPU once the pairwise differential features z are cached, contain fewer than 1.5M trainable parameters in total, and account for under 1% of round time. At inference, SVR costs one pairwise judging call per evaluated pair, the same as the Vanilla LLM-as-a-Judge baseline. Self-Generated Rubrics requires two calls per pair, rubric generation from the prompt followed by pairwise rubric scoring. RRD pays its budget upfront, with the construction-stage call counts on RubricBench detailed in Ap-pendix H, all of which must be repeated whenever the evaluation distribution changes. SVR amor-tises a comparable budget once at training time and 18 reuses the resulting bank across downstream eval-uation sets without additional rubric-construction cost. 19
