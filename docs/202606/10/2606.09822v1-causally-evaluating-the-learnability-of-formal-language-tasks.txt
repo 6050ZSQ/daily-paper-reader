@@ -1,0 +1,2562 @@
+Title: Causally Evaluating the Learnability of Formal Language Tasks
+
+URL Source: https://arxiv.org/pdf/2606.09822v1
+
+Published Time: Tue, 09 Jun 2026 02:46:45 GMT
+
+Number of Pages: 27
+
+Markdown Content:
+# Causally Evaluating the Learnability of Formal Language Tasks 
+
+Vésteinn Snæbjarnarson 1 2 Anej Svete 1 Josef Valvoda * 1 Reda Boumasmoud 1 Brian DuSell 1 Ryan Cotterell 1
+
+## Abstract 
+
+Language models, as multi-task learners, acquire a wide range of abilities during training. A fun-damental question is how much task-specific data is needed to learn a given task. Answering this for natural language is difficult: tasks are hard to delineate and can confound one another. To rigorously investigate the relationship between data frequency and learnability, we turn to a con-trolled setting using formal languages induced from probabilistic finite automata. These serve as a methodological testbed to demonstrate that stan-dard correlational evaluation practices are inher-ently flawed. To enable causal analysis, we intro-duce the binning semiring , an algebraic object that lets us control how often a targeted property oc-curs in a sampled corpus. We formulate the exper-imental pipeline as a causal graphical model and derive decomposed Kullback–Leibler divergence metrics to measure the learnability of specific sub-tasks. Our experiments show that evaluat-ing learnability without causal intervention leads to incorrect conclusions due to confounders in cor-relational analysis, and serve as a warning about correlational pitfalls in natural-language settings. 
+
+https://github.com/vesteinn/ causal-eval-formal-languages 
+
+## 1. Introduction 
+
+Training a language model (LM) is, in effect, a massive multi-task learning problem. From a single corpus, a modern LM learns to translate languages (e.g., English into Dutch; Du et al., 2025), generate Python code (Chen et al., 2021; Li et al., 2023; Rozière et al., 2024), write job applications (Wiles et al., 2025), assist with mathematical proofs (Lewkowycz et al., 2022) inter multa alia . A natural question is then: how much task-specific data does an LM need to learn a given task? The answer surely depends 
+
+*Now at Google. 1ETH Zürich 2University of Copenhagen. Cor-respondence to: Vésteinn Snæbjarnarson <vest.snae@gmail.com>, Ryan Cotterell <ryan.cotterell@inf.ethz.ch>. 
+
+Preprint. Tuesday 9 th June, 2026. 
+
+on how similar the task is to others in the training data—a programming language with Python-like syntax may be acquired from a few examples given the prevalence of Python in the training data. In contrast, a programming language with an unfamiliar paradigm may demand substantially more. However, determining precisely how much training data a particular task requires in a multi-task setting is difficult: in a large natural-language corpus, tasks are hard to delineate and label, and different tasks can share underlying similarities, introducing confounders. We must isolate and control these confounders to determine how data scarcity affects task performance. The goal of this paper is to replicate a multi-task learning problem in a controlled setting. To do so, we turn to formal languages, a common testbed for studying the learnability of neural architectures (Lake and Baroni, 2018; Michalenko et al., 2019; Hupkes et al., 2020; Ruis et al., 2020; Valvoda et al., 2022; Delétang et al., 2023; Svete et al., 2024a; Van der Poel et al., 2025; Butoi et al., 2025). Specifically, we study how well we can train an LM to approximate a proba-bilistic finite automaton (PFA). When learning a PFA, each symbol, state, and transition of the underlying automaton can be seen as a task, and these tasks are interrelated through the automaton’s structure. Inter-task confounders, therefore, arise in the formal-language learning setting as well. Yet, the standard methodology for evaluating language models’ abil-ity to learn probabilistic formal languages does not account for them (Borenstein et al., 2024; Someya et al., 2025). As an illustrative example, consider the PFA in Fig. 1. It assigns non-zero probability to two kinds of strings: those of the form aa ˚, and those containing an odd number of 
+
+b’s—a probabilistic version of PARITY (Hahn and Rofin, 2024) prefixed by b. Theory suggests that transformers easily learn aa ˚ (Yang et al., 2024; Li and Cotterell, 2026) but not PARITY (Hahn and Rofin, 2024). The parameter 
+
+η governs which branch the PFA enters, and thus how often each task appears in a corpus sampled from it. But 
+
+η does more than control task frequency: it also shifts the overall distribution the model must learn, including the expected string length, since the two branches yield strings of different expected lengths. So when a model trained on a corpus with few PARITY strings performs poorly on 
+
+> PARITY
+
+, we cannot tell whether the difficulty stems from there being too few PARITY strings to learn from, the shift 1
+
+> arXiv:2606.09822v1 [cs.CL] 8 Jun 2026 Causally Evaluating the Learnability of Formal Language Tasks
+
+qι ODD EVEN REP 
+
+b{p 1 ´ ηq b{0.45 
+
+b{0.5
+
+a{η
+
+a{0.9 a{0.45 a{0.5               
+
+> Figure 1. A PFA recognizing the language aa ˚Yba ˚pba ˚ba ˚q˚.The transitions left of qιcorrespond to the star-free language aa ˚
+> (which is easier for transformers to learn), and the ones to the right correspond to the PARITY language (which is harder for transformers to learn). If ηP r 0,1sis low, we might wrongly assume that aa ˚is harder to learn.
+
+in the corpus’s length distribution that co-occurs with the change in η, or the fact that PARITY may be inherently hard for this architecture. Disentangling these requires causal intervention (Pearl et al., 2016). To carry out this disentanglement, we contrast two ways of generating data from a given weighting of a PFA, dis-tinguishing the causal effect of certain string properties on learnability—e.g., how often a string causes its PFA to pass through a given transition—from the correlational one. The 
+
+correlational setup is the one implicit in standard practice: sample many weightings of the PFA, draw a corpus from each, train a language model on each corpus, and correlate the realized count of the target property with the trained model’s performance. The causal setup, by contrast, intervenes directly on the sampling procedure to produce a corpus with an exact count for a chosen transition under any given weighting of the automaton, decoupling the count from the rest of the corpus’s properties. In both setups, we measure task-specific performance with a bespoke decompo-sition of the Kullback–Leibler divergence (App. G) between the trained model and the PFA and plot it against the oc-currence count. We show results for a transformer (Vaswani et al., 2017) and an LSTM (Hochreiter and Schmidhuber, 1997) in Fig. 2. Even in this simple setting, the causal (solid) and correlational (dotted) curves differ. The setup also recovers the known LSTM–transformer gap on PARITY 
+
+(Hahn and Rofin, 2024): in the ODD panel of Fig. 2, the LSTM’s per-state Kullback–Leibler divergence drops about an order of magnitude below the transformer’s as the PAR - 
+
+> ITY
+
+count grows, whereas the transformer’s curve plateaus. Unlike prior work that only argues for the gap’s existence, we trace it directly as a function of PARITY occurrences. On the theoretical side, to enable causal evaluation of how well language models can learn PFAs, we introduce a new algebraic tool: the binning semiring (§4.1). 1 It lifts each transition weight into a vector indexed by the number of target occurrences along a path, so summing path weights gives the conditional distribution over corpora  
+
+> 1While the binning semiring can be used on any model whose computations factor over a semiring, our study focuses on PFAs. 01k
+
+Count 
+
+> 10 −5
+> 10 −3
+> 10 −1
+> 10 1
+> DKL
+
+rep  
+
+> 01k
+
+Count 
+
+odd   
+
+> 01k 2k
+
+Count 
+
+even         
+
+> LSTM Transformer Causal Correlational
+> Figure 2. Each panel plots state-wise decomposed Kullback– Leibler divergence ( DKL ; lower is better) against the number of times the target state occurs in training. Correlational (dotted): sample many weightings of the PFA in Fig. 1 and record the realized count. Causal (solid): intervene in the sampling procedure to sample specific counts. Gaps reflect confounding from the joint distribution over weights.
+
+with a given count—exactly the distribution the causal setup samples from. We present methods (§4) for efficiently sampling datasets from a PFA such that a target property is represented exactly N times among K samples. Empirically, we conduct experiments in three settings to show that causal evaluation matters when studying how well language models learn PFAs. (i) We vary weights over the PFA of Fig. 1 (already shown in Fig. 2), which combines probabilistic versions of a star-free language and 
+
+> PARITY
+
+. (ii) We sample a large set of PFAs with dozens of states to consider the learnability of properties independent of the specific configuration of the PFA encoding them. (iii) We consider fixed PFA topologies while varying the weightings. Across all three settings, correlational estimates of task learnability systematically diverge from their causal counterparts; in setting (ii), the correlational trend even 
+
+inverts (Fig. 5), indicating that automata that naturally produce few instances of a task tend to have structural properties that confound learnability estimates. These results demonstrate that standard correlational methodology can spoil conclusions about formal language learnability. 
+
+## 2. Preliminaries 
+
+Basics. We write N def 
+
+“ t 1, 2, 3, . . . u for the natural num-bers. For N P N, we write rN s def 
+
+“ t1, . . . , N u and 
+
+rN s0 def 
+
+“ t 0, 1, . . . , N u.
+
+Language Models. An alphabet Σ is a finite non-empty set of symbols . The Kleene closure Σ˚ is the set of all strings of symbols from Σ. A language model (LM) p is a probability distribution over Σ˚. The prefix probability 2
+
+ÝÑp pσq of a string σ P Σ˚ is the total probability of strings starting with σ under p; the conditional prefix probability   
+
+> 2Note that prefix probabilities do not define a distribution over
+> Σ˚, as they do not sum to 1.
+
+2Causally Evaluating the Learnability of Formal Language Tasks 
+
+ÝÑp pσ1 | σq extends this to a continuation σ1 P Σ˚:
+
+ÝÑp pσq def 
+
+“ ÿ
+
+> σ1PΣ˚
+
+ppσσ 1q, ÝÑp pσ1 | σq def 
+
+“ÝÑp pσσ 1qÝÑp pσq , (1) with ÝÑp pσ1 | σq def 
+
+“ 0 when ÝÑp pσq “ 0. Many LMs define 
+
+ppσq autoregressively via 
+
+ppσq def 
+
+“ ÝÑp pEOS | σq
+
+> |σ|
+
+ź
+
+> t“1
+
+ÝÑp pσt | σătq, (2) where EOS R Σ is a designated end- of- string symbol. We write ΣEOS 
+
+> def
+
+“ Σ Y t EOS u for the extended alphabet. We denote a neural LM as pθ , where θ collects the neural LM’s learnable parameters. 
+
+Algebra and Formal Languages. Let K be a set, d abinary operation, and 1 P K. We say that pK, d, 1q is a 
+
+monoid if (i) K is closed under d; (ii) d is associative; and 
+
+(iii) 1 is the unit of d: @a P K : 1 d a “ a d 1 “ a. We say that a monoid is commutative if @a, b P K : adb “ bda. A 
+
+semiring is a tuple pK, ‘, b, 0, 1q where (i) pK, ‘, 0q is a commutative monoid; (ii) pK, b, 1q is a monoid; (iii) b left-and right-distributes over ‘: a b p b ‘ cq “ p a b bq ‘ p a b cq
+
+and pb‘cqb a “ p bbaq‘p cbaq; and (iv) b with 0 annihi-lates K: 0 b a “ a b 0 “ 0. The operation b is referred to as multiplication and ‘ as addition . A semiring admitting well-behaved infinite sums is called complete , i.e., in a com-plete semiring, we can define asteration a˚ def 
+
+“ À8 
+
+> i“0
+
+ai “
+
+À8
+
+> i“0
+
+Âij“1 a. The real semiring is pR, `, ˆ, 0, 1q with the standard addition and multiplication. Adjoining 8 to positive reals in the natural way gives a complete semiring with a˚ “ 11´a for a ă 1 and a˚ “ 8 otherwise. 
+
+Finite Automata. A weighted finite automaton (WFA) 
+
+A over a semiring pK, ‘, b, 0, 1q is a tuple pQ, Σ, δ, λ, ρ q
+
+where Q is a finite set of states; Σ is an alphabet; δ : Q ˆ
+
+Σ ˆ Q Ñ K is a transition function, where we say that 
+
+A has transition p a{w
+
+ÝÝÑ q with weight w if δpp, a, q q “ 
+
+w; and λ : Q Ñ K and ρ : Q Ñ K are the initial and final weight functions, respectively. A path π in 
+
+A is a finite sequence of transitions connected by states: 
+
+q0
+
+> a1{w1
+
+ÝÝÝÝÑ q1 ¨ ¨ ¨ qm´1
+
+> am{wm
+
+ÝÝÝÝÝÑ qm. We write |π| “ m for 
+
+π’s length. The inner weight of π is wpπq def 
+
+“ w1 b ¨ ¨ ¨ b 
+
+wm, its weight is wpπq def 
+
+“ λpq0q b wpπq b ρpqmq, and its 
+
+yield is a1 ¨ ¨ ¨ am. ΠpAq denotes the set of all paths in A.We say that A “ p Q, Σ, δ, λ, ρ q is deterministic (a DPFA) if, for every p P Q, σ P Σ, there is at most one q P Q such that p σ{w
+
+ÝÝÑ q P δ with w ‰ 0, and there is a single state qι
+
+with λpqιq ‰ 0. In this case, we refer to qι as the initial state . A deterministic WFA can have at most one path with non-0 path weight yielding a string σ P Σ˚ from the initial state qι. The backward weight βApqq of a state q P Q is the sum of the weights of all paths starting at q:
+
+βApqq def 
+
+“ à
+
+> πPΠpAq,ι pπq“ q
+
+wpπq b ρpφpπqq , (3) where ιpπq and φpπq denote the first and last states of π, respectively. The allsum of a DPFA A is 
+
+Z def 
+
+“ ř 
+
+> πPΠpAq
+
+wpπq “ βApqιq.
+
+Probabilistic Automata. We say that a real-weighted WFA with non-negative weights is probabilistic (a PFA) if ř 
+
+> qPQ
+
+λpqq “ 1 and, for all states q P Q, ρpqq ` ř 
+
+> qσ{w
+
+ÝÝÑq1Pδ w “ 1. A PFA induces a probability distri-bution over Σ˚, where the probability of a string σ is the sum of the weights of all paths yielding σ from the initial state qι. For a DPFA, each string σ P Σ˚ admits at most one path; let pδpσq P Q denote the state reached by read-ing σ from qι. A DPFA then realizes an autoregressive language model (Eq. (2)) whose next-symbol distribution at history σ is supported on ΣEOS : ÝÑp pσ | σq “ w when 
+
+pδpσq σ{w
+
+ÝÝÑ q1 P δ and ÝÑp pEOS | σq “ ρppδpσqq .
+
+Graphical Causal Models. We now introduce graphical causal models and interventions. We adopt the following notation: sets are denoted with uppercase calligraphic font, e.g., X and Y; subsets of a set X are uppercase letters, e.g., X; and elements of a set X are lowercase letters, e.g., x. Random variables over X are typeset as uppercase, unitalicized letters, e.g., X. Bold uppercase letters, e.g., X,are used to denote sets of random variables. A graphical causal model (GCM) consists of a directed acyclic graph (DAG) G “ p V , Eq whose nodes V “ t V1, . . . , VN u
+
+are random variables over domains V1, . . . , VN and whose edges E Ď V ˆ V encode direct causal influence. Each node carries a conditional distribution PpVn | PA nq given its parent variables PA n Ď V in G. The joint distribution then factorizes over the DAG as 
+
+PpV1, . . . , VN q “ 
+
+> N
+
+ź
+
+> n“1
+
+PpVn | PA nq. (6) The graphical model allows one to reason about interven-tions —changes to the joint distribution that affect individ-ual variables in the model by modifying their direct causes. Operationally, intervening on X replaces its conditional dis-tribution PpX | PA X q with a point mass at the intervened value, leaving all other conditionals untouched. Standard notation for such operations is PpY | do pX “ Xqq , which denotes the distribution of Y when X is set to event X (Pearl et al., 2016). For this to be well-defined, we ensure that the event X has a positive probability. 3      
+
+> 3However, we can easily generalize to the case where Xhas probability zero by defining each conditional PpVn|PA nqas
+
+3Causally Evaluating the Learnability of Formal Language Tasks                                                     
+
+> A
+> DL
+> MPpM|DPPq “
+> ż
+> A
+> ż
+> L
+> ż
+> P
+> PpM|da, dlqPpdl|ddqPpdd|da, DPPqPpda|DPPq(4)
+> PpM|do pDPPqq “
+> ż
+> A
+> ż
+> L
+> ż
+> P
+> PpM|da, dlqPpdl|ddqPpdd|daqPpdaq(5)
+> Figure 3. Left: Graphical causal model for evaluating the effect of intervening on the dataset Don model performance M, given a PFA language model Aand trained model L.Right: Conditioning (Eq. (4)) induces Ppa|DPPq; intervening (Eq. (5)) restores the marginal Ppaq. The variables are described in §3.
+
+Importantly, the GCM formulation above allows us to handle intervention distributions in continuous spaces through covariate adjustment formulas as described in Peters et al. (2017, Section 6.6). Specifically, if Z denotes the parents of X, we can solve for the causal effect of setting X to X using the adjustment integral: 
+
+PpY | do pX “ Xqq “ 
+
+ż
+
+PpY | X “ X, ZqPpdzq. (7) Intuitively, we average over the natural distribution of X’s parents while substituting the intervened value X in the con-ditional. Even if we cannot directly compute Eq. (7), we can approximate it via sampling. In the next section, we apply this framework to model interventions on sampled datasets. 
+
+## 3. A Causal Model for Learnability 
+
+We now develop a causal framework to isolate the effects of dataset properties on language-model performance. We instantiate the graphical causal model framework with a specific DAG, shown on the left in Fig. 3, defined over four random variables V “ t A, D, L, Mu. These variables corre-spond to our experimental pipeline and are described below. 
+
+PFA: A is a random variable over the space of PFA lan-guage models A, representing the generating process. 
+
+Dataset: D is a random variable over the domain of datasets D, generated by the PFA. 
+
+Learned Model: L is a random variable over the parameter space L (e.g., neural weights), resulting from training. 
+
+Performance: M is a random variable in M Ď R that represents the fidelity of the learned model. The causal structure E is defined by the dependencies between these stages: the dataset depends on the PFA  
+
+> aMarkov kernel , a measure-theoretic surrogate for conditional probability that avoids conditioning on measure-zero events; see App. C. In the body of the paper we treat these conditionals as conditional densities, which is only rigorous whenever the joint distribution is absolutely continuous with respect to a product reference measure (Lebesgue on continuous coordinates, counting on discrete ones).
+
+(A Ñ D), the learned model depends on the training data (D Ñ L), and the performance measure depends on both the learned model and the PFA ( tL, Au Ñ M). This implies the following factorization of the joint distribution: 
+
+PpA, D, L, Mq “ PpAqPpD | AqPpL | DqPpM | L, Aq. (8) 
+
+Intervening vs. Conditioning. We define a property P Ď
+
+D as a set of datasets. In this paper, given a PFA A, we specify properties in terms of how often a designated subset of the automaton’s transitions is traversed, e.g., “the dataset was sampled by traversing a specific set of transitions ex-actly N times.” This allows us to specify properties such as “the dataset contains exactly N occurrences of symbol σ” as a special case. Specifically, given a property P, our goal is to distinguish the following cases with our causal model. (1) Conditioning. Evaluate PpM | D P Pq, which introduces a dependence between the PFA language model A and the dataset D (the term Ppa | D P Pq in Fig. 3). PFAs that are more likely to produce datasets in P will be overrepresented. (2) Intervening. Evaluate PpM | do pD P Pqq by modifying the data generation process to satisfy P,preserving the original distribution Ppaq.To compare these two cases empirically, we (i) sample a set of PFAs; (ii) sample corpora from each, either conditionally on D P P or under the intervention do pD P Pq; (iii) train a language model on each corpus; and (iv) measure its performance against the PFA. The expected performance under each setup gives the two estimands: 
+
+μint pPq def 
+
+“ ErM | do pD P Pqs , (9a) 
+
+μobs pPq def 
+
+“ ErM | D P Ps. (9b) Thus, μint pPq ´ μobs pPq isolates the effect of enforcing P
+
+while preserving the original distribution of A (cf. Fig. 3); the two estimands are derived from the same end-to-end pipeline and differ only in how the corpus is sampled. 4Causally Evaluating the Learnability of Formal Language Tasks 
+
+q0 q1
+
+q2
+
+a{0.3
+
+a{0.7
+
+b{0.7 b{0.3
+
+b{0.9
+
+(a) Standard PFA A
+
+q0 q1
+
+q2         
+
+> a{p 0,0.3, . . . q
+> a{p 0,0.7, . . . q
+> b{p 0.7,0,¨ ¨ ¨ q b{p 0.3,0,¨ ¨ ¨ q
+> b{p 0.9,0,¨ ¨ ¨ q
+
+(b) Binning Automaton Aϕ                               
+
+> Targets: T“ t¨ a{¨
+> ÝÝÑ ¨u
+> Standard Sequence Probability:
+> Ppab q “ 0.3¨0.3¨0.1“0.009
+> Ppaab q “ 0.3¨0.7¨0.7¨0.1“0.0147
+> Binning Vector:
+> ab :p0,0.009 ,0, . . . q
+> (Index 1: one a)
+> aab :p0,0,0.0147 , . . . q
+> (Index 2: two a’s)
+
+(c) Sequence probabilities 
+
+Figure 4. Given an automaton A (a), we lift its weights to the binning semiring . The lifted binning automaton (b) has vectors 
+
+v “ p v0, v 1, . . . , v Rq as weights. Transitions on symbol a P T shift probability mass to the next index, while b R T stays in place. (c) Multiplication of these vectors (elements of the binning semiring) is defined such that it corresponds to counting occurrences. 
+
+## 4. Sampling Under Event Constraints 
+
+To implement the causal intervention of §3, we need to sample from PpD | A “ a, do pD P Pqq for a given automaton a “ A, i.e., draw a dataset D from A subject to a property P. For example, we may wish to draw a dataset that contains symbol a exactly N times. We first clarify what we mean by a property P. Each sampled string from A
+
+is obtained by sampling an accepting path in the automaton, so we can relate each string structurally to the transitions it traverses. In the case of a DPFA, there is exactly one sequence of transitions for every string in the language. Given N P N and a set of transitions T , we consider two intervention types that we use throughout §5: the 
+
+exact-count intervention fixes the corpus’s total number of 
+
+T -transitions to N , and the at-least-once intervention fixes the number of strings (out of K) that contain at least one 
+
+T -transition. In both cases, we write P Ď D for the set of datasets meeting the chosen constraint, and the intervention enforces it. 4 By controlling the occurrences of particular sets of transitions, we can target, e.g., all transitions that emit a specific symbol, or all transitions out of a given state. 
+
+4.1. The Binning Semiring 
+
+To construct an efficient sampling algorithm, we define the binning semiring , an algebra over a base semiring that tracks occurrence counts of a targeted feature through path computations. For a base semiring pK, ‘, b, 0, 1q and threshold count R P N, the Rth -order binning semiring 
+
+JKKR “ p KR`1, ‘ , b , 0 , 1 q has as its underlying set the pR ` 1q-tuples 
+
+v “ p v0, v 1, . . . , v Rq, vn P K, (10) where, for n ă R, element vn records the weight associated with n target occurrences, and vR aggregates all counts greater than or equal to R. Addition ‘ is element-wise, 
+
+> 4
+
+The framework also supports an at-least-N variant (total T -transitions ě N ; Thm. E.1), but we only consider the exact and at-least-once in the case studies (§5). 
+
+with 0 def 
+
+“ p 0, . . . , 0q. Multiplication b is an overflow-accumulating convolution: for v, u P KR`1,
+
+pv b uqn def 
+
+“
+
+$’&’%řnj“0 vj b un´j if n ă R, ÿ
+
+> i`jěR,
+> 0ďi,j ďR
+
+vi b uj if n “ R, (11) with 1 def 
+
+“ p 1, 0, . . . , 0q. Below R, b is the ordinary con-volution that adds occurrence counts; at the top coordinate it absorbs all overflow, so any product with combined count 
+
+ě R accumulates there. 5 For v P KR`1 and n P N, we write v b n def 
+
+“ v b ¨ ¨ ¨ b vloooooomoooooon  
+
+> ntimes
+
+. Following convention, we sometimes write JKKR to mean KR`1.
+
+Time complexity. Assuming ‘ and b run in constant time, ‘ runs in time OpRq. The b operation (a convolution) runs in time OpR2q. In the special case of real-weighted WFAs, however, we can implement b using the fast Fourier transform (FFT), in which case it runs in 
+
+OpR log Rq time. Despite the faster implementation of b
+
+with FFT, we do not adopt it due to underflow for large values of R. Instead, we use the log semiring for numerical stability. In practice, we implement these operators using vectorized operations in PyTorch (Paszke et al., 2019), allowing us to run them efficiently on GPUs. 
+
+4.2. Binning Automaton 
+
+We now describe how to lift a PFA A to a WFA over the bin-ning semiring as shown in Fig. 4. Let A “ p Q, Σ, δ, λ, ρ q
+
+be a WFA and R P N. An event function is a tuple 
+
+ϕ “ p ϕλ, ϕ δ , ϕ ρq, where ϕδ : Q ˆ Σ ˆ Q Ñ r Rs0 and 
+
+ϕλ, ϕ ρ : Q Ñ r Rs0. For ϕf and n P r Rs0, we define the 
+
+> 5
+
+Equivalently, JKKR is the monoid semialgebra over K
+
+generated by the cyclic monoid tc0, c 1, . . . , c Ru with relation 
+
+cR ¨ c “ cR; under this presentation an element corresponds to a formal polynomial řRr“0 vr cr , and b is polynomial multiplication modulo the relation. We discuss this alternative algebraic perspective in App. D.1. 
+
+5Causally Evaluating the Learnability of Formal Language Tasks 
+
+lifting function Lf : dom pf q Ñ JKKR
+
+Lf pxqn def 
+
+“
+
+#
+
+f pxq if n “ ϕf pxq
+
+0 otherwise . (12) Informally, the lifting function takes a weight in the original WFA and inserts it into the ϕf pxqth position of the lifted weight in JKKR; all other elements are 0.
+
+Definition 4.1 (Binning Automaton) . Let A “pQ, Σ, δ, λ, ρ q be a WFA and ϕ “ pϕλ, ϕ δ , ϕ ρq an event function on A. The binning automaton of A over the 
+
+Rth -order binning semiring with respect to K is the WFA 
+
+Aϕ “ p Q, Σ, δ ϕ, λ ϕ, ρ ϕq, where 
+
+δϕpq, σ, q 1q def 
+
+“ Lϕδ
+
+`δpq, σ, q 1q˘, (13) 
+
+λϕpqq def 
+
+“ Lϕλ
+
+`λpqq˘, (14) 
+
+ρϕpqq def 
+
+“ Lϕρ
+
+`ρpqq˘. (15) We can thus count the number of times an event ϕ occurs on a path π “ q0
+
+> a1{w1
+
+ÝÝÝÝÑ ¨ ¨ ¨ am{wm
+
+ÝÝÝÝÝÑ qm with 
+
+|π|ϕ def 
+
+“ ϕλpq0q ` 
+
+> m
+
+ÿ
+
+> i“1
+
+ϕδ pqi´1, a i, q iq ` ϕρpqmq. (16) Similarly, for a multiset of paths P “ t πkuKk“1, we write 
+
+|P |ϕ def 
+
+“ řKk“1 |πk|ϕ. For path weights in Aϕ, we use 
+
+wϕpπq P JKKR to denote the path weight function for π P
+
+ΠpAϕq. The next two results interpret the lifted weights. 
+
+Theorem 4.1 (Path Weight Interpretation) . Let A be a WFSA over a semiring pK, ‘, b, 0, 1q, R P N, ϕ “pϕλ, ϕ δ , ϕ ρq an event function on A, and Aϕ the corre-sponding binning automaton over JKKR (Definition 4.1). For any path π P ΠpAϕq, let πA P ΠpAq denote its base-automaton counterpart and wpπAq P K its weight in A.Then for any n P r Rs0,
+
+wϕpπqn “
+
+$’&’%
+
+wpπAq if n ă R and |π|ϕ “ n
+
+wpπAq if n “ R and |π|ϕ ě R
+
+0 otherwise .
+
+(17) 
+
+Proof. See App. E. ■
+
+That is, if |π|ϕ ă R, the lifted weight places the base weight wpπAq at position |π|ϕ, with 0 elsewhere. If |π|ϕ ě
+
+R, it places it at position R. For the remainder of this section we take A to be a PFA, i.e., the base semiring is the non-negative reals. Next, we formalize the intuition that summing path weights results in a vector that encodes the probabilities of sampling specific numbers of occurrences. To formalize this, let ΠApqq be a random variable over paths starting from q in the PFA A, given by 
+
+PpΠApqq “ q a1{w1
+
+ÝÝÝÝÑ ¨ ¨ ¨ aM {wM
+
+ÝÝÝÝÝÑ qM q
+
+> def
+
+“
+
+˜ Mź
+
+> m“1
+
+wm
+
+¸
+
+ρpqM q.
+
+(18) 
+
+Theorem 4.2 (Backward Weight Interpretation) . Under the conditions of Thm. 4.1, let ΠApqq denote a random path sampled from A starting at state q, and let βϕ
+
+> def
+
+“
+
+βAϕ : Q Ñ JKKR denote the backward-weight function (Eq. (3) ) of Aϕ. For any q P Q and n P r Rs0,
+
+βϕpqqn “
+
+#
+
+Pp| ΠApqq| ϕ “ nq if n ă R
+
+Pp| ΠApqq| ϕ ě Rq if n “ R. (19) 
+
+Proof. See App. E. ■
+
+That is, summing lifted path weights from q yields the distri-bution over target counts—exactly the conditional we need to drive the sampler. Computing backward weights in a general PFA with cycles requires asteration, i.e., summation over the weights of infinitely many paths. We derive the closed-form solution for asteration in the binning semiring in App. D.2. The backward weights defined in Eq. (19) are the building block of the corpus sampler we develop next. 
+
+4.3. Constrained Sampling 
+
+With the backward weights βϕ (Thm. 4.2) in hand, we sample a corpus P “ t πkuKk“1 of K paths from A sub-ject to the corpus-level constraint |P |ϕ “ N . The natu-ral decomposition is two-phase: first sample the per-string counts pn1, . . . , n K q with řKk“1 nk “ N , then sample each path with its target count. The two theorems be-low give the count distributions; SamplePath (Alg. 2) and 
+
+SampleCorpus (Alg. 3) use them. 
+
+Theorem 4.3 (Counting in a Set) . Under the conditions of Thm. 4.2, let P “ t πkuKk“1 be a corpus of K paths sampled i.i.d. from ΠApqιq, and let Z def 
+
+“ βϕpqιq “À 
+
+> πPΠpAϕq
+
+wϕpπq be the sum of all path weights in Aϕ.For any n P r Rs0, we have 
+
+pZ b K qn “
+
+#
+
+Pp| P |ϕ “ nq if n ă R
+
+Pp| P |ϕ ě Rq if n “ R. (20) 
+
+Proof. See App. E. ■
+
+Theorem 4.4 (Sampling Path Event Counts) . Under the conditions of Thm. 4.3 (a corpus P of K i.i.d. paths from 
+
+ΠApqιq), let N P N be a target total count and set the 
+
+6Causally Evaluating the Learnability of Formal Language Tasks 
+
+Algorithm 1 Preprocess : lifts A over JKKR, computes the backward weights βϕ, stores each state’s outgoing transi-tions in E, and precomputes the per-action binning-weight table W used by SamplePath . 
+
+> 1
+
+def Preprocess (A, ϕ, N ):  
+
+> 2
+
+# Lift to Aϕ over JKKR, R “ N ` 1 (Def.4.1)  
+
+> 3
+
+Aϕ Ð lift( A, ϕ, JKKR, N ` 1) 
+
+> 4
+
+βϕ Ð backward_weights( Aϕ) # App. D.2  
+
+> 5
+
+Epqq Ð t q a{we
+
+ÝÝÝÑ q1 P δu for q P Q 
+
+> 6
+
+# Precompute per-action binning weights from Aϕ 
+
+> 7
+
+for q P Q: 
+
+> 8
+
+W pq, EOS q Ð ρϕpqq # lifted accept weight  
+
+> 9
+
+for q a{we
+
+ÝÝÝÑ q1 P Epqq: 
+
+> 10
+
+W pq, a q Ð δϕpq, a, q 1q b βϕpq1q 
+
+> 11
+
+return pβϕ, E, W q
+
+Algorithm 2 SamplePath : draws a single path from A
+
+with exactly n target occurrences via per-step conditional sampling, looking up the preprocessed weight table W at the remaining budget n ´ j at each step.  
+
+> 1
+
+def SamplePath (A, ϕ, W , n, E):  
+
+> 2
+
+q, j, π Ð qι, 0, pq # state, seen occ., path  
+
+> 3
+
+while True : 
+
+> 4
+
+# weights over Epqq Y t EOS u at budget n ´ j 
+
+> 5
+
+w Ð W pq, ¨q n´j 
+
+> 6
+
+sample q a{we
+
+ÝÝÝÑ q1 with Pr p¨q9 w 
+
+> 7
+
+if a “ EOS : return π 
+
+> 8
+
+π.append( q a{we
+
+ÝÝÝÑ q1); q, j Ð q1, j ` ϕδ pq, a, q 1q
+
+binning semiring order to R “ N ` 1. For any k P r Ks,
+
+m P r N s0, and n P r N ´ ms0,
+
+Pp| πk|ϕ “ n ˇˇ |P |ϕ “ N, |t πj ujăk|ϕ “ mq“ pZ b K´kqN ´m´n
+
+pZ b K´k`1qN ´m
+
+Zn. (21) 
+
+Proof. See App. E. ■
+
+Two analogous results in App. E cover related sampling variants. Thm. E.1 relaxes the corpus-level constraint from 
+
+|P |ϕ “ N to |P |ϕ ě N , returning the probability that path 
+
+πk contributes at least n occurrences instead of exactly n.Thm. E.2 replaces the raw count by its per-path indicator, so the constraint becomes the at-least-once intervention. 
+
+Constructing an efficient sampler. The algorithm 
+
+SampleCorpus first applies Thm. 4.4 to sample the per-string counts pn1, . . . , n K q. Then, for each k it calls 
+
+SamplePath to draw a path with exactly nk target occur-rences. SamplePath walks the original automaton state by state, at each state sampling an outgoing transition or ac-ceptance according to the probabilities conditioned on the 
+
+Algorithm 3 SampleCorpus : draws a corpus of K paths with corpus-level target count N in two phases (per-string counts, then paths).  
+
+> 1
+
+def SampleCorpus (A, ϕ, N , K):  
+
+> 2
+
+βϕ, E, W Ð Preprocess (A, ϕ, N ) 
+
+> 3
+
+Z, m Ð βϕpqιq, 0 
+
+> 4
+
+# Phase 1: per-string counts (Thm. 4.4)  
+
+> 5
+
+for k in 1.. K: 
+
+> 6
+
+sample nk with Pr pnk “iq9 ZipZ b K´k qN ´m´i 
+
+> 7
+
+m Ð m ` nk 
+
+> 8
+
+# Phase 2: paths conditioned on counts  
+
+> 9
+
+for k in 1.. K: 
+
+> 10
+
+πk Ð SamplePath (A, ϕ, W , nk , E) 
+
+> 11
+
+return tπk uKk“1
+
+number of occurrences remaining. We assume ϕλpqιq “ 0
+
+throughout, i.e., interventions never occur on the initial-weight component. For any per-path target n, SamplePath 
+
+returns a path distributed as PpΠApqιq | | ΠApqιq| ϕ “ nq
+
+as shown in the following theorem. 
+
+Theorem 4.5 (Constrained Sampling) . Under the condi-tions of Thm. 4.4, fix n P r N s0 and define a lifted PFA A1
+
+over the state set Q ˆ r ns0 (see App. E). Let ΠA1 pqιq be a random path drawn from A1. For any π P ΠpA1q,
+
+PpΠApqιq “ πA
+
+ˇˇ |ΠApqιq| ϕ “ nq “ PpΠA1 pqιq “ πq.
+
+Proof. See App. E. ■
+
+The at-least version (Thm. E.3 in App. E) samples a path conditioned on |ΠApqιq| ϕ ě n instead of “ n. App. F.2 de-rives runtime bounds for all three algorithms. Let K be the number of strings, N the target count, and ℓ a bound on the sampled path length. Preprocess runs in Op| Q|3N 2q time, dominated by Lehmann’s algorithm (Lehmann, 1977) on the binning-lifted automaton; each SamplePath call runs in 
+
+Opℓq with alias-table sampling (Walker, 1977; Vose, 1991); and the full SampleCorpus pipeline (one Preprocess , K
+
+SamplePath calls, and the per-string count sampling) in 
+
+Opp| Q|3 ` KqN 2 ` Kℓ q, or Opp| Q|3 ` KqN log N ` Kℓ q
+
+when the binning multiplication is computed with the FFT. 
+
+Rejection sampling. An alternative method for sampling under the property constraint is to draw a corpus and accept if it matches P. It has an acceptance probability that decays exponentially in the gap between N and the natural expected count of T , so it is impractical for most events of interest; App. F.1 discusses naïve baselines in more detail. 
+
+## 5. Case Studies in Three Settings 
+
+We now compute and compare the correlational and causal estimates (Eq. (9b)) across three case studies: (i) the 7Causally Evaluating the Learnability of Formal Language Tasks  
+
+> PARITY
+
++ star-free automaton of Fig. 1 with resampled weights (Fig. 2); (ii) a large random sample of 50-state PFAs (Fig. 5); and (iii) a fixed 40-state topology with resampled weights (Fig. 6). 
+
+Sampling PFAs. Case studies (ii) and (iii) sample each PFA of fixed size in two stages. Topology: for each source state q P Q, we include each symbol σ P Σ independently with probability 12 and assign each included symbol to a uniformly random target state q1 P Q. Each state is made ac-cepting (nonzero final weight) independently with probabil-ity 310 . Weights: the outgoing transition weights at each state are drawn from a Dirichlet distribution. At accept states, the final weight is pinned at 310 and the transition weights are rescaled to sum to 710 ; at non-accept states the transition weights sum to 1. Full sampling details are given in App. H. 
+
+Training. Because we have access to the PFA that gen-erated the data, each position supplies the full target distri-bution rather than a single sampled symbol. We therefore train against the summed per-position KL between the au-tomaton’s and the model’s next-symbol distributions to get a more data-efficient signal than next-symbol cross-entropy: 
+
+Lpσq “ 
+
+> |σ|` 1
+
+ÿ
+
+> t“1
+
+DKL 
+
+`pAp¨ | σătq } pθ p¨ | σătq˘
+
+“
+
+> |σ|` 1
+
+ÿ
+
+> t“1
+
+ÿ
+
+> σPΣEOS
+
+pApσ | σătq log pApσ | σătq
+
+pθ pσ | σătq ,
+
+(22) where the sum runs to |σ| ` 1 to account for the full sequence along with termination. Across all three case studies we train both LSTM (Hochreiter and Schmidhuber, 1997) and transformer (Vaswani et al., 2017) architectures; full hyperparameters are in App. I. 
+
+Decomposed Kullback–Leibler Divergence. Each inter-vention targets a specific set of transitions (those leaving a chosen state, emitting a chosen symbol, or a single tran-sition), so the measure of model fit must be localized to those transitions as well. However, the Kullback–Leibler (KL) divergence DKL ppA } pθ q averages over all transitions and states, masking localized performance: a model that misses the targeted transitions can still look close over-all by fitting well elsewhere. We therefore use a decom-posed KL divergence that splits DKL ppA } pθ q into per-state, per-transition, or per-symbol contributions, with only the targeted-transition term playing the role of M in the causal diagram (§3). Let pA be the LM defined by a DPFA 
+
+A “ p Q, Σ, δ, λ, ρ q, and let pθ be the trained LM. Since 
+
+A is deterministic, the target state q1 is unique given pq, σ q
+
+whenever q σ{w
+
+ÝÝÑ q1 P δ; we then write pApσ | qq “ w. Ter-mination is governed by pApEOS | qq “ ρpqq, and pAp¨ | qq
+
+is a distribution over ΣEOS at every state. We define 
+
+pπ pqq def 
+
+“ ÿ
+
+> σPΣ˚
+
+ÝÑp pσq1tpδpσq “ qu, (23a) 
+
+pπ pq, σ q def 
+
+“ pπ pqq pApσ | qq, (23b) 
+
+pπ pσq def 
+
+“ ÿ
+
+> qPQ
+
+pπ pq, σ q. (23c) The decompositions are as follows (derived in App. G): 
+
+DKL ppA } pθ q (24a) 
+
+“ ÿ
+
+> qPQ
+
+pπ pqq ÿ
+
+> σPΣ˚,
+> pδpσq“ q
+
+ÝÑp pσq
+
+pπ pqq DKL 
+
+`pAp¨ | qq } pθ p¨ | σq˘looooooooooooooooooooooooomooooooooooooooooooooooooon 
+
+> per-state contribution
+
+(24b) 
+
+“ ÿ
+
+> qPQ, σPΣEOS
+
+pπ pq, σ q ÿ
+
+> σPΣ˚,
+> pδpσq“ q
+
+ÝÑp pσq
+
+pπ pqq log pApσ | qq
+
+pθ pσ | σq
+
+looooooooooooooooomooooooooooooooooon 
+
+> per-transition contribution
+
+(24c) 
+
+“ ÿ
+
+> σPΣEOS
+
+pπ pσq ÿ
+
+> σPΣ˚
+
+ÝÑp pσq pApσ | pδpσqq 
+
+pπ pσq log pApσ | pδpσqq 
+
+pθ pσ | σq
+
+loooooooooooooooooooooooooooomoooooooooooooooooooooooooooon 
+
+> per-symbol contribution
+
+(24d)  
+
+> PARITY
+
++ Star-Free Automaton. We fix the topology of Fig. 1 and take T to be the transitions leaving a chosen state, sweeping the choice over Q to read off the per-state decomposed KL. On it we sample 200 PFAs by drawing the outgoing transition weights at each state from a Dirichlet distribution. At the two accept states ( ODD and REP in Fig. 1) the final (accept) weight is pinned at 110 and the transition weights are rescaled to sum to 910 ; at the other states the transition weights sum to 1. We use 80 of the 200 PFAs for the causal intervention (a single causal interven-tion yields many datapoints per PFA, while a correlational draw yields one per PFA) and all 200 for the correlational baseline. For each (PFA, intervention setting) pair we draw a 500-string corpus and train 10 LSTMs and 10 transform-ers; per architecture we report the run with the lowest total 
+
+DKL ppA}pθ q, so that the architecture comparison is not confounded by training-run variance. We run both interven-tion types of §4 on this automaton, with exact-count results in Fig. 2 and at-least-once results in Fig. 7. Both show a clear causal–correlational gap, while the shapes differ. 
+
+Aggregating Over Topologies. We sample 952 random topologies of 50 states and 10 symbols as described above. On 97 of them we apply both the exact-count and at-least-once interventions, sampling 10 weight configurations per topology. We draw a 500-string corpus per configuration for exact-count and a 2000-string corpus for at-least-once, and train one LSTM and one transformer on each. We compare two choices of T : symbol-level, targeting transitions that 8Causally Evaluating the Learnability of Formal Language Tasks 10 −3
+
+> 10 −2
+> 10 −1
+> DKL
+
+State, at-least-once State, exact-count  
+
+> 0750
+
+Count 
+
+> 10 −2
+> 10 −1
+> DKL
+
+Symbol, at-least-once   
+
+> 0500 1k
+
+Count 
+
+Symbol, exact-count     
+
+> LSTM Transformer Causal Correlational
+> Figure 5. Monte Carlo estimates of the relation between learnabil-ity and the number of target occurrences over automata with 50 states and 10 symbols, for both state- and symbol-level interven-tions. Shaded areas represent one standard error.
+
+emit a chosen symbol, and state-level, targeting transitions leaving a chosen state. Results for both properties appear in Fig. 5. Under both properties, the causal curves differ from the correlational baseline. At lower occurrence counts, the two curves also run in opposite directions: the causal symbol-level KL decreases as the target count grows, whereas the correlational KL first rises to a peak near 250 occurrences before falling. This reflects confounding: unconstrained sampling rarely yields a corpus with so few target occurrences, and the automata that do populate the low-count bins are easier to learn. 
+
+Only Varying Weights. We draw a single topology of 40 states and 10 symbols using the procedure above (so the topology is not hand-designed) and freeze it for the rest of the experiment. As in Fig. 2, we use a state-level property. On top of the frozen topology we sample 400 weight configurations for the correlational baseline and 10 weight configurations for the at-least-once intervention, sampling a 2000-string corpus per configuration. For each configura-tion we train five LSTMs and five transformers, visualising eight states in Fig. 6. Two findings extend the PARITY + star-free experiment (Fig. 1). First, a causal–correlational gap is visible at most states (note the log scale), and at low counts, it is approaching, or above, an order of magnitude at states 2, 6, and 8; this rules out the explanation that confounding is an artifact of a hand-designed toy task. Second, both the per-state learnability and the shape of the gap vary sharply within the same topology. State 3 has the highest LSTM end-point KL and is among the hardest for the Transformer; state 1 is the hardest for the Transformer; state 9 is the easiest for the LSTM. The gap itself takes different shapes: at state 2 (both architectures) and state 8 (Transformer), the causal curve descends sharply while the correlational curve stays roughly flat or even rises; at state 4, the two curves run nearly parallel throughout; at state 3, the causal curve descends to converge with a flat correlational baseline at the right edge of the correlational range. These are state-level 10 −3
+
+> 10 −2
+> 10 −1
+> DKL
+
+State 1 State 2 
+
+> 10 −3
+> 10 −2
+> 10 −1
+> DKL
+
+State 3 State 4 
+
+> 10 −3
+> 10 −2
+> 10 −1
+> DKL
+
+State 5 State 6  
+
+> 0500
+
+Count 
+
+> 10 −3
+> 10 −2
+> 10 −1
+> DKL
+
+State 8   
+
+> 0500 1k
+
+Count 
+
+State 9     
+
+> LSTM Transformer Causal Correlational
+> Figure 6. MCE of the Decomposed KL at randomly chosen states in a sampled automaton, with varying weight configurations. We see how correlational results can lead to misleading assumptions. Shaded areas represent one standard error.
+
+variations within the same topology, making confounding a state-level rather than topology-level phenomenon. 
+
+## 6. Conclusion 
+
+We have made the case that language models trained on formal languages should be thought of as multi-task learners, much like modern LMs. This means inter-task confounders must be controlled when studying how an architecture learns a given task. We present the tools needed to do so—the binning semiring and the sampling algorithms based on it. Our case studies support this story: removing the confounders changes the learnability curves. For example, the non-monotonic correlational trend at low oc-currence counts in Fig. 5 disappears under causal sampling. Collectively, the apparent effect of a property on learnability depends on the sampling procedure: correlational filtering of unintervened corpora confounds the property with the structural features it co-varies with, so the curves can reflect the sampler rather than the property itself. This matters for any study comparing architectures, characterizing scaling behavior, or attributing difficulty to specific structural features; we hope the methodology developed here offers a useful tool for such work. The framework extends naturally to richer automata (e.g., pushdown automata for context-free languages). Limitations are given in App. A. 9Causally Evaluating the Learnability of Formal Language Tasks 
+
+## Impact Statement 
+
+This paper proposes a causal alternative to correlational evaluation of language-model learnability on formal tasks. Its impact is mediated through research practice: adopt-ing these methods would change how learnability claims are reported and may require revisiting prior correlational findings about how language properties affect learnability. 
+
+## Acknowledgements 
+
+VS and JV were supported by the Pioneer Centre for AI, DNRF grant number P1. 
+
+## References 
+
+Jasmijn Bastings, Marco Baroni, Jason Weston, Kyunghyun Cho, and Douwe Kiela. 2018. Jump to better conclu-sions: SCAN both left and right. In Proceedings of the 2018 EMNLP Workshop BlackboxNLP: Analyzing and Interpreting Neural Networks for NLP , pages 47–55. Satwik Bhattamishra, Kabir Ahuja, and Navin Goyal. 2020. On the practical ability of recurrent neural networks to recognize hierarchical languages. In Proceedings of the 28th International Conference on Computational Linguis-tics .Nadav Borenstein, Anej Svete, Robin Chan, Josef Valvoda, Franz Nowak, Isabelle Augenstein, Eleanor Chodroff, and Ryan Cotterell. 2024. What languages are easy to language-model? A perspective from learning probabilis-tic regular languages. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) .Alexandra Butoi, Ghazal Khalighinejad, Anej Svete, Josef Valvoda, Ryan Cotterell, and Brian DuSell. 2025. Train-ing neural networks as recognizers of formal languages. In The Thirteenth International Conference on Learning Representations .Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Hen-rique Pondé de Oliveira Pinto, Jared Kaplan, Harri Ed-wards, Yuri Burda, Nicholas Joseph, Greg Brockman, Alex Ray, Raul Puri, Gretchen Krueger, Michael Petrov, Heidy Khlaaf, Girish Sastry, Pamela Mishkin, Brooke Chan, Scott Gray, and 39 others. 2021. Evaluating large language models trained on code. arXiv preprint arXiv:2107.03374 .Sirui Chen, Bo Peng, Meiqi Chen, Ruiqi Wang, Mengying Xu, Xingyu Zeng, Rui Zhao, Shengjie Zhao, Yu Qiao, and Chaochao Lu. 2024. Causal evaluation of language models. arXiv preprint arXiv:2405.00622 .Axel Cleeremans, David Servan-Schreiber, and James L. McClelland. 1989. Finite state automata and simple re-current networks. Neural Computation , 1(3):372–381. Grégoire Delétang, Anian Ruoss, Jordi Grau-Moya, Tim Genewein, Li Kevin Wenliang, Elliot Catt, Chris Cundy, Marcus Hutter, Shane Legg, Joel Veness, and Pedro A. Or-tega. 2023. Neural networks and the Chomsky hierarchy. In The Eleventh International Conference on Learning Representations .Shuxiang Du, Ana Guerberof Arenas, Antonio Toral, Kyo Gerrits, and Josep Marco Borillo. 2025. Optimising Chat-GPT for creativity in literary translation: A case study from English into Dutch, Chinese, Catalan and Spanish. In Proceedings of Machine Translation Summit XX: Vol-ume 1 , pages 578–591. Matthew Finlayson, Aaron Mueller, Sebastian Gehrmann, Stuart Shieber, Tal Linzen, and Yonatan Belinkov. 2021. Causal analysis of syntactic agreement mechanisms in neural language models. In Proceedings of the 59th An-nual Meeting of the Association for Computational Lin-guistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers) ,pages 1828–1843. Michael Hahn and Mark Rofin. 2024. Why are sensitive functions hard for transformers? In Proceedings of the 62nd Annual Meeting of the Association for Computa-tional Linguistics (Volume 1: Long Papers) , pages 14973– 15008. John Hewitt, Michael Hahn, Surya Ganguli, Percy Liang, and Christopher D. Manning. 2020. RNNs can generate bounded hierarchical languages with optimal memory. In 
+
+Proceedings of the 2020 Conference on Empirical Meth-ods in Natural Language Processing (EMNLP) , pages 1978–2010. Sepp Hochreiter and Jürgen Schmidhuber. 1997. Long short-term memory. Neural Computation , 9(8):1735–1780. Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor Cai, Eliza Rutherford, Diego de Las Casas, Lisa Anne Hendricks, Johannes Welbl, Aidan Clark, Thomas Hennigan, Eric Noland, Katherine Millican, George van den Driessche, Bogdan Damoc, Au-relia Guy, Simon Osindero, Karén Simonyan, Erich Elsen, and 3 others. 2022. An empirical analysis of compute-optimal large language model training. In Advances in Neural Information Processing Systems , volume 35. Dieuwke Hupkes, Verna Dankers, Mathijs Mul, and Elia Bruni. 2020. Compositionality decomposed: How do neu-ral networks generalise? (Extended abstract). In Proceed-ings of the Twenty-Ninth International Joint Conference on Artificial Intelligence, IJCAI-20 .10 Causally Evaluating the Learnability of Formal Language Tasks 
+
+Henrik Jacobsson. 2005. Rule extraction from recurrent neural networks: A taxonomy and review. Neural Com-putation , 17(6):1223–1263. Divyansh Kaushik, Eduard Hovy, and Zachary C. Lipton. 2020. Learning the difference that makes a difference with counterfactually-augmented data. In International Conference on Learning Representations .Werner Kuich. 1997. Semirings and formal power series: Their relevance to formal languages and automata. In Grzegorz Rozenberg and Arto Salomaa, editors, Hand-book of Formal Languages: Volume 1 Word, Language, Grammar , pages 609–677. Springer Berlin Heidelberg. Brenden Lake and Marco Baroni. 2018. Generalization without systematicity: On the compositional skills of sequence-to-sequence recurrent networks. In Proceed-ings of the 35th International Conference on Machine Learning , volume 80 of Proceedings of Machine Learn-ing Research .Daniel J. Lehmann. 1977. Algebraic structures for transitive closure. Theoretical Computer Science , 4(1):59–76. Aitor Lewkowycz, Anders Johan Andreassen, David Do-han, Ethan Dyer, Henryk Michalewski, Vinay Venkatesh Ramasesh, Ambrose Slone, Cem Anil, Imanol Schlag, Theo Gutman-Solo, Yuhuai Wu, Behnam Neyshabur, Guy Gur-Ari, and Vedant Misra. 2022. Solving quantitative reasoning problems with language models. In Advances in Neural Information Processing Systems .Jiaoda Li and Ryan Cotterell. 2026. Characterizing the ex-pressivity of fixed-precision transformer language models. In The Thirty-ninth Annual Conference on Neural Infor-mation Processing Systems .Raymond Li, Loubna Ben Allal, Yangtian Zi, Niklas Muen-nighoff, Denis Kocetkov, Chenghao Mou, Marc Marone, Christopher Akiki, Jia Li, Jenny Chim, Qian Liu, Ev-genii Zheltonozhskii, Terry Yue Zhuo, Thomas Wang, Olivier Dehaene, Mishig Davaadorj, Joel Lamy-Poirier, Joao Monteiro, Oleh Shliazhko, and 33 others. 2023. Star-Coder: may the source be with you! Transactions on Machine Learning Research .Bingbin Liu, Jordan T. Ash, Surbhi Goel, Akshay Krish-namurthy, and Cyril Zhang. 2023. Transformers learn shortcuts to automata. In International Conference on Learning Representations .William Merrill. 2019. Sequential neural networks as au-tomata. In Proceedings of the Workshop on Deep Learn-ing and Formal Languages: Building Bridges , pages 1– 13. William Merrill. 2023. Formal languages and the NLP black box. In Developments in Language Theory , pages 1–8. William Merrill, Gail Weiss, Yoav Goldberg, Roy Schwartz, Noah A. Smith, and Eran Yahav. 2020. A formal hier-archy of RNN architectures. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pages 443–459. Joshua J. Michalenko, Ameesh Shah, Abhinav Verma, Swarat Chaudhuri, and Ankit B. Patel. 2019. Fi-nite automata can be linearly decoded from language-recognizing RNNs. In International Conference on Learn-ing Representations .Mehryar Mohri. 2009. Weighted automata algorithms. In Manfred Droste, Werner Kuich, and Heiko Vogler, edi-tors, Handbook of Weighted Automata , pages 213–254. Springer Berlin Heidelberg. Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zem-ing Lin, Natalia Gimelshein, Luca Antiga, Alban Des-maison, Andreas Kopf, Edward Yang, Zachary DeVito, Martin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu Fang, and 2 others. 2019. PyTorch: An imperative style, high-performance deep learning library. In Advances in Neural Information Processing Systems ,volume 32, Vancouver, Canada. Curran Associates, Inc. Judea Pearl, Madelyn Glymour, and Nicholas P. Jewell. 2016. Causal Inference in Statistics: A Primer . Wiley. Jonas Peters, Dominik Janzing, and Bernhard Schölkopf. 2017. Elements of Causal Inference: Foundations and Learning Algorithms . The MIT Press. Baptiste Rozière, Jonas Gehring, Fabian Gloeckle, Sten Sootla, Itai Gat, Xiaoqing Ellen Tan, Yossi Adi, Jingyu Liu, Romain Sauvestre, Tal Remez, Jérémy Rapin, Artyom Kozhevnikov, Ivan Evtimov, Joanna Bitton, Man-ish Bhatt, Cristian Canton Ferrer, Aaron Grattafiori, Wen-han Xiong, Alexandre Défossez, and 7 others. 2024. Code Llama: Open foundation models for code. arXiv preprint arXiv:2308.12950 .Laura Ruis, Jacob Andreas, Marco Baroni, Diane Boucha-court, and Brenden M Lake. 2020. A benchmark for systematic generalization in grounded language under-standing. In Advances in Neural Information Processing Systems , volume 33. Taiga Someya, Anej Svete, Brian DuSell, Timothy J. O’Donnell, Mario Giulianelli, and Ryan Cotterell. 2025. Information locality as an inductive bias for neural lan-guage models. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 27995–28013. 11 Causally Evaluating the Learnability of Formal Language Tasks 
+
+Lena Strobl, William Merrill, Gail Weiss, David Chiang, and Dana Angluin. 2023. Transformers as recognizers of formal languages: A survey on expressivity. arXiv preprint arXiv:2311.00208 .Mirac Suzgun, Yonatan Belinkov, Stuart Shieber, and Se-bastian Gehrmann. 2019. LSTM networks can perform dynamic counting. In Proceedings of the Workshop on Deep Learning and Formal Languages: Building Bridges ,pages 44–54. Anej Svete, Nadav Borenstein, Mike Zhou, Isabelle Augen-stein, and Ryan Cotterell. 2024a. Can transformers learn 
+
+n-gram language models? In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing .Anej Svete, Franz Nowak, Anisha Mohamed Sahabdeen, and Ryan Cotterell. 2024b. Lower bounds on the ex-pressivity of recurrent neural language models. In Pro-ceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics ,pages 6820–6844. Josef Valvoda, Naomi Saphra, Jonathan Rawski, Adina Williams, and Ryan Cotterell. 2022. Benchmarking com-positionality with formal languages. In Proceedings of the 29th International Conference on Computational Lin-guistics .Sam Van der Poel, Dakotah Lambert, Kalina Kostyszyn, Tiantian Gao, Rahul Verma, Derek Andersen, Joanne Chau, Emily Peterson, Cody St. Clair, Paul Fodor, Chi-hiro Shibata, and Jeffrey Heinz. 2025. MLRegTest: A benchmark for the machine learning of regular languages. 
+
+J. Mach. Learn. Res. , 25(1). Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszko-reit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. In 
+
+Advances in Neural Information Processing Systems , vol-ume 30, pages 6000–6010. Jesse Vig, Sebastian Gehrmann, Yonatan Belinkov, Sharon Qian, Daniel Nevo, Yaron Singer, and Stuart Shieber. 2020. Investigating gender bias in language models us-ing causal mediation analysis. In Advances in Neural Information Processing Systems , volume 33. Michael D. Vose. 1991. A linear algorithm for generating random numbers with a given distribution. IEEE Trans-actions on Software Engineering , 17(9):972–975. Alastair J. Walker. 1977. An efficient method for generat-ing discrete random variables with general distributions. 
+
+ACM Transactions on Mathematical Software , 3(3):253– 256. Gail Weiss, Yoav Goldberg, and Eran Yahav. 2018. On the practical computational power of finite precision RNNs for language recognition. In Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers) , pages 740–745. Emma Wiles, Zanele Munyikwa, and John Horton. 2025. Algorithmic writing assistance on jobseekers’ resumes increases hires. Management Science , 71(12):10144– 10164. Andy Yang, David Chiang, and Dana Angluin. 2024. Masked hard-attention transformers recognize exactly the star-free languages. In Advances in Neural Information Processing Systems , volume 37, pages 10202–10235. 12 Causally Evaluating the Learnability of Formal Language Tasks 
+
+## Contents of the Appendix 
+
+A Limitations 14 B Related Work 14 C Markov Kernels 14 D The Binning Semiring 15 
+
+D.1 Monoid Semialgebras . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15 D.2 A Closed-form Solution for the Kleene Star . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15 
+
+E Proofs 17 F Naïve Sampling and Runtime 24 
+
+F.1 Naïve Sampling Baselines . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 F.2 Runtime of Constrained Sampling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 
+
+G Targeted KL Divergence via Decomposition 25 H Experimental Setup Details 26 I Model and Training Details 26 J Additional Figure 27 
+
+13 Causally Evaluating the Learnability of Formal Language Tasks 
+
+## A. Limitations 
+
+We focus on PFA-induced settings where properties are exactly countable; applying the framework to natural language would require approximate labels for target phenomena. The computational cost of our sampling algorithm grows with the size of the automaton (closed-form bounds in App. F.2). Each architecture is trained at a single fixed size, without scaling or hyperparameter sweeps. We note that our experiments and results only concern the causal procedure as such, including the controlled sampling and evaluation. We are not claiming to present a thorough empirical study of any architecture or automaton; the choice of LSTM and transformer architectures, and of PARITY -based automata, is illustrative; the framework extends to other architectures and tasks without modification. 
+
+## B. Related Work 
+
+Much work has used formal languages to probe neural networks (Cleeremans et al., 1989; Jacobsson, 2005; Valvoda et al., 2022; Svete et al., 2024b; Borenstein et al., 2024, inter alia ). A central empirical tool is synthetic data: SCAN-style setups examine compositional generalization (Lake and Baroni, 2018; Bastings et al., 2018; Ruis et al., 2020), and k-Dyck languages probe nested structure (Weiss et al., 2018; Suzgun et al., 2019; Bhattamishra et al., 2020; Hewitt et al., 2020). Recent work also analyzes inductive biases relative to the Chomsky hierarchy (Delétang et al., 2023; Butoi et al., 2025) and studies whole classes of languages rather than single datasets (Valvoda et al., 2022; Borenstein et al., 2024), continuing a line of grammatical inference research (Jacobsson, 2005). Closest to our controlled sampling is MLRegTest (Van der Poel et al., 2025), a benchmark built by intersecting an unweighted DFA with a length-constraining automaton and sampling uniformly over the resulting paths. Our sampler instead draws from the exact conditional distribution induced by a 
+
+probabilistic FA, conditioned on transition- or symbol-level occurrence counts rather than string length. Complementing these empirical traditions, theory investigates the representational capacity and internal mechanisms of neural LMs and architectures, especially transformers (Merrill, 2023; Strobl et al., 2023; Merrill, 2019; Merrill et al., 2020; Liu et al., 2023, 
+
+inter alia ). Like our study, this line probes how language complexity interacts with the neural network architecture, but yields bounds under idealized assumptions rather than measurements of the actual learning dynamics under noisy training. By contrast, there has been relatively little emphasis on causal approaches to LM behavior. Causal investigation with natural language is difficult—requiring complex taxonomies (Chen et al., 2024) or targeted neuron-level interventions (Vig et al., 2020; Finlayson et al., 2021). Methodologically closer to our setup are data-level interventions on training data, such as counterfactual data augmentation (Kaushik et al., 2020), and per-task scaling studies (Hoffmann et al., 2022); the binning semiring localizes both ideas from the corpus level to the level of designated automaton substructures. The same conditional distribution could in principle be obtained by rejection sampling from the unconstrained PFA, but its acceptance probability decays exponentially in the gap to the natural count (§4); our sampler realizes it in polynomial time. We note that our focus is learnability under standard, fixed-size training setups and natural data , not strict expressivity. 
+
+## C. Markov Kernels 
+
+The body of the paper (§2) defines a graphical causal model using a set of conditional distributions, one per variable, and treats each one as a conditional density. For continuous parent variables, conditional densities exist whenever the joint is absolutely continuous with respect to a product reference measure; the fully general object that handles measure-zero conditioning events is a Markov kernel, which we define here. A σ-algebra on a set X is a collection X of subsets of X that contains X and is closed under complementation and countable unions. A measurable space is a pair pX, Xq where X is a set and X is a σ-algebra on X. A measure on 
+
+pX, Xq is a function μ : X Ñ r 0, 8s such that μpHq “ 0 and μ is countably additive: for any countable collection txiuiPN
+
+of disjoint sets in X,
+
+μ
+
+˜ď
+
+> iPN
+
+xi
+
+¸
+
+“ ÿ
+
+> iPN
+
+μpxiq. (25) A probability measure on pX, Xq is a measure P such that PpXq “ 1.
+
+Notation. We write variables for sets in uppercase calligraphic font, e.g., X and Y, and variables for σ-algebras in uppercase Fraktur, e.g., X and Y. We write measurable spaces as, e.g., pX, Xq.14 Causally Evaluating the Learnability of Formal Language Tasks 
+
+A Markov kernel 6 from X to Y is a function κ : X ˆ Y Ñ r 0, 1s such that (i) for each x P X, κpx, ¨q is a probability measure on pY, Yq, and (ii) for each Y P Y, κp¨ , Y q is X-measurable. We say that a Markov kernel is trivial if X “ H . In this case, κ corresponds to a probability measure on pY, Yq.
+
+## D. The Binning Semiring 
+
+D.1. Monoid Semialgebras 
+
+We record the monoid-semialgebra perspective for completeness: the binning semiring is a particular monoid semialgebra (over the cyclic monoid below), offering an alternative algebraic framing to the operational definition in §4.1. The proofs that follow do not directly rely on this framing, but it makes explicit why JKKR inherits standard semiring structure. 
+
+Definition D.1. A cyclic monoid is a monoid with a single generator c (every element is a power ci for some i ě 0) and an identity element. We denote by CR, 1 the monoid CR, 1 def 
+
+“ t c0, c 1, . . . , c Ru where c0 is the identity. Multiplication is defined for 0 ď i, j ď R as 
+
+ci ¨ cj def 
+
+“
+
+#
+
+ci`j if i ` j ă RcR otherwise . (26) 
+
+In particular, cR ¨ c1 “ cR.
+
+Definition D.2. Given a finite monoid M and a (semi)ring pK, ‘, b, 0, 1q, the monoid semialgebra KrM s consists of all formal sums 
+
+f “ ÿ
+
+> mPM
+
+amm (27) 
+
+where am P K, with point-wise addition. The outer ř and the juxtaposition amm are formal-sum notation rather than ring operations; the ring structure p‘ , bq enters only when the product below is evaluated. The product in KrM s is given by a convolution: 
+
+p ÿ
+
+> mPM
+
+ammq ¨ p ÿ
+
+> nPM
+
+bnnq “ ÿ
+
+> m1PM
+
+p ÿ
+
+> m,n PMm¨n“m1
+
+ambnqm1 (28) An element ř 
+
+> mPM
+
+amm of KrM s is the monoid analogue of a polynomial ř 
+
+> iě0
+
+aixi over K, with the indeterminate x
+
+replaced by elements of M .Applying Definition D.2 to Definition D.1, we can see that an element of JKKR can be written uniquely as řRi“0 aici where 
+
+ai, b i P K (with bi the analogous coefficients of a second such element) and the convolution product is given by 
+
+p
+
+> R
+
+ÿ
+
+> i“0
+
+aiciq ¨ p 
+
+> R
+
+ÿ
+
+> i“0
+
+biciq “ 
+
+> R´1
+
+ÿ
+
+> i“0
+
+p
+
+> i
+
+ÿ
+
+> j“0
+
+aj bi´j qci ` p ÿ
+
+> 0ďi,j ďRi`jěR
+
+aibj qcR (29) 
+
+D.2. A Closed-form Solution for the Kleene Star 
+
+Computing backward weights in a general PFA with cycles requires summation over infinitely many paths. This can be done efficiently with asteration —taking the Kleene closure of the set of paths. Backward weights of the (lifted) automaton are computed by Lehmann’s algorithm (Lehmann, 1977) (see App. F.2 for runtime), which invokes the element-wise Kleene-star formula derived below as a subroutine. We derive the closed-form Kleene-star (asteration) operator for binning automata applied to PFAs and characterize when the solution is unique. 
+
+Lemma D.3 (Arden’s rule in complete semirings) . Let pK, ‘, b, 0, 1q be a complete semiring. For all a, b P K, the equation 
+
+x “ p a b xq ‘ b (30) 
+
+has x “ a˚ b b as a solution.                               
+
+> 6A Markov kernel is a measure-theoretic surrogate for conditional probability that avoids the problem of conditioning on a measure-zero event: the elementary formula PpYPY|X“xq “ PpX“x, YPYq{ PpX“xqis ill-defined when PpX“xq “ 0, e.g., for continuous X. The map xÞÑκpx, ¨q is well-defined at every xby construction.
+
+15 Causally Evaluating the Learnability of Formal Language Tasks 
+
+Proof. By Kuich (1997, Thm. 2.2(ii)), a˚ “ 1 ‘ p a b a˚q. Therefore 
+
+pa b p a˚ b bqq ‘ b “ p a b a˚q b b ‘ b
+
+“ pp a b a˚q ‘ 1q b b
+
+“ a˚ b b. 
+
+(31) 
+
+■
+
+Proposition D.4 (Coefficientwise Kleene equations in the binning semiring) . Let JKKR be the Rth-order binning semiring and v P JKKR. Write v˚ def 
+
+“ À8 
+
+> i“0
+
+v b i. For 0 ď n ă R,
+
+pv˚qn “ v˚ 
+
+> 0
+
+b
+
+´
+
+1 n ‘ Ànj“1 vj b p v˚qn´j
+
+¯
+
+. (32) 
+
+For the overflow bin, 
+
+pv˚qR “
+
+´ÀRn“0 vn
+
+¯˚
+
+b
+
+¨˝ÀRn,j “0
+
+> j‰Rn`jěR
+
+vn b p v˚qj
+
+˛‚. (33) 
+
+Proof. For 0 ď n ă R,
+
+pv˚qn “ `À 8 
+
+> k“0
+
+v b k˘ 
+
+> n
+
+“ 1 n ‘ p v b v˚qn
+
+“ 1 n ‘ Ànj“0 vj b p v˚qn´j
+
+“ v0 b p v˚qn ‘
+
+´
+
+1 n ‘ Ànj“1 vj b p v˚qn´j
+
+¯
+
+.
+
+(34) Apply Lemma D.3 with a “ v0 to obtain Eq. (32). For n “ R,
+
+pv˚qR “ 1 R ‘ p v b v˚qR
+
+“ 1 R ‘ ÀRi,j “0
+
+> i`jěR
+
+vi b p v˚qj
+
+“
+
+´ÀRi“0 vi
+
+¯
+
+b p v˚qR ‘ ÀR i,j “0
+
+> j‰R,i `jěR
+
+vi b p v˚qj ,
+
+(35) and Lemma D.3 with a “ ÀRi“0 vi yields Eq. (33). ■
+
+Lemma D.5 (Uniqueness in the binning semiring) . Let pRě0, `, ¨, 0, 1q be the non-negative real semiring, and let JKKR
+
+be the binning semiring of order R over Rě0. For any v, w P JKKR with v arising from a PFA binning automaton and 
+
+řRi“0 vi ă 1 (a strict inequality, which implies v0 ă 1 and holds whenever the self-loop is not absorbing), the equation 
+
+x “ p v b xq ‘ w (36) 
+
+has a unique solution. Proof. For 0 ď n ă R,
+
+xn “ v0 b xn ‘ Ànj“1 vj b xn´j ‘ wn. (37) Working in Rą0 and using v0 ă 1,
+
+xn “ 11 ´ v0
+
+¨
+
+´Ànj“1 vj b xn´j ‘ wn
+
+¯
+
+, (38) which uniquely determines xn by strong induction and preserves non-negativity. For n “ R, the binning-semiring convolution at the overflow bin (Eq. (11)) gives 
+
+xR “ À i`jěR
+
+> 0ďi,j ďR
+
+vi b xj ‘ wR. (39) 16 Causally Evaluating the Learnability of Formal Language Tasks 
+
+The pairs pi, j q “ p i, R q for i P t 0, . . . , R u each satisfy i ` R ě R, so the coefficient of xR on the right is ÀRi“0 vi.Collecting these on the left yields 
+
+´
+
+1 ´ ÀRi“0 vi
+
+¯
+
+xR “ À i`jěR 
+
+> 0ďiďR, 0ďjăR
+
+vi b xj ‘ wR. (40) The right-hand side depends only on x0, . . . , x R´1, which were already uniquely determined by the strong induction above. Since ÀRi“0 vi ă 1, the coefficient on the left is positive, so xR is uniquely determined and non-negative. ■
+
+Corollary D.6 (Uniqueness of the closed form in the PFA/binning setting) . Under the conditions of Prop. D.4 and Lemma D.5, the solution given by Eqs. (32) and (33) is unique. 
+
+## E. Proofs 
+
+Theorem 4.1 (Path Weight Interpretation) . Let A be a WFSA over a semiring pK, ‘, b, 0, 1q, R P N, ϕ “ p ϕλ, ϕ δ , ϕ ρq an event function on A, and Aϕ the corresponding binning automaton over JKKR (Definition 4.1). For any path π P ΠpAϕq,let πA P ΠpAq denote its base-automaton counterpart and wpπAq P K its weight in A. Then for any n P r Rs0,
+
+wϕpπqn “
+
+$’&’%
+
+wpπAq if n ă R and |π|ϕ “ n
+
+wpπAq if n “ R and |π|ϕ ě R
+
+0 otherwise .
+
+(17) 
+
+Proof. Recall that ϕ “ p ϕλ, ϕ δ , ϕ ρq assigns event counts to A’s initial, transition, and final weight functions ( λ, δ, ρ )respectively. For a path π “ q0
+
+> a1{w1
+
+ÝÝÝÝÑ q1 ¨ ¨ ¨ qm´1
+
+> am{wm
+
+ÝÝÝÝÝÑ qm P ΠpAϕq, the lifted (outer) path weight factorizes as 
+
+wϕpπq “ λϕpq0q b wϕpπq b ρϕpqmq, where λϕpq0q, ρ ϕpqmq P JKKR are the lifted init/final weights (vectors with a single nonzero coordinate, at ϕλpq0q and ϕρpqmq respectively), wϕpπq “ w1 b ¨ ¨ ¨ b wm is the lifted inner weight with 
+
+wt “ Lϕδ pqt´1
+
+> at{wt
+
+ÝÝÝÑ qtq, and b is the binning semiring’s convolution (combined counts ě R collapse to bin R). We first establish, by induction on |π|, the inner-weight version of the claim. Write |π|δϕ
+
+> def
+
+“ ř|π| 
+
+> t“1
+
+ϕδ pqt´1
+
+> at{wt
+
+ÝÝÝÑ qtq for the transition-only feature sum, so that |π|ϕ “ | π|δϕ ` ϕλpq0q ` ϕρpq|π|q by definition. For any n P r Rs0,
+
+wϕpπqn “
+
+$’’&’’%
+
+wpπAq n ă R and ř|π| 
+
+> t“1
+
+ϕδ pqt´1
+
+> at{wt
+
+ÝÝÝÑ qtq “ n, 
+
+wpπAq n “ R and ř|π| 
+
+> t“1
+
+ϕδ pqt´1
+
+> at{wt
+
+ÝÝÝÑ qtq ě R, 
+
+0 otherwise .
+
+(41) If |π| “ 1, write π “ q0
+
+> a1{w1
+
+ÝÝÝÝÑ q1, so πA “ q0
+
+> a1{w1
+
+ÝÝÝÝÑ q1 and wpπAq “ w1. Then for each n P r Rs0,
+
+wϕpπqn “ `Lϕδ pq0
+
+> a1{w1
+
+ÝÝÝÝÑ q1q˘ 
+
+> n
+
+“
+
+#
+
+wpπAq n “ ϕδ pq0
+
+> a1{w1
+
+ÝÝÝÝÑ q1q “ | π|δϕ,
+
+0 otherwise ,
+
+matching Eq. (41). Suppose now that Eq. (41) holds for all paths π with |π| ă m. Let π “ q0
+
+> a1{w1
+
+ÝÝÝÝÑ q1 ¨ ¨ ¨ am{wm
+
+ÝÝÝÝÝÑ qm be a path of length m,and π1 “ q0
+
+> a1{w1
+
+ÝÝÝÝÑ q1 ¨ ¨ ¨ am´1{wm´1
+
+ÝÝÝÝÝÝÝÝÑ qm´1 be the sub-path of the first m ´ 1 transitions. We compute for n P r R ´ 1s0
+
+wϕpπqn “ p wϕpπ1q b wmqn (42a) 
+
+“
+
+> n
+
+ÿ
+
+> j“0
+
+wϕpπ1qj b p wmqn´j (42b) 
+
+“ wϕpπ1q|π1|δϕ b p wmqn´| π1|δϕ (Inductive hypothesis (with |π1|δϕ ă R since n ă R), 42c) 
+
+“
+
+#
+
+wpπ1q b wm “ wpπq if n “ | π1|δϕ ` ϕδ pqm´1
+
+> am{wm
+
+ÝÝÝÝÝÑ qmq
+
+0 otherwise . (42d) 17 Causally Evaluating the Learnability of Formal Language Tasks 
+
+This completes the proof for coefficients n ă R. For the remaining case, we derive: 
+
+wϕpπqR “ p wϕpπ1q b wmqR (43a) 
+
+“
+
+> R
+
+ÿ
+
+> i,j “0
+> i`jěR
+
+wϕpπ1qi b p wmqj (43b) 
+
+“
+
+$&%
+
+wϕpπ1qmin p| π1|δϕ,R q b p wmqϕδ pqm´1
+
+> am {wm
+
+ÝÝÝÝÝÑqmq if |π1|δϕ ` ϕδ pqm´1
+
+> am{wm
+
+ÝÝÝÝÝÑ qmq ě R
+
+0 otherwise 
+
+(Inductive hypothesis, 43c) 
+
+“
+
+#
+
+wpπ1q b wm “ wpπq if |π1|δϕ ` ϕδ pqm´1
+
+> am{wm
+
+ÝÝÝÝÝÑ qmq ě R
+
+0 otherwise . (43d) This establishes Eq. (41). To conclude, convolve with the lifted init and final weights. Since λϕpq0q P JKKR has its unique nonzero coordinate at index ϕλpq0q with value λpq0q, and similarly ρϕpqmq at index ϕρpqmq with value ρpqmq, the convolution λϕpq0q b wϕpπq b ρϕpqmq shifts the supported coordinate by ϕλpq0q ` ϕρpqmq, giving wϕpπqn “ wpπAq at 
+
+n “ ř|π| 
+
+> t“1
+
+ϕδ p. . . q ` ϕλpq0q ` ϕρpqmq “ | π|ϕ (with the overflow sub-case at n “ R when |π|ϕ ě R), and 0 elsewhere. ■
+
+Theorem 4.2 (Backward Weight Interpretation) . Under the conditions of Thm. 4.1, let ΠApqq denote a random path sampled from A starting at state q, and let βϕ
+
+> def
+
+“ βAϕ : Q Ñ JKKR denote the backward-weight function (Eq. (3) ) of Aϕ.For any q P Q and n P r Rs0,
+
+βϕpqqn “
+
+#
+
+Pp| ΠApqq| ϕ “ nq if n ă R
+
+Pp| ΠApqq| ϕ ě Rq if n “ R. (19) 
+
+Proof. Paths in Aϕ and A correspond bijectively via π Ø πA (see, e.g., Thm. 4.1). By Thm. 4.1, the lifted weight 
+
+wϕpπq has its single nonzero coordinate at index min p| π|ϕ, R q, where it equals wpπAq. Since A is a PFA, this equals the probability PpΠApqq “ πAq assigned to πA in Eq. (18). For n P r R ´ 1s0,
+
+Pp| ΠApqq| ϕ “ nq “ ÿ
+
+> πPΠpAϕq|π|ϕ“n
+
+PpΠApqq “ πAq (44a) 
+
+“ ÿ
+
+> πPΠpAϕq|π|ϕ“n
+
+wpπAq (A is a PFA, 44b) 
+
+“ ÿ
+
+> πPΠpAϕq|π|ϕ“n
+
+wϕpπqn (Thm. 4.1, with |π|ϕ “ n ă R, 44c) 
+
+“ ÿ
+
+> πPΠpAϕq
+
+wϕpπqn (Thm. 4.1: coordinate n vanishes when |π|ϕ ‰ n, 44d) 
+
+“ βϕpqqn. (Definition of βϕ, 44e) 18 Causally Evaluating the Learnability of Formal Language Tasks 
+
+For the overflow coefficient n “ R, the same chain applies with the at-least-R branch of Thm. 4.1: 
+
+Pp| ΠApqq| ϕ ě Rq “ ÿ
+
+> πPΠpAϕq|π|ϕěR
+
+PpΠApqq “ πAq (45a) 
+
+“ ÿ
+
+> πPΠpAϕq|π|ϕěR
+
+wpπAq (A is a PFA, 45b) 
+
+“ ÿ
+
+> πPΠpAϕq|π|ϕěR
+
+wϕpπqR (Thm. 4.1, overflow sub-case, 45c) 
+
+“ ÿ
+
+> πPΠpAϕq
+
+wϕpπqR (Thm. 4.1: coordinate R vanishes when |π|ϕ ă R, 45d) 
+
+“ βϕpqqR. (Definition of βϕ, 45e) 
+
+■
+
+Theorem 4.3 (Counting in a Set) . Under the conditions of Thm. 4.2, let P “ t πkuKk“1 be a corpus of K paths sampled i.i.d. from ΠApqιq, and let Z def 
+
+“ βϕpqιq “ À 
+
+> πPΠpAϕq
+
+wϕpπq be the sum of all path weights in Aϕ. For any n P r Rs0, we have 
+
+pZ b K qn “
+
+#
+
+Pp| P |ϕ “ nq if n ă R
+
+Pp| P |ϕ ě Rq if n “ R. (20) 
+
+Proof. The case K “ 1 is Thm. 4.2 at q “ qι: Z “ βϕpqιq is the binning representation of |ΠApqιq| ϕ, i.e., Zn “
+
+Pp| ΠApqιq| ϕ “ nq for n ă R and ZR “ Pp| ΠApqιq| ϕ ě Rq.For K ą 1, proceed by induction. The samples are i.i.d., so |P |ϕ “ | πK |ϕ ` |t πj ujăK |ϕ is a sum of two independent non-negative integer counts with binning representations Z (by Thm. 4.2) and Z b K´1 (by the inductive hypothesis). Direct expansion of Eq. (11) shows that b is the overflow-accumulating convolution sending the pair of binning representations of independent X, Y to the binning representation of X ` Y : řnj“0 uj vn´j “ PpX ` Y “ nq for n ă R, and 
+
+ř0ďi,j ďRi`jěR
+
+uivj “ PpX ` Y ě Rq for n “ R. Hence Z b K “ Z b K´1 b Z is the binning representation of |P |ϕ. ■
+
+Theorem 4.4 (Sampling Path Event Counts) . Under the conditions of Thm. 4.3 (a corpus P of K i.i.d. paths from ΠApqιq), let N P N be a target total count and set the binning semiring order to R “ N ` 1. For any k P r Ks, m P r N s0, and 
+
+n P r N ´ ms0,
+
+Pp| πk|ϕ “ n ˇˇ |P |ϕ “ N, |t πj ujăk|ϕ “ mq“ pZ b K´kqN ´m´n
+
+pZ b K´k`1qN ´m
+
+Zn. (21) 
+
+Proof. We read the LHS of Eq. (21) as the probability that path πk contributes exactly n occurrences of ϕ, conditional on the corpus P totaling N occurrences and the previously-sampled paths tπj ujăk contributing m of them. By Bayes’ rule, 
+
+Pp| πk|ϕ “ n ˇˇ |P |ϕ “ N, |t πj ujăk|ϕ “ mq “ Pp| πk|ϕ “ n, |P |ϕ “ N, |t πj ujăk|ϕ “ mq
+
+Pp| P |ϕ “ N, |t πj ujăk|ϕ “ mq . (46) The samples are i.i.d., so Thm. 4.3 applied to the disjoint subcorpora tπj ujăk, tπku, tπj ująk gives binning representations 
+
+Z b k´1, Z, Z b K´k for their independent ϕ-counts. With R “ N ` 1, every coordinate accessed below lies in rN s0, so we read exact (non-overflow) entries throughout. For the numerator, |P |ϕ “ N together with the other two constraints forces |t πj ująk|ϕ “ N ´ m ´ n:
+
+Pp| πk|ϕ “ n, |P |ϕ “ N, |t πj ujăk|ϕ “ mq“ Pp| πk|ϕ “ n, |t πj ująk|ϕ “ N ´ m ´ n, |t πj ujăk|ϕ “ mq (47a) 
+
+“ Zn ¨ p Z b K´kqN ´m´n ¨ p Z b k´1qm. (Independence + Thm. 4.3, 47b) 19 Causally Evaluating the Learnability of Formal Language Tasks 
+
+Similarly, |P |ϕ “ N with |t πj ujăk|ϕ “ m is equivalent to |t πj ujěk|ϕ “ N ´ m:
+
+Pp| P |ϕ “ N, |t πj ujăk|ϕ “ mq“ Pp|t πj ujěk|ϕ “ N ´ mq ¨ Pp|t πj ujăk|ϕ “ mq (48a) 
+
+“ p Z b K´k`1qN ´m ¨ p Z b k´1qm. (Independence + Thm. 4.3, 48b) The pZ b k´1qm factor cancels in the ratio, yielding Eq. (21). ■
+
+We now consider sampling under the relaxed corpus-level constraint |P |ϕ ě N in place of |P |ϕ “ N . To turn the exact-count binning representations of Thm. 4.3 into at-least probabilities, we left-multiply by the upper-triangular matrix of ones M .
+
+Lemma E.1 (Tail Vector Interpretation) . Let X be a non-negative integer random variable with binning representation 
+
+u P JKKR of order R, meaning ui “ PpX “ iq for i ă R and uR “ PpX ě Rq. Let M be the upper-triangular matrix of ones. Then for any n P r Rs0,
+
+pM u qn “ PpX ě nq. (49) 
+
+Proof. pM u qn “ řRj“n uj by definition of M , and summing the disjoint events tX “ nu, . . . , tX “ R ´ 1u, tX ě Ru
+
+gives PpX ě nq. ■
+
+Theorem E.1 (Sampling Path Event Counts (2)) . Under the setup of Thm. 4.4, define the tail vector Z1 def 
+
+“ M Z , with 
+
+Z1 
+
+> n
+
+“ Pp| ΠApqιq| ϕ ě nq by Lemma E.1. For any k P r Ks, m P r N s0, and n P r N ´ ms0,
+
+Pp| πk|ϕ ě n ˇˇ |P |ϕ ě N, |t πj ujăk|ϕ “ mq “ Z1
+
+> n
+
+pM Z b K´kqN ´m´n ` řN ´mj“n`1 Z1 
+
+> j
+
+pZ b K´kqN ´m´j
+
+pM Z b K´k`1qN ´m
+
+. (50) 
+
+Proof. We read the LHS of Eq. (50) as the probability that path πk contributes at least n occurrences of ϕ, conditional on the corpus P having at least N total and the previously-sampled paths tπj ujăk contributing exactly m. By Bayes’ rule, 
+
+Pp| πk|ϕ ě n ˇˇ |P |ϕ ě N, |t πj ujăk|ϕ “ mq “ Pp| πk|ϕ ě n, |P |ϕ ě N, |t πj ujăk|ϕ “ mq
+
+Pp| P |ϕ ě N, |t πj ujăk|ϕ “ mq . (51) As in Thm. 4.4, Thm. 4.3 applied to the disjoint subcorpora tπj ujăk, tπku, tπj ująk gives independent counts with exact-count binning representations Z b k´1, Z, Z b K´k. Tail (at-least) probabilities are then M -multiplied versions by Lemma E.1. Let X “ | πk|ϕ and Y “ |t πj ująk|ϕ. Path πk faces two lower bounds on X: the LHS demand n, and the deficit 
+
+pN ´ mq ´ Y that πk must cover for the corpus to reach N . So X ě max pn, pN ´ mq ´ Y q, and this max collapses into one of three sub-cases depending on Y : Y ě N ´ m (no deficit; X ě n); Y “ N ´ m ´ j with 1 ď j ď n (deficit at most 
+
+n, still X ě n); or Y “ N ´ m ´ j with j ą n (deficit dominates, X ě j). Independence then gives 
+
+PpX ě n, |P |ϕ ě N, |t πj ujăk|ϕ “ mq “ Z1 
+
+> n
+
+¨ p M Z b K´kqN ´m ¨ p Z b k´1qm
+
+` Z1
+
+> nn
+
+ÿ
+
+> j“1
+
+pZ b K´kqN ´m´j ¨ p Z b k´1qm
+
+` 
+
+> N´m
+
+ÿ
+
+> j“n`1
+
+Z1 
+
+> j
+
+¨ p Z b K´kqN ´m´j ¨ p Z b k´1qm (52a) 
+
+“
+
+´
+
+Z1 
+
+> n
+
+¨ p M Z b K´kqN ´m´n ` 
+
+> N´m
+
+ÿ
+
+> j“n`1
+
+Z1 
+
+> j
+
+¨ p Z b K´kqN ´m´j
+
+¯
+
+pZ b k´1qm,
+
+(52b) using pM Z b K´kqN ´m ` řnj“1pZ b K´kqN ´m´j “ p M Z b K´kqN ´m´n to combine the first two summands (extending the upper-tail sum down by n exact terms). 20 Causally Evaluating the Learnability of Formal Language Tasks 
+
+The denominator is the joint probability that the suffix totals at least N ´ m and the prefix exactly m, independent: 
+
+Pp| P |ϕ ě N, |t πj ujăk|ϕ “ mq “ Pp|t πj ujěk|ϕ ě N ´ mq ¨ Pp|t πj ujăk|ϕ “ mq (53a) 
+
+“ p M Z b K´k`1qN ´m ¨ p Z b k´1qm. (53b) The pZ b k´1qm factor cancels in the ratio, yielding Eq. (50). ■
+
+We now consider the at-least-once intervention used in §5: the corpus-level constraint is on the number of strings containing at least one occurrence of ϕ rather than on the total count. Replacing the raw count by the per-path indicator 1tϕu collapses each path to a Bernoulli draw. 
+
+Theorem E.2 (Sampling Path Event Counts (3)) . Under the setup of Thm. 4.3 with R “ 1 and corpus size K, Z1 “
+
+Pp| ΠApqιq| ϕ ě 1q is the per-path probability of containing at least one occurrence (Thm. 4.2). Define the per-path indicator 
+
+1tϕup πq def 
+
+“ 1t| π|ϕ ě 1u and its corpus aggregation |P |1tϕu
+
+> def
+
+“ řKj“1 1tϕup πj q, and let M P r Ks0 be a target value of 
+
+|P |1tϕu. For k P r Ks and m P r min pM, k ´ 1qs 0 with M ´ m ď K ´ k ` 1,
+
+Pp| πk|ϕ ě 1 ˇˇ |P |1tϕu “ M, |t πj ujăk|1tϕu “ mq “ M ´ mK ´ k ` 1 . (54) 
+
+In words: given that m of the first k ´ 1 paths in the corpus contain at least one occurrence of ϕ (out of M such paths required across all K), path πk contains at least one with probability pM ´ mq{p K ´ k ` 1q—the remaining at-least-one paths divided by the remaining paths to sample. Proof. Let Xj def 
+
+“ 1tϕup πj q P t0, 1u. Each Xj indicates a single event of probability Z1 and is therefore Bernoulli( Z1); the Xj are i.i.d. since the paths are. The conditioning event t| P |1tϕu “ M, |t πj ujăk|1tϕu “ mu rewrites as třKj“1 Xj “ M, ř 
+
+> jăk
+
+Xj “ mu, equivalently tř 
+
+> jăk
+
+Xj “ m, ř 
+
+> jěk
+
+Xj “ M ´ mu. Since the prefix sum is inde-pendent of tXj ujěk, conditioning on the suffix sum alone gives the same conditional. Then, by Bayes’ rule and the binomial pmf, 
+
+Pp| πk|ϕ ě 1 ˇˇ |P |1tϕu “ M, |t πj ujăk|1tϕu “ mq“ P`Xk “ 1 ˇˇ ř 
+
+> jěk
+
+Xj “ M ´ m˘ (prefix independent of tXj ujěk , 55) 
+
+“ P`Xk “ 1, ř 
+
+> jąk
+
+Xj “ M ´ m ´ 1˘
+
+P`ř  
+
+> jěk
+
+Xj “ M ´ m˘ (Bayes; substitute Xk “ 1, 56) 
+
+“ PpXk “ 1q P`ř  
+
+> jąk
+
+Xj “ M ´ m ´ 1˘
+
+P`ř  
+
+> jěk
+
+Xj “ M ´ m˘ (independence of Xk and tXj ująk , 57) 
+
+“ Z1
+
+` K´kM ´m´1
+
+˘ZM ´m´11 p1 ´ Z1qK´k´M `m`1
+
+`K´k`1 
+
+> M´m
+
+˘ZM ´m 
+
+> 1
+
+p1 ´ Z1qK´k`1´M `m (Bernoulli + binomial pmf, 58) 
+
+“
+
+` K´kM ´m´1
+
+˘`K´k`1 
+
+> M´m
+
+˘ (cancel ZM ´m 
+
+> 1
+
+and p1 ´ Z1qK´k`1´M `m, 59) 
+
+“ M ´ mK ´ k ` 1 . (` nr´1
+
+˘{`n`1
+
+> r
+
+˘ “ r{p n ` 1q with n “ K ´ k, r “ M ´ m, 60) 
+
+■
+
+The corresponding per-path sampling step does not need a new corollary: once nk P t 0, 1u has been drawn for path πk, we sample πk via Thm. 4.5 with n “ 0 (a path with no occurrences) or Thm. E.3 with n “ 1 (a path with at least one). 
+
+Theorem 4.5 (Constrained Sampling) . Under the conditions of Thm. 4.4, fix n P r N s0 and define a lifted PFA A1 over the state set Q ˆ r ns0 (see App. E). Let ΠA1 pqιq be a random path drawn from A1. For any π P ΠpA1q,
+
+PpΠApqιq “ πA
+
+ˇˇ |ΠApqιq| ϕ “ nq “ PpΠA1 pqιq “ πq.
+
+21 Causally Evaluating the Learnability of Formal Language Tasks 
+
+Proof. The lifted PFA A1 “ p Q1, Σ, δ 1, λ 1, ρ 1q is defined as follows. Write v “ ϕδ pq σ{w
+
+ÝÝÑ q1q for the event count of a transition; let Zpqq def 
+
+“ βϕpqq. Then: 
+
+(i) Q1 “ Q ˆ r ns0,
+
+(ii) δ1 : pp q, r q, σ, pq1, r ´ vqq Þ Ñ 1
+
+> Zpqqr
+
+`Lϕδ pq σ{w
+
+ÝÝÑ q1q b βϕpq1q˘ 
+
+> r
+
+,
+
+(iii) λ1 : pq, r q Þ Ñ 1tq “ qι, r “ nu,
+
+(iv) ρ1 : pq, r q Þ Ñ 1 
+
+> Zpqqr
+
+Lρpqqr .
+
+The state coordinate r tracks the remaining target count: each transition decrements it by v, and the final weight fires only when r “ ϕρpqq.We first show that the weights of δ1 and ρ1 sum to 1 for any q P Q and r P r ns0. Note that by definition, we have the following equalities 
+
+δ1pp q, r q, σ, pq1, r ´ vqq def 
+
+“ 1
+
+βϕpqqr
+
+¨ `Lϕδ pq σ{w
+
+ÝÝÑ q1q b βϕpq1q˘ 
+
+> r
+
+(61a) 
+
+“ 1
+
+βϕpqqr
+
+¨ w ¨ `βϕpq1q˘  
+
+> r´ϕδpqσ{w
+
+ÝÝÑq1q (61b) 
+
+ρ1pq, r q def 
+
+“ 1
+
+βϕpqqr
+
+¨ Lρpqqr (61c) 
+
+“ 1
+
+βϕpqqr
+
+¨ 1tr “ ϕρpqqu ρpqq (61d) From the equality 
+
+βApqq “ à 
+
+> qσ{w
+
+ÝÝÑq1
+
+w b βApq1q ‘ ρpqq (62) in a general WFA, we have that 7
+
+`βϕpqq˘ 
+
+> r
+
+“ à 
+
+> qσ{w
+
+ÝÝÝÑq1
+
+`w b βϕpq1q˘ 
+
+> r
+
+‘ `ρAϕ pqq˘ 
+
+> r
+
+(63) 
+
+“ à 
+
+> qσ{w
+
+ÝÝÑq1
+
+`Lϕδ pq σ{w
+
+ÝÝÑ q1q b βϕpq1q˘ 
+
+> r
+
+‘ `ρAϕ pqq˘ 
+
+> r
+
+(64) 
+
+“ à 
+
+> qσ{w
+
+ÝÝÑq1
+
+w ¨ βϕpq1qr´ϕδ pq σ{w
+
+ÝÝÑq1q ‘ `ρAϕ pqq˘ 
+
+> r
+
+(65) 
+
+“ à 
+
+> qσ{w
+
+ÝÝÑq1
+
+w ¨ βϕpq1qr´ϕδ pq σ{w
+
+ÝÝÑq1q ‘ 1tr “ ϕρpqqu ρpqq (66) Dividing by βϕpqqr matches the unfolded δ1 and ρ1 above, so ř 
+
+> qσ{w
+
+ÝÝÑq1Pδ δ1pp q, r q, σ, pq1, r ´ vqq ` ρ1pq, r q “ 1 for every 
+
+pq, r q—hence A1 is a valid PFA, and the path-probability formula below applies. For π “ p qι, n q a1{w1
+
+ÝÝÝÝÑ ¨ ¨ ¨ am{wm
+
+ÝÝÝÝÝÑ p qm, r mq—where wt denotes the corresponding base-automaton transition weight—we then have, using the unfolded δ1 and ρ1 above (throughout this proof, write |πďt|ϕ def 
+
+“ řts“1 ϕδ pqs´1
+
+> as{ws
+
+ÝÝÝÝÑ qsq for the transition-only feature sum on the first t transitions of π, with |πăt|ϕ def 
+
+“ | πďt´1|ϕ; these omit the init and final contributions 
+
+> 7
+
+For conciseness, we assume vm “ 0 for m ă 0 and m ą R.
+
+22 Causally Evaluating the Learnability of Formal Language Tasks 
+
+to |π|ϕ): 
+
+PpΠA1 pqιq “ πq “ 
+
+> m
+
+ź
+
+> t“1
+
+δ1pp qt´1, r t´1q, a t, pqt, r tqq ¨ ρ1pqm, r mq (67a) 
+
+“
+
+> m
+
+ź
+
+> t“1
+
+1
+
+`βϕpqt´1q˘
+
+> n´| πăt|ϕ
+
+¨ `Lϕδ pqt´1
+
+> at{wt
+
+ÝÝÝÑ qtq b βϕpqtq˘
+
+> n´| πăt|ϕ
+
+¨ 1
+
+`βϕpqmq˘
+
+> n´| πďm|ϕ
+
+¨ `Lρpqmq˘
+
+> n´| πďm|ϕ
+
+(Eqs. (61a) and (61c), 67b) 
+
+“
+
+> m
+
+ź
+
+> t“1
+
+1
+
+`βϕpqt´1q˘
+
+> n´| πăt|ϕ
+
+¨ wt ¨ `βϕpqtq˘ 
+
+> n´| πăt|ϕ´ϕδpqt´1
+> at{wt
+
+ÝÝÝÑqtq
+
+¨ 1
+
+`βϕpqmq˘
+
+> n´| πďm|ϕ
+
+¨ `Lρpqmq˘
+
+> n´| πďm|ϕ
+
+(Eq. (61b), 67c) 
+
+“
+
+> m
+
+ź
+
+> t“1
+
+1
+
+`βϕpqt´1q˘
+
+> n´| πăt|ϕ
+
+¨ wt ¨ `βϕpqtq˘
+
+> n´| πďt|ϕ
+
+¨ 1
+
+`βϕpqmq˘
+
+> n´| πďm|ϕ
+
+¨ `Lρpqmq˘
+
+> n´| πďm|ϕ
+
+(|πăt|ϕ ` ϕδ pqt´1
+
+> at{wt
+
+ÝÝÝÝÑ qtq “ | πďt|ϕ, 67d) 
+
+“ 1
+
+`βϕpqιq˘
+
+> n
+
+¨
+
+> m
+
+ź
+
+> t“1
+
+wt ¨ `Lρpqmq˘
+
+> n´| πďm|ϕ
+
+(Telescoping product, 67e) 
+
+“ 1
+
+`βϕpqιq˘
+
+> n
+
+¨
+
+> m
+
+ź
+
+> t“1
+
+wt ¨ 1tn ´ | πďm|ϕ “ ϕρpqmqu ¨ ρpqmq (definition of Lρ (Definition 4.1), 67f) 
+
+“ 1
+
+`βϕpqιq˘
+
+> n
+
+¨
+
+> m
+
+ź
+
+> t“1
+
+wt ¨ ρpqmq ¨ 1tn ´ | πďm|ϕ “ ϕρpqmqu (67g) 
+
+“ 1
+
+`βϕpqιq˘
+
+> n
+
+¨ PpΠApqιq “ πAq ¨ 1tn ´ | πďm|ϕ “ ϕρpqmqu (path probability in A (Eq. (18)), 67h) 
+
+“ 1
+
+`βϕpqιq˘
+
+> n
+
+¨ PpΠApqιq “ πA, |π|ϕ “ nq (ϕλpqιq “ 0 implies |π|ϕ “ | πďm|ϕ ` ϕρpqmq, 67i) 
+
+“ 1
+
+Pp| ΠApqιq| ϕ “ nq ¨ PpΠApqιq “ πA, |π|ϕ “ nq (Thm. 4.2, 67j) 
+
+“ PpΠApqιq “ πA
+
+ˇˇ |ΠApqιq| ϕ “ nq. (67k) 
+
+■
+
+For the at-least variant of Thm. 4.5—where the per-path constraint is |ΠApqιq| ϕ ě n instead of “ n—we construct an analogous lifted PFA A2 using the accumulated-tail backward weights M β ϕ (Lemma E.1) in place of the exact-count βϕ.
+
+Theorem E.3 (Constrained String Sampling (2)) . Define A2 analogously to A1 in Thm. 4.5, but using the accumulated-tail backward weights Z1pqq “ M β ϕpqq from Lemma E.1 in place of βϕpqq, with the counter clamped at 0 on decrement. Let 
+
+ΠA2 pqιq be a random path drawn from A2. For any per-path target n P r N s0 and any π P ΠpA2q,
+
+PpΠApqιq “ πA
+
+ˇˇ |ΠApqιq| ϕ ě nq “ PpΠA2 pqιq “ πq. (68) 23 Causally Evaluating the Learnability of Formal Language Tasks 
+
+Proof. By definition, we have the following equalities 
+
+δ2pp q, r q, σ, pq1, max p0, r ´ vqqq def 
+
+“ 1
+
+Z1pqqr
+
+¨ `M pLϕδ pq σ{w
+
+ÝÝÑ q1q b βϕpq1qq ˘ 
+
+> r
+
+(69a) 
+
+“ 1
+
+Z1pqqr
+
+¨ w ¨ Z1pq1qmax p0,r ´ϕδ pq σ{w
+
+ÝÝÑq1qq (69b) 
+
+ρ2pq, r q def 
+
+“ 1
+
+Z1pqqr
+
+¨ `M Lρpqq˘ 
+
+> r
+
+(69c) 
+
+“ 1
+
+Z1pqqr
+
+¨ 1tr ď ϕρpqqu ρpqq. (69d) The next-state probabilities sum to 1 at every pq, r q by the same argument as in Thm. 4.5 (applied to Z1 in place of Z). The path-probability derivation mirrors Thm. 4.5: for π “ p qι, n q a1{w1
+
+ÝÝÝÝÑ ¨ ¨ ¨ am{wm
+
+ÝÝÝÝÝÑ p qm, r mq (with wt the corresponding base-automaton transition weight), the same telescoping product gives the analog of Thm. 4.5’s derivation up to the final-state factor: there the indicator 1trm “ ϕρpqmqu captured the exact-count event, whereas here ρ2 contributes 
+
+1trm ď ϕρpqmqu , which equals 1t| π|ϕ ě nu in both clamp regimes (unclamped: rm “ n ´ | πďm|ϕ, so the indicator reads |πďm|ϕ ` ϕρpqmq ě n, which equals |π|ϕ ě n via ϕλpqιq “ 0; clamped at rm “ 0: the indicator is vacuously true and |πďm|ϕ ě n already, so |π|ϕ ě n as well). Substituting Z1 for βϕ and 1t| π|ϕ ě nu for the exact-count indicator throughout the Thm. 4.5 chain yields 
+
+PpΠA2 pqιq “ πq “ PpΠApqιq “ πA
+
+ˇˇ |ΠApqιq| ϕ ě nq. (70) 
+
+■
+
+## F. Naïve Sampling and Runtime 
+
+F.1. Naïve Sampling Baselines Rejection Sampling. Rejection sampling is the most direct approach to sample from PpD | A “ A, do pD P Pqq . Suppose we target transitions emitting a and wish to sample a corpus of K strings in which a occurs exactly N times overall. Draw a corpus from p unconstrained; if the total a-count is N , return it; otherwise discard and repeat. The acceptance probability decays exponentially in the gap between N and the expected a-count of an unconstrained corpus, so the expected number of corpus draws grows exponentially in that gap. 
+
+Intersection-based Sampling. A more structured approach decomposes the problem into per-string sampling. First, fix the corpus size K and sample per-string occurrence counts n1, . . . , n K P N with řKk“1 nk “ N . This reduces the task to drawing, for each per-string count nk, a string σ „ pp¨ | σ has exactly nk symbols aq. Using standard automata-theoretic constructions, we can sample each such string by: (i) constructing an FA Aa,n k that recognizes strings with exactly nk
+
+a’s; (ii) intersecting Aa,n k with A to obtain Aa,n k X A, which recognizes strings with exactly nk a’s that are also accepted by A; (iii) renormalizing Aa,n k X A via weight pushing (Mohri, 2009) to obtain a PFA; and (iv) ancestral-sampling a string from this PFA. Intersection yields an automaton with Op| Q|nkq states, and weight pushing is cubic in the number of states, so the total cost across nk P t 0, . . . , N u is Op| Q|3N 4q. The constrained sampler of §4.3 improves this to 
+
+Opp| Q|3 ` KqN 2 ` Kℓ q (App. F.2). 
+
+F.2. Runtime of Constrained Sampling 
+
+We analyze the runtime of Preprocess , SamplePath , and SampleCorpus from §4.3 in turn. Let |δ| be the number of transitions of A, K the number of strings, N the corpus-level target count, and ℓ a bound on the length of the sampled paths. 
+
+Preprocess . Lifting A to the binning automaton Aϕ touches each transition once: Op| δ|q . Computing the backward weights βϕ with Lehmann’s algorithm (Lehmann, 1977) performs Op| Q|3q binning-semiring operations, each costing 
+
+C “ OpN 2q in a general base semiring or OpN log N q using FFT over the reals, for Op| Q|3N 2q total. Tabulating the per-state outgoing transitions E is another Op| δ|q pass. Precomputing the per-action binning-weight table W costs 
+
+Opp| δ| ` | Q|q N q: each lifted transition weight δϕpq, a, q 1q has a single nonzero coordinate, so δϕpq, a, q 1q b βϕpq1q
+
+24 Causally Evaluating the Learnability of Formal Language Tasks 
+
+reduces to a scaled shift of βϕpq1q computable in OpN q rather than a full OpN 2q convolution (and ρϕpqq supplies the  
+
+> EOS
+
+slot directly). This is dominated by the cubic Lehmann pass. Adding these, Preprocess runs in Op| Q|3N 2q time, or 
+
+Op| Q|3N log N q with FFT. 
+
+SamplePath (one call). At each step, SamplePath draws one action from the distribution over Epqq Y t EOS u proportional to the slice W pq, ¨q n´j . Drawing from the slice naively costs Opmax q |Epqq|q ď Op| Σ|q per step. Precomputing an alias table (Walker, 1977; Vose, 1991) for each state q and remaining count r P r N s0 (the index n ´ j at which W pq, ¨q is read) instead makes every draw Op1q; building these tables from W costs Opp| δ| ` | Q|q N q (one pass over each outgoing transition and the EOS slot at each r), dominated by the cubic Lehmann pass. A path of length ℓ then costs Opℓq.
+
+SampleCorpus . SampleCorpus first invokes Preprocess at the cost above. Phase 1 computes Z b k for k P t 1, . . . , K ´1u
+
+iteratively (one binning multiplication per k) and draws each nk by scanning OpN q proportional weights, for OpKN 2q (or 
+
+OpKN log N q with FFT). Phase 2 makes K calls to SamplePath , each Opℓq, for OpKℓ q. Adding the three contributions gives 
+
+O`p| Q|3 ` KqN 2 ` Kℓ ˘,
+
+or, with FFT in the binning multiplication, 
+
+O`p| Q|3 ` KqN log N ` Kℓ ˘.
+
+Whether the cubic term ( |Q|3N 2), the per-string-count term ( KN 2), or the path-sampling term ( Kℓ ) dominates depends on the relative sizes of |Q|, K, N , and ℓ. In practice, we find this approach to be two orders of magnitude faster than rejection sampling. 
+
+## G. Targeted KL Divergence via Decomposition 
+
+We are interested in measuring the learnability of targeted features. To this end, we derive a decomposed KL divergence that works on the transition, symbol, or state level between an automaton and a trained LM. Let pA be an LM defined by a DPFA A over states Q and symbols Σ. Any string σ sampled from pA decomposes into transitions consisting of states q, symbols σ, and weights w. Given another LM pθ and an event function ϕ, we decompose the KL divergence to analyze how well pθ captures the target transitions T (§4). At each step, pA takes transition δ with probability w, while pθ predicts the next symbol given the history σăt of all symbols preceding position t. As in §2, the next-symbol distribution pAp¨ | qq is supported on ΣEOS with pApEOS | qq “ ρpqq. Recall the prefix probability ÝÑp from Eq. (1). Throughout, let 
+
+pπ pqq def 
+
+“ ÿ
+
+> σPΣ˚
+
+ÝÑp pσq1tpδpσq “ qu, pπ pq, σ q def 
+
+“ pπ pqqpApσ | qq, pπ pσq def 
+
+“ ÿ
+
+> qPQ
+
+pπ pq, σ q. (71) We have that 
+
+DKL ppA || pθ q “ Eσ„pA
+
+“log pApσq
+
+pθ pσq
+
+‰ (72a) 
+
+“ ÿ
+
+> σPΣ˚
+
+ÝÑp pσqDKL 
+
+`pAp¨ | σq || pθ p¨ | σq˘ (chain rule on prefixes, 72b) 
+
+State-wise decomposition. Group every history by the state it reaches, q “ pδpσq:
+
+DKL ppA || pθ q “ ÿ
+
+> qPQ
+
+ÿ
+
+> σPΣ˚
+> pδpσq“ q
+
+ÝÑp pσqDKL 
+
+`pAp¨ | qq››pθ p¨ | σq˘ (insert 1tpδpσq “ qu, 73a) 
+
+“ ÿ
+
+> qPQ
+
+pπ pqq ÿ
+
+> σPΣ˚
+> pδpσq“ q
+
+ÝÑp pσq
+
+pπ pqq DKL ppAp¨ | qq || pθ p¨ | σqq 
+
+looooooooooooooooooooooooomooooooooooooooooooooooooon 
+
+> Unweighted per-state contribution
+
+(73b) 25 Causally Evaluating the Learnability of Formal Language Tasks 
+
+Transition-wise decomposition. Insert the next symbol σ and write pπ pq, σ q “ pπ pqqpApσ | qq:
+
+DKL ppA || pθ q “ ÿ
+
+> qPQ
+
+pπ pqq ÿ
+
+> σPΣEOS
+
+pApσ | qq ÿ
+
+> σPΣ˚
+> pδpσq“ q
+
+ÝÑp pσq
+
+pπ pqq log pApσ | qq
+
+pθ pσ | σq (74a) 
+
+“ ÿ
+
+> pq,σ qP QˆΣEOS
+
+pπ pq, σ q ÿ
+
+> σPΣ˚
+> pδpσq“ q
+
+ÝÑp pσq
+
+pπ pqq log pApσ | qq
+
+pθ pσ | σq
+
+loooooooooooooooomoooooooooooooooon 
+
+> Unweighted per-transition contribution
+
+(74b) (74c) 
+
+Symbol-wise decomposition. Marginalize over states to obtain the symbol prior pπ pσq “ ř 
+
+> qPQ
+
+pπ pq, σ q:
+
+DKL ppA || pθ q “ ÿ
+
+> σPΣEOS
+
+ÿ
+
+> σPΣ˚
+
+ÝÑp pσq pApσ | pδpσqq log pApσ | pδpσqq 
+
+pθ pσ | σq (75a) 
+
+“ ÿ
+
+> σPΣEOS
+
+pπ pσq ÿ
+
+> σPΣ˚
+
+ÝÑp pσqpApσ | pδpσqq 
+
+pπ pσq log pApσ | pδpσqq 
+
+pθ pσ | σq
+
+loooooooooooooooooooooooooomoooooooooooooooooooooooooon 
+
+> Unweighted per-symbol contribution
+
+. (75b) 
+
+## H. Experimental Setup Details 
+
+Intervention Sampling. All our interventions count transitions in the corpus; the event function specifies which transitions count. We study two predicates experimentally: symbol -level, where the event fires on all transitions emitting a chosen symbol, and state -level, where the event fires on all transitions out of a chosen state. These interventions are best described with do -notation introduced in §3. Each of these is captured by some property P Ď D. By intervening on it, we sample according to D „ Pp¨ | do pP “ pqq , p P P, where P denotes the data-distribution probability measure under intervention (formally a Markov kernel; see App. C). For all three interventions, the event function ϕ “ p ϕλ, ϕ δ , ϕ ρq has identically-zero initial and final components ( ϕλ ” 0, ϕρ ” 0); only the transition component varies. Specifically: 
+
+(i) Symbol intervention on aI : ϕaI ,δ pq, σ, r q def 
+
+“ 1tσ “ aI u;
+
+(ii) Transition intervention on δI : ϕδI ,δ pq, σ, r q def 
+
+“ 1tp q, σ, r q “ δI u;
+
+(iii) State intervention on qI : ϕqI ,δ pq, σ, r q def 
+
+“ 1tq “ qI u.
+
+Ancestral Sampling. For ancestral sampling, we start the process from the initial state qι. We then sample the next symbol by recursively selecting the transitions according to the PFA’s probability distribution. For example, given a state q and the transition q σ{w
+
+ÝÝÑ r, the conditional probability of sampling σ, i.e. probability Ppσ | qq, is w. Sampling terminates at state 
+
+q with probability ρpqq; otherwise we draw an outgoing transition q σ{w
+
+ÝÝÑ q1 with probability w. The PFA normalization 
+
+ρpqq ` ř 
+
+> qσ{w
+
+ÝÝÑq1Pδ w “ 1 ensures this is a valid distribution at every state. 
+
+Neural Language Models. We conduct experiments using both LSTM and transformer-based LMs. The configuration of the neural LMs, including specific hyperparameters, is given in App. I. 
+
+Error bars. Error bars show one standard error of the mean over the runs grouped at each plotted x-coordinate: for causal curves the grouping is by discrete intervention count, and for correlational curves it is by occurrence-count bin (each bin gets its own SEM, independently of the others). 
+
+## I. Model and Training Details 
+
+We now detail the hyperparameters used for training both the LSTM and transformer models. While they share common settings such as batch size and optimizer, they differ in architectural design and training specifics. The loss we use is over 26 Causally Evaluating the Learnability of Formal Language Tasks 0 200 
+
+Count 
+
+> 10 −5
+> 10 −3
+> 10 −1
+> 10 1
+> DKL
+
+## rep  
+
+> 0200
+
+Count 
+
+## odd   
+
+> 0200 400
+
+Count 
+
+## even     
+
+> LSTM Transformer Causal Correlational
+> Figure 7. Monte Carlo estimates of the state-wise learnability for the automaton given in Fig. 1 using the at-least-once intervention.
+
+the full KL divergence at each symbol position in the training data against the corresponding automaton (formula given in §5); this can be seen as a sample-efficient distillation of the sampled automata. We use a parameter budget of 128k for both LSTMs and transformers and train all models on CPU. For layer norm, we initialize weights to 1 and biases to 0. When dropout is applicable, we use a value of 0.1. Parameters are uniformly initialized from r´ 0.1, 0.1s. We shuffle data at training, with a max batch size of 128 tokens, and a learning rate of 0.01. We use the Adam optimizer, and clip gradients with a threshold of 5 using L2 norm scaling. The learning rate is multiplied by 0.5 after 5 checkpoints with no decrease in the loss on the validation set. Training is halted after 10 checkpoints if no improvement is observed. Sampling of an individual dataset typically takes within minutes on a V100 32 GB GPU, as we make use of a GPU for the allsum calculations. The training of an individual dataset typically runs in minutes on a single modern CPU core using the LSTM architecture, while the transformer models can run longer. Our large-scale experiments were run on a cluster with 76 nodes, making use of 16 CPU cores on each node, and occasionally on a single machine with 2 x AMD EPYC 9354 32-Core Processor and two NVIDIA H100. The PARITY + star-free experiment and the varying topology experiment run in under 12 hours, making use of the full CPU/GPU resources for both sampling and training. The larger-scale run took a few days to sample and train in parallel. 
+
+## J. Additional Figure 
+
+An additional figure for the at-least-once sampling variant of the automaton in Fig. 1 is given in Fig. 7. 27

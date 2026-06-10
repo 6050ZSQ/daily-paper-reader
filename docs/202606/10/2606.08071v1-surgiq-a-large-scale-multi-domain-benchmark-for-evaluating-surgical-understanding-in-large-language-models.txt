@@ -1,0 +1,774 @@
+Title: SurgiQ: A Large-Scale Multi-Domain Benchmark for Evaluating Surgical Understanding in Large Language Models
+
+URL Source: https://arxiv.org/pdf/2606.08071v1
+
+Published Time: Tue, 09 Jun 2026 00:42:09 GMT
+
+Number of Pages: 22
+
+Markdown Content:
+# SurgiQ: A Large-Scale Multi-Domain Benchmark for Evaluating Surgical Understanding in Large Language Models 
+
+Ayah Al-Naji, Edoardo Fazzari ∗, Saif Alkindi, Hamdan Alhadhrami, Preslav Nakov, Cesare Stefanini Mohamed bin Zayed University of Artificial Intelligence, UAE {ayah.al-naji, edoardo.fazzari, saif.alkindi, hamdan.alhadhrami, preslav.nakov, cesare.stefanini } @mbzuai.ac.ae 
+
+Abstract 
+
+Reliable evaluation of large language models in surgery remains underdeveloped. Broad medi-cal benchmarks test clinical knowledge, while surgery requires procedural reasoning, manage-ment trade-offs, negation handling, and selec-tion among plausible operative decisions. We present SurgiQ, a text-only, source-grounded benchmark of 13,055 four-option multiple-choice questions spanning six surgical domains and four question formats: case-based, reason-ing, best-option, and negative. SurgiQ is con-structed from surgical textbooks, open-access papers, and examination material using a multi-stage generation, verification, and expert-audit pipeline. We evaluate 35 open-weight LLMs under a unified log-likelihood protocol. Our results show substantial remaining headroom: smaller models often remain near the 25% ran-dom baseline, while the best model reaches 68.1% accuracy. General-purpose models, es-pecially Qwen2.5, outperform most biomedical models, suggesting that current medical special-ization does not yet provide sufficiently broad surgical coverage. Calibration and error analy-sis further show that even strong models make confident mistakes on clinically plausible dis-tractors, motivating more reliable and broader surgical LLM evaluation. Our data and code are available at .
+
+1 Introduction 
+
+Recent advances in foundation models and reasoning-oriented Large Language Models (LLMs) have accelerated interest in healthcare applications, where reliable and well-calibrated decision-making is critical. Rigorous evaluation has therefore become essential, motivating challenging knowledge-intensive benchmarks across general reasoning and medicine (Hendrycks et al., 2020; Rein et al., 2023; Wang et al., 2024). Medical benchmarks such as MedQA-USMLE (Jin et al., 2021), MedMCQA (Pal 
+
+Figure 1: Overview of the SurgiQ benchmark, illus-trating the diversity of surgical domains and question categories. The outer ring shows the distribution of questions across six surgical domains, while the inner ring illustrates the four MCQ formats used throughout the dataset. Each surgical domain contains a mixture of all four question types. 
+
+et al., 2022), PubMedQA (Jin et al., 2019), and MultiMedQA (Singhal et al., 2023) evaluate broad clinical and biomedical knowledge. Specialty-oriented resources such as MedExQA (Kim et al., 2024) further show that medical coverage is uneven across subfields. However, surgery poses additional challenges (Fazzari and Stefanini, 2026): procedural sequencing, operative anatomy, intra-operative judgment, perioperative management, and choosing the best option among clinically plausible alternatives. Surgical AI evaluation has recently advanced through multimodal benchmarks for surgical scene understanding, including SurgMLLMBench (Choi et al., 2025) and SurgVLM-Bench (Zeng et al., 2025). While these benchmarks provide valuable evaluation of visual perception, workflow, instru-
+
+> arXiv:2606.08071v1 [cs.CL] 6 Jun 2026
+
+ment use, and video/image understanding, they do not target source-grounded textual assessment of surgical knowledge and operative decision-making across specialties. SurgiQ fills this complemen-tary gap by evaluating text-based surgical question answering and calibration in open-weight LLMs. Here, we introduce SurgiQ , a large-scale multiple-choice benchmark comprising 13,055 clin-ically grounded questions across six surgical do-mains and four question formats. We evaluate 35 open-weight general-purpose, reasoning-oriented, and biomedical LLMs under a unified zero-shot and few-shot framework. Our focus on open-weight models supports reproducible local evaluation and is practically relevant for clinical or robotic systems where connectivity, privacy, and latency constraints may limit reliance on external APIs. SurgiQ is not a deployment test; rather, it measures a prerequi-site capability: controlled text-based discrimina-tion among surgical decisions. Figure 1 provides an overview of the benchmark structure. We make the following contributions: • Dataset. SurgiQ provides 13,055 source-grounded surgical MCQs across six domains and four question types (case-based, reason-ing, best-option, and negative), with per-question metadata and a versioned public re-lease. • Validation. We establish benchmark quality through a physician audit, a human surgeon baseline, near-duplicate analysis, answer-order robustness tests, and shortcut baselines, collectively confirming that SurgiQ cannot be solved by surface-level heuristics. • Evaluation. We assess 35 open-weight LLMs spanning general-purpose, biomedical, and reasoning-oriented families under a unified, deterministic log-likelihood scoring proto-col, with complementary calibration, domain, question-type, and error analyses. • Findings. General-purpose models outper-form most medical-specialized models on surgical reasoning; calibration analysis and distractor-level error breakdowns reveal that confident failures on clinically plausible alter-natives remain a major reliability gap across model families. 
+
+2 Related Work 
+
+General benchmarks such as MMLU (Hendrycks et al., 2020), BIG-bench Hard (Suzgun et al., 2023), GPQA (Rein et al., 2023), and MMLU-Pro (Wang et al., 2024) established large-scale evaluation for academic and expert reasoning. Medical bench-marks then extended this paradigm to clinical set-tings: MedQA-USMLE (Jin et al., 2021), Pub-MedQA (Jin et al., 2019), MedMCQA (Pal et al., 2022), and MultiMedQA (Singhal et al., 2023) eval-uate biomedical knowledge and clinical reasoning, while specialty resources such as MedExQA (Kim et al., 2024) highlight uneven coverage across med-ical subfields and the need for richer specialty eval-uation. However, surgery remains only partially covered by existing medical QA resources. Surgical rea-soning requires operative anatomy, procedural se-quencing, perioperative management, negation han-dling, and context-dependent selection among plau-sible interventions. Recent surgical benchmarks have primarily expanded evaluation along the multi-modal axis. For example, SurgMLLMBench (Choi et al., 2025) integrates surgical VQA, workflow annotations, and instrument segmentation across laparoscopic, robot-assisted, and microsurgical set-tings, while SurgVLM-Bench (Zeng et al., 2025) evaluates vision-language models on surgical per-ception, temporal understanding, and scene-level reasoning. These benchmarks are valuable for in-traoperative visual understanding, but they do not directly evaluate source-grounded textual surgical knowledge, examination-style reasoning, or cali-brated answer selection across surgical specialties. SurgiQ therefore targets a complementary evalua-tion axis: broad text-based surgical QA and clin-ically grounded operative decision-making using open-weight LLMs. Table 1 summarizes the positioning of SurgiQ relative to representative general, medical, and sur-gical benchmarks. Existing medical QA bench-marks primarily evaluate broad biomedical knowl-edge, while recent surgical benchmarks focus mainly on multimodal perception and workflow understanding. In contrast, SurgiQ uniquely com-bines specialized surgical knowledge evaluation, text-only evaluation, calibration analysis, and large-scale evaluation of open-weight LLMs within a unified benchmark. Benchmark # Questions Format Med. QA Surg. Focus Calibration MMLU (Hendrycks et al., 2020) 15,908 MCQ × × ×
+
+MedQA-USMLE (Jin et al., 2021) 12,723 MCQ ✓ × ×
+
+PubMedQA (Jin et al., 2019) 1,000 labeled Yes/no/maybe ✓ × ×
+
+MedMCQA (Pal et al., 2022) 194k+ MCQ ✓ × ×
+
+MedExQA (Kim et al., 2024) 965 MCQ ✓ × ×
+
+SurgiQ (ours) 13,055 MCQ ✓ ✓ ✓
+
+Table 1: Positioning of SurgiQ relative to representative text-based QA datasets. 
+
+Surgical Domain # MCQs %
+
+General Surgery 6,948 53.2% Neurosurgery 2,204 16.9% Robotic Surgery 1,643 12.6% Orthopedic Surgery 1,189 9.1% Critical Care / Emergency 590 4.5% Laparoscopic Surgery 493 3.8% 
+
+Total 13,055 100% 
+
+Table 2: SurgiQ domain distribution across six surgical specialties. 
+
+3 SurgiQ 
+
+We introduce SurgiQ, a surgical multiple-choice question-answering dataset for evaluating reason-ing and decision-making in surgical contexts. SurgiQ contains 13,055 questions spanning six surgical domains: general surgery, neurosurgery, robotic surgery, orthopedic surgery, critical care, and laparoscopic surgery. We construct the dataset from 27 surgical textbooks, 635 open-access re-search papers, and a small collection of surgical examination materials. Appendix F lists the text-book sources, while the open-access papers are omitted from the appendix due to space constraints. Each question includes four candidate answers, one correct option, and associated metadata. Table 2 summarizes the domain coverage across surgical specialties, while Figure 2 presents representative examples of the four question formats included in SurgiQ. 
+
+3.1 Data Construction 
+
+We organize books into chapter-level JSON files and split them into page-level segments, while we process research papers using their full text. We as-sociate each source with metadata to support consis-tent downstream processing across formats. During preprocessing, we retain only textual content and remove non-textual elements such as images and tables. We then process the source documents us-ing format-specific extraction pipelines to recover structured textual content suitable for downstream Reasoning 
+
+> Q: Acute mild gallstone pancreatitis is diagnosed in a 54-years old male. Which of the
+> following is considered standard treatment?
+> A. Urgent ERCP and subsequent lap cholecystectomy
+> B. Initial supportive management with cholecystectomy performed only if symptoms
+> recur
+> C. Initial supportive therapy with cholecystectomy performed within same admission
+> D. Urgent cholecystectomy (within 24hs) and common bile duct exploration
+> Case-based
+> Q: A 38-year-old woman is noted on routine physical examination to have a painless 1-cm
+> right breast mass. There is no skin dimpling or adenopathy. An FNA is performed
+> revealing malignant cells. Which of the following is the best next step?
+> A. PET scan and MRI of brain
+> B. Modified radical mastectomy
+> C. Partial mastectomy and radiation therapy
+> D. Core needle biopsy of mass
+> Best option
+> Q: 68 years old male patient diagnosed with TCC, on TURBT histopathology shows TCC
+> stage T2. The best treatment option is?
+> A. Radical cystectomy
+> B. Intravesical chemotherapy
+> C. Intravenous chemotherapy
+> D. Intravesical BCG
+> Negative
+> Q: A resident is reviewing evidence on robotic assisted minimally invasive
+> esophagectomy (RAMIE) for oesophageal cancer. Which statement is NOT consistent with
+> current evidence?
+> A. Reduced complications compared to open surgery
+> B. Shortened learning curve with proctoring
+> C. Superior lymph node dissection in all cases
+> D. Same proficiency curve for all surgeons
+
+Figure 2: Examples of SurgiQ questions across four for-mats: reasoning, case-based, best-option, and negative. The correct answer in each example is shown in bold. 
+
+question generation. 
+
+3.2 Question Generation 
+
+We generate SurgiQ questions using a prompt-based pipeline built on top of Gemini 2.5 Flash (Chen et al., 2025). As illustrated in Fig-ure 3, the pipeline first extracts high-yield facts from source text segments and then generates clini-cally grounded multiple-choice questions. We de-sign the prompts to encourage multi-step reasoning, avoid trivial recall, and produce plausible distrac-tors. We use separate fact-extraction prompts for books and research papers, while question gener-ation follows a unified template across all source types. Appendix B provides the prompt templates used for fact extraction, question generation, ver-ification, filtering, and evaluation. Each question 1 EXTRACTION ✦ Extract raw textual content from diverse surgical knowledge sources. 
+
+SOURCES 
+
+Books 
+
+> Surgical & Robotic
+> Surgery Books
+
+Papers 
+
+> Research Papers &
+> Clinical Exam Materials
+
+TEXT EXTRACTION 
+
+› ›
+
+> Parse
+> Documents
+> Extract
+> Raw Text
+> Organize
+> Structure
+
+RAW EXTRACTED TEXT    
+
+> ✓Clean textual content
+> ✓Structured organization
+> (chapters / sections / pages / full text)
+> ✓Source metadata included
+
+2 GENERATION ✦ Generate high-quality, diverse, and verified MCQs using Gemini. 
+
+INPUT 
+
+> Raw Extracted
+> Text to
+
+Extract Facts 
+
+> from Text Segments
+> Extract 7 key facts for each
+> identified text segment
+
+Generate MCQs     
+
+> from Extracted Facts
+> 4 Types of MCQs
+> ↯Reasoning
+> ✓Best-Option
+> ●Case-Based
+> −Negative
+
+Verify & Filter   
+
+> MCQ Quality
+> ✓Verify correct
+> answers
+> ✓Remove trivial /
+> low-quality questions
+
+OUTPUT 
+
+> SurgiQ Benchmark
+> MCQs
+> Final set of high-quality,
+> diverse, and verified
+> MCQs for benchmarking.
+
+EVALUATION & TESTING ✦ Evaluate LLMs on SurgiQ MCQs set and report performance. 
+
+Load SurgiQ 
+
+MCQs Set 
+
+Create Prompt LLMs Score 
+
+Answers 
+
+Model Log-Probabilities Accuracy Reported 
+
+& Saved   
+
+> SurgiQ MCQs dataset is
+> loaded for evaluation.
+> A prompt is created for
+> each MCQ with question
+> and answer choices. LLMs score each option
+> (A, B, C, D) and output
+> probabilities.
+> A0.12
+> B
+> C
+> D
+> The option with the highest log-probability (least
+> negative) is selected as the model’s answer
+> and compared with the correct answer to compute
+> accuracy.
+> Overall accuracy is
+> reported and saved
+> in the summary.
+
+3  
+
+> Option Log-Probability (log p) Probability p
+> -2.12
+> -0.46
+> -1.71
+> -2.66
+> 0.63
+> 0.18
+> 0.07
+
+Figure 3: Overview of the SurgiQ construction pipeline. 
+
+includes four candidate options (A–D), one correct answer, and a concise explanation. SurgiQ con-tains four question formats: reasoning, case-based, best-option, and negative questions. We link each generated question to its source text segment to ensure traceability. We perform question generation, verification, and quality fil-tering within a unified Gemini 2.5 Flash pipeline using task-specific temperatures (0.1 for fact ex-traction and verification; 0.35 for question gener-ation). Pipeline accounting indicates that the ini-tial generation stage produced 17,068 candidate MCQs from 7,216 extracted textbook segments and 659 research papers. After answer verification, Gemini-based quality filtering, rule-based checks, deduplication, and manual cleanup, 4,013 candi-dates (23.5%) were removed, yielding the final 13,055-question release. Rejection categories in-cluded unsupported source grounding, ambiguous or multiple plausible answers, malformed options, trivial recall, purely lexical cues, duplicate or near-duplicate items, and answer-label inconsistencies. We shuffle answer choices to balance correct-answer positions (A: 26.9%, B: 23.8%, C: 24.7%, D: 24.6%). Appendix Figure A7 presents the eval-uation prompt used during inference-time bench-marking and model evaluation in SurgiQ. Using Gemini 2.5 Flash for both generation and verification introduces a potential circularity con-cern. We mitigate this risk through rule-based filter-ing, independent expert validation, and evaluation on exclusively non-Gemini open-weight models. We manually design all prompts and iteratively re-fine them through pilot generation experiments. 
+
+3.3 Quality Control 
+
+To assess dataset quality, 300 randomly sampled SurgiQ questions were independently reviewed by three physicians for answer correctness and question clarity. Annotators evaluated whether the designated correct answer was medically ac-curate and whether the question was clear and clinically interpretable. Using majority consen-sus labels, 92% of audited items contained correct Question Type # MCQs %          
+
+> Case-based 6,156 47.1% Reasoning 2,673 20.5% Negative 2,153 16.5% Best-option 2,085 16.0%
+> Total 13,055 100%
+> Table 3: Questions distribution by question type.
+
+answers and 90% were judged clear and unam-biguous. Inter-annotator agreement was substantial to near-perfect, with Fleiss’ κ = 0 .84 for answer correctness and κ = 0 .72 for clarity assessment. Most disagreements arose in questions involving institution-dependent perioperative practices or nu-anced operative decision-making scenarios. 
+
+3.4 Dataset Statistics 
+
+The final SurgiQ dataset contains 13,055 multiple-choice questions spanning six surgical domains and four question formats. As shown in Ta-ble 3, case-based questions form the largest por-tion of the dataset (47.1%), followed by reasoning (20.5%), negative (16.5%), and best-option ques-tions (16.0%). This distribution emphasizes clin-ically grounded decision-making and procedural reasoning. Table 2 summarizes the distribution across surgical domains, with General Surgery rep-resenting the largest portion of the dataset (53.2%). We include Neurosurgery because of its overlap with broader surgical procedural reasoning and clinical decision-making. Most questions origi-nate from surgical textbooks (87.6%), while the remainder come from research papers (10.0%) and clinical examination materials (2.3%). The domain distribution shown in Table 2 partially reflects the natural availability of accessible surgical literature across specialties rather than deliberate balancing during data collection. The average question length is 59.8 words (median: 61; std: 26.6), indicating moderate variation in question complexity. Ap-pendix A1 provides a more detailed breakdown across domains and question types. 
+
+4 Experiments 
+
+4.1 Setup 
+
+We evaluate SurgiQ in a zero-shot multiple-choice setting using a diverse set of open-weight large lan-guage models, including general-purpose, biomed-ical, and reasoning-oriented architectures. We evaluate models spanning a wide range of pa-            
+
+> Select the correct answer. Question: [QUESTION] A. [OPTION A] B. [OPTION B] C. [OPTION C] D. [OPTION D] Answer:
+> Figure 4: Zero-shot prompt template used for model evaluation. The placeholders [QUESTION] and [OP-TION] are replaced with the corresponding question and answer choices.
+
+rameter scales and model families, including Qwen2.5 (Qwen Team, 2024), LLaMA-based models (Touvron et al., 2023), Mistral-family models (Jiang et al., 2023), and DeepSeek-R1-Distill (DeepSeek-AI, 2025). Appendix Table A6 provides the full list of evaluated models and their corresponding repositories. We focus on open-weight models to enable reproducible local eval-uation and to avoid dependence on external API availability, latency, and versioning changes during benchmarking. This choice is also relevant to clini-cal and robotic settings where local inference may be preferable for privacy, reliability, and connectiv-ity reasons (Amparore et al., 2024; Fazzari et al., 2026). Following standard practice in LLM bench-mark evaluation (Hendrycks et al., 2020; Rein et al., 2023; Wang et al., 2024), we evaluate the models using zero-shot prompting, as shown in Figure 4, and use accuracy as the primary metric. In addition, we perform an exploratory few-shot analysis fol-lowing prior work on in-context learning (Brown et al., 2020) to examine how limited task demon-strations influence model performance and prompt sensitivity. 
+
+4.2 Implementation Details 
+
+We evaluate all models under a unified zero-shot multiple-choice setting. For each question, models receive a fixed prompt template and must select one of the candidate answers. For open-weight models, predictions are computed from next-token log-probabilities over the answer options. To re-duce tokenization artifacts, we evaluate both plain and space-prefixed variants of each option label, use the maximum log-probability across variants as the final score (Geh et al., 2024), and derive confidence estimates by applying a softmax over the candidate logits for calibration analysis. To Model Reasoning Case-based Best-option Negative Avg.                                                                                                                                                                                     
+
+> Random 25.00 25.00 25.00 25.00 25.00 Gemma-2-2B-IT (Gemma Team et al., 2024) 36.26 35.79 32.84 33.09 34.97 Gemma-2-9B-IT 44.41 43.60 41.81 46.10 43.87 MedGemma-4B-IT (Sellergren et al., 2025) 48.61 45.26 47.00 32.39 44.08 MedGemma-27B-IT 40.35 39.45 36.25 36.20 38.58 BioMistral-7B (Labrak et al., 2024) 50.53 47.53 47.05 41.87 47.14 Llama3-OpenBioLLM-8B (Dubey et al., 2024) 53.04 52.36 50.31 48.98 51.60 Llama3-Med42-8B (Dubey et al., 2024) 57.47 54.49 53.67 56.27 55.24 TxGemma-2B (Wang et al., 2025) 25.19 24.67 25.68 25.28 25.02 TxGemma-9B-Predict 26.84 25.13 24.53 28.86 25.99 TxGemma-9B-Chat 29.09 28.24 27.27 31.78 28.82 TxGemma-27B-Predict 32.81 32.63 30.92 33.41 32.51 TxGemma-27B-Chat 56.94 54.72 56.07 54.88 55.40 K2-Think-V2 (Liu et al., 2025) 60.21 58.20 55.11 46.28 56.15 Meditron-7B (Chen et al., 2023) 27.06 27.54 27.03 26.16 27.14 Meditron-70B 61.22 58.12 57.42 45.17 56.50 DeepSeek-R1-Distill-Qwen-7B (DeepSeek-AI, 2025) 34.50 33.90 33.70 34.15 34.02 DeepSeek-R1-Distill-Qwen-14B 57.81 55.27 51.90 59.25 55.92 DeepSeek-R1-Distill-Qwen-32B 61.56 59.90 55.98 64.36 60.37 Ministral-3-8B-Instruct (Liu et al., 2026) 60.17 55.75 54.58 43.12 54.40 Ministral-3-8B-Reasoning 60.62 57.96 56.02 59.48 58.45 Ministral-3-14B-Reasoning 65.69 63.22 59.91 64.96 63.48 MedMO-4B (Deria et al., 2026) 63.66 61.38 59.34 60.22 61.33 MedMO-4B-Next 63.69 61.41 59.31 60.24 61.35 MedMO-8B-Next 65.65 62.42 60.92 60.22 62.47 MedMO-8B 67.23 63.54 60.30 62.73 63.64 GPT-OSS-20B (OpenAI, 2025) 62.16 58.85 56.65 48.98 57.56 GPT-OSS-120B 67.91 64.75 62.70 62.08 64.63 Meerkat-8B (Kim et al., 2025) 57.92 56.05 54.10 55.76 56.09 Meerkat-70B 67.12 64.97 61.35 67.15 65.19 HuatuoGPT-o1-7B (Chen et al., 2024) 58.86 58.27 55.88 57.67 57.92 HuatuoGPT-o1-70B 68.21 65.71 60.87 65.75 65.45 Qwen2.5-32B-Instruct (Qwen Team, 2024) 67.15 64.23 61.88 67.01 64.92 Qwen2.5-32B 67.45 65.98 61.74 64.82 65.43 Qwen2.5-72B-Instruct 71.25 67.38 65.58 68.03 68.00 Qwen2.5-72B 70.83 67.90 64.76 68.31 68.08
+
+Table 4: Zero-shot LLM performance (%) on SurgiQ across question types after duplicate filtering. Model families are grouped together and ordered in ascending order according to the highest-performing model within each family. Random denotes uniform guessing; Avg. is micro-accuracy over all SurgiQ items. 
+
+mitigate option-position bias, answer choices are randomly shuffled once during dataset construction and the resulting order is kept fixed across all eval-uations. Because predictions are obtained directly from log-probabilities rather than autoregressive sampling, the evaluation procedure is fully deter-ministic across runs. 
+
+4.3 Results Results across all models. Table 4 reports accu-racy across all evaluated models and question types. Qwen2.5-72B (Qwen Team, 2024) achieves the highest overall accuracy, followed by HuatuoGPT-o1-70B (Chen et al., 2024) and Meerkat-70B (Kim et al., 2025). Appendix A2 provides detailed domain-level accuracy results across all surgical specialties. Across model families, larger mod-els generally outperform smaller ones. For exam-ple, DeepSeek-R1-Distill-Qwen-32B (DeepSeek-AI, 2025) substantially outperforms its 7B coun-terpart, with similar trends appearing for Qwen2.5 and Meerkat. This pattern suggests that capacity and base-model strength play important roles in surgical reasoning. At the same time, medical spe-cialization alone remains insufficient. Although medically-oriented models such as HuatuoGPT-o1 (Chen et al., 2024) and medical multimodal models such as MedMO (Deria et al., 2026) re-main competitive, general-purpose models such as Qwen2.5 (Qwen Team, 2024) achieve the strongest overall performance. This finding suggests that broad reasoning ability and knowledge coverage may be as important as biomedical adaptation for surgical MCQ performance. Smaller models (e.g., 2B–9B parameters) often perform near random chance, highlighting both the difficulty of SurgiQ and the limitations of smaller-scale architectures for reliable clinical reasoning. Overall, the substan-tial performance gap across models indicates con-siderable room for improvement. Additional eval-0 20 40 60 80 100 
+
+> Confidence (%)
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> Accuracy (%)
+> Qwen2.5-72B
+> HuatuoGPT-o1-70B
+> Meerkat-70B
+
+Figure 5: Reliability diagram showing model calibra-tion on SurgiQ. The diagonal line represents perfect calibration. 
+
+uation on a manually audited 300-question subset shows that surgeons achieved 89.1% accuracy, sub-stantially outperforming the best evaluated open-weight LLM on the same subset (51.3%), indicat-ing that SurgiQ remains clinically nontrivial and far from saturated; full results are reported in Ap-pendix Table A5. 
+
+Results across question types. Performance varies substantially across question types, reveal-ing model-dependent reasoning patterns rather than a uniform difficulty ordering. Best-option ques-tions consistently rank among the most challeng-ing because multiple answer choices are often par-tially correct while only one remains optimal within the specific clinical context. Negative questions additionally exhibit high variance across models, suggesting substantial differences in how archi-tectures handle logical negation. Moreover, rea-soning questions are not uniformly harder than case-based questions. Stronger models such as Qwen2.5-72B (Qwen Team, 2024) perform better on reasoning questions than on case-based ques-tions, whereas smaller models remain near chance across all formats. This pattern suggests that the ability to differentiate question types emerges pri-marily at larger model scales. Overall, these find-ings demonstrate that question difficulty depends strongly on both reasoning format and model ca-pability, highlighting the value of SurgiQ for fine-grained evaluation of clinical reasoning behavior. 
+
+4.4 Analysis Model calibration. We analyze calibration for the three strongest model families by compar-ing prediction confidence with empirical accu-racy (Figure 5). Table 5 reports top-label Ex-pected Calibration Error (ECE), Brier score, and             
+
+> Model ECE Brier Gap
+> Qwen2.5-72B 0.036 0.181 −0.033 HuatuoGPT-o1-70B 0.058 0.204 +0.058 Meerkat-70B 0.120 0.214 +0.120
+
+Table 5: Calibration metrics for representative top-performing models. ECE = Expected Calibration Error; Gap = mean confidence minus mean accuracy. 
+
+confidence–accuracy gap computed from the four-option probabilities. Qwen2.5-72B (Qwen Team, 2024) shows the smallest mismatch and remains mildly underconfident (gap = −0.033), whereas Meerkat-70B (Kim et al., 2025) is substantially overconfident (ECE = 0.120). The observed accuracy–calibration relationship likely arises be-cause SurgiQ errors are highly discriminative: stronger models better separate the correct option from plausible distractors, while less aligned mod-els may assign high confidence to familiar but in-correct clinical choices. The remaining calibration gaps further suggest that model confidence is not a reliable proxy for surgical certainty. 
+
+Few-shot prompting. We conduct an ex-ploratory in-context learning study using four rep-resentative models under 1-, 2-, and 3-shot settings (Figure 6). Qwen2.5-72B (Qwen Team, 2024) im-proves from 68.1% (0-shot) to 72.1% with one example, although additional examples do not pro-vide consistent gains. This improvement likely reflects format alignment rather than new surgical knowledge: a single demonstration clarifies the A– D selection protocol and enables Qwen2.5-72B’s broad pretrained knowledge to transfer more ef-fectively to the task. Additional examples may instead introduce lexical priors or prompt noise. In contrast, K2-Think-V2 (Liu et al., 2025) degrades under few-shot prompting, while Llama3-Med42-8B (Dubey et al., 2024) and BioMistral-7B (Labrak et al., 2024) remain close to their zero-shot per-formance. Overall, these results suggest that the few-shot setting primarily reflects prompt sensitiv-ity rather than a fully optimized in-context learning protocol. 
+
+Domain difficulty. Table 6 reports the mean accuracy per domain across all 35 evaluated mod-els. Orthopedic surgery is the lowest-scoring do-main (49.23% ± 11.24%) and performs signifi-cantly below every other domain under a Wilcoxon signed-rank test ( p < 0.001 ), while laparoscopic surgery scores below neurosurgery ( p = 0 .008 ). We interpret these tests descriptively because the 0 shot 1 shot 2 shot 3 shot 
+
+> Few-shot Setting
+> 50
+> 55
+> 60
+> 65
+> 70
+> Accuracy (%)
+> K2-Think-V2
+> Qwen2.5-72B
+> Llama3-Med42-8B
+> BioMistral-7B
+
+Figure 6: Zero-shot and few-shot performance on SurgiQ.               
+
+> Domain Mean (%) Std.
+> Neurosurgery 53.08 13.20 Robotic Surgery 52.67 12.97 General Surgery 52.57 13.77 Critical Care / Emergency 52.45 12.63 Laparoscopic Surgery 52.03 12.49 Orthopedic Surgery 49.23 11.24
+
+Table 6: Mean accuracy per domain across 35 models. 
+
+domain and question-type distributions are not bal-anced. Orthopedics contains a larger proportion of reasoning and best-option questions and relies on narrower source material (Appendix Table A1), suggesting that the observed gap may reflect both specialty-specific content and item-format effects. 
+
+Failure patterns. As a qualitative case study, we inspected 100 incorrect predictions from HuatuoGPT-o1-7B, a mid-performing medical model (Chen et al., 2024) (Table 7). Most errors involved confusion among clinically plausible best-option distractors (39/100) and negation/exception failures (34/100), while fewer cases reflected super-ficial cue anchoring or multi-step reasoning failure. These results suggest that SurgiQ errors often re-flect fine-grained clinical discrimination and logi-cal reasoning challenges rather than simple factual recall. 
+
+4.5 Discussion 
+
+Our experiments show that current LLMs still strug-gle with surgical reasoning, especially when the questions require procedural prioritization, nega-tion handling, or choosing among plausible oper-ative options. A central finding is that biomedical specialization alone is insufficient: broad general-purpose models such as Qwen2.5-72B (Qwen Team, 2024) outperform most biomedical models. Rather, it suggests that current medical adaptation      
+
+> Failure Pattern # / 100
+> Best-option distractor confusion 39 Negation/exception failure 34 Superficial cue anchoring 21 Multi-step reasoning failure 6
+
+Table 7: Coarse failure patterns identified from 100 in-correct HuatuoGPT-o1-7B predictions. Labels are used as a qualitative error analysis rather than full-dataset statistics. 
+
+may be too narrow for surgery. Models trained or adapted mainly on biomedical QA, abstracts, or generic clinical text may learn medical terminol-ogy without enough coverage of operative anatomy, perioperative management, procedural sequencing, instrumentation, and subspecialty trade-offs. This pattern mirrors medical education: physi-cians first acquire broad biomedical and clinical foundations, then specialize through structured exposure to organ systems, procedures, compli-cations, and specialty-specific decision-making. Surgical LLMs may require a similar curriculum: broad general reasoning and medical coverage be-fore targeted surgical instruction. Narrow special-ization that sacrifices breadth can underperform a strong general model on tasks requiring cross-topic surgical judgment. Calibration and failure analy-sis further show that accuracy alone is insufficient, since strong models still make confident mistakes on clinically meaningful distinctions. SurgiQ there-fore supports development of surgical LLMs with both broader coverage and better reliability, while remaining a controlled text benchmark rather than a claim of deployment readiness. 
+
+5 Conclusion and Future Work 
+
+We introduced SurgiQ, a large-scale text-only benchmark for evaluating surgical reasoning across six domains and four MCQ formats. Our ex-periments across 35 open-weight LLMs have shown substantial room for improvement, with strong general-purpose models often outperform-ing medical-domain systems. Calibration, few-shot, domain, and failure analysis revealed persis-tent reliability limitations beyond accuracy. SurgiQ can support future research on trustwor-thy medical reasoning, surgical education, and specialty-aware evaluation. Future work should add human baselines, stronger item-level valida-tion, answer-order robustness checks, and multi-modal or open-ended surgical reasoning tasks. Limitations 
+
+SurgiQ has several limitations. First, the dataset is partially generated using an LLM-based pipeline, which may introduce inaccuracies or stylistic bi-ases despite filtering and physician audit. Second, SurgiQ is a text-only MCQ benchmark and does not capture multimodal reasoning over imaging, sur-gical video, instruments, or intraoperative percep-tion. Third, domain and question-type distributions are imbalanced, so domain-level significance tests should be interpreted descriptively. Fourth, the evaluation uses a single stored answer-option order and log-likelihood scoring; future work should test multiple option permutations and compare with constrained generation. Finally, although sources are diverse, overlap between public surgical ma-terial and model pretraining data cannot be fully excluded. 
+
+Ethics and Broader Impact 
+
+SurgiQ is intended as a research benchmark for evaluating text-based surgical question answering in large language models. It is not a clinical decision-support system and should not be used to guide patient care, operative planning, triage, or au-tonomous medical decision-making. Performance on multiple-choice questions does not establish that a model is safe, reliable, or clinically competent in real surgical settings. Surgical management de-pends on patient-specific factors, local protocols, available resources, clinician expertise, and evolv-ing evidence, none of which are fully captured by a static text-only benchmark. 
+
+Clinical risk and reliability. A central motiva-tion for SurgiQ is to study reliability limitations in high-stakes medical reasoning. Our results show that even strong models make errors on clinically plausible distractors and may assign high confi-dence to incorrect answers. Such behavior could be harmful if model outputs were interpreted as sur-gical advice. We therefore recommend that SurgiQ scores be reported as controlled benchmark mea-surements rather than as evidence of deployment readiness. Any use of models evaluated on SurgiQ in educational or clinical settings should involve qualified human oversight. 
+
+Data provenance, privacy, and copyright. 
+
+SurgiQ is constructed from surgical textbooks, open-access research papers, and examination ma-terial, rather than private electronic health records or unpublished patient data. To the best of our knowledge, the released benchmark does not con-tain protected health information. Because some source materials may be copyrighted or otherwise restricted, we release generated questions and asso-ciated metadata, but do not redistribute restricted source passages. Users of SurgiQ should respect the licenses and access conditions of the original source materials and should not treat the bench-mark as a substitute for licensed clinical or educa-tional resources. 
+
+Synthetic generation and validation. SurgiQ is partially generated using an LLM-based pipeline, which can introduce factual errors, ambiguity, stylistic artifacts, or unsupported answer choices. We mitigate these risks through source grounding, verification, rule-based filtering, and physician au-dit, but these steps do not guarantee that every item is clinically correct or unambiguous. The benchmark should therefore be interpreted as an evaluation resource with known uncertainty, and future releases should document corrections, re-moved items, and version changes. 
+
+Coverage, bias, and clinical currency. The dataset distribution reflects the availability of acces-sible source material and is not balanced across all surgical specialties, regions, practice environments, or patient populations. Some domains and question types are overrepresented, while others are only sparsely covered. Moreover, surgical guidelines and standards of care change over time and may vary across institutions and countries. As a result, SurgiQ may encode source-specific assumptions or outdated recommendations. We encourage users to report results stratified by domain and question type and to avoid drawing broad conclusions about surgical competence from a single aggregate score. 
+
+Benchmark integrity and misuse. Public re-lease of benchmark items can enable contamina-tion, memorization, or direct optimization on the test set. We discourage using SurgiQ test items for training or model selection without disclosure. Model developers should report whether SurgiQ, its sources, or closely related items were used dur-ing training, instruction tuning, retrieval augmen-tation, or evaluation development. SurgiQ should not be used for marketing claims that imply clini-cal safety or surgical expertise without additional expert validation and real-world evaluation. Environmental considerations. Evaluating many large open-weight models can require substantial compute. We use a deterministic log-likelihood protocol to improve reproducibility and reduce repeated sampling, but future work should report hardware details and, when feasible, energy or carbon estimates for large-scale benchmarking. 
+
+References 
+
+Daniele Amparore, Michele Sica, Paolo Verri, Federico Piramide, Enrico Checcucci, Sabrina De Cillis, Al-berto Piana, Davide Campobasso, Mariano Burgio, Edoardo Cisero, Giovanni Busacca, Michele Di Dio, Pietro Piazzolla, Cristian Fiori, and Francesco Por-piglia. 2024. Computer vision and machine-learning techniques for automatic 3d virtual images overlap-ping during augmented reality guided robotic partial nephrectomy. Technology in Cancer Research & Treatment , 23:15330338241229368. Lorne H. Blackbourne. 2022. Surgical Recall, 9e . Lip-pincott Williams & Wilkins, a Wolters Kluwer busi-ness. Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel Ziegler, Jeffrey Wu, Clemens Winter, and 12 others. 2020. Language models are few-shot learners. In Advances in Neural Information Processing Systems , volume 33, pages 1877–1901. Curran Associates, Inc. Graziano. Ceccarelli, Graziano. Ceccarelli, and Andrea. Coratti. 2024. Robotic Surgery of Colon and Rectum ,1st ed. 2024. edition. Updates in Surgery. Springer International Publishing, Cham. Junying Chen, Zhenyang Cai, Ke Ji, Xidong Wang, Wanlong Liu, Rongsheng Wang, Jianye Hou, and Benyou Wang. 2024. Huatuogpt-o1: Towards med-ical complex reasoning with llms. arXiv preprint arXiv:2412.18925 .Zeming Chen, Alejandro Hernández Cano, Angelika Romanou, Antoine Bonnet, Kyle Matoba, Francesco Salvi, Matteo Pagliardini, Simin Fan, Andreas Köpf, Amirkeivan Mohtashami, Alexandre Sallinen, Alireza Sakhaeirad, Vinitra Swamy, Igor Krawczuk, Deniz Bayazit, Axel Marmet, Syrielle Montariol, Mary-Anne Hartley, Martin Jaggi, and Antoine Bosselut. 2023. Meditron-70b: Scaling medical pre-training for large language models. arXiv preprint arXiv:2311.16079 .Zeming Chen, Alejandro Hernández Cano, Angelika Romanou, Antoine Bonnet, Kyle Matoba, Francesco Salvi, Matteo Pagliardini, Simin Fan, Andreas Köpf, Amirkeivan Mohtashami, Alexandre Sallinen, Alireza Sakhaeirad, Vinitra Swamy, Igor Krawczuk, Deniz Bayazit, Axel Marmet, Syrielle Montariol, Mary-Anne Hartley, Martin Jaggi, and Antoine Bosselut. 2025. Gemini 2.5: Pushing the fron-tier with advanced reasoning, multimodality, long context, and next generation agentic capabilities. 
+
+Preprint , arXiv:2507.06261. Tae-Min Choi, Tae Kyeong Jeong, Garam Kim, Jaemin Lee, Yeongyoon Koh, In Cheul Choi, Jae-Ho Chung, Jong Woong Park, and Juyoun Park. 2025. Surgmllm-bench: A multimodal large language model bench-mark dataset for surgical scene understanding. arXiv preprint arXiv:2511.21339 .Clément Christophe, Praveen K. Kanithi, Tathagata Raha, Shadab Khan, and Marco A. F. Pimentel. 2024. Med42-v2: A suite of clinical llms. arXiv preprint arXiv:2408.06142 .S. Scott Davis, Jr., Gregory Dakin, Andrew Bates, An-drew Bates, S. Scott Davis, Jr, and Gregory Dakin. 2018. The SAGES Manual of Hernia Surgery , second edition edition. Springer International Publishing AG, Cham. Christian. de Virgilio and Areg. Grigorian. 2020. 
+
+Surgery : a case based clinical review , second edition edition. Springer International Publishing, Cham. DeepSeek-AI. 2025. Deepseek-r1: Incentivizing rea-soning capability in llms via reinforcement learning. 
+
+Preprint , arXiv:2501.12948. Ankan Deria, Komal Kumar, Adinath Madhavrao Dukre, Eran Segal, Salman Khan, and Imran Raz-zak. 2026. Medmo: Grounding and understanding multimodal large language models for medical im-ages. arXiv preprint arXiv:2602.06965 .Mathieu. D’Hondt and Iswanto. Sucandy. 2024. Text-book of Robotic Liver Surgery , 1st ed. 2024. edition. Springer Nature Switzerland, Cham. Carlos Eduardo Domene, Keith Chae Kim, Ramon Vilal-longa Puy, and Paula Volpe. 2019. Bariatric Robotic Surgery : A Comprehensive Guide , 1st ed. 2019. edi-tion. Springer International Publishing, Cham. Abhimanyu Dubey, Aaron Grattafiori, Abhinav Jauhri, Abhinav Pandey, and Abhishek Kadian. 2024. The llama 3 herd of models. Preprint , arXiv:2407.21783. Edoardo Fazzari, Donato Romano, Fabrizio Falchi, and Cesare Stefanini. 2026. Real-time behavior recogni-tion using a legged robot for animal–robot interaction. 
+
+Journal of Field Robotics , 43(3):2090–2101. Edoardo Fazzari and Cesare Stefanini. 2026. Deep reinforcement learning for surgical robotics with state and image information: A survey. Research Square .Renato Geh, Honghua Zhang, Kareem Ahmed, Benjie Wang, and Guy Van Den Broeck. 2024. Where is the signal in tokenization space? In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , pages 3966–3979, Mi-ami, Florida, USA. Association for Computational Linguistics. Gemma Team, Morgane Riviere, Shreya Pathak, Pier Giuseppe Sessa, Cassidy Hardin, and Surya Bhupatiraju. 2024. Gemma 2: Improving open lan-guage models at a practical size. arXiv preprint arXiv:2408.00118 .Jayleen. Grams, Kyle A. Perry, and Ali. Tavakkoli. 2019. 
+
+The SAGES Manual of Foregut Surgery , 1st ed. 2019. edition. Springer International Publishing, Cham. Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. 2020. Measuring massive multitask language under-standing. arXiv preprint arXiv:2009.03300 .Mark Nolan Hill and Gary Schwartz, editors. 2020. 
+
+USMLE Step 2 CK Lecture Notes 2021: Surgery .Kaplan Medical, New York. Albert Q. Jiang, Alexandre Sablayrolles, Arthur Men-sch, Chris Bamford, Devendra Singh Chaplot, Diego de las Casas, Florian Bressand, Gianna Lengyel, Guil-laume Lample, Lucile Saulnier, Lélio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril, Thomas Wang, Timothée Lacroix, and William El Sayed. 2023. Mistral 7b. arXiv preprint arXiv:2310.06825 .Di Jin, Eileen Pan, Nassim Oufattole, Wei-Hung Weng, Hanyi Fang, and Peter Szolovits. 2021. What disease does this patient have? a large-scale open domain question answering dataset from medical exams. Ap-plied Sciences , 11(14):6421. Qiao Jin, Bhuwan Dhingra, Zhengping Liu, William Co-hen, and Xinghua Lu. 2019. Pubmedqa: A dataset for biomedical research question answering. In Proceed-ings of the 2019 conference on empirical methods in natural language processing and the 9th interna-tional joint conference on natural language process-ing (EMNLP-IJCNLP) , pages 2567–2577. Hyunjae Kim, Hyeon Hwang, Jiwoo Lee, Sihyeon Park, Dain Kim, Taewhoo Lee, Chanwoong Yoon, Jiwoong Sohn, Jungwoo Park, Olga Reykhart, Thomas Fether-ston, Donghee Choi, Soo Heon Kwak, Qingyu Chen, and Jaewoo Kang. 2025. Small language models learn enhanced reasoning skills from medical text-books. npj Digital Medicine , 8:240. Min P. Kim. 2021. Atlas of Minimally Invasive and Robotic Esophagectomy , 1st ed. 2021. edition. Springer International Publishing, Cham. Yunsoo Kim, Jinge Wu, Yusuf Abdulle, and Honghan Wu. 2024. MedExQA: Medical question answer-ing benchmark with multiple explanations. In Pro-ceedings of the 23rd Workshop on Biomedical Natu-ral Language Processing , pages 167–181, Bangkok, Thailand. Association for Computational Linguistics. Omar Yusef. Kudsi, Ulrich A. Dietz, René. Fortelny, Guido. Beldi, and Armin. Wiegering. 2025. Robotic Hernia Surgery , 1st ed. 2025. edition. Medicine Se-ries. Springer Berlin Heidelberg, Berlin, Heidelberg. Yanis Labrak, Adrien Bazoge, Emmanuel Morin, Pierre-Antoine Gouraud, Mickaël Rouvier, and Richard Du-four. 2024. Biomistral: A collection of open-source pretrained large language models for medical do-mains. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics .Alexander H. Liu, Kartik Khandelwal, Sandeep Sub-ramanian, Victor Jouault, Abhinav Rastogi, Adrien Sadé, Alan Jeffares, Albert Jiang, Alexandre Cahill, Alexandre Gavaudan, Alexandre Sablayrolles, Amélie Héliou, Amos You, Andy Ehrenberg, Andy Lo, Anton Eliseev, Antonia Calvi, Avinash Soori-yarachchi, Baptiste Bout, and 81 others. 2026. Minis-tral 3. arXiv preprint arXiv:2601.08584 .Zhengzhong Liu, Liping Tang, Linghao Jin, Haonan Li, Nikhil Ranjan, Desai Fan, Shaurya Rohatgi, Richard Fan, Omkar Pangarkar, Huijuan Wang, Zhoujun Cheng, Suqi Sun, Seungwook Han, Bowen Tan, Gur-preet Gosal, Xudong Han, Varad Pimpalkhute, Shibo Hao, Ming Shan Hee, and 19 others. 2025. K2-v2: A 360-open, reasoning-enhanced llm. arXiv preprint arXiv:2512.06201 .João Pádua. Manzano and Lydia Masako. Ferreira. 2023. 
+
+Robotic Surgery Devices in Surgical Specialties , 1st ed. 2023. edition. Springer International Publishing, Cham. Mark D. Miller, Sam W. Wiesel, and Todd J. Albert. 2021. Operative Techniques in Sports Medicine Surgery , 3 edition. Wolters Kluwer. Forrest O. Moore, Peter M. Rhee, Samuel A. Tisherman, and Gerard J. Fulda, editors. 2012. Surgical Critical Care and Emergency Surgery: Clinical Questions and Answers . Wiley-Blackwell. OpenAI. 2025. gpt-oss-120b & gpt-oss-20b model card. 
+
+arXiv preprint arXiv:2508.10925 .Sergelen Orgoi, Bat-Orgil Biziya, and Bayarbaatar Lamid-Ochir. 2016. Schwartz’s principles of surgery. 
+
+Central Asian journal of medical science , 2(1):105– 106. Ankit Pal, Logesh Kumar Umapathi, and Malaikan-nan Sankarasubbu. 2022. Medmcqa: A large-scale multi-subject multi-choice dataset for medical do-main question answering. In Conference on health, inference, and learning , pages 248–260. PMLR. Raj Persad, Sanchia S. Goonewardene, and David Al-bala. 2022. Robotic Surgery for Renal Cancer , 1st ed. 2022. edition. Management of Urology. Springer International Publishing, Cham. C. Pestana. 2020. Dr. Pestana’s Surgery Notes: Top 180 Vignettes of Surgical Diseases . Kaplan Test Prep. Kaplan Test Prep. Qwen Team. 2024. Qwen2.5 technical report. Preprint ,arXiv:2412.15115. David Rein, Betty Li Hou, Asa Cooper Stickland, Jack-son Petty, Richard Yuanzhe Pang, Julien Dirani, Ju-lian Michael, and Samuel R Bowman. 2023. Gpqa: A graduate-level google-proof q&a benchmark. arXiv preprint arXiv:2311.12022 .Saama AI Labs. 2024. Llama3-openbiollm-8b. Hug-gingFace model card. Sarah. Samreen, Omar Yusef. Kudsi, Dmitry. Oleynikov, and Ankit D. Patel. 2025. The SAGES Manual of Robotic Surgery. , 2nd ed. edition. Medicine Series. Springer, Cham. Francisco. Schlottmann. 2026. Endoscopic, Laparo-scopic and Robotic Techniques for Foregut Disor-ders , 1st ed. 2026. edition. Medicine Series. Springer Nature Switzerland, Cham. Philip F Schofield. 1997. Essential surgery: Problems diagnosis and management. Annals of the Royal College of Surgeons of England , 79(1):78–78. Andrew Sellergren, Sahar Kazemzadeh, Tiam Jaroensri, Atilla Kiraly, Madeleine Traverse, Timo Kohlberger, Shawn Xu, Fayaz Jamil, Cían Hughes, Charles Lau, Justin Chen, Fereshteh Mahvar, Liron Yatziv, Tiffany Chen, Bram Sterling, Stefanie Anna Baby, Su-sanna Maria Baby, Jeremy Lai, Samuel Schmidgall, and 62 others. 2025. Medgemma technical report. 
+
+arXiv preprint arXiv:2507.05201 .Qiang. Shu. 2023. Pediatric Robotic Surgery , 1st ed. 2023. edition. Springer Nature Singapore, Singapore. Karan Singhal, Shekoofeh Azizi, Tao Tu, S. Sara Mahdavi, Jason Wei, Hyung Won Chung, Nathan Scales, Ajay Tanwani, Heather Cole-Lewis, Stephen Pfohl, Perry Payne, Martin Seneviratne, Paul Gam-ble, Chris Kelly, Abubakr Babiker, Nathanael Schärli, Aakanksha Chowdhery, Philip Mansfield, Dina Demner-Fushman, and 13 others. 2023. Large lan-guage models encode clinical knowledge. Nature ,620(7972):172–180. Mirac Suzgun, Nathan Scales, Nathanael Schärli, Se-bastian Gehrmann, Yi Tay, Hyung Won Chung, Aakanksha Chowdhery, Quoc Le, Ed Chi, Denny Zhou, and Jason Wei. 2023. Challenging big-bench tasks and whether chain-of-thought can solve them. In Findings of the Association for Computational Linguistics: ACL 2023 , pages 13003–13051. Nova Szoka, David Renton, Santiago Horgan, Santi-ago Horgan, Nova Szoka, and David Renton. 2023. 
+
+The SAGES Manual of Fluorescence-Guided Surgery ,1 edition. Springer International Publishing AG, Cham. The University of Cincinnati Surgical Residents and Amy Makley. 2017. The Mont Reid Surgical Hand-book , 7 edition. Mobile Medicine. Elsevier. Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, Aurelien Rodriguez, Armand Joulin, Edouard Grave, and Guillaume Lample. 2023. Llama: Open and efficient foundation language models. arXiv preprint arXiv:2302.13971 .Eric Wang, Samuel Schmidgall, Paul F. Jaeger, Fan Zhang, Rory Pilgrim, Yossi Matias, Joelle Barral, David Fleet, and Shekoofeh Azizi. 2025. Txgemma: Efficient and agentic llms for therapeutics. arXiv preprint arXiv:2504.06196 .Gongxian Wang, Yu Zeng, and Xia Sheng. 2021. 
+
+Robotic Surgery and Nursing , 1st ed. 2021. edition. Springer Nature Singapore, Singapore. Yubo Wang, Xueguang Ma, Ge Zhang, Yuansheng Ni, Abhranil Chandra, Shiguang Guo, Weiming Ren, Aaran Arulraj, Xuan He, Ziyan Jiang, Tianle Li, Max Ku, Kai Wang, Alex Zhuang, Rongqi Fan, Xiang Yue, and Wenhu Chen. 2024. Mmlu-pro: A more robust and challenging multi-task language understanding benchmark. Advances in Neural Information Pro-cessing Systems , 37:95266–95290. Peter Wiklund, Alexandre Mottrie, Mohan S. Gun-deti, and Vipul R. Patel. 2022 - 2022. Robotic uro-logic surgery , third edition. edition. Springer, Cham, Switzerland. Norman S Williams, Christopher JK Bullstrode, and P Ronan O’Connell. 2010. Bailey & love’s short practice of surgery, 25th edn. Annals of the Royal College of Surgeons of England , 92(2):178–178. H. Richard Winn, editor. 2011. Youmans Neurological Surgery , 6 edition. Saunders. Zhitao Zeng, Zhu Zhuo, Xiaojun Jia, Erli Zhang, Junde Wu, Jiaan Zhang, Yuxuan Wang, Chang Han Low, Jian Jiang, Zilong Zheng, Xiaochun Cao, Yutong Ban, Qi Dou, Yang Liu, and Yueming Jin. 2025. Surgvlm: A large vision-language model and systematic eval-uation benchmark for surgical intelligence. arXiv preprint arXiv:2506.02555 .Stênio de Caássio Zequi and Hongliang Ren. 2025. 
+
+Handbook of Robotic Surgery , first edition. edition. Academic Press, Cambridge, MA. 
+
+Appendix A Data Statistics 
+
+Table A1 presents detailed statistics of the SurgiQ dataset, including the distribution of questions across surgical domains and question categories. 
+
+B Prompt Design 
+
+This appendix presents the prompt templates used throughout the SurgiQ construction and evaluation pipeline. We use dedicated prompts for fact ex-traction, question generation, verification, filtering, and inference-time evaluation. The fact-extraction Domain Reason. Case Best Neg. Total                                    
+
+> General Surgery 984 4,222 639 1,103 6,948 Neurosurgery 761 281 741 421 2,204 Robotic Surgery 431 611 304 297 1,643 Orthopedic Surgery 484 107 386 212 1,189 Critical Care / Emergency 0513 077 590 Laparoscopic Surgery 13 422 15 43 493
+> Total 2,673 6,156 2,085 2,153 13,055
+
+Table A1: Detailed distribution of SurgiQ questions across surgical domains and question types. 
+
+prompts operate on text extracted from multi-ple source formats, including textbooks processed from EPUB and PDF files as well as research pa-per text. The question-generation prompts define the reasoning structure, distractor constraints, and formatting requirements used to construct SurgiQ multiple-choice questions. Additional prompts sup-port answer verification, quality filtering, and final model evaluation during benchmarking. Figures A1 and A2 show the fact-extraction prompts used for textbook and research-paper sources. Figures A3 and A4 present the complete question-generation prompt template used across all extracted source formats. Figure A5 presents the verification prompt used for answer validation and correction, while Figure A6 shows the quality-filtering prompt used to remove unsupported or low-quality questions. Finally, Figure A7 illus-trates the inference-time evaluation prompt used during model benchmarking. 
+
+C Detailed Results 
+
+Table A2 reports domain-level accuracy for all eval-uated models across the six SurgiQ surgical do-mains. The table complements the main results by showing how performance varies by specialty, with Qwen2.5 models achieving the strongest macro-average performance and orthopedics generally re-maining among the more challenging domains. 
+
+D Additional Evaluation Analyses 
+
+D.1 Answer-Order Robustness 
+
+To assess sensitivity to answer-option position, we evaluate a shuffled version of the full SurgiQ bench-mark. We preserve the same questions and ran-domly permute only the answer choices, updating the correct-answer labels accordingly. We evalu-ate all 35 models from Table 4, spanning general-purpose, reasoning-oriented, and medically special-ized LLMs. Table A3 reports performance before and after answer-option shuffling. Overall, most models exhibit relatively small performance changes after shuffling, suggesting limited dependence on answer ordering. Several models, including Qwen2.5-72B, Meerkat-70B, DeepSeek-R1-Distill-Qwen-32B, Qwen2.5-32B-Instruct, and TxGemma-27B-Chat, remain partic-ularly stable, with changes within approximately 
+
+±0.5 percentage points. In contrast, Qwen2.5-32B and MedMO-8B show the largest degradations, while several smaller or medically specialized mod-els exhibit moderate sensitivity. Interestingly, some models improve slightly after shuffling, indicating that positional biases are not consistently direc-tional across architectures. Overall, the results sug-gest that most evaluated models are reasonably ro-bust to answer-order perturbations, although resid-ual ordering effects remain observable for a subset of models. 
+
+D.2 Near-duplicate Analysis 
+
+We perform a near-duplicate analysis against widely used medical QA benchmarks, including MedQA, MedMCQA, PubMedQA, and MMLU medical subsets, as well as surgical exam-style sources. Using normalized 5-gram lexical over-lap filtering, we compare all 13,055 SurgiQ ques-tions against 206,683 external benchmark ques-tions. This process initially flags 25 candidate pairs (0.19% of SurgiQ) for manual inspection. Most flagged cases correspond to generic exam stems or template-level overlap (e.g., “All of the follow-ing are TRUE EXCEPT”), while a smaller subset consists of exact or near-exact duplicated clinical questions originating from surgical exam-style re-sources. Following manual review, we remove 12 duplicated questions from the final released dataset, resulting in a final dataset size of 13,055 questions. 
+
+D.3 Shortcut Baselines 
+
+We evaluate several non-LLM shortcut baselines designed to test whether SurgiQ can be solved us-ing superficial answer cues rather than clinical rea-soning. Specifically, we test heuristics based on answer length, lexical overlap between the ques-tion and candidate answers, and a simple specificity proxy based on unique-token counts. Table A4 re-ports the resulting accuracies. Fact Extraction Prompt 
+
+You are an expert medical educator building a difficult benchmark 
+
+for board-level medical reasoning. 
+
+Your task is to read the page text and do TWO things: 
+
+STEP 1: Extract up to 7 of the MOST IMPORTANT medical facts from 
+
+the page. 
+
+A fact should be: 
+
+- clinically meaningful 
+
+- high-yield 
+
+- specific enough to support a difficult MCQ 
+
+- not vague or generic 
+
+STEP 2: From those facts, select up to 4 HARDEST facts. 
+
+A hard fact is one that: 
+
+- requires integration, not pure recall 
+
+- is commonly confused with similar 
+
+conditions/mechanisms/management steps 
+
+- supports difficult distractors 
+
+- can be used in a reasoning-heavy question 
+
+Scoring: 
+
+- importance_score: 1-10 
+
+- difficulty_score: 1-10 
+
+Rules: 
+
+- Stay strictly faithful to the provided text. 
+
+- Do not invent information does not present in the text. 
+
+- Prefer clinically actionable facts over textbook trivia. 
+
+- hardest_facts must be a subset of top_facts. Figure A1: Prompt used for extracting key medical facts from text segments derived from PDF and EPUB sources in the SurgiQ pipeline. Fact Extraction Prompt 
+
+You are an expert medical educator building a difficult benchmark for 
+
+board-level medical reasoning. 
+
+Your task is to read the FULL PAPER text and do TWO things: 
+
+STEP 1: Extract up to 12 of the MOST IMPORTANT medical/scientific 
+
+facts from the paper. 
+
+A fact should be: 
+
+- clinically meaningful or scientifically  high-yield 
+
+- specific enough to support a difficult MCQ 
+
+- not vague or generic 
+
+- faithful to the source text 
+
+STEP 2: From those facts, select up to 8 HARDEST facts. 
+
+A hard fact is one that: 
+
+- requires integration, not pure recall 
+
+- is easy to confuse with alternatives 
+
+- supports reasoning-heavy questions 
+
+- supports plausible distractors 
+
+- m ay involve design interpretation, mechanism, outcomes, 
+
+complications, limitations, or implications 
+
+Scoring: 
+
+- importance_score: 1-10 
+
+- difficulty_score: 1-10 
+
+Rules: 
+
+- Stay strictly faithful to the provided text. 
+
+- Do not invent information does not present in the text. 
+
+- Prefer clinically actionable or interpretation-heavy facts over trivia. 
+
+- hardest_facts must be a subset of top_facts. Figure A2: Prompt used for extracting key medical facts from text segments originally derived from paper sources in the SurgiQ pipeline. Generation Prompt 
+
+You are an expert medical examiner constructing a VERY DIFFICULT benchmark for evaluating 
+
+advanced medical and surgical reasoning from a scientific paper. 
+
+Generate exactly {questions_per_paper} multiple-choice questions based STRICTLY on: 
+
+1. the full paper text 
+
+2. the extracted hard facts 
+
+The required question types are exactly: 
+
+{assigned_types} 
+
+Allowed question_type values: 
+
+- reasoning 
+
+- negative 
+
+- best_option 
+
+- case 
+
+Global benchmark intent: 
+
+- Questions must be difficult enough to challenge strong medical trainees or advanced readers. 
+
+- Questions should reward careful reasoning, not sentence matching. 
+
+- Questions must be clinically meaningful, exam-like, and high-yield. 
+
+- Questions may test interpretation of study results, management implications, mechanisms, 
+
+complications,  compar isons, or decision-making grounded in the paper. 
+
+Question-type definitions: 
+
+- rea soning: 
+
+requires inference, mechanism, contradiction resolution, integration of multiple clues, next-step logic, 
+
+causal reasoning, or distinguishing between closely related explanations 
+
+- negative: 
+
+asks for EXCEPT / NOT / least likely / which finding argues against / which option is inconsistent with the 
+
+scenario 
+
+- best_option: 
+
+multiple choices may appear partially defensible, but only one is the single best answer in the specific 
+
+context 
+
+- case: 
+
+must be a realistic patient or clinical-research vignette with 
+
+age/sex/presentation/history/exam/labs/imaging/operative detail where appropriate, followed by a 
+
+management, diagnosis, complication, interpretation, or decision question 
+
+MANDATORY DIFFICULTY REQUIREMENTS: 
+
+Every question must satisfy ALL of the following: 
+
+- Requires at least 2 reasoning steps 
+
+- Requires combining at least 2 distinct facts from the source 
+
+- Cannot be answered by copying one sentence from the paper 
+
+- Tests judgment, interpretation, prioritization, causal reasoning, comparison, or application 
+
+- Would likely mislead a weak trainee or superficial reader Figure A3: Question generation prompt used in SurgiQ across all extracted source formats. DISTRACTOR REQUIREMENTS: 
+
+All 4 answer choices must be plausible. 
+
+For each question, incorrect options must be: 
+
+- clinically or scientifically believable 
+
+- close enough to the truth to require real discrimination 
+
+- ideally correct in a slightly different context, population, disease stage, mechanism, or management 
+
+setting 
+
+- not obviously wrong, irrelevant, or silly 
+
+Each question should include: 
+
+- at least one tempting but wrong option 
+
+- at least one option that reflects a common misunderstanding 
+
+- at least one option that is partially  cor rect but not the best answer in this  exact  scenario 
+
+MISDIRECTION REQUIREMENTS: 
+
+Each question stem should contain at least one detail that could mislead a superficial reader. 
+
+The correct answer must require careful reading and reasoning, not keyword matching. 
+
+STRICT CONTENT RULES: 
+
+- Use only the paper text and the extracted hard facts 
+
+- Stay faithful to the source 
+
+- No invented facts not supported by the source 
+
+- No trivial recall 
+
+- No definition-only questions 
+
+- No “all of the above” 
+
+- No “none of the above” 
+
+- No giveaway wording 
+
+- No meta-references such as “according to the paper” or “from the passage above” 
+
+- source_facts must include the exact fact strings used 
+
+- Set image_filename = null 
+
+- Set is_organ_scene = false 
+
+TYPE DISTRIBUTION CONSTRAINT: 
+
+Generate exactly these four types, with no substitutions: 
+
+- reasoning 
+
+- negative 
+
+- best_option 
+
+- case 
+
+If the source material does not strongly support one type, still make it as difficult and faithful as 
+
+possible. 
+
+Hard facts: 
+
+{hardest_facts_json} Figure A4: Continuation of the question generation prompt used in SurgiQ across all extracted source formats. Verification Prompt You are a strict medical examiner verifying multiple-choice questions. 
+
+For each question: 
+
+1. Read the question carefully. 
+
+2. Determine whether the provided  cor rect_answer is  actually  correct. 
+
+3. If it is correct: 
+
+- set verified_correct = true 
+
+- corrected_answer = the same answer or null 
+
+4. If it is incorrect: 
+
+- set verified_correct = false 
+
+- set corrected_answer to the true correct option 
+
+- rewrite the explanation so it accurately justifies the corrected answer 
+
+5. Keep the question text and choices unchanged. 
+
+6. Stay strictly grounded in the source page text. If the page text is insufficient, use standard medical 
+
+reasoning conservatively. 
+
+Do not generate new questions. Only verify and correct existing ones. Figure A5: Verification prompt used for answer validation and correction across all extracted source formats. Filtering Prompt 
+
+You are a strict surgical education reviewer. 
+
+Review each multiple-choice question and decide whether it should be kept. 
+
+Keep a question only if: 
+
+- it is clinically meaningful 
+
+- it requires reasoning,  no t simple re call 
+
+- it is grounded in the source text 
+
+- it has plausible distractors 
+
+- it is clear and unambiguous 
+
+- it is suitable for board-level surgical assessment 
+
+Remove a question if: 
+
+- it is trivial or definition-only 
+
+- it can be answered by sentence matching 
+
+- it is not supported by the source text 
+
+- the distractors are obviously wrong 
+
+- the stem is unclear 
+
+- the answer is ambiguous 
+
+Return only the questions that should be kept. 
+
+Do not rewrite questions. 
+
+Do not generate new questions. 
+
+Figure A6: Quality-filtering prompt used to remove low-quality or unsupported questions generated from all extracted source formats. 
+
+Select the correct answer. Question: Acute mild gallstone pancreatitis is diagnosed in a54-year-old male. Which of the following is considered standard treatment? A. Urgent ERCP and subsequent lap cholecystectomy B. Initial supportive management with cholecystectomy only if symptoms recur C. Initial supportive therapy with cholecystectomy performed within same admission D. Urgent cholecystectomy (within 24h) and common bile duct exploration Answer: 
+
+Figure A7: Evaluation prompt used during inference-time benchmarking and model evaluation in SurgiQ. Model Gen. Surg. Neurosurg. Robotic Ortho. Critical Laparosc. Avg. 
+
+Gemma-2-2B-IT (Gemma Team et al., 2024) 34.18 35.75 37.01 34.15 36.10 36.71 35.65 MedGemma-27B-IT (Sellergren et al., 2025) 38.98 39.11 36.64 37.76 38.47 39.15 38.35 MedGemma-4B-IT 43.26 46.87 45.71 42.30 43.22 42.19 43.93 Gemma-2-9B-IT 42.72 44.92 46.93 43.57 43.90 45.23 44.54 BioMistral-7B (Labrak et al., 2024) 46.29 50.64 48.87 43.82 46.27 47.67 47.26 Llama3-OpenBioLLM-8B (Saama AI Labs, 2024) 52.26 52.40 51.25 45.58 52.71 53.35 51.26 Llama3-Med42-8B (Christophe et al., 2024) 56.48 54.76 53.80 51.47 55.25 54.97 54.46 TxGemma-2B (Wang et al., 2025) 24.90 25.82 24.04 25.15 26.61 23.73 25.04 TxGemma-9B-Predict 24.96 26.45 26.96 27.84 28.14 27.59 26.99 TxGemma-9B-Chat 28.45 28.77 28.67 30.70 28.31 30.83 29.29 TxGemma-27B-Predict 32.25 31.76 33.17 32.38 35.93 32.66 33.03 TxGemma-27B-Chat 54.36 57.71 56.66 56.35 55.25 53.35 55.61 K2-Think-V2 (Liu et al., 2025) 57.12 57.08 53.68 49.96 59.66 58.01 55.92 Meditron-7B (Chen et al., 2023) 26.87 27.04 28.12 26.83 28.64 26.98 27.41 Meditron-70B 56.10 59.35 55.81 53.66 57.80 57.20 56.65 DeepSeek-R1-Distill-Qwen-7B (DeepSeek-AI, 2025) 32.50 35.84 36.03 34.65 35.42 36.71 35.19 DeepSeek-R1-Distill-Qwen-14B 56.55 56.99 56.66 51.64 51.69 55.38 54.82 DeepSeek-R1-Distill-Qwen-32B 61.01 60.53 61.84 55.26 59.83 58.01 59.41 Ministral-3-8B-Instruct (Liu et al., 2026) 54.46 54.08 56.79 51.89 52.88 55.38 54.25 Ministral-3-8B-Reasoning 58.85 59.21 60.26 52.99 58.81 56.80 57.82 Ministral-3-14B-Reasoning 63.47 66.29 64.09 58.28 62.88 62.68 62.95 MedMO-4B (Deria et al., 2026) 61.44 61.71 62.39 58.54 62.88 59.84 61.13 MedMO-4B-Next 61.45 61.71 62.39 58.54 62.88 59.84 61.13 MedMO-8B-Next 63.07 62.84 62.20 59.29 61.53 62.47 61.90 MedMO-8B 64.28 62.52 64.58 61.73 60.68 64.91 63.12 GPT-OSS-20B (OpenAI, 2025) 57.74 58.98 57.15 51.89 60.68 60.45 57.82 GPT-OSS-120B 65.44 65.74 62.75 59.80 64.41 66.94 64.18 Meerkat-8B (Kim et al., 2025) 56.72 55.99 55.57 52.99 58.98 54.16 55.73 Meerkat-70B 67.17 64.93 62.02 60.64 63.73 62.27 63.46 HuatuoGPT-o1-7B (Chen et al., 2024) 58.75 58.03 60.99 51.56 54.07 55.78 56.53 HuatuoGPT-o1-70B 67.47 66.29 61.72 58.03 65.76 64.10 63.89 Qwen2.5-32B-Instruct (Qwen Team, 2024) 66.31 64.88 65.73 59.13 61.69 60.65 63.07 Qwen2.5-32B 66.13 66.33 65.67 59.46 64.92 65.72 64.71 Qwen2.5-72B-Instruct 69.30 67.97 68.17 62.32 67.80 63.89 66.57 Qwen2.5-72B 68.78 68.51 69.08 62.99 68.14 65.52 67.17 
+
+Table A2: Domain-level accuracy (%) of all evaluated models on SurgiQ, grouped by surgical domain. Model families are grouped together and ordered in ascending order according to the highest-performing model within each family. Avg. denotes the macro-average accuracy across all six domains. Column abbreviations: Gen. Surg. =General Surgery, Neurosurg. = Neurosurgery, Robotic = Robotic Surgery, Ortho. = Orthopedic Surgery, Critical =Critical Care / Emergency, and Laparosc. = Laparoscopic Surgery. 
+
+Shortcut Baseline Accuracy (%) 
+
+Longest option 40.06 Shortest option 21.01 Question-overlap 24.49 Specificity proxy 36.01 Random guessing 25.00 
+
+Table A4: Shortcut baseline performance on SurgiQ. These baselines test whether superficial answer cues such as option length, lexical overlap with the question, or specificity proxies can partially solve the benchmark. 
+
+The lexical-overlap baseline remains near ran-dom chance, suggesting that simple word over-lap between the question and answer options is generally insufficient for solving SurgiQ. How-ever, answer-length and specificity-based heuris-tics achieve moderately higher accuracy, indicating the presence of residual stylistic biases common in expert-written multiple-choice questions. Impor-tantly, these shortcut baselines remain substantially below the performance of the strongest evaluated language models. 
+
+D.4 Human Evaluation and Audited Subset 
+
+We additionally evaluate a manually audited sub-set of 300 SurgiQ questions consisting of 200 ran-domly sampled questions and 100 questions previ-ously missed by all evaluated models. The subset is intended to provide a more targeted comparison between physician performance and representative open-weight LLMs on challenging surgical ques-tions. Table A5 reports performance on this audited subset. 
+
+E Model Details 
+
+Table A6 lists the pre-trained models used in this study and their corresponding HuggingFace reposi-Model Original Shuffled ∆
+
+TxGemma-2B 25.02 24.27 -0.75 TxGemma-9B-Predict 25.99 24.45 -1.54 TxGemma-9B-Chat 28.82 43.49 +14.67 TxGemma-27B-Predict 32.51 33.07 +0.56 TxGemma-27B-Chat 55.40 55.50 +0.10 Gemma-2-2B-IT 34.97 35.43 +0.46 Gemma-2-9B-IT 43.87 45.39 +1.52 MedGemma-4B-IT 44.08 45.42 +1.34 MedGemma-27B-IT 38.58 37.63 -0.95 DeepSeek-R1-Distill-Qwen-7B 34.02 35.06 +1.04 DeepSeek-R1-Distill-Qwen-14B 55.92 54.67 -1.25 DeepSeek-R1-Distill-Qwen-32B 60.37 60.70 +0.33 Ministral-3-8B-Instruct 54.40 53.85 -0.55 Ministral-3-8B-Reasoning 58.45 57.57 -0.88 Ministral-3-14B-Reasoning 63.48 61.96 -1.52 GPT-OSS-20B 57.56 56.63 -0.93 GPT-OSS-120B 64.63 62.28 -2.35 Meerkat-8B 56.09 55.63 -0.46 Meerkat-70B 65.19 65.19 +0.00 HuatuoGPT-o1-7B 57.92 55.90 -2.02 HuatuoGPT-o1-70B 65.45 64.77 -0.68 MedMO-4B 61.33 59.99 -1.34 MedMO-4B-Next 61.35 59.99 -1.36 MedMO-8B-Next 62.47 60.34 -2.13 MedMO-8B 63.64 61.03 -2.61 Meditron-7B 27.14 26.72 -0.42 Meditron-70B 56.50 55.04 -1.46 BioMistral-7B 47.14 46.78 -0.36 Llama3-OpenBioLLM-8B 51.60 52.78 +1.18 Llama3-Med42-8B 55.24 55.14 -0.10 K2-Think-V2 56.15 55.21 -0.94 Qwen2.5-32B-Instruct 64.92 64.40 -0.52 Qwen2.5-32B 65.43 59.14 -6.29 Qwen2.5-72B-Instruct 68.00 66.90 -1.10 Qwen2.5-72B 68.08 68.52 +0.44 
+
+Table A3: Answer-order robustness on SurgiQ. Models are ordered according to their overall performance in Table 4. Original denotes the stored dataset order, while shuffled denotes a version with randomly permuted answer options and updated correct-answer labels. ∆ denotes shuffled accuracy minus original accuracy. 
+
+tories. 
+
+F Surgical Reference Books 
+
+Table A7 lists the surgical reference books used in this work. Baseline / Model Correct / Total Accuracy (%) 
+
+Random guessing 75 / 300 25.00 TxGemma-2B 82 / 300 27.33 TxGemma-9B-Predict 73 / 300 24.33 TxGemma-9B-Chat 83 / 300 27.67 TxGemma-27B-Predict 85 / 300 28.33 TxGemma-27B-Chat 127 / 300 42.33 Gemma-2-2B-IT 86 / 300 28.67 Gemma-2-9B-IT 99 / 300 33.00 MedGemma-4B-IT 107 / 300 35.67 MedGemma-27B-IT 90 / 300 30.00 DeepSeek-R1-Distill-Qwen-7B 89 / 300 29.67 DeepSeek-R1-Distill-Qwen-14B 117 / 300 39.00 DeepSeek-R1-Distill-Qwen-32B 81 / 300 27.00 Ministral-3-8B-Instruct 122 / 300 40.67 Ministral-3-8B-Reasoning 121 / 300 40.33 Ministral-3-14B-Reasoning 127 / 300 42.33 GPT-OSS-20B 69 / 300 23.00 GPT-OSS-120B 143 / 300 47.67 Meerkat-8B 113 / 300 37.67 Meerkat-70B 132 / 300 44.00 HuatuoGPT-o1-7B 116 / 300 38.67 HuatuoGPT-o1-70B 148 / 300 49.33 MedMO-4B 131 / 300 43.67 MedMO-4B-Next 131 / 300 43.67 MedMO-8B-Next 132 / 300 44.00 MedMO-8B 131 / 300 43.67 Meditron-7B 80 / 300 26.67 Meditron-70B 121 / 300 40.33 BioMistral-7B 96 / 300 32.00 Llama3-OpenBioLLM-8B 113 / 300 37.67 Llama3-Med42-8B 107 / 300 35.67 K2-Think-V2 107 / 300 35.67 Qwen2.5-32B-Instruct 139 / 300 46.33 Qwen2.5-32B 140 / 300 46.67 Qwen2.5-72B-Instruct 137 / 300 45.67 Qwen2.5-72B 154 / 300 51.33 
+
+Average human baseline (4 surgeons) 267 / 300 89.10 
+
+Table A5: Performance on the manually audited 300-question SurgiQ subset. Models are grouped and ordered consistently with Table 4. The subset consists of 200 randomly sampled questions and 100 questions previously missed by all evaluated models. 
+
+Model Type Source TxGemma (2B / 9B / 27B, Predict/Chat) Therapeutics google/txgemma-* Gemma-2 (2B / 9B, IT) General google/gemma-2-* MedGemma (4B / 27B, IT) Medical google/medgemma-* DeepSeek-R1-Distill-Qwen (7B / 14B / 32B) Reasoning deepseek-ai/DeepSeek-R1-Distill-Qwen-* Ministral-3 (8B / 14B, Instruct/Reasoning) Reasoning mistralai/Ministral-3-* GPT-OSS (20B / 120B) Reasoning openai/gpt-oss-* Meerkat (8B / 70B) General dmis-lab/llama-3-meerkat-* HuatuoGPT-o1 (7B / 70B) Medical FreedomIntelligence/HuatuoGPT-o1-* MedMO (4B / 8B / 8B-Next) Multimodal Medical MBZUAI/MedMO-* Meditron (7B / 70B) Medical epfl-llm/meditron-* BioMistral (7B) Medical BioMistral/BioMistral-7B Llama3-OpenBioLLM (8B) Medical aaditya/Llama3-OpenBioLLM-8B Llama3-Med42 (8B) Medical m42-health/Llama3-Med42-8B K2-Think-V2 (73B) Reasoning LLM360/K2-Think-V2 Qwen2.5 (7B / 32B / 72B, Instruct/Base) General Qwen/Qwen2.5-* 
+
+Table A6: Pre-trained models used in SurgiQ experiments and their corresponding HuggingFace repositories. Model variants (e.g., instruction-tuned, chat, or reasoning) are grouped for clarity. Book 
+
+Atlas of Minimally Invasive and Robotic Esophagectomy (Kim, 2021) Bailey & Love’s Short Practice of Surgery (Williams et al., 2010) Bariatric Robotic Surgery: A Comprehensive Guide (Domene et al., 2019) Dr. Pestana’s Surgery Notes: Top 180 Vignettes of Surgical Diseases (Pestana, 2020) Endoscopic, Laparoscopic and Robotic Techniques for Foregut Disorders (Schlottmann, 2026) Essential Surgery: Problems Diagnosis and Management (Schofield, 1997) Handbook of Robotic Surgery (Zequi and Ren, 2025) The Mont Reid Surgical Handbook (The University of Cincinnati Surgical Residents and Makley, 2017) Operative Techniques in Sports Medicine Surgery (Miller et al., 2021) Pediatric Robotic Surgery (Shu, 2023) Robotic Hernia Surgery (Kudsi et al., 2025) Robotic Surgery and Nursing (Wang et al., 2021) Robotic Surgery Devices in Surgical Specialties (Manzano and Ferreira, 2023) Robotic Surgery for Renal Cancer (Persad et al., 2022) Robotic Surgery of Colon and Rectum (Ceccarelli et al., 2024) Robotic Urologic Surgery (Wiklund et al., 2022 - 2022) Schwartz’s Principles of Surgery (Orgoi et al., 2016) Surgical Critical Care and Emergency Surgery: Clinical Questions and Answers (Moore et al., 2012) Surgical Recall (Blackbourne, 2022) Surgery: A Case Based Clinical Review (de Virgilio and Grigorian, 2020) The SAGES Manual of Fluorescence-Guided Surgery (Szoka et al., 2023) The SAGES Manual of Foregut Surgery (Grams et al., 2019) The SAGES Manual of Hernia Surgery (Davis et al., 2018) The SAGES Manual of Robotic Surgery (Samreen et al., 2025) Textbook of Robotic Liver Surgery (D’Hondt and Sucandy, 2024) USMLE Step 2 CK Lecture Notes 2021: Surgery (Hill and Schwartz, 2020) Youmans Neurological Surgery (Winn, 2011) 
+
+Table A7: Surgical textbooks used as source material in SurgiQ.
