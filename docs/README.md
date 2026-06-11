@@ -6,65 +6,79 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-10
-- 运行时间：2026-06-10 22:06:20 UTC
+- 最新运行日期：2026-06-11
+- 运行时间：2026-06-11 22:42:00 UTC
 - 运行状态：成功
-- 本次总论文数：15
-- 精读区：5
-- 速读区：10
+- 本次总论文数：19
+- 精读区：6
+- 速读区：13
 
 ### 今日简报（AI）
-今日推荐15篇论文，精读2篇高分研究聚焦语言学模型与评估方法。重点关注《Large Language Models as Modal Models》和《Are We Evaluating Knowledge or Phrasing?》中的模态理论及命题敏感性缓解方案。建议读者结合速读中的多语言、跨领域基准，检验模型在真实场景下的稳健性。
-- 详情：[/202606/10/README](/202606/10/README)
+今日聚焦LLM测试与评估，精读6篇，精选两篇高分论文。  
+LLM在真实Python缺陷检测中表现优于人类单元测试，但MCQA评估易受措辞影响，需用ParaEval缓解。  
+建议优先阅读LLM单元测试能力分析，并关注评估中措辞偏差的修正方法。
+- 详情：[/202606/11/README](/202606/11/README)
 
 ### 精读区论文标签
-1. [Large Language Models as Modal Models in Linguistics](/202606/10/2606.10467v1-large-language-models-as-modal-models-in-linguistics)  
-   标签：评分：9.0/10、query:llm-ling
-   evidence：讨论LLM作为语言学中的模态模型及其对语言学理论的认识论价值
-2. [Are We Evaluating Knowledge or Phrasing? Mitigating MCQA Sensitivity with ParaEval](/202606/10/2606.10657v1-are-we-evaluating-knowledge-or-phrasing-mitigating-mcqa-sensitivity-with-paraeval)  
+1. [LLM vs. Human Unit Tests: Fault Detection on Real Python Bugs](/202606/11/2606.08588v1-llm-vs-human-unit-tests-fault-detection-on-real-python-bugs)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：提出ParaEval缓解MCQA对措辞的敏感性，提升LLM评估可靠性
-3. [SurgiQ: A Large-Scale Multi-Domain Benchmark for Evaluating Surgical Understanding in Large Language Models](/202606/10/2606.08071v1-surgiq-a-large-scale-multi-domain-benchmark-for-evaluating-surgical-understanding-in-large-language-models)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：针对外科领域的LLM评测基准
-4. [Interpreting and Steering a Text-to-Speech Language Model with Sparse Autoencoders](/202606/10/2606.10029v1-interpreting-and-steering-a-text-to-speech-language-model-with-sparse-autoencoders)  
+   evidence：LLM与人类单元测试的故障检测实证比较
+2. [Are We Evaluating Knowledge or Phrasing? Mitigating MCQA Sensitivity with ParaEval](/202606/11/2606.10657v1-are-we-evaluating-knowledge-or-phrasing-mitigating-mcqa-sensitivity-with-paraeval)  
+   标签：评分：9.0/10、query:llm-eval
+   evidence：提出缓解多选题措辞敏感性的评测框架
+3. [The Dynamics of Human and AI-Generated Language: How Semantics Fluctuates across Different Timescales](/202606/11/2606.11371v1-the-dynamics-of-human-and-ai-generated-language-how-semantics-fluctuates-across-different-timescales)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：使用语义特异性和相似性时间序列分析人类与AI语音的语义动态
+4. [ICA Lens: Interpreting Language Models Without Training Another Dictionary](/202606/11/2606.11722v1-ica-lens-interpreting-language-models-without-training-another-dictionary)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：使用ICA方法解释语言模型表征
+5. [ERAlign: Energy-based Representation Alignment of GNNs and LLMs on Text-attributed Graphs](/202606/11/2606.10461v1-eralign-energy-based-representation-alignment-of-gnns-and-llms-on-text-attributed-graphs)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：用稀疏自编码器解释TTS语言模型表示并引导特征
-5. [Flaws in the LLM Automation Narrative](/202606/10/2606.11166v1-flaws-in-the-llm-automation-narrative)  
+   evidence：在共享隐空间中对齐GNN编码的图结构和LLM导出的文本嵌入
+6. [Automated Creativity Evaluation of Language Models Across Open-Ended Tasks](/202606/11/2606.11762v1-automated-creativity-evaluation-of-language-models-across-open-ended-tasks)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：批评现有LLM基准测试并提出新的代码分析基准
+   evidence：LLM创造力自动评估框架
 
 ### 速读区论文标签
-1. [UniQL: Towards Dialect-Universal Benchmarking for Text-to-SQL](/202606/10/2606.08018v1-uniql-towards-dialect-universal-benchmarking-for-text-to-sql)  
+1. [ComplexityMT: Benchmarking the Interaction Between Text Complexity and Machine Translation](/202606/11/2606.05421v1-complexitymt-benchmarking-the-interaction-between-text-complexity-and-machine-translation)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：跨方言的文本到SQL评估基准
-2. [GIScholarBench: Benchmarking LLM Overconfidence in GIS Research](/202606/10/2606.08036v1-gischolarbench-benchmarking-llm-overconfidence-in-gis-research)  
+   evidence：自然语言生成评估基准（机器翻译）
+2. [Domain-Adapted Small Language Models with Hybrid Post-Processing: Achieving Cost-Efficient, Low-Latency Multi-Label Structured Prediction via LoRA Fine-Tuning on Scarce Data](/202606/11/2606.05781v2-domain-adapted-small-language-models-with-hybrid-post-processing-achieving-cost-efficient-low-latency-multi-label-structured-prediction-via-lora-fine-tuning-on-scarce-data)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：LLM学术领域评估基准
-3. [GlobeAudio: A Multilingual Multicultural Benchmark for Naturalistic Evaluation of Large Audio-Language Models](/202606/10/2606.08194v1-globeaudio-a-multilingual-multicultural-benchmark-for-naturalistic-evaluation-of-large-audio-language-models)  
+   evidence：用于结构化评估的混合框架
+3. [Evaluating Stochastic Collapse and Implicit Bias in Multimodal Large Language Models](/202606/11/2606.05874v1-evaluating-stochastic-collapse-and-implicit-bias-in-multimodal-large-language-models)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：多语言音频语言模型评估基准
-4. [SEF-CLGC at SemEval-2026 Task 11: Logical Notation Impact on Language Model Performance](/202606/10/2606.09157v1-sef-clgc-at-semeval-2026-task-11-logical-notation-impact-on-language-model-performance)  
+   evidence：用于评估多模态大语言模型的基准
+4. [The AI Epistemic Deference Index: A Continuous Measure of Sycophancy](/202606/11/2606.07897v1-the-ai-epistemic-deference-index-a-continuous-measure-of-sycophancy)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：使用逻辑符号评估LLM推理能力
-5. [Causally Evaluating the Learnability of Formal Language Tasks](/202606/10/2606.09822v1-causally-evaluating-the-learnability-of-formal-language-tasks)  
-   标签：评分：7.0/10、query:llm-ling
-   evidence：因果评估形式语言任务的可学习性，连接LLM语言学与评估
-6. [Inference-Time Conformal Reasoning with Valid Factuality Control for Large Language Models](/202606/10/2606.08831v1-inference-time-conformal-reasoning-with-valid-factuality-control-for-large-language-models)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：面向LLM评测的推理时真实性控制
-7. [Emergence of Context Characteristics Sensitivity in Large Language Models](/202606/10/2606.09525v1-emergence-of-context-characteristics-sensitivity-in-large-language-models)  
+   evidence：衡量LLM语言输出中的谄媚行为
+5. [OmniCap-IF: Benchmarking and Improving Instruction Following Abilities for Omni-Video Captioning](/202606/11/2606.08572v1-omnicap-if-benchmarking-and-improving-instruction-following-abilities-for-omni-video-captioning)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：评估自然语言生成的指令遵循能力的基准
+6. [Continuous Language Diffusion as a Decoder-Interface Problem](/202606/11/2606.08810v1-continuous-language-diffusion-as-a-decoder-interface-problem)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：扩散LM中语义可恢复性的解码器盆地机制
+7. [A Finetuned SpeechLLM for Joint Multi-Granular L2 Assessment and Natural-Language Rationales](/202606/11/2606.09470v1-a-finetuned-speechllm-for-joint-multi-granular-l2-assessment-and-natural-language-rationales)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：基于规则引导的语音LLM多维度第二语言评估
+8. [Emergence of Context Characteristics Sensitivity in Large Language Models](/202606/11/2606.09525v1-emergence-of-context-characteristics-sensitivity-in-large-language-models)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：研究LLM在微调过程中如何获得对上下文特征的敏感性
+9. [Scenario-based Probing and Steering Cultural Values in Large Language Models--Extended Version](/202606/11/2606.11399v1-scenario-based-probing-and-steering-cultural-values-in-large-language-models--extended-version)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：使用基于场景的困境探测和引导LLM中的文化表征
+10. [Improving Cross-Format Robustness in Language Models with Multi-Format Training](/202606/11/2606.11643v1-improving-cross-format-robustness-in-language-models-with-multi-format-training)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：评估LLM跨格式鲁棒性
+11. [Measuring Semantic Progress in Multi-turn Dialogue via Information Gain](/202606/11/2606.12332v1-measuring-semantic-progress-in-multi-turn-dialogue-via-information-gain)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：对话语义进展评估指标
+12. [Data Attribution in Large Language Models via Bidirectional Gradient Optimization](/202606/11/2606.04928v1-data-attribution-in-large-language-models-via-bidirectional-gradient-optimization)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：研究指令微调中LLM对上下文特征敏感性的涌现
-8. [Parallel Causal Associative Fields: Gated Sparse Memory for Long-Context Language Modeling](/202606/10/2606.10435v1-parallel-causal-associative-fields-gated-sparse-memory-for-long-context-language-modeling)  
+   evidence：训练数据归因用于可解释性
+13. [Beyond Fully Random Masking: Attention-Guided Denoising and Optimization for Diffusion Language Models](/202606/11/2606.12273v1-beyond-fully-random-masking-attention-guided-denoising-and-optimization-for-diffusion-language-models)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：用于语言建模的并行内容寻址记忆
-9. [ERAlign: Energy-based Representation Alignment of GNNs and LLMs on Text-attributed Graphs](/202606/10/2606.10461v1-eralign-energy-based-representation-alignment-of-gnns-and-llms-on-text-attributed-graphs)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：提出GNN与LLM的表示对齐方法，涉及语义表示学习
-10. [Dynamic Linear Attention](/202606/10/2606.10650v1-dynamic-linear-attention)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：注意力动态记忆提升表示能力
+   evidence：分析扩散LLM中的注意力以揭示令牌依赖关系
 
 
 <div class="dpr-home-promo-card">
