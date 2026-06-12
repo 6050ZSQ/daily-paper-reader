@@ -1,0 +1,1447 @@
+Title: Summarization is Not Dead Yet
+
+URL Source: https://arxiv.org/pdf/2606.08000v1
+
+Published Time: Tue, 09 Jun 2026 00:30:45 GMT
+
+Number of Pages: 38
+
+Markdown Content:
+## Summarization is Not Dead Yet 
+
+Dongqi Liu ΩΘ *, Chenxi Whitehouse ∆, Zheng Zhao Γ,Zhuchen Cao Ω, Jian Li Θ, Yabiao Wang ΨΘ ΩSaarland University, Max Planck Institute for Informatics, ∆University of Cambridge 
+
+> Γ
+
+University of Edinburgh, ΨZhejiang University, ΘTencent YouTu Lab 
+
+Abstract 
+
+The progress of large language models (LLMs) has fueled claims that model-generated sum-maries rival or even surpass human-written ref-erences, raising questions about whether sum-marization remains an open research problem. We re-examine this narrative through a multi-track evaluation covering five diverse datasets and five state-of-the-art LLMs, combining controlled human assessment, bias-mitigated LLM-as-Judge protocols, factuality verification against external knowledge, and corpus-level linguistic analysis. Our findings reveal a more nuanced landscape in which human reference summaries continue to demonstrate advantages in informativeness and faithfulness, whereas LLM outputs are preferred mainly for surface-level coherence and fluency. Factuality verifi-cation indicates that human references remain more reliable, particularly for claims involving reasoning or synthesis, and linguistic analy-sis uncovers a pattern of stylistic homogeneity across different models. These observations suggest that current LLMs have raised the floor of summarization quality, but the ceiling of their performance remains below human capa-bilities. 
+
+1 Introduction 
+
+Summarization has long been a popular research area in natural language processing (NLP), con-cerned with condensing source inputs (e.g., long documents and video recordings) into shorter repre-sentations that preserve salient information (Zhang et al., 2025a). With the advent of LLMs, the landscape of summarization has shifted consider-ably (Liu et al., 2024c), as these models deliver strong summarization capabilities even without task-specific fine-tuning (Zhang et al., 2024; Fon-seca and Cohen, 2024; Ravaut et al., 2024). Several studies have reported that LLM-generated sum-maries tend to be preferred over human-written 
+
+> *
+
+B dongqi.me@gmail.com 2020 2021 2022 2023 2024 2025    
+
+> 0
+> 50
+> 100
+> 150
+> 200
+> 250
+> 300
+> Number of Papers
+> 110
+> 209 223
+> 279 264 278
+> ChatGPT
+> Released
+
+Figure 1: Number of summarization papers at major NLP venues (2020–2025). Papers are identified by the presence of summarization or summarisation in the title or abstract, counted once per paper. 
+
+references and may achieve comparable or superior factual consistency (Liu et al., 2024c, 2023b; Goyal et al., 2023; Pu et al., 2023). These statements have raised the question of whether continued research in summarization remains warranted and whether core challenges of summarization have been largely addressed by general-purpose LLMs .Yet, publication trends at major NLP venues point to the fact that summarization research re-mains active. As shown in Figure 1, the number of summarization-related papers at TACL, ACL, EMNLP, NAACL, EACL, and AACL has grown from 110 in 2020 to 278 in 2025, with expanding directions including controllable generation (He et al., 2022; Liu and Demberg, 2023; Urlana et al., 2024), multimodal investigation (Liang et al., 2023; Papalampidi and Lapata, 2023; Liu et al., 2025a), and trustworthy evaluation (Chrysostomou et al., 2024; Wan et al., 2024; Cao et al., 2022). The view that LLMs have largely solved summarization nonetheless rests on three recurring observations: LLM-generated summaries (i) receive higher over-all preference rates in human evaluation, (ii) out-perform human references under LLM-as-Judge protocols, and (iii) contain fewer hallucinations than human references (Pu et al., 2023; Liu et al., 2024c; Zhang et al., 2024). 1
+
+> arXiv:2606.08000v1 [cs.CL] 6 Jun 2026
+
+Several methodological factors limit the gener-alizability of these conclusions: (i) Holistic prefer-ence judgments that ask annotators to pick a pre-ferred summary without separating quality dimen-sions may conflate surface fluency with information density, favoring LLM outputs even when cover-age is insufficient (Liu et al., 2023a; Min et al., 2025). (ii) LLM-as-Judge evaluations may intro-duce position bias and self-preference bias, which undermine reliability if not carefully controlled (Zheng et al., 2023; Li et al., 2025a). (iii) Source-only factuality protocols penalize extrinsic content as hallucination regardless of whether it reflects valid world knowledge or fabrication. Since hu-man references more often add extrinsic content as intentional contextualization while LLM out-puts more often add it through generation-time fabrication, this conflation systematically disad-vantages human references (Cao et al., 2022; Liu et al., 2025b). In this work, we employ dimension-specific evaluation with larger annotator pools, ap-ply bias-mitigated LLM-as-Judge protocols, verify factuality against external knowledge sources, con-duct linguistic analysis at lexical, syntactic, and dis-course levels, and extend evaluations across multi-modal, multilingual, and style-constrained settings. 
+
+Our main contributions are as follows: 
+
+• We conduct controlled human and bias-mitigated LLM-as-Judge assessments across multiple do-mains and show that human summaries retain advantages in informativeness and faithfulness when assessed independently of surface fluency. • We introduce factuality verification against ex-ternal knowledge to separate legitimate world knowledge from genuine hallucinations and re-veal that LLM summaries still contain a propor-tion of errors, especially for claims that require reasoning or synthesis beyond the source text. • We perform a comprehensive linguistic analysis at lexical, syntactic, and discourse levels and find that LLM summaries exhibit lower lexical diver-sity, shallower syntactic structures, and weaker discourse-level organization. Collectively, our findings support the central thesis that summarization is not dead yet . While LLMs have raised the floor of summarization quality, the human ceiling has not yet been reached. By surfac-ing these persistent gaps, we provide a grounded basis for the community to identify open problems and prioritize future directions in summarization research. 
+
+2 Related Work 
+
+We organize prior work into two strands, one ar-guing that advances in LLMs reduce the need for summarization research, and another documenting persistent limitations that challenge this view. As discussed below, each strand examines a limited set of quality dimensions within narrow domain coverage, and neither offers a controlled, multi-dimensional comparison across diverse settings that would more fully inform this discussion. This study aims to contribute toward addressing this limitation. 
+
+The Case That Summarization Is Solved. The most direct articulation of this position is offered by Pu et al. (2023), who conduct a human prefer-ence study comparing zero-shot LLM outputs with human-written summaries. Their results indicate a preference for LLM-generated summaries, leading the authors to conclude that conventional summa-rization research is no longer necessary in the era of LLMs. In a related study, Zhang et al. (2024) eval-uate LLMs on news summarization and find that instruction tuning plays an influential role in zero-shot performance. When fresh references written by professional freelancers are introduced, LLM summaries are judged to be broadly comparable to human-written ones. Adams et al. (2023) propose 
+
+Chain of Density prompting, in which GPT-4 itera-tively rewrites summaries to increase entity density without extending length, and report that annotators consider the model-generated summaries compa-rable to human-written outputs. Yao et al. (2023) frame practical summarization research as shifting toward post-editing and human–AI collaboration rather than fully autonomous generation. Wang et al. (2025a) show that zero-shot LLMs achieve competitive performance against fine-tuned tradi-tional models on many-to-many summarization. 
+
+The Case That Summarization Remains Open. 
+
+A body of work challenges the “solved” narrative across several interconnected dimensions. Pan-ickssery et al. (2024) uncover that LLMs exhibit systematic self-preference bias, inflating scores for outputs resembling their own generation. Broader analyses identify structural biases, including fa-miliarity bias and score-anchoring effects, which tend to reward fluent and generic text (Wang et al., 2024; Wan et al., 2025a). Evaluating long-form summarization reliably remains methodologically unsettled (Guo and Vosoughi, 2023; Kim et al., 22024; Chang et al., 2024; Belém et al., 2025). Mul-tilingual settings introduce additional challenges, with standard metrics showing reduced reliability for non-English languages (Forde et al., 2024), and standard annotation procedures underestimating er-ror rates (Min et al., 2025). In clinical settings, LLMs lack agreed-upon standards for acceptable summaries (Croxford et al., 2025; Nagar et al., 2025). In code summarization, LLM attention pat-terns diverge substantially from those of human programmers (Li et al., 2024). At a more funda-mental level, human summaries consistently inte-grate deeper reasoning and inferential compression, whereas LLM outputs operate largely through so-phisticated paraphrasing (Zeweniuk et al., 2025). 
+
+3 Evaluation Setup Overview 
+
+To examine our claims, we design a multi-track evaluation that compares human reference sum-maries with outputs from five state-of-the-art LLMs, namely GPT-5.4 (GPT), Claude Opus 4.6 (Claude), Gemini 3.1 Pro Preview (Gem-ini), Qwen3.5-397B-A17B (Qwen), and Kimi-K2.5 (Kimi). The evaluation spans five datasets (CNNSum, SciNews, DiverseSumm, VISTA, and EurLexSum), encompassing ultra-long documents, style transfer settings, multi-document inputs, mul-timodal content, and multilingual scenarios. De-tailed information on model identifiers, dataset statistics, and per-track sample counts is provided in Appendix A, with decoding hyperparameters listed in Appendix B. The evaluation protocols are documented in Appendix C.1 through Ap-pendix F.1. 
+
+4 Do Human Evaluators Favor LLMs? 
+
+We recruit human annotators to rate summaries on four 1-to-5 Likert dimensions (informativeness, faithfulness, coherence, conciseness) and to rank the six candidates (one human reference and five model outputs) by overall quality. All candidates are presented in a blind and randomized order; each sample is independently assessed by three crowd annotators, and inter-annotator agreement is moni-tored via Krippendorff’s α (≥ 0.7). Full annotation guidelines, quality control procedures, and deriva-tion details are provided in Appendix C.1. Figure 2 presents pairwise win-rate matrices ag-gregated across datasets. Human win rates against the five models range from 0.66 to 0.90. 1 Figure 3 breaks these gaps down by dimension. Human sum-maries hold positive gaps on informativeness and faithfulness ( +0.17 to +0.51) but negative gaps on coherence against GPT and Claude ( −0.13 to 
+
+−0.25), indicating that annotators perceive model summaries as more fluent on average. This dimension-dependent pattern helps explain why prior studies relying on holistic preference judgments often conclude that LLM summaries are competitive with human references. Surface fluency and information density are hard to dis-entangle within a single overall assessment, and dimension-specific evaluation surfaces trade-offs that holistic judgments leave implicit (Min et al., 2025; Song et al., 2024a). This pattern is ro-bust to generation choices, with prompt specificity and decoding temperature (Appendix C.2) and chain-of-thought or self-correction prompting (Ap-pendix C.3) keeping human win rates on informa-tiveness and faithfulness. Relative model rankings also vary across datasets, and a controlled baseline of freshly written, contamination-free summaries (Appendix C.4) widens the human advantage on informativeness and faithfulness on every dataset, indicating that the main evaluation underestimates rather than inflates the disparity. 
+
+5 Do LLM Judges Favor LLMs? 
+
+We employ all five evaluated models as LLM judges, each scoring summaries from all six sources across the same five datasets. Every model thus serves both as a candidate system and as a judge, enabling cross-model evalua-tion and self-preference analysis. Following the human-evaluation protocol, each judge assigns per-dimension Likert scores on informativeness, faith-fulness, coherence, and conciseness, together with an overall ranking. To mitigate self-preference bias, each model’s own judgment is excluded when scor-ing its summary, and pairwise win rates are derived from the averaged rankings of the remaining four judges. Before the evaluation, a pilot study (Ap-pendix D.2) provides a diagnostic check that judge scores are consistent with human annotations, with no judge excluded or adjusted on the basis of its outcome, so the judge findings below constitute independent corroboration rather than calibration 
+
+> 1Pairwise win rates are derived from listwise overall rank-ings, with the derivation procedure detailed in Appendix C.1.
+
+3Human                         
+
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.74 0.74 0.88 0.90 0.72
+> 0.26 0.52 0.69 0.72 0.55
+> 0.26 0.48 0.62 0.71 0.52
+> 0.12 0.31 0.38 0.55 0.38
+> 0.10 0.28 0.29 0.45 0.32
+> 0.28 0.45 0.48 0.62 0.68
+
+CNNSum                         
+
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.71 0.84 0.77 0.90 0.82
+> 0.29 0.64 0.56 0.76 0.62
+> 0.16 0.36 0.42 0.59 0.49
+> 0.23 0.44 0.58 0.67 0.56
+> 0.10 0.24 0.41 0.33 0.39
+> 0.18 0.38 0.51 0.44 0.61
+
+SciNews                         
+
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.78 0.82 0.85 0.81 0.84
+> 0.22 0.67 0.69 0.62 0.61
+> 0.18 0.33 0.57 0.52 0.49
+> 0.15 0.31 0.43 0.43 0.44
+> 0.19 0.38 0.48 0.57 0.48
+> 0.16 0.39 0.51 0.56 0.52
+
+DiverseSumm                         
+
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.74 0.85 0.82 0.90 0.78
+> 0.26 0.65 0.63 0.69 0.56
+> 0.15 0.35 0.46 0.58 0.41
+> 0.18 0.37 0.54 0.66 0.43
+> 0.10 0.31 0.42 0.34 0.35
+> 0.22 0.44 0.59 0.57 0.65
+
+VISTA                         
+
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.66 0.82 0.86 0.90 0.84
+> 0.34 0.70 0.71 0.75 0.69
+> 0.18 0.30 0.55 0.57 0.45
+> 0.14 0.29 0.45 0.53 0.44
+> 0.10 0.25 0.43 0.47 0.39
+> 0.16 0.31 0.55 0.56 0.61
+
+EurLexSum Figure 2: Pairwise win-rate matrices from human evaluation across datasets. Each cell reports the proportion of samples on which the row system is ranked higher than the column system by crowd annotators (averaged across annotators per sample). Blue indicates that the row system wins more frequently; red indicates the opposite. Human                                         
+
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> -0.17
+> -0.36 -0.19
+> -0.43 -0.26 -0.07
+> -0.47 -0.30 -0.11 -0.05
+> -0.29 -0.12 +0.07 +0.14 +0.19
+> Informativeness
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> -0.32
+> -0.45 -0.12
+> -0.31 +0.01 +0.14
+> -0.51 -0.18 -0.06 -0.20
+> -0.43 -0.10 +0.02 -0.11 +0.08
+> Faithfulness
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> +0.13
+> +0.25 +0.12
+> +0.12 -0.01 -0.13
+> +0.02 -0.11 -0.23 -0.10
+> +0.10 -0.03 -0.15 -0.03 +0.08
+> Coherence
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> +0.02
+> +0.06 +0.04
+> +0.16 +0.14 +0.10
+> -0.08 -0.10 -0.14 -0.24
+> +0.02 +0.00 -0.04 -0.14 +0.10
+> Conciseness
+
+Figure 3: Score gap matrices from human evaluation across four dimensions. Each cell in the lower triangle reports the mean Likert score difference between the row system and the column system, averaged across datasets and annotators per sample. Blue cells indicate that the row system scores higher; red cells indicate the opposite. 
+
+to the human signal. 2 Details on prompt templates, ranking protocol, and bias mitigation are in Ap-pendix D.1. Figure 4 presents the pairwise win-rate matri-ces across datasets. Human summaries achieve win rates of 0.70 to 0.95 against all five models. These judge win rates are slightly more decisive than the crowd win rates of 0.66 to 0.90 in §4, con-sistent with bias-mitigated judges applying the per-dimension rubric more uniformly across samples than individual human raters. As in the human eval-uation, model rankings vary across datasets, and no single model holds a stable position. Figure 5 pro-vides a dimension-level breakdown of score gaps. Human summaries again show positive gaps on in-formativeness and faithfulness, while the gaps on coherence and conciseness are reduced, with sev-eral models matching or slightly exceeding human summaries on these form-oriented dimensions. The LLM-as-Judge results corroborate the hu-man evaluation while revealing an asymmetry. On the content-oriented dimensions of informativeness and faithfulness, all judges consistently favor hu-man summaries; on the form-oriented dimensions 
+
+2Close judge-human alignment is not a prerequisite for the LLM-as-Judge track; the pilot only verifies that no judge exhibits categorically anomalous behavior before deployment. 
+
+of coherence and conciseness, the advantage shifts partially toward model summaries. Appendix D.3 compares results with and without self-judgments and identifies specific combinations of model and dimension where the human-versus-model rank-ing reverses. The consistency of findings across human annotators and bias-mitigated LLM judges strengthens the conclusion that current models pro-duce summaries that are formally polished yet less informative than human references. A stratified analysis of the SciNews results by document length is reported in Appendix D.4. 
+
+6 Do Humans Hallucinate More Than LLMs? 
+
+We evaluate factual consistency with four com-plementary methods (FaStFact, SAFE, FActScore, and VeriScore), each of which decomposes sum-maries into atomic claims and verifies them against external knowledge sources (see Appendix E.1 for details). Figure 6 presents the score distribu-tions across the four metrics, five datasets, and six sources. Human summaries receive higher scores than model summaries, with average margins of 0.04 to 0.13. The ordering is consistent across all four methods despite their differences in claim granularity and evidence retrieval, indicating that 4Human                         
+
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.80 0.78 0.93 0.92 0.80
+> 0.20 0.49 0.71 0.67 0.61
+> 0.22 0.51 0.66 0.68 0.60
+> 0.07 0.29 0.34 0.47 0.42
+> 0.08 0.33 0.32 0.53 0.44
+> 0.20 0.39 0.40 0.58 0.56
+
+CNNSum                         
+
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.77 0.89 0.80 0.95 0.79
+> 0.23 0.66 0.54 0.79 0.50
+> 0.11 0.34 0.38 0.60 0.35
+> 0.20 0.46 0.62 0.72 0.46
+> 0.05 0.21 0.40 0.28 0.26
+> 0.21 0.50 0.65 0.54 0.74
+
+SciNews                         
+
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.82 0.87 0.89 0.85 0.88
+> 0.18 0.74 0.75 0.67 0.64
+> 0.13 0.26 0.58 0.50 0.46
+> 0.11 0.25 0.42 0.40 0.40
+> 0.15 0.33 0.50 0.60 0.47
+> 0.12 0.36 0.54 0.60 0.53
+
+DiverseSumm                         
+
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.80 0.91 0.86 0.94 0.81
+> 0.20 0.67 0.63 0.71 0.51
+> 0.09 0.33 0.43 0.59 0.35
+> 0.14 0.37 0.57 0.71 0.38
+> 0.06 0.29 0.41 0.29 0.29
+> 0.19 0.49 0.65 0.62 0.71
+
+VISTA                         
+
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> 0.70 0.87 0.91 0.94 0.88
+> 0.30 0.73 0.74 0.78 0.69
+> 0.13 0.27 0.55 0.57 0.41
+> 0.09 0.26 0.45 0.53 0.40
+> 0.06 0.22 0.43 0.47 0.34
+> 0.12 0.31 0.59 0.60 0.66
+
+EurLexSum Figure 4: Pairwise win-rate matrices from LLM-as-Judge rankings across datasets. Each cell reports the proportion of samples on which the row system receives a better rank than the column system under the self-exclusion protocol. Blue indicates that the row system wins more frequently; red indicates the opposite. Human                                         
+
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> -0.24
+> -0.38 -0.13
+> -0.42 -0.18 -0.05
+> -0.31 -0.06 +0.07 +0.12
+> -0.47 -0.23 -0.09 -0.05 -0.17
+> Informativeness
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> -0.34
+> -0.49 -0.15
+> -0.41 -0.07 +0.07
+> -0.53 -0.18 -0.04 -0.11
+> -0.38 -0.04 +0.10 +0.03 +0.14
+> Faithfulness
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> -0.02
+> +0.12 +0.15
+> -0.06 -0.03 -0.18
+> -0.15 -0.13 -0.27 -0.09
+> +0.03 +0.06 -0.09 +0.09 +0.18
+> Coherence
+> Human
+> GPT
+> Claude
+> Gemini
+> Qwen
+> Kimi
+> -0.09
+> +0.04 +0.12
+> +0.18 +0.27 +0.15
+> -0.17 -0.08 -0.21 -0.35
+> -0.10 -0.01 -0.14 -0.29 +0.07
+> Conciseness
+
+Figure 5: Score gap matrices from LLM-as-Judge. Each cell in the lower triangle reports the mean Likert score difference between the row system and the column system, averaged across datasets and judges under the self-exclusion protocol. Blue cells indicate that the row system scores higher; red cells indicate the opposite. 
+
+the human factuality advantage is robust to the choice of automatic metric. No single model achieves the highest score across all four metrics simultaneously (Figure 8 in Appendix E.2). The per-language analysis on Eu-rLexSum (Figure 9 in Appendix E.2) reveals hetero-geneous variation across languages that is broadly consistent with resource-related differences in fac-tuality performance. These findings complement prior studies that reported LLM summaries as more factually consistent than human references (Tam et al., 2023). Such conclusions are typically reached under source-only verification, where any content that is not grounded in the source document is treated as hallucination. This operationalization is internally consistent, but it conflates two phenom-ena that differ in origin and evaluative consequence (Qi et al., 2025). A genuine hallucination is a claim that cannot be verified against any credible knowledge source. What counts as one is itself prompt-dependent, and both human and LLM summaries can carry ex-trinsic content of either kind. In our setup (Ap-pendix I), four prompts (CNNSum, DiverseSumm, VISTA, and EurLexSum) explicitly forbid intro-ducing information absent from the source, while the SciNews prompt invites accessible explanation of domain-specific terms; the source-only abla-tion in Appendix E.3 aligns with these instruc-tions, with human references scoring below the five-model average only on SciNews under source-only verification and recovering once claims are evaluated against external knowledge (Tang et al., 2024; Dong et al., 2022; Ramprasad et al., 2024; Rahman et al., 2026). The asymmetry arises be-cause human writers more often add extrinsic con-tent as intentional contextualization while LLM outputs more often add it through generation-time fabrication, so a source-only protocol penalizes the former more than the latter. A case study illustra-tion is provided in Appendix H, where the present paper serves as the source document and is free of data contamination. 
+
+7 Do Human and LLM Summaries Diverge Linguistically? 
+
+We compare the linguistic properties of human and LLM summaries at three levels of analysis, namely lexical (word-level), syntactic (sentence-level), and discourse (document-level). Across these levels, we report seven metrics in three groups. TTR and MATTR (Covington and Mc-Fall, 2010) measure lexical diversity. Dependency 50.6 0.8 1.0              
+
+> FaStFact
+> SAFE
+> FActScore
+> VeriScore
+> CNNSum
+> 0.6 0.8 1.0
+> SciNews
+> 0.6 0.8 1.0
+> DiverseSumm
+> 0.6 0.8 1.0
+> VISTA
+> 0.6 0.8 1.0
+> EurLexSum
+> Human GPT Claude Gemini Qwen Kimi
+
+Figure 6: Factuality score distributions. Each half-violin shows the score distribution, and diamond markers indicate the mean. Human summaries achieve higher scores than model summaries on average. 0.2 0.0 0.2             
+
+> TTR
+> MATTR
+> Tree Depth
+> NP Modifiers
+> Topic Progression
+> Information Ordering
+> Compression Ratio
+> CNNSum
+> 0.2 0.0 0.2
+> SciNews
+> 0.2 0.0 0.2
+> DiverseSumm
+> 0.2 0.0 0.2
+> VISTA
+> 0.2 0.0 0.2
+> EurLexSum
+> GPT Claude Gemini Qwen Kimi
+
+Figure 7: Divergence between human and model summaries, reported as ∆ = Human − Model . Positive values indicate that the human scores higher; negative values indicate that the model scores higher. 
+
+tree depth (Tree Depth) and noun phrase modi-fier count (NP Modifiers) capture syntactic com-plexity. Topic progression, information ordering, and compression ratio characterize discourse-level properties (Nenkova and Louis, 2008; Davoodi-jam and Alambardar Meybodi, 2024). All sum-maries are processed with Stanza (Qi et al., 2020), with Qwen3-Embedding-8B (Zhang et al., 2025c) for sentence embeddings. Metric definitions, nor-malization procedures, and preprocessing details are provided in Appendix F.1. Figure 7 presents the divergence between hu-man and model summaries across all metrics and datasets, reported as ∆ = Human − Model . Hu-man summaries score higher on lexical and syntac-tic complexity, whereas model summaries adhere more closely to source ordering and apply less ag-gressive compression. These trends hold across all five datasets and the 24 individual EurLexSum languages (Figure 15 in Appendix F.2). We discuss each level in turn. At the lexical level, human summaries exhibit higher TTR and MATTR values than model sum-maries across all datasets, with ∆ values ranging from +0.08 to +0.28 for TTR and from +0.06 to +0.21 for MATTR. This pattern suggests that humans employ a more varied vocabulary, poten-tially reflecting a preference for paraphrasing and synonym substitution. Model summaries appear to favor the repeated use of domain-relevant terms, which may improve topical cohesion at the expense of surface-level lexical variety. At the syntactic level, human summaries con-sistently produce deeper dependency trees ( ∆ of 6+0.05 to +0.24) and carry more modifiers per noun phrase ( ∆ of +0.04 to +0.19). These differences indicate that human writers construct more com-plex sentence structures with richer noun phrase elaboration, whereas model summaries favor shal-lower trees and leaner noun phrases. This simpler syntactic profile may contribute to the perceived fluency reported in human evaluation studies, but at the cost of information density within individual sentences. At the discourse level, models score higher on information ordering ( ∆ ranges from −0.03 to 
+
+−0.19), indicating that models follow the linear order of the source document more closely than humans. Human writers appear more willing to re-organize content according to narrative or argumen-tative logic. Humans exhibit lower compression ra-tios ( ∆ ranges from −0.03 to −0.20), meaning that human summaries are shorter relative to the source and apply stronger compression. Topic progression shows positive ∆ values ( +0.03 to +0.26), suggest-ing that consecutive sentences in human summaries are more semantically similar. Per-model results for each dataset are provided in Appendix F.2. These linguistic patterns offer a structural ac-count for the quality trade-offs observed in the preceding evaluation tracks. The shallower syntac-tic structures and lower lexical diversity of model summaries likely contribute to the surface fluency that annotators and LLM judges reward on the co-herence dimension (Zhou et al., 2026; Ryu et al., 2024). Differences in information density and sentence-level packaging may also help explain why model summaries are perceived as concise de-spite not compressing the source more aggressively than human summaries. The stylistic uniformity across model families further suggests that these properties reflect shared tendencies in current LLM architectures or training regimes rather than model-specific idiosyncrasies. Our prompt-sensitivity ab-lation (Appendix C.2) finds the same conclusion at 
+
+T = 0 .3 and T = 0 .7. Statistical significance tests for the score differences across all four evaluation tracks are reported in Appendix G. 
+
+8 Summarization in Downstream NLP Systems 
+
+Beyond serving as a research subject, summariza-tion functions as an enabling capability woven into a variety of downstream NLP systems. When a summary omits key information, distorts facts, or applies rigid surface forms, those weaknesses prop-agate into the systems built on top of it. The gaps documented in the preceding evaluations have di-rect consequences in the pipelines surveyed below. 
+
+Information Retrieval and Knowledge Ground-ing. In retrieval-augmented generation (RAG), summarization touches indexing, chunking, and re-ranking. Summary-based index entries can fore-ground salient content and reduce embedding noise; summary-guided segmentation produces more co-herent retrieval units than fixed-length splitting; and query-focused summarization compresses can-didate passages into more effective representations for relevance estimation (Wang et al., 2025c; Zhao et al., 2025; Edge et al., 2024; Wang et al., 2025b). Across these stages, the summarization sets an im-plicit ceiling on retrieval effectiveness, and omis-sions or factual distortions propagate silently to the generation stage (Tamber et al., 2025). As RAG sees broader adoption in knowledge-intensive do-mains, improving its summarization layer is likely to yield compounding returns. 
+
+AI-Powered Search and Question Answering. 
+
+Summarization is central to AI-powered search and question answering, where the demands on compression compound across use cases. Search snippet generation requires extracting the most in-formative portions of a web page under tight length constraints. Multi-document QA requires aggre-gating evidence across passages while resolving redundancy and reconciling potentially conflicting claims (Balepur et al., 2025; Zhang et al., 2025b). Attributed generation, in which answers carry in-line citations to supporting sources, adds another layer by demanding that provenance be preserved through compression (Wright et al., 2025). Short-comings in the underlying summarization, whether through omission of key evidence, unfaithful com-pression, or difficulty in reconciling contradictions, translate directly into degraded answer quality. 
+
+Professional Workflows and Knowledge Man-agement. In professional settings, summariza-tion mediates between large volumes of unstruc-tured information and the structured outputs that inform decision-making. Video summarization goes beyond producing a shortened transcript; it involves extracting action items, logging decisions, and identifying follow-up tasks from fragmented exchanges (Asthana et al., 2025). In clinical en-vironments, distilling patient encounters into elec-7tronic health records requires domain expertise to separate clinically relevant observations from inci-dental conversation (Nagar et al., 2025). Legal dis-covery condenses case documents into summaries that retain essential details, while financial analysis depends on summarizing earnings calls and regula-tory filings, where omission of a single quantitative detail can shift interpretation (Li et al., 2025b). In these domains, summarization shortcomings are amplified, and the gap between what current sys-tems deliver and what such workflows demand un-derscores the continued need for domain-adapted, controllable, and faithful summarization. 
+
+9 Open Challenges 
+
+The gaps documented across our evaluation tracks, and amplified through the downstream pipelines surveyed above, reflect methodological challenges that the field has not yet resolved, rather than arti-facts of any single design choice. Three of these challenges remain particularly open, namely how faithfulness is verified, how summary quality is evaluated, and how benchmarks stay credible as models advance. 
+
+Faithfulness Verification. Ensuring that every claim in a generated summary is factually grounded remains a central concern (Maynez et al., 2020). The community has made strides through NLI-based consistency metrics and model-based ver-ification pipelines, which detect coarse-grained er-rors such as entity substitutions and negation flips (Utama et al., 2022; Scirè et al., 2024). However, LLM-generated summaries often contain subtle dis-tortions, including quantity shifts, causal reversals, and temporal re-orderings. Such errors are com-mon in claims that require reasoning or synthesis and remain difficult to detect reliably (Zha et al., 2023). The choice of verification protocol, whether restricted to the source document or augmented with external knowledge, can also influence conclu-sions about factual consistency (Cao et al., 2022). 
+
+Evaluation Methodology. The evaluation of summarization systems has become an active area of inquiry. Traditional reference-based metrics such as ROUGE and BERTScore align less well with human quality judgments for LLM-generated outputs, partly because they capture surface-level overlap and may fail to reflect broader differences in information selection and organization (Forde et al., 2024). Our findings imply that dimension-specific assessment can expose quality trade-offs that holistic judgments leave implicit (Song et al., 2024a). LLM-based evaluators in turn require care-ful bias mitigation, since design choices such as pre-sentation order and the handling of self-preference can alter the resulting rankings (Koo et al., 2024). Developing standardized, reproducible evaluation protocols remains a shared objective for the field. 
+
+Benchmark Design and Contamination. The quality of evaluation benchmarks has attracted growing scrutiny. Data contamination remains a significant concern, as widely used benchmarks such as CNN/DailyMail and XSum are likely in-cluded in the pretraining corpora of many LLMs (Golchin and Surdeanu, 2024). Contamination is unavoidable and cannot be eliminated (Xu et al., 2025; Sainz et al., 2023). Existing benchmarks re-main concentrated in English-language news and dialogue; findings derived from high-resource lan-guages may not generalize to lower-resource set-tings (Zhang et al., 2024; Forde et al., 2024). A promising direction is the adoption of arena-style evaluation platforms with non-public and regularly refreshed test sets, which could mitigate contamina-tion risks while enabling standardized comparison across systems. 
+
+10 Conclusion 
+
+We revisit the claim that LLMs have closed the gap with human references in summarization through a multi-track evaluation, combining dimension-specific human assessment, bias-mitigated LLM-as-Judge, external-knowledge factuality verification, and corpus-level linguistic analysis. Human ref-erences retain advantages in informativeness and faithfulness, while LLM outputs gain ground on the form-oriented dimensions of coherence and conciseness. Human references are factually more reliable, with their advantage becoming more pro-nounced once verification draws on external knowl-edge; LLM outputs remain systematically less di-verse at the lexical, syntactic, and discourse levels across model families. Surface fluency does not entail information fidelity, and the dimensions on which human summaries excel are precisely those that single-track evaluations and surface-overlap metrics tend to miss. We encourage the community to treat summarization not as a solved capability but as a continuing testbed for advances in faithful reasoning, information compression, and linguisti-cally diverse generation. 811 Limitations 
+
+Model Scope. Our evaluation considers five general-purpose frontier LLMs accessed via API in a zero-shot setting. Given the pace of model updates and post-training refinements, the results are best interpreted as reflecting a snapshot of model behavior. Models fine-tuned for summa-rization or augmented with retrieval or iterative self-refinement may exhibit different quality pro-files. To enhance coverage, we include models from multiple providers and architectural families, although the extent to which the findings general-ize to future releases remains a question for future work. 
+
+Domain and Language Coverage. Our datasets cover Chinese literary text (CNNSum), English popular science (SciNews), multi-document En-glish news (DiverseSumm), academic talk videos (VISTA), and EU legal text in 24 official EU lan-guages (EurLexSum), but do not include conversa-tional summarization, code summarization, social-media text, clinical notes, or low-resource non-European languages such as Arabic, Hindi, or Swahili. The robustness of the directional patterns across these settings provides initial evidence that the conclusions are not idiosyncratic to a single domain or language family, although extending the evaluation to additional domains and language fam-ilies remains an important direction. 
+
+Data Contamination. Data contamination is a widely discussed consideration in evaluations of LLMs. We select five datasets that span multiple domains and languages to reduce the likelihood of systematic overlap with pretraining corpora, al-though complete exclusion cannot be guaranteed. To probe the influence of contamination, we addi-tionally construct newly written human summaries unlikely to appear in any model’s training data and repeat the evaluation. Under this controlled condi-tion, the advantage of human summaries becomes more pronounced, suggesting that any overlap in the original references would attenuate rather than amplify the observed differences. 
+
+Human Evaluation Scale. Scaling human eval-uation remains an ongoing constraint. We em-ploy large annotator pools, stricter qualifications, and higher per-sample redundancy than most prior work. The per-dataset sample size still reflects a trade-off between coverage and annotation cost, which is a constraint common to studies that priori-tize annotation quality. The consistency of findings across five datasets and their alignment with the LLM-as-Judge track support the directional conclu-sions reported in our study, while broader coverage could provide additional statistical support. 
+
+Annotator Demographics. Crowd annotators vary in education, domain expertise, and judgment style, and for the 24-language EurLexSum evalu-ation, each language’s annotators bring their own legal and regulatory backgrounds that may shape interpretations of faithfulness and informativeness. We mitigate this through native-speaker recruit-ment for each language, calibration rounds prior to formal annotation, and continuous monitoring of Krippendorff’s α within each track, although individual variation cannot be fully eliminated. 
+
+LLM-as-Judge Reliability. The LLM judges we applied may share systematic biases inherited from common pretraining or preference-tuning regimes, and our self-exclusion protocol mitigates self-preference at the level of individual models but not such family-level effects. We probe this through a pilot study with human annotators (Ap-pendix D.2), and the convergence of the human-only and judge-only results on the same content-versus-form asymmetry provides the cross-check available within the scope of this study. 
+
+Factuality Verification. Open-domain factuality verification relies on web search, and specialized content such as Chinese literary fiction or certain EU legal texts may be underrepresented in search indices, affecting factuality estimates for both hu-man and model summaries. We mitigate this by employing four complementary verification meth-ods with distinct reasoning strategies, so that the limitations of any single approach are partially bal-anced by the others. Incorporating domain-specific knowledge bases in future work may further im-prove coverage. 
+
+Linguistic Metrics. No finite metric set fully cap-tures linguistic quality. Our seven metrics span three complementary levels (lexical, syntactic, and discourse), and the consistency of the patterns across five datasets and 24 EurLexSum languages supports the main conclusions. Properties such as pragmatic appropriateness, register consistency, and reader-perceived naturalness are not directly covered, and incorporating additional measures would offer a more comprehensive perspective. 9Generation Configuration. The main evaluation adopts greedy decoding, a fixed maximum token budget, and a per-dataset prompt template for con-trolled, reproducible comparison. Auxiliary experi-ments on prompt variation, decoding temperature, chain-of-thought prompting, and self-correction (Appendix C.2, Appendix C.3) show that the di-rectional patterns remain stable. The configuration space is nonetheless large, and alternative strate-gies may yield different quality profiles. All mod-els receive identical prompts per dataset, so any configuration-related effects apply uniformly rather than favoring a particular system. 
+
+Reference Quality. The human reference sum-maries are taken from the original dataset releases and were produced under a range of conditions, including professional annotators, crowd workers, and domain experts. This variation is typical of summarization benchmarks and reflects the diver-sity of human summarization practices. While these references may not represent the upper bound of human performance, their consistent advantage over model outputs suggests that reference quality alone is unlikely to explain the observed differ-ences. 
+
+12 Ethical Considerations 
+
+This study draws on publicly released datasets, with all usage conforming to the respective licenses and distribution terms. Annotators participate volun-tarily and receive appropriate compensation, with calibration rounds offered prior to formal annota-tion. Precautions are taken to reduce the likelihood that annotators encounter harmful content beyond what appears in the original corpora. The evalu-ation pipeline operates on de-identified data and does not collect or attempt to infer personally iden-tifiable information. Large language models are used both as the subject of evaluation and as sup-porting components. GPT-5.4 is used as a writing assistant for language polishing and grammar cor-rection, not for research ideation, methodology, or analysis. The study is conducted in alignment with the ACL Policy on Publication Ethics. 
+
+References 
+
+Griffin Adams, Alex Fabbri, Faisal Ladhak, Eric Lehman, and Noémie Elhadad. 2023. From sparse to dense: GPT-4 summarization with chain of density prompting. In Proceedings of the 4th New Frontiers in Summarization Workshop , pages 68–74, Singapore. Association for Computational Linguistics. Sumit Asthana, Sagi Hilleli, Pengcheng He, and Aaron Halfaker. 2025. Summaries, highlights, and action items: Design, implementation and evaluation of an llm-powered meeting recap system. Proc. ACM Hum.-Comput. Interact. , 9(2). Dennis Aumiller, Ashish Chouhan, and Michael Gertz. 2022. EUR-lex-sum: A multi- and cross-lingual dataset for long-form summarization in the legal do-main. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing ,pages 7626–7639, Abu Dhabi, United Arab Emirates. Association for Computational Linguistics. Nishant Balepur, Alexa Siu, Nedim Lipka, Franck Der-noncourt, Tong Sun, Jordan Lee Boyd-Graber, and Puneet Mathur. 2025. MoDS: Moderating a mix-ture of document speakers to summarize debatable queries in document collections. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Lin-guistics: Human Language Technologies (Volume 1: Long Papers) , pages 465–491, Albuquerque, New Mexico. Association for Computational Linguistics. Catarina G Belém, Pouya Pezeshkpour, Hayate Iso, Seiji Maekawa, Nikita Bhutani, and Estevam Hruschka. 2025. From single to multi: How LLMs hallucinate in multi-document summarization. In Findings of the Association for Computational Linguistics: NAACL 2025 , pages 5291–5324, Albuquerque, New Mexico. Association for Computational Linguistics. Yoav Benjamini and Yosef Hochberg. 1995. Control-ling the false discovery rate: A practical and pow-erful approach to multiple testing. Journal of the Royal Statistical Society: Series B (Methodological) ,57(1):289–300. Meng Cao, Yue Dong, and Jackie Cheung. 2022. Hal-lucinated but factual! inspecting the factuality of hallucinations in abstractive summarization. In Pro-ceedings of the 60th Annual Meeting of the Associa-tion for Computational Linguistics (Volume 1: Long Papers) , pages 3340–3354, Dublin, Ireland. Associa-tion for Computational Linguistics. Yapei Chang, Kyle Lo, Tanya Goyal, and Mohit Iyyer. 2024. Booookscore: A systematic exploration of book-length summarization in the era of LLMs. In 
+
+The Twelfth International Conference on Learning Representations .George Chrysostomou, Zhixue Zhao, Miles Williams, and Nikolaos Aletras. 2024. Investigating hallucina-tions in pruned large language models for abstractive summarization. Transactions of the Association for Computational Linguistics , 12:1163–1181. Michael A. Covington and Joe D. McFall. 2010. Cutting the gordian knot: The moving-average type–token ratio (mattr). Journal of Quantitative Linguistics ,17(2):94–100. 
+
+10 Emma Croxford, Yanjun Gao, Nicholas Pellegrino, Karen Wong, Graham Wills, Elliot First, Frank Liao, Cherodeep Goswami, Brian Patterson, and Majid Af-shar. 2025. Current and future state of evaluation of large language models for medical summarization tasks. Npj health systems , 2(1):6. Ensieh Davoodijam and Mohsen Alambardar Meybodi. 2024. Evaluation metrics on text summarization: comprehensive survey. Knowledge and Information Systems , 66(12):7717–7738. Yue Dong, John Wieting, and Pat Verga. 2022. Faithful to the document or to the world? mitigating hal-lucinations via entity-linked knowledge in abstrac-tive summarization. In Findings of the Association for Computational Linguistics: EMNLP 2022 , pages 1067–1082, Abu Dhabi, United Arab Emirates. Asso-ciation for Computational Linguistics. Darren Edge, Ha Trinh, Newman Cheng, Joshua Bradley, Alex Chao, Apurva Mody, Steven Truitt, Dasha Metropolitansky, Robert Osazuwa Ness, and Jonathan Larson. 2024. From local to global: A graph rag approach to query-focused summarization. 
+
+arXiv preprint arXiv:2404.16130 .Marcio Fonseca and Shay Cohen. 2024. Can large lan-guage model summarizers adapt to diverse scientific communication goals? In Findings of the Asso-ciation for Computational Linguistics: ACL 2024 ,pages 8599–8618, Bangkok, Thailand. Association for Computational Linguistics. Jessica Zosa Forde, Ruochen Zhang, Lintang Sutawika, Alham Fikri Aji, Samuel Cahyawijaya, Genta Indra Winata, Minghao Wu, Carsten Eickhoff, Stella Bider-man, and Ellie Pavlick. 2024. Re-evaluating evalua-tion for multilingual summarization. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , pages 19476–19493, Miami, Florida, USA. Association for Computational Linguistics. Shahriar Golchin and Mihai Surdeanu. 2024. Time travel in LLMs: Tracing data contamination in large language models. In The Twelfth International Con-ference on Learning Representations .Tanya Goyal, Junyi Jessy Li, and Greg Durrett. 2023. News summarization and evaluation in the era of gpt-3. Preprint , arXiv:2209.12356. Xiaobo Guo and Soroush Vosoughi. 2023. Length does matter: Summary length can bias summarization met-rics. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Process-ing , pages 15869–15879, Singapore. Association for Computational Linguistics. Junxian He, Wojciech Kryscinski, Bryan McCann, Nazneen Rajani, and Caiming Xiong. 2022. CTRL-sum: Towards generic controllable text summariza-tion. In Proceedings of the 2022 Conference on Em-pirical Methods in Natural Language Processing ,pages 5879–5915, Abu Dhabi, United Arab Emirates. Association for Computational Linguistics. Kung-Hsiang Huang, Philippe Laban, Alexander Fab-bri, Prafulla Kumar Choubey, Shafiq Joty, Caiming Xiong, and Chien-Sheng Wu. 2024. Embrace diver-gence for richer insights: A multi-document summa-rization benchmark and a case study on summarizing diverse information from news articles. In Proceed-ings of the 2024 Conference of the North American Chapter of the Association for Computational Lin-guistics: Human Language Technologies (Volume 1: Long Papers) , pages 570–593, Mexico City, Mexico. Association for Computational Linguistics. Yekyung Kim, Yapei Chang, Marzena Karpinska, Aparna Garimella, Varun Manjunatha, Kyle Lo, Tanya Goyal, and Mohit Iyyer. 2024. FABLES: Evaluating faithfulness and content selection in book-length summarization. In First Conference on Lan-guage Modeling .Ryan Koo, Minhwa Lee, Vipul Raheja, Jong Inn Park, Zae Myung Kim, and Dongyeop Kang. 2024. Bench-marking cognitive biases in large language models as evaluators. In Findings of the Association for Com-putational Linguistics: ACL 2024 , pages 517–545, Bangkok, Thailand. Association for Computational Linguistics. Dawei Li, Bohan Jiang, Liangjie Huang, Alimohammad Beigi, Chengshuai Zhao, Zhen Tan, Amrita Bhat-tacharjee, Yuxuan Jiang, Canyu Chen, Tianhao Wu, Kai Shu, Lu Cheng, and Huan Liu. 2025a. From gen-eration to judgment: Opportunities and challenges of LLM-as-a-judge. In Proceedings of the 2025 Con-ference on Empirical Methods in Natural Language Processing , pages 2757–2791, Suzhou, China. Asso-ciation for Computational Linguistics. Haitao Li, Junjie Chen, Jingli Yang, Qingyao Ai, Wei Jia, Youfeng Liu, Kai Lin, Yueyue Wu, Guozhi Yuan, Yiran Hu, Wuyue Wang, Yiqun Liu, and Min-lie Huang. 2025b. LegalAgentBench: Evaluating LLM agents in legal domain. In Proceedings of the 63rd Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) , pages 2322–2344, Vienna, Austria. Association for Compu-tational Linguistics. Jiliang Li, Yifan Zhang, Zachary Karas, Collin McMil-lan, Kevin Leach, and Yu Huang. 2024. Do machines and humans focus on similar code? exploring ex-plainability of large language models in code sum-marization. In Proceedings of the 32nd IEEE/ACM International Conference on Program Comprehen-sion , pages 47–51. Yunlong Liang, Fandong Meng, Jinan Xu, Jiaan Wang, Yufeng Chen, and Jie Zhou. 2023. Summary-oriented vision modeling for multimodal abstractive summa-rization. In Proceedings of the 61st Annual Meet-ing of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 2934–2951, Toronto, Canada. Association for Computational Linguistics. Dongqi Liu and Vera Demberg. 2023. ChatGPT vs human-authored text: Insights into controllable text 
+
+11 summarization and sentence style transfer. In Pro-ceedings of the 61st Annual Meeting of the Asso-ciation for Computational Linguistics (Volume 4: Student Research Workshop) , pages 1–18, Toronto, Canada. Association for Computational Linguistics. Dongqi Liu, Yifan Wang, Jia Loy, and Vera Demberg. 2024a. SciNews: From scholarly complexities to public narratives – a dataset for scientific news re-port generation. In Proceedings of the 2024 Joint International Conference on Computational Linguis-tics, Language Resources and Evaluation (LREC-COLING 2024) , pages 14429–14444, Torino, Italia. ELRA and ICCL. Dongqi Liu, Chenxi Whitehouse, Xi Yu, Louis Mahon, Rohit Saxena, Zheng Zhao, Yifu Qiu, Mirella Lapata, and Vera Demberg. 2025a. What is that talk about? a video-to-text summarization dataset for scientific presentations. In Proceedings of the 63rd Annual Meeting of the Association for Computational Lin-guistics (Volume 1: Long Papers) , pages 6187–6210, Vienna, Austria. Association for Computational Lin-guistics. Dongqi Liu, Xi Yu, Vera Demberg, and Mirella Lapata. 2025b. Explanatory summarization with discourse-driven planning. Transactions of the Association for Computational Linguistics , 13:1146–1170. Nelson F. Liu, Kevin Lin, John Hewitt, Ashwin Paran-jape, Michele Bevilacqua, Fabio Petroni, and Percy Liang. 2024b. Lost in the middle: How language models use long contexts. Transactions of the Asso-ciation for Computational Linguistics , 12:157–173. Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. 2023a. G-eval: NLG evaluation using gpt-4 with better human align-ment. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing ,pages 2511–2522, Singapore. Association for Com-putational Linguistics. Yixin Liu, Alex Fabbri, Pengfei Liu, Yilun Zhao, Liny-ong Nan, Ruilin Han, Simeng Han, Shafiq Joty, Chien-Sheng Wu, Caiming Xiong, and Dragomir Radev. 2023b. Revisiting the gold standard: Ground-ing summarization evaluation with robust human evaluation. In Proceedings of the 61st Annual Meet-ing of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 4140–4170, Toronto, Canada. Association for Computational Linguistics. Yixin Liu, Kejian Shi, Katherine He, Longtian Ye, Alexander Fabbri, Pengfei Liu, Dragomir Radev, and Arman Cohan. 2024c. On learning to summarize with large language models as references. In Pro-ceedings of the 2024 Conference of the North Amer-ican Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 8647–8664, Mexico City, Mexico. Association for Computational Linguistics. Joshua Maynez, Shashi Narayan, Bernd Bohnet, and Ryan McDonald. 2020. On faithfulness and factu-ality in abstractive summarization. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pages 1906–1919, On-line. Association for Computational Linguistics. Hyangsuk Min, Yuho Lee, Minjeong Ban, Jiaqi Deng, Nicole Hee-Yeon Kim, Taewon Yun, Hang Su, Jason Cai, and Hwanjun Song. 2025. Towards multi-dimensional evaluation of LLM summariza-tion across domains and languages. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 14417–14450, Vienna, Austria. Association for Computational Linguistics. Sewon Min, Kalpesh Krishna, Xinxi Lyu, Mike Lewis, Wen-tau Yih, Pang Koh, Mohit Iyyer, Luke Zettle-moyer, and Hannaneh Hajishirzi. 2023. FActScore: Fine-grained atomic evaluation of factual precision in long form text generation. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , pages 12076–12100, Singa-pore. Association for Computational Linguistics. Aishik Nagar, Yutong Liu, Andy T. Liu, Viktor Schlegel, Vijay Prakash Dwivedi, Arun-Kumar Kaliya-Perumal, Guna Pratheep Kalanchiam, Yili Tang, and Robby T. Tan. 2025. uMedSum: A unified framework for clinical abstractive summarization. In 
+
+Proceedings of the 63rd Annual Meeting of the As-sociation for Computational Linguistics (Volume 1: Long Papers) , pages 2653–2672, Vienna, Austria. Association for Computational Linguistics. Ani Nenkova and Annie Louis. 2008. Can you sum-marize this? identifying correlates of input difficulty for multi-document summarization. In Proceedings of ACL-08: HLT , pages 825–833, Columbus, Ohio. Association for Computational Linguistics. Arjun Panickssery, Samuel R. Bowman, and Shi Feng. 2024. LLM evaluators recognize and favor their own generations. In The Thirty-eighth Annual Conference on Neural Information Processing Systems .Pinelopi Papalampidi and Mirella Lapata. 2023. Hier-archical3D adapters for long video-to-text summa-rization. In Findings of the Association for Compu-tational Linguistics: EACL 2023 , pages 1297–1320, Dubrovnik, Croatia. Association for Computational Linguistics. Xiao Pu, Mingqi Gao, and Xiaojun Wan. 2023. Summarization is (almost) dead. Preprint ,arXiv:2309.09558. Peng Qi, Yuhao Zhang, Yuhui Zhang, Jason Bolton, and Christopher D. Manning. 2020. Stanza: A Python natural language processing toolkit for many human languages. In Proceedings of the 58th Annual Meet-ing of the Association for Computational Linguistics: System Demonstrations .
+
+12 Siya Qi, Rui Cao, Yulan He, and Zheng Yuan. 2025. Evaluating LLMs’ assessment of mixed-context hal-lucination through the lens of summarization. In 
+
+Findings of the Association for Computational Lin-guistics: ACL 2025 , pages 16480–16503, Vienna, Austria. Association for Computational Linguistics. Subhey Sadi Rahman, Md Adnanul Islam, Md Mahbub Alam, Musarrat Zeba, Md Abdur Rahman, Sadia Sul-tana Chowa, Mohaimenul Azam Khan Raiaan, and Sami Azam. 2026. Hallucination to truth: a review of fact-checking and factuality evaluation in large language models. Artificial Intelligence Review .Sanjana Ramprasad, Kundan Krishna, Zachary Lipton, and Byron Wallace. 2024. Evaluating the factual-ity of zero-shot summarizers across varied domains. In Proceedings of the 18th Conference of the Euro-pean Chapter of the Association for Computational Linguistics (Volume 2: Short Papers) , pages 50–59, St. Julian’s, Malta. Association for Computational Linguistics. Mathieu Ravaut, Aixin Sun, Nancy Chen, and Shafiq Joty. 2024. On context utilization in summariza-tion with large language models. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 2764–2781, Bangkok, Thailand. Association for Computational Linguistics. Sangwon Ryu, Heejin Do, Yunsu Kim, Gary Lee, and Jungseul Ok. 2024. Multi-dimensional optimization for text summarization via reinforcement learning. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 5858–5871, Bangkok, Thailand. Association for Computational Linguistics. Oscar Sainz, Jon Campos, Iker García-Ferrero, Julen Etxaniz, Oier Lopez de Lacalle, and Eneko Agirre. 2023. NLP evaluation in trouble: On the need to mea-sure LLM data contamination for each benchmark. In Findings of the Association for Computational Linguistics: EMNLP 2023 , pages 10776–10787, Sin-gapore. Association for Computational Linguistics. Alessandro Scirè, Karim Ghonim, and Roberto Navigli. 2024. FENICE: Factuality evaluation of summariza-tion based on natural language inference and claim extraction. In Findings of the Association for Compu-tational Linguistics: ACL 2024 , pages 14148–14161, Bangkok, Thailand. Association for Computational Linguistics. Hwanjun Song, Hang Su, Igor Shalyminov, Jason Cai, and Saab Mansour. 2024a. FineSurE: Fine-grained summarization evaluation using LLMs. In Proceed-ings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Pa-pers) , pages 906–922, Bangkok, Thailand. Associa-tion for Computational Linguistics. Yixiao Song, Yekyung Kim, and Mohit Iyyer. 2024b. VeriScore: Evaluating the factuality of verifiable claims in long-form text generation. In Findings of the Association for Computational Linguistics: EMNLP 2024 , pages 9447–9474, Miami, Florida, USA. Association for Computational Linguistics. Derek Tam, Anisha Mascarenhas, Shiyue Zhang, Sarah Kwan, Mohit Bansal, and Colin Raffel. 2023. Evalu-ating the factual consistency of large language mod-els through news summarization. In Findings of the Association for Computational Linguistics: ACL 2023 , pages 5220–5255, Toronto, Canada. Associa-tion for Computational Linguistics. Manveer Singh Tamber, Forrest Sheng Bao, Chenyu Xu, Ge Luo, Suleman Kazi, Minseok Bae, Miaoran Li, Ofer Mendelevitch, Renyi Qu, and Jimmy Lin. 2025. Benchmarking LLM faithfulness in RAG with evolving leaderboards. In Proceedings of the 2025 Conference on Empirical Methods in Natural Lan-guage Processing: Industry Track , pages 799–811, Suzhou (China). Association for Computational Lin-guistics. Liyan Tang, Igor Shalyminov, Amy Wong, Jon Burnsky, Jake Vincent, Yu’an Yang, Siffi Singh, Song Feng, Hwanjun Song, Hang Su, Lijia Sun, Yi Zhang, Saab Mansour, and Kathleen McKeown. 2024. TofuEval: Evaluating hallucinations of LLMs on topic-focused dialogue summarization. In Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) ,pages 4455–4480, Mexico City, Mexico. Association for Computational Linguistics. Ashok Urlana, Pruthwik Mishra, Tathagato Roy, and Rahul Mishra. 2024. Controllable text summa-rization: Unraveling challenges, approaches, and prospects - a survey. In Findings of the Associ-ation for Computational Linguistics: ACL 2024 ,pages 1603–1623, Bangkok, Thailand. Association for Computational Linguistics. Prasetya Utama, Joshua Bambrick, Nafise Moosavi, and Iryna Gurevych. 2022. Falsesum: Generating document-level NLI examples for recognizing fac-tual inconsistency in summarization. In Proceedings of the 2022 Conference of the North American Chap-ter of the Association for Computational Linguistics: Human Language Technologies , pages 2763–2776, Seattle, United States. Association for Computational Linguistics. David Wan, Koustuv Sinha, Srini Iyer, Asli Celikyil-maz, Mohit Bansal, and Ramakanth Pasunuru. 2024. ACUEval: Fine-grained hallucination evaluation and correction for abstractive summarization. In Find-ings of the Association for Computational Linguistics: ACL 2024 , pages 10036–10056, Bangkok, Thailand. Association for Computational Linguistics. David Wan, Jesse Vig, Mohit Bansal, and Shafiq Joty. 2025a. On positional bias of faithfulness for long-form summarization. In Proceedings of the 2025 Conference of the Nations of the Americas Chap-ter of the Association for Computational Linguistics: 
+
+13 Human Language Technologies (Volume 1: Long Pa-pers) , pages 8791–8810, Albuquerque, New Mexico. Association for Computational Linguistics. Yingjia Wan, Haochen Tan, Xiao Zhu, Xinyu Zhou, Zhi-wei Li, Qingsong Lv, Changxuan Sun, Jiaqi Zeng, Yi Xu, Jianqiao Lu, Yinhong Liu, and Zhijiang Guo. 2025b. FaStFact: Faster, stronger long-form factual-ity evaluations in LLMs. In Findings of the Associ-ation for Computational Linguistics: EMNLP 2025 ,pages 23814–23854, Suzhou, China. Association for Computational Linguistics. Jiaan Wang, Fandong Meng, Zengkui Sun, Yunlong Liang, Yuxuan Cao, Jiarong Xu, Haoxiang Shi, and Jie Zhou. 2025a. An empirical study of many-to-many summarization with large language models. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 11328–11344, Vienna, Austria. Association for Computational Linguistics. Peiyi Wang, Lei Li, Liang Chen, Zefan Cai, Dawei Zhu, Binghuai Lin, Yunbo Cao, Lingpeng Kong, Qi Liu, Tianyu Liu, and Zhifang Sui. 2024. Large lan-guage models are not fair evaluators. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 9440–9450, Bangkok, Thailand. Association for Computational Linguistics. Shu Wang, Yixiang Fang, Yingli Zhou, Xilin Liu, and Yuchi Ma. 2025b. Archrag: Attributed community-based hierarchical retrieval-augmented generation. 
+
+arXiv preprint arXiv:2502.09891 .Zhitong Wang, Cheng Gao, Chaojun Xiao, Yufei Huang, Shuzheng Si, Kangyang Luo, Yuzhuo Bai, Wen-hao Li, Tangjian Duan, Chuancheng Lv, Guoshan Lu, Gang Chen, Fanchao Qi, and Maosong Sun. 2025c. Document segmentation matters for retrieval-augmented generation. In Findings of the Associa-tion for Computational Linguistics: ACL 2025 , pages 8063–8075, Vienna, Austria. Association for Compu-tational Linguistics. Jerry Wei, Chengrun Yang, Xinying Song, Yifeng Lu, Nathan Zixia Hu, Jie Huang, Dustin Tran, Daiyi Peng, Ruibo Liu, Da Huang, Cosmo Du, and Quoc V Le. 2024. Long-form factuality in large language models. In The Thirty-eighth Annual Conference on Neural Information Processing Systems .Lingxiao Wei, He Yan, Lu Xiangju, Junmin Zhu, Jun Wang, and Wei Zhang. 2025. CNNSum: Explor-ing long-context summarization with large language models in Chinese novels. In Findings of the Asso-ciation for Computational Linguistics: ACL 2025 ,pages 8034–8062, Vienna, Austria. Association for Computational Linguistics. Frank Wilcoxon. 1945. Individual comparisons by rank-ing methods. Biometrics Bulletin , 1(6):80–83. Dustin Wright, Zain Muhammad Mujahid, Lu Wang, Isabelle Augenstein, and David Jurgens. 2025. Un-structured evidence attribution for long context query focused summarization. In Proceedings of the 2025 Conference on Empirical Methods in Natural Lan-guage Processing , pages 1839–1867, Suzhou, China. Association for Computational Linguistics. Cheng Xu, Nan Yan, Shuhao Guan, Changhong Jin, Yuke Mei, Yibing Guo, and Tahar Kechadi. 2025. DCR: Quantifying data contamination in LLMs eval-uation. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing ,pages 23002–23020, Suzhou, China. Association for Computational Linguistics. Zonghai Yao, Benjamin Schloss, and Sai Selvaraj. 2023. Improving summarization with human edits. In Pro-ceedings of the 2023 Conference on Empirical Meth-ods in Natural Language Processing , pages 2604– 2620, Singapore. Association for Computational Lin-guistics. Nathan Zeweniuk, Ori Ernst, and Jackie CK Cheung. 2025. Beyond paraphrasing: Analyzing summariza-tion abstractiveness and reasoning. In Proceedings of The 5th New Frontiers in Summarization Workshop ,pages 48–58, Hybrid. Association for Computational Linguistics. Yuheng Zha, Yichi Yang, Ruichen Li, and Zhiting Hu. 2023. AlignScore: Evaluating factual consistency with a unified alignment function. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 11328–11348, Toronto, Canada. Association for Computational Linguistics. Haopeng Zhang, Philip S. Yu, and Jiawei Zhang. 2025a. A systematic survey of text summarization: From statistical methods to large language models. ACM Comput. Surv. , 57(11). Taolin Zhang, Dongyang Li, Qizhou Chen, Chengyu Wang, and Xiaofeng He. 2025b. BELLE: A bi-level multi-agent reasoning framework for multi-hop ques-tion answering. In Proceedings of the 63rd Annual Meeting of the Association for Computational Lin-guistics (Volume 1: Long Papers) , pages 4184–4202, Vienna, Austria. Association for Computational Lin-guistics. Tianyi Zhang, Faisal Ladhak, Esin Durmus, Percy Liang, Kathleen McKeown, and Tatsunori B. Hashimoto. 2024. Benchmarking large language models for news summarization. Transactions of the Association for Computational Linguistics , 12:39–57. Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin Zhang, Huan Lin, Baosong Yang, Pengjun Xie, An Yang, Dayiheng Liu, Junyang Lin, Fei Huang, and Jingren Zhou. 2025c. Qwen3 embedding: Advancing text embedding and reranking through foundation models. 
+
+Preprint , arXiv:2506.05176. 
+
+14 Jihao Zhao, Zhiyuan Ji, Zhaoxin Fan, Hanyu Wang, Simin Niu, Bo Tang, Feiyu Xiong, and Zhiyu Li. 2025. MoC: Mixtures of text chunking learners for retrieval-augmented generation system. In Proceed-ings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Pa-pers) , pages 5172–5189, Vienna, Austria. Associa-tion for Computational Linguistics. Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric Xing, Hao Zhang, Joseph E. Gonzalez, and Ion Stoica. 2023. Judging LLM-as-a-judge with MT-bench and chatbot arena. In Thirty-seventh Conference on Neural Information Processing Systems Datasets and Benchmarks Track .Xiaolin Zhou, Zheng Luo, Yicheng Gao, Qixuan Chen, Xiyang Hu, Yue Zhao, and Ruishan Liu. 2026. Fairness or fluency? an investigation into language bias of pairwise llm-as-a-judge. Preprint ,arXiv:2601.13649. 
+
+A Models, Datasets, and Sample Counts 
+
+Table 1 lists the full model identifiers and API ac-cess dates for all five evaluated LLMs. Throughout the paper, we use abbreviated names for simplicity.       
+
+> Abbreviation Full Model Identifier GPT GPT-5.4-2026-03-05
+> Claude Claude-opus-4-6
+> Gemini Gemini-3.1-pro-preview
+> Qwen Qwen3.5-397B-A17B
+> Kimi Kimi-K2.5
+
+Table 1: Abbreviations and full model identifiers for the five evaluated LLMs. All models are accessed via their respective APIs between March 1 and May 15, 2026. 
+
+Below we describe each dataset used in our eval-uation. • CNNSum (Wei et al., 2025) is a Chinese novel summarization dataset of serialized web novels with long source documents; human-editor ref-erences condense entire story arcs into coherent synopses. We use the full training set (695 sam-ples), as no official test/validation split is pro-vided. • SciNews (Liu et al., 2024a) is an English lay sum-marization dataset that pairs scientific research papers with news articles written for general au-diences, requiring simplification of technical con-tent while preserving accuracy. We use the offi-cial full test split (4,188 samples). • DiverseSumm (Huang et al., 2024) is an English multi-document news summarization dataset that aggregates multiple articles on the same event into a single coherent summary, emphasizing cross-document integration and redundancy res-olution. We use all available samples from the training set (245), as no official test/validation split is provided. • VISTA (Liu et al., 2025a) is an English video-to-text summarization dataset pairing scientific paper abstracts with video presentations. We use the official full test split (1,859 samples). • EurLexSum (Aumiller et al., 2022) is a multilin-gual legal summarization dataset of EU legisla-tive documents and their official summaries in 24 EU languages, with parallel summaries enabling controlled cross-lingual comparison. We use the official full test split (188 samples per language; 4,512 in total). Table 2 reports the per-track sample counts. Hu-man evaluation uses a random subsample to man-age annotation cost, while automatic evaluations use all available samples.                 
+
+> Dataset Human Eval Automatic Eval CNNSum 300 695 SciNews 300 4,188 DiverseSumm 200 245 VISTA 300 1,859 EurLexSum (per lang.) 30 188 EurLexSum (total) 720 4,512 Total 1,820 11,499
+
+Table 2: Sample counts per dataset for human evaluation and automatic evaluations (LLM-as-Judge, factuality verification, and linguistic divergence analysis). 
+
+B Generation Hyperparameters 
+
+We generate one summary per instance for each closed-source LLM (GPT, Claude, and Gemini) via the provider’s API. For open-source models (Qwen and Kimi), we use the HuggingFace Inference API under the same evaluation protocol. Decoding is greedy ( T = 0 ) for reproducibility, with a maxi-mum of 1,024 new tokens per completion; top-p,top-k, and frequency penalties retain each API’s defaults. Each dataset uses a domain- and language-specific instruction template (full prompts in Ap-pendix I); within a dataset, all five models receive the identical prompt, so performance differences reflect model capability rather than prompt varia-tion. 15 C Appendix for Human Evaluation 
+
+C.1 Human Evaluation Setup Expert Annotators. We assemble five domain experts, all holding doctoral degrees in fields aligned with the datasets: Chinese literature (CNNSum), natural sciences (SciNews), journal-ism and media studies (DiverseSumm), computer science with a focus on artificial intelligence (VISTA), and EU law (EurLexSum). 3 Each expert independently annotates a seed set of 20 samples from their area; for each sample, all candidate sum-maries are shown in blind, randomized order, and the expert assigns 1-to-5 Likert scores on the four dimensions (informativeness, faithfulness, coher-ence, conciseness) plus a listwise overall ranking (1 = worst to 6 = best). These annotations serve as (i) references for the crowdsourcing qualification test and (ii) calibration data for the annotation protocol before the main study. 
+
+Crowdsourcing Platform and Requirements. 
+
+We recruit crowd annotators through Prolific (https://www.prolific.com ). Eligibility re-quires (i) a prior-task approval rate of at least 85%, (ii) at least an undergraduate-level education, and (iii) self-reported language proficiency: CEFR C1 or above in English for SciNews, DiverseSumm, and VISTA; native Chinese for CNNSum; and native-level proficiency in the respective EU lan-guage for EurLexSum. 
+
+Qualification Test. Each candidate completes a qualification round on the same 20 expert-annotated seed samples, following the same pro-tocol as the experts. We then compute Pearson 
+
+r between the candidate’s and the experts’ Likert scores per dimension across the 20 samples and require r ≥ 0.65 on every dimension; candidates below the threshold are not admitted. Of 787 candi-dates who attempted the qualification, 167 passed and were retained. 
+
+Annotation Protocol. The full guidelines are given in Figure 28. Each sample follows a blind listwise protocol. The source document and all six candidate summaries appear simultaneously, with system identities hidden and presentation order ran-domized independently per annotator; annotators are not told the number of systems or that a hu-man reference is among the candidates. For each 
+
+> 3Experts may use translation tools to assist comprehension of texts in the relevant language.
+
+summary, annotators assign 1-to-5 Likert scores on the four dimensions and produce a single overall listwise ranking from 1 (worst) to 6 (best). Each sample is independently evaluated by three crowd annotators. 
+
+Pairwise Win Rates. Pairwise win rates are de-rived from the overall listwise rankings. For each annotator and each pair (A, B), A wins if its rank is strictly better than B’s, with ties split evenly. The win rate of A over B is the average across all an-notators and samples, yielding a value in [0, 1] satisfying win_rate(A, B) + win_rate(B, A) = 1.00. 
+
+Quality Control. 5% of samples are duplicated throughout the annotation process to measure intra-annotator consistency. Inter-annotator agreement is monitored via Krippendorff’s α every 20 com-pleted samples, with recalibration reminders issued whenever α falls below 0.70. Annotators whose ongoing Pearson correlation with the remaining an-notators drops below 0.60 are excluded from the final analysis. 
+
+Inter-Annotator Agreement. Table 3 reports Krippendorff’s α (ordinal weighting) for each Lik-ert dimension and dataset, computed on the final accepted annotations after quality-control exclu-sions. All values meet or exceed the 0.70 monitor-ing threshold.                                
+
+> Dataset Info. Faith. Coher. Conci. CNNSum 0.84 0.74 0.76 0.73 SciNews 0.76 0.74 0.72 0.76 DiverseSumm 0.75 0.78 0.74 0.70 VISTA 0.78 0.72 0.73 0.71 EurLexSum 0.81 0.78 0.76 0.73
+> Table 3: Observed inter-annotator agreement per dataset.
+> Info. = informativeness; Faith. = faithfulness; Coher. =coherence; Conci. = conciseness.
+
+C.2 Prompt and Temperature Sensitivity 
+
+We generate all summaries using a domain-specific instruction template and greedy decoding ( T = 0 ). To verify that the main findings are robust to these design choices, we examine sensitivity along two consequential generation factors, namely the level of prompt specificity and the decoding temperature. 
+
+Prompt Conditions. We compare two prompt variants applied identically to all five models on all five datasets. The first is the prompt from Ap-pendix I, which provides domain-specific guidance, 16 explicit quality criteria, and an output-format in-struction (hereafter Default ). The second is a Mini-mal prompt consisting of a single-sentence instruc-tion to summarize the source document, with no domain guidance or format specification. 
+
+Temperature Conditions. Using the default prompt, we additionally generate summaries at 
+
+T = 0 .3 and T = 0 .7 under nucleus sampling (top-p = 0 .95 ) and compare them with the greedy baseline ( T = 0 ). 
+
+Evaluation. For each condition, we run the same human evaluation on a held-out subset of 24 sam-ples per dataset (120 samples total), using the same annotation protocol and annotator pool as the main evaluation. 4 We report the average pairwise win rate of human summaries against the five-model average on each of the four evaluation dimensions. The results are shown in Table 4. The human advantage on informativeness and faithfulness per-sists across every condition, with win rates span-ning 0.70–0.75 and 0.68–0.74, respectively. Coher-ence stays at or below 0.50 throughout, confirm-ing that models are preferred on this dimension regardless of prompt or temperature choice. The numerical differences across conditions are small, and no condition reverses any finding reported in the main text. Within the prompt conditions, the minimal in-struction increases human win rates on informative-ness (0.71 to 0.75) and faithfulness (0.68 to 0.74). Within the temperature conditions, T = 0 .3 has a slightly larger effect, raising coherence to 0.45 and conciseness to 0.51. 
+
+C.3 Prompt Engineering Ablation 
+
+We additionally examine two prompting strategies that alter the reasoning process underlying sum-mary generation, namely chain-of-thought prompt-ing and a two-stage self-correction procedure. 
+
+Chain-of-Thought Condition. We augment the prompt from Appendix I with a structured reason-ing preamble that instructs each model to enumer-ate the three to five most important claims in the source document, identify supporting evidence for each, and then compose the summary from that claim list. The reasoning trace is discarded from the final output; only the composed summary is sub-mitted for evaluation. This condition tests whether 
+
+> 4One sample is drawn from each language in EurLexSum.
+
+explicit intermediate reasoning yields more thor-ough factual grounding than direct generation. 
+
+Self-Correction Condition. We employ a two-stage procedure. In the first stage, each model generates a draft summary. In the second stage, the same model receives the source document together with its draft and is instructed to identify factual inaccuracies, omitted key claims, and unjustified statements, then produce a revised summary that addresses these issues. The second-stage prompt is applied without modification across all five models, and only the revised summary is evaluated. 
+
+Evaluation. Both conditions are evaluated on the same 120-sample held-out set as Appendix C.2, us-ing the identical annotation protocol and annotator pool. We report the average pairwise win rate of hu-man summaries against the five-model average on each of the four evaluation dimensions and overall. The results are shown in Table 5. Chain-of-thought prompting narrows the human faithfulness advantage relative to the baseline (0.68 to 0.65), consistent with claim enumeration pushing models to ground their outputs more explicitly in the source before composition. The informativeness win rate decreases from 0.71 to 0.66. Self-correction re-duces both faithfulness (0.64) and informativeness (0.69), plausibly because the revision stage tends to drop content the model judges as uncertain, occa-sionally at the cost of coverage. Coherence (0.44) and conciseness (0.56) win rates rise under self-correction. Across all three strategies, the human advantage on informativeness and faithfulness is preserved, with win rates above 0.50 throughout. 
+
+C.4 Controlled Human Summaries 
+
+The main evaluation compares model outputs against the original human reference summaries shipped with each dataset. Because these refer-ences are publicly available, they may have been en-countered by the evaluated LLMs, raising the pos-sibility that the observed human advantage partly reflects data contamination rather than genuine dif-ferences in summarization capability. To alleviate this concern, we collect a fresh set of controlled human summaries on all five datasets, ensuring that the new references could not have appeared in any model’s training data. 
+
+Participants and Procedure. We recruit 81 crowd workers from the Prolific platform under the same qualification criteria as the main anno-17 Condition Info. Faith. Coher. Conci.                                
+
+> Prompt condition (decoding: greedy T= 0 )
+> Minimal instruction 0.75 0.74 0.50 0.53
+> Default (ours) 0.71 0.68 0.42 0.49
+> Decoding temperature (prompt: Default)
+> Greedy T= 0 (ours) 0.71 0.68 0.42 0.49
+> Sampling T= 0 .30.70 0.69 0.45 0.51 Sampling T= 0 .70.70 0.69 0.42 0.48
+> Table 4: Average pairwise win rate of human summaries against the five-model average across four evaluation dimensions (120-sample held-out set, averaged across five models and five datasets). Bold rows indicate the settings used in the main evaluation. A win rate above 0.50 indicates that human summaries are preferred; a value below 0.50 indicates that model outputs are preferred.
+
+Strategy Info. Faith. Coher. Conci. 
+
+Default (ours) 0.71 0.68 0.42 0.49 
+
+Chain-of-thought 0.66 0.65 0.42 0.54 Self-correction 0.69 0.64 0.44 0.56   
+
+> Table 5: Average pairwise win rate of human summaries against the five-model average under three prompt engineering strategies (120-sample held-out set, averaged across five models and five datasets). Bold rows indicate the settings used in the main evaluation. A win rate above 0.50 indicates that human summaries are preferred.
+
+tation (Appendix C.1), and present them with the same detailed task prompt used to generate model summaries (Appendix I). Workers may consult credible external resources such as Wikipedia, aca-demic papers, and books to support comprehension of the source material, but are explicitly prohib-ited from using any AI tool. Each worker is given a 120-minute window per sample. We collect 24 controlled human summaries per dataset across CNNSum, SciNews, DiverseSumm, VISTA, and EurLexSum (120 in total); for EurLexSum, the 24 samples cover all 24 official EU languages. All controlled summaries are evaluated under the same Likert and listwise protocol as the main study. 
+
+Results. Table 6 reports the Human-minus-five-model-average score differences for the original references and the controlled human summaries, broken down by dataset and dimension. For a fair comparison, the original-reference scores are re-computed on the same 24-sample subset used in the controlled condition. Under controlled conditions, the human advan-tage in informativeness and faithfulness widens on every dataset relative to the original references. Coherence and conciseness remain directionally consistent with the main findings, with model sum-maries retaining a slight edge on coherence. These results indicate that the main evaluation underes-timates the genuine human-model gap, with data contamination of the references partially masking the disparity on content-oriented dimensions. 
+
+D Appendix for LLM-as-Judge 
+
+D.1 LLM-as-Judge Setup 
+
+The full prompt template for LLM-as-Judge is shown in Figure 29. For each sample, the source document and all six candidate summaries are pre-sented to the LLM judge in a single prompt. The judge assigns a 1-to-5 Likert score to each sum-mary on each of four dimensions and produces a listwise ranking of the six summaries from worst (rank 1) to best (rank 6). To mitigate position bias, the presentation order of the six summaries is randomized independently for each sample and each judge, and system iden-tities are hidden (summaries are labeled Summary A through Summary F). Each sample is evaluated by all five judges (GPT, Claude, Gemini, Qwen, Kimi). The final per-dimension Likert score and overall rank for each system on each sample are the arithmetic mean of the judges’ assignments (four judges for self-exclusion). Self-preference bias, where a judge systematically assigns higher scores and ranks to their own outputs than the remaining judges do, is a known concern in LLM-based eval-uation (Panickssery et al., 2024). To address this, 18 Dataset Condition Info. ∆ Faith. ∆ Coher. ∆ Conci. ∆                                             
+
+> CNNSum Original reference +0.40 +0.34 −0.10 −0.06 Controlled human +0.45 +0.38 −0.08 −0.03 SciNews Original reference +0.34 +0.37 −0.11 −0.09 Controlled human +0.43 +0.45 −0.08 −0.05 DiverseSumm Original reference +0.38 +0.32 −0.06 +0.07 Controlled human +0.44 +0.38 −0.08 +0.08 VISTA Original reference +0.35 +0.29 −0.12 −0.05 Controlled human +0.39 +0.32 −0.09 −0.03 EurLexSum Original reference +0.45 +0.38 −0.05 −0.10 Controlled human +0.51 +0.44 −0.05 −0.07
+> Table 6: Human-minus-five-model-average Likert score differences ( ∆) for original dataset references and controlled human summaries. Positive values indicate that the human condition scores higher; negative values indicate that model summaries score higher.
+
+our primary results exclude self-judgments. When computing scores and rankings for a summary gen-erated by model M , both the Likert scores and the overall ranking provided by M are removed, and the remaining four judges’ outputs are averaged. We derive pairwise win rates from the listwise rankings. To be specific, for each pair (A, B), the win rate of A over B is the proportion of sam-ples on which A’s average rank is strictly better than B’s, with ties (identical average ranks) split evenly. This procedure guarantees win_rate(A, B) + win_rate(B, A) = 1.00. All judge calls use greedy decoding (Temperature T = 0 ) with a maximum output length of 1,024 tokens for reproducibility. 
+
+D.2 Judge-Human Alignment 
+
+Before the full evaluation, we verify that each can-didate judge produces per-dimension Likert scores and overall rankings consistent with human judg-ments. The verification draws on the same samples assessed by crowd annotators in the human evalu-ation track (§4); judges receive no feedback from this check, and no judge-specific adjustments are made. 
+
+Data. We use all samples per dataset from the human-evaluated pool, spanning CNNSum, SciNews, DiverseSumm, VISTA, and EurLexSum, each accompanied by per-dimension Likert scores and an overall listwise ranking from the crowd an-notators. 
+
+Procedure. Each of the five candidate judges (GPT, Claude, Gemini, Qwen, Kimi) receives the same anonymized prompt, randomization scheme, and greedy decoding settings as in the full eval-uation (Appendix D.1). For each sample, each judge assigns 1-to-5 Likert scores on the four di-mensions and produces a listwise ranking. We mea-sure alignment to human judgments with two statis-tics. Kendall’s τ is the rank correlation between the judge’s listwise ordering and the human consensus ordering (averaged across annotators), computed per sample and then averaged across samples. Pair-wise agreement is the proportion of the  62
+
+ = 15 
+
+system pairs on which the judge’s pairwise pref-erence (derived from its listwise ranking) matches the human majority preference, averaged across samples. Both statistics are reported per dimen-sion in Table 7. The judge’s per-dimension ranking is obtained by sorting the six summaries by their Likert scores on that dimension (ties broken by av-erage rank), and the human consensus ranking is obtained analogously from the averaged annotator scores. 
+
+Results. Table 7 reports the alignment statistics. Kendall’s τ ranges from 0.61 to 0.78 across judges and dimensions, and pairwise agreement ranges from 71.5% to 84.2%. We find no systematic order-ing errors or dimension conflation in any judge, and proceed with the full evaluation using the prompt as designed, with no modifications based on the alignment check. 
+
+D.3 Self-Inclusion Ablation 
+
+The main evaluation in §5 excludes each model’s own judgment when scoring its outputs. We also run a self-inclusion variant that retains all five judges’ rankings for every summary. Table 8 reports the average Human-minus-model Likert score gaps under both protocols, averaged across 19 Judge Info. Faith. Coher. Conci.                                          
+
+> Kendall’s τ
+> GPT 0.78 0.70 0.72 0.68 Claude 0.76 0.74 0.70 0.76 Gemini 0.74 0.72 0.78 0.65 Qwen 0.77 0.73 0.74 0.62 Kimi 0.72 0.66 0.73 0.61
+> Pairwise agreement (%)
+> GPT 84.2 82.5 78.3 75.1 Claude 83.0 81.7 76.8 77.6 Gemini 81.5 73.4 75.2 73.0 Qwen 78.8 77.5 72.1 74.5 Kimi 79.2 76.8 71.5 72.2
+
+Table 7: Judge-human alignment on the verification set. 
+
+Info. = informativeness; Faith. = faithfulness; Coher. =coherence; Conci. = conciseness. 
+
+the five datasets, with columns labeled “Excl.” (self-exclusion, main protocol) and “Incl.” (self-inclusion). Under the self-inclusion protocol, the direction of the Human-minus-model gap on informativeness and faithfulness is preserved for all five models, with the magnitude reduced in every case, though the size of the reduction varies by model and di-mension. On coherence and conciseness, where the margin is already relatively narrow under self-exclusion, three aggregate-level reversals emerge. The coherence gap for GPT shifts from +0.02 to 
+
+−0.13, the conciseness gap for GPT shifts from 
+
++0.09 to −0.01, and the coherence gap for Gem-ini shifts from +0.06 to −0.02. The reversals oc-cur only on form-oriented dimensions, suggesting that self-preference manifests most visibly at the margins of the score distribution rather than as a broadly distorting influence on the overall rankings. 
+
+D.4 Source Length Ablation 
+
+Longer documents place greater demands on infor-mation integration, which may affect human and LLM summarizers differently. Human writers can selectively draw on content from different sections of a long paper, whereas LLMs are known to lose coverage of information in the middle of long input sequences (Liu et al., 2024b). To assess whether document length moderates the human-model gap, we partition the SciNews test samples into three equal tertiles by source document length and report the Human-minus-model-average difference ( ∆)on each of the four evaluation dimensions. Table 9 shows that the sign of the informative-ness, faithfulness, and conciseness gaps is consis-tent with the main SciNews findings across all three tertiles, while coherence reverses from negative on the short tertile to positive on medium and long. The informativeness gap widens from +0.18 in the short tertile to +0.54 in the long tertile, and the faithfulness gap widens from +0.26 to +0.57. The coherence gap reverses from a slight model advan-tage on short documents ( −0.03) to a clear human advantage on long ones ( +0.13), indicating that the model’s coherence edge does not survive the extra information-integration demand of longer inputs. 
+
+E Appendix for Factuality Verification 
+
+E.1 Factuality Verification Setup 
+
+We employ four factuality evaluation methods. They share a common paradigm of decomposing summaries into atomic claims and verifying each claim against evidence, but they differ in decompo-sition granularity, evidence sources, and verifica-tion mechanisms. We describe each method and its key hyperparameters below. • FaStFact (Wan et al., 2025b) adopts a two-stage strategy. In the first stage, the summary is passed to the claim extractor using the official stride=0 
+
+setting, and atomic claims are extracted from this input. A confidence-based pre-verification step (threshold 0.995) labels high-confidence claims directly to reduce unnecessary evidence retrieval, while low-confidence or uncertain claims are sent to the second stage for retrieval and verifica-tion. In the second stage, the remaining claims are verified against document-level evidence col-lected by crawling full web pages retrieved via the Jina search/reader pipeline. The final score is the proportion of supported claims among all extracted claims. • SAFE (Wei et al., 2024) follows a four-step pro-cess. The summary is first decomposed into in-dividual atomic facts by an LLM. Each fact is then made self-contained through decontextual-ization, which resolves pronouns and context-dependent references. A relevance filter removes facts unrelated to the original query. Finally, each remaining fact is verified through up to 5 rounds of iterative Google Search, with the LLM judging whether the retrieved evidence supports, contradicts, or is irrelevant to the claim. The score is the proportion of supported facts among those judged either supported or unsupported, with irrelevant facts excluded. • FActScore (Min et al., 2023) decomposes a gen-erated text into atomic facts, each representing 20 Info. Faith. Coher. Conci. Model Excl. Incl. Excl. Incl. Excl. Incl. Excl. Incl. GPT +0.24 +0.21 +0.34 +0.23 +0.02 −0.13 † +0.09 −0.01 †                                
+
+> Claude +0.38 +0.30 +0.49 +0.26 −0.12 −0.16 −0.04 −0.09 Gemini +0.42 +0.34 +0.41 +0.30 +0.06 −0.02 †−0.18 −0.24 Qwen +0.31 +0.28 +0.53 +0.33 +0.15 +0.09 +0.17 +0.06 Kimi +0.47 +0.37 +0.38 +0.32 −0.03 −0.10 +0.10 +0.05
+
+Table 8: Human-minus-model Likert score gaps averaged across the five datasets, under the self-exclusion protocol (Excl.) and the self-inclusion variant (Incl.). Positive values indicate higher human scores; negative values indicate higher model scores. † marks cells where the sign reverses between the two protocols.                     
+
+> Tertile Info. ∆Faith. ∆Coher. ∆Conci. ∆
+> Short (0–33%) +0.18 +0.26 −0.03 +0.04 Medium (34–66%) +0.29 +0.35 +0.05 +0.06 Long (67–100%) +0.54 +0.57 +0.13 +0.18
+
+Table 9: Human-minus-model-average Likert differences ( ∆) on SciNews, by source document length tertile. Positive values indicate higher human scores; negative values indicate higher model scores. 
+
+a single piece of information, and assigns a bi-nary label to each fact according to whether it is supported by a reliable knowledge source. The labeling is performed by an automated retrieval-based estimator. The final score is the proportion of supported facts among all extracted facts. • VeriScore (Song et al., 2024b) filters out un-verifiable content (opinions, metaphors, hypo-thetical statements) before scoring. Its pipeline has three steps. In claim extraction, the LLM identifies only verifiable factual claims from the summary. Evidence retrieval is performed via Google Search (Serper API, top-5 results per claim). In claim verification, each claim is scored on a continuous scale of [0, 1] against the re-trieved evidence. The final score is the mean of all individual claim scores. All four methods are run using their origi-nal, publicly released implementations and de-fault prompt templates. We make two modifica-tions to the default configuration. First, we unify the LLM backend across all methods to GPT-5.4 (GPT-5.4-2026-03-05 ) for claim decomposition, decontextualization, relevance checking, and ver-ification. Using a single backend eliminates con-founds from differences in decomposition or ver-ification quality across LLMs, and GPT-5.4 pro-vides the multilingual capability needed because EurLexSum spans 24 languages and CNNSum is in Chinese. Second, we expand the evidence pool to include the original source document alongside the web-retrieved external pages. Under our default protocol, every claim is therefore verified against the union of two evidence streams, namely the orig-inal source document and the external web evi-dence retrieved by the method. For the VISTA dataset, where the source material consists of video presentations, we use the converted text transcript as the source input. 
+
+E.2 Factuality Result Breakdowns 
+
+Figure 8 presents factuality scores as grouped bar charts, comparing all six sources (Human and the five models) for each dataset-metric combination. Figure 9 provides a per-language breakdown for EurLexSum, where each cell reports the average score across the five models for a given language and metric. 
+
+E.3 Source-Only Verification Ablation 
+
+Our default protocol (Appendix E.1) verifies each claim against both the original source document and the web-retrieved external evidence. Prior work on factuality in summarization has commonly relied on a source-only protocol, where each claim is verified against the original document rather than external knowledge. To situate our main findings within this methodological context, we re-run all four methods under a source-only configuration that disables web retrieval and restricts evidence to the source document, while all other steps (claim decomposition, decontextualization, and verifica-tion) remain identical to the default protocol. Table 10 reports factuality scores under source-only verification, averaged across FaStFact, SAFE, 21 0.5          
+
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> FaStFact
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> SAFE
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> FActScore
+> CNNSum SciNews DiverseSumm VISTA EurLexSum
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> VeriScore
+> Human GPT Claude Gemini Qwen Kimi
+
+Figure 8: Factuality scores by source and dataset. Each group of bars corresponds to one dataset; each bar represents one source (Human or model). Human bars consistently achieve the highest scores. 
+
+FActScore, and VeriScore, for each source and dataset. ∆ is the Human score minus the average of the five model scores; positive values indicate that human summaries score higher. Human summaries retain higher scores on four of the five datasets (CNNSum, DiverseSumm, VISTA, and EurLexSum), with ∆ ranging from 
+
++0.063 to +0.065. SciNews is the sole excep-tion. Under source-only verification, all five mod-els score above the human references, with the human score falling below the five-model average by 0.052. This reversal is consistent with the na-ture of the task. SciNews pairs research papers with lay summaries written for a general audience, and human writers routinely contextualize scien-tific findings by drawing on domain knowledge that, while factually accurate, is absent from the source paper. Under source-only verification, such content is treated as unsupported regardless of its accuracy, which reduces the measured factuality of human references relative to model outputs. LLM sum-maries tend to follow the source document more closely, as independently reflected in the higher information ordering scores reported in §7, and are therefore less affected by the source-only con-straint. Once external web evidence is reintroduced under the default protocol, the human factuality score on SciNews recovers to a level comparable to that observed on the other four datasets, confirm-ing that the source-only result primarily reflects the penalization of legitimate background enrichment rather than genuine inaccuracy. On CNNSum, Di-verseSumm, VISTA, and EurLexSum, where sum-mary content that departs from the source is less consistently attributable to background enrichment, the source-only results remain consistent with the main findings. 22 Dataset Human GPT Claude Gemini Qwen Kimi ∆                                   
+
+> CNNSum 0.843 0.789 0.782 0.771 0.776 0.781 +0.063 SciNews 0.689 0.752 0.748 0.751 0.729 0.724 −0.052 DiverseSumm 0.816 0.763 0.758 0.745 0.753 0.737 +0.065 VISTA 0.798 0.748 0.743 0.731 0.726 0.721 +0.064 EurLexSum 0.850 0.783 0.803 0.787 0.784 0.779 +0.063
+
+Table 10: Factuality scores under source-only verification (web retrieval disabled; evidence restricted to the source document), averaged across FaStFact, SAFE, FActScore, and VeriScore. Bold values indicate the highest score in each row. ∆ is the Human score minus the average of the five model scores; positive values indicate that human summaries score higher. On SciNews, human summaries receive lower scores than all five models, reversing the pattern observed under the default protocol that combines source and external evidence. 
+
+F Appendix for Linguistic Analysis 
+
+F.1 Linguistic Analysis Setup 
+
+All linguistic analyses use the Stanza NLP toolkit (Qi et al., 2020), which provides trained pipelines for tokenization, part-of-speech tagging, lemmati-zation, and dependency parsing. From the result-ing Universal Dependencies annotations, we derive four token- and syntax-level metrics. TTR is the ratio of unique lowercased tokens to total tokens, excluding punctuation (UPOS tags PUNCT, SYM, X). MATTR (Covington and McFall, 2010) aver-ages TTR over a sliding window of 50 tokens; texts shorter than 50 tokens default to standard TTR. Tree depth is the per-sentence maximum depth of the head-derived dependency tree (computed via depth-first search), averaged across sentences. NP modifiers, computed for each NOUN or PROPN token, count dependents whose relation type be-longs to {amod, nmod, nummod, det, compound, flat, appos}, averaged across all nouns in the text. For the discourse-level metrics, topic progres-sion splits the summary into sentences using regex-based rules. Chinese summaries are segmented at periods, exclamation marks, question marks, and semicolons, while summaries in other languages are segmented at sentence-final punctuation fol-lowed by whitespace. Each sentence is then en-coded with Qwen3-Embedding-8B (Zhang et al., 2025c), and topic progression is reported as the cosine similarity between consecutive sentence em-beddings. Information ordering splits the source document into overlapping chunks (56 characters for Chinese, 128 for other languages, 50% over-lap). Each summary sentence is aligned to the best-matching chunk by unigram overlap, and Kendall’s 
+
+τ is computed between the resulting position se-quence and the ideal monotonic sequence. The compression ratio is the character count of the sum-mary divided by that of the source. 
+
+F.2 Per-Model Linguistic Results 
+
+Figure 10 through Figure 14 present per-model bar charts of ∆ = Human − Model over the seven lin-guistic metrics and five datasets, with positive val-ues indicating that human summaries score higher. Figure 15 provides a per-language breakdown for EurLexSum, averaged across the five models. 
+
+G Significance Testing 
+
+For each of the four evaluation tracks, we assess whether the observed differences between human and model summaries are statistically significant at the sample level. We apply the Wilcoxon signed-rank test (Wilcoxon, 1945) to paired observations, where each pair consists of the human and model scores for the same source document. The test is non-parametric and does not assume normally dis-tributed paired differences, which makes it suitable for the sample-level comparisons used through-out the paper. To control the false discovery rate across the multiple human-versus-model compar-isons within each track, we apply the Benjamini-Hochberg procedure (Benjamini and Hochberg, 1995) at a nominal level of α = 0 .05 . Scores within each track are pooled across the five datasets before testing. Table 11 summarizes the outcomes, with 
+
+∗∗ marking p < 0.01 after correction, ∗ marking 
+
+0.01 ≤ p < 0.05 after correction, and n.s. marking 
+
+p ≥ 0.05 . The sign of each gap is not encoded in the table and should be read from the main text. 
+
+H Case Study 
+
+We submit the full text of the present paper to the five evaluated models and ask each to generate an abstract using the prompt shown in Figure 16. Be-cause the paper had not been publicly released at the time of model training, this example is free of data contamination. The human reference (Fig-ure 17) is the abstract written by the paper’s authors, and the model-generated summaries from GPT, 23 Track Dimension / Metric GPT Claude Gemini Qwen Kimi Human Evaluation Informativeness ∗∗ ∗∗ ∗∗ ∗∗ ∗∗                                                                                           
+
+> Faithfulness ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> Coherence ∗∗∗ ∗n.s. ∗
+> Conciseness n.s. n.s. ∗∗ n.s. n.s. LLM-as-Judge Informativeness ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> Faithfulness ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> Coherence n.s. ∗n.s. ∗∗ n.s. Conciseness n.s. n.s. ∗∗ ∗∗ n.s. Factuality FaStFact ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> SAFE ∗∗∗ ∗∗ ∗∗ ∗∗
+> FActScore ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> VeriScore ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> Linguistic Analysis TTR ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> MATTR ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> Tree Depth ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> NP Modifiers ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> Topic Progression ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> Information Ordering ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+> Compression Ratio ∗∗ ∗∗ ∗∗ ∗∗ ∗∗
+
+Table 11: Statistical significance of Human-minus-model score differences across all four evaluation tracks, assessed with the Wilcoxon signed-rank test under Benjamini-Hochberg FDR correction ( α = 0 .05 ). Scores are pooled across the five datasets within each track, and the LLM-as-Judge tests use the self-exclusion protocol. After correction, ∗∗ 
+
+indicates p < 0.01 , ∗ indicates 0.01 ≤ p < 0.05 , and n.s. indicates p ≥ 0.05 .
+
+Claude, Gemini, Qwen, and Kimi are shown in Figure 18, Figure 19, Figure 20, Figure 21, and Fig-ure 22, respectively. Errors in the model-generated summaries are identified by cross-checking each claim against the paper text and are typeset in red with underline with letter labels; Table 12 catalogs each error together with the correct information. 
+
+I Summarization Prompts 
+
+This section collects all prompt templates and an-notation guidelines used in our evaluation pipeline. Figure 23 through Figure 27 present the per-dataset summary-generation templates (all models receive the same prompt for a given dataset, with the source document inserted at the placeholder). Figure 28 provides the annotation guidelines for human eval-uators, and Figure 29 shows the LLM-as-Judge prompt. 24 Label Model Hallucinated text (abbreviated) Error type Correct information (a) GPT “Claude shows the smallest gap . . . followed by GPT” Finding inversion The paper reports GPT as show-ing the smallest gap relative to hu-man references in human evalua-tion (b) GPT “controls for verbosity bias and self-preference bias” Terminology substitution The protocol mitigates position bias (via presentation order ran-domization), not verbosity bias (c) Claude “inter-annotator agreement moni-tored via Cohen’s kappa” Metric misattribution The paper uses Krippendorff’s α
+
+(≥ 0.70 ), not Cohen’s kappa (d) Claude “eight metrics organized at three levels” Numerical error The paper reports seven linguis-tic metrics: TTR, MATTR, tree depth, NP modifiers, topic pro-gression, information ordering, and compression ratio (e) Gemini “FactCheck” Name substitution The factuality method is FaStFact, not FactCheck; both are factual-ity verification tools but differ in methodology (f ) Gemini “inflates model scores on informa-tiveness and faithfulness” Finding inversion Self-preference bias inflates scores on coherence and concise-ness (form-oriented dimensions) (g) Qwen “most pronounced on SAFE (0.08 to 0.13)” Fabricated quantification The paper reports aggregate mar-gins of 0.04 to 0.13 across the four methods and does not at-tribute any sub-range to a specific method; both “SAFE” and “0.08 to 0.13” are unsupported by the paper text (h) Kimi “most pronounced between GPT and Claude . . . near-identical pro-files” Unsupported specificity The paper attributes stylistic ho-mogeneity to LLM families in general; no specific model pair is identified as most similar 
+
+Table 12: Errors identified in the five model-generated summaries shown above. Labels correspond to the annotated spans in the summary boxes. 
+
+25 FaStFact SAFE FActScore VeriScore 
+
+BG 
+
+CS 
+
+DA 
+
+DE 
+
+EL 
+
+EN 
+
+ES 
+
+ET 
+
+FI 
+
+FR 
+
+GA 
+
+HR 
+
+HU 
+
+IT 
+
+LT 
+
+LV 
+
+MT 
+
+NL 
+
+PL 
+
+PT 
+
+RO 
+
+SK 
+
+SL 
+
+SV 
+
+0.784 0.728 0.742 0.772 
+
+0.791 0.744 0.759 0.796 
+
+0.781 0.777 0.763 0.761 
+
+0.810 0.784 0.815 0.757 
+
+0.764 0.744 0.745 0.782 
+
+0.741 0.757 0.738 0.753 
+
+0.754 0.750 0.742 0.738 
+
+0.766 0.732 0.750 0.744 
+
+0.779 0.752 0.760 0.740 
+
+0.745 0.790 0.762 0.774 
+
+0.772 0.758 0.742 0.762 
+
+0.775 0.763 0.759 0.776 
+
+0.772 0.759 0.734 0.770 
+
+0.787 0.720 0.790 0.732 
+
+0.771 0.750 0.773 0.757 
+
+0.732 0.751 0.761 0.788 
+
+0.783 0.755 0.771 0.752 
+
+0.769 0.745 0.771 0.737 
+
+0.741 0.761 0.740 0.761 
+
+0.744 0.778 0.739 0.727 
+
+0.802 0.741 0.710 0.785 
+
+0.766 0.761 0.753 0.753 
+
+0.787 0.746 0.743 0.785 
+
+0.778 0.770 0.771 0.759 
+
+0.60 0.65 0.70 0.75 0.80 0.85 0.90 
+
+Score Figure 9: Factuality scores by language for EurLexSum, averaged across the five models. Rows correspond to the 24 EU languages; columns correspond to the four factuality metrics. The pattern is heterogeneous across languages but broadly consistent with resource-related variation in factuality performance. 
+
+26 CNNSum SciNews DiverseSumm VISTA EurLexSum 
+
+0.3 
+
+0.2 
+
+0.1 
+
+0.0 
+
+0.1 
+
+0.2 
+
+> (Human  Model)
+> +0.270
+> +0.121
+> +0.125
+> +0.131
+> +0.162
+> +0.174
+> +0.085
+> +0.065
+> +0.078
+> +0.087
+> +0.173
+> +0.120
+> +0.176
+> +0.085
+> +0.150
+> +0.119
+> +0.033
+> +0.086
+> +0.051
+> +0.150
+> +0.140
+> +0.166
+> +0.207
+> +0.032
+> +0.133
+> -0.049
+> -0.051
+> -0.032
+> -0.041
+> -0.168
+> -0.061
+> -0.083
+> -0.125
+> -0.094
+> -0.168
+
+TTR MATTR Tree Depth NP Modifiers Topic Progression Information Ordering Compression Ratio Figure 10: Linguistic divergence between human and GPT summaries across seven metrics and five datasets. CNNSum SciNews DiverseSumm VISTA EurLexSum 
+
+0.3 
+
+0.2 
+
+0.1 
+
+0.0 
+
+0.1 
+
+0.2 
+
+> (Human  Model)
+> +0.228
+> +0.215
+> +0.218
+> +0.240
+> +0.267
+> +0.182
+> +0.062
+> +0.162
+> +0.133
+> +0.122
+> +0.034
+> +0.155
+> +0.151
+> +0.166
+> +0.239
+> +0.083
+> +0.099
+> +0.067
+> +0.031
+> +0.129
+> +0.050
+> +0.085
+> +0.269
+> +0.156
+> +0.104
+> -0.110
+> -0.049
+> -0.033
+> -0.034
+> -0.136
+> -0.040
+> -0.109
+> -0.094
+> -0.096
+> -0.179
+
+TTR MATTR Tree Depth NP Modifiers Topic Progression Information Ordering Compression Ratio 
+
+Figure 11: Linguistic divergence between human and Claude summaries across seven metrics and five datasets. CNNSum SciNews DiverseSumm VISTA EurLexSum 
+
+0.3 
+
+0.2 
+
+0.1 
+
+0.0 
+
+0.1 
+
+0.2 
+
+> (Human  Model)
+> +0.133
+> +0.190
+> +0.191
+> +0.191
+> +0.237
+> +0.113
+> +0.070
+> +0.141
+> +0.162
+> +0.087
+> +0.035
+> +0.168
+> +0.151
+> +0.192
+> +0.232
+> +0.123
+> +0.107
+> +0.079
+> +0.087
+> +0.151
+> +0.038
+> +0.083
+> +0.226
+> +0.138
+> +0.080
+> -0.037
+> -0.041
+> -0.047
+> -0.048
+> -0.173
+> -0.046
+> -0.113
+> -0.070
+> -0.118
+> -0.172
+
+TTR MATTR Tree Depth NP Modifiers Topic Progression Information Ordering Compression Ratio 
+
+Figure 12: Linguistic divergence between human and Gemini summaries across seven metrics and five datasets. 
+
+27 CNNSum SciNews DiverseSumm VISTA EurLexSum 
+
+0.3 
+
+0.2 
+
+0.1 
+
+0.0 
+
+0.1 
+
+0.2 
+
+> (Human  Model)
+> +0.204
+> +0.193
+> +0.237
+> +0.191
+> +0.256
+> +0.164
+> +0.117
+> +0.168
+> +0.167
+> +0.116
+> +0.117
+> +0.213
+> +0.161
+> +0.190
+> +0.225
+> +0.196
+> +0.110
+> +0.040
+> +0.098
+> +0.133
+> +0.092
+> +0.049
+> +0.202
+> +0.119
+> +0.090
+> -0.044
+> -0.031
+> -0.037
+> -0.050
+> -0.170
+> -0.046
+> -0.112
+> -0.089
+> -0.114
+> -0.182
+
+TTR MATTR Tree Depth NP Modifiers Topic Progression Information Ordering Compression Ratio Figure 13: Linguistic divergence between human and Qwen summaries across seven metrics and five datasets. CNNSum SciNews DiverseSumm VISTA EurLexSum 
+
+0.3 
+
+0.2 
+
+0.1 
+
+0.0 
+
+0.1 
+
+0.2 
+
+> (Human  Model)
+> +0.149
+> +0.130
+> +0.184
+> +0.148
+> +0.204
+> +0.077
+> +0.042
+> +0.134
+> +0.113
+> +0.070
+> +0.090
+> +0.183
+> +0.148
+> +0.226
+> +0.213
+> +0.115
+> +0.094
+> +0.050
+> +0.068
+> +0.168
+> +0.039
+> +0.116
+> +0.219
+> +0.123
+> +0.089
+> -0.033
+> -0.040
+> -0.035
+> -0.035
+> -0.208
+> -0.046
+> -0.106
+> -0.034
+> -0.072
+> -0.168
+
+TTR MATTR Tree Depth NP Modifiers Topic Progression Information Ordering Compression Ratio 
+
+Figure 14: Linguistic divergence between human and Kimi summaries across seven metrics and five datasets. 
+
+28 TTR 
+
+MATTR 
+
+Tree Depth 
+
+NP Modifiers 
+
+Topic Progression 
+
+Information Ordering 
+
+Compression Ratio 
+
+BG 
+
+CS 
+
+DA 
+
+DE 
+
+EL 
+
+EN 
+
+ES 
+
+ET 
+
+FI 
+
+FR 
+
+GA 
+
+HR 
+
+HU 
+
+IT 
+
+LT 
+
+LV 
+
+MT 
+
+NL 
+
+PL 
+
+PT 
+
+RO 
+
+SK 
+
+SL 
+
+SV 
+
++0.239 +0.092 +0.214 +0.129 +0.120 -0.177 -0.188 
+
++0.228 +0.090 +0.180 +0.127 +0.083 -0.176 -0.173 
+
++0.227 +0.117 +0.206 +0.215 +0.094 -0.208 -0.174 
+
++0.200 +0.095 +0.195 +0.140 +0.080 -0.188 -0.172 
+
++0.244 +0.068 +0.208 +0.116 +0.116 -0.137 -0.183 
+
++0.219 +0.105 +0.206 +0.166 +0.065 -0.098 -0.148 
+
++0.217 +0.109 +0.253 +0.143 +0.100 -0.152 -0.170 
+
++0.229 +0.082 +0.173 +0.162 +0.128 -0.161 -0.158 
+
++0.215 +0.092 +0.184 +0.134 +0.107 -0.181 -0.185 
+
++0.198 +0.073 +0.209 +0.170 +0.085 -0.156 -0.164 
+
++0.222 +0.098 +0.239 +0.099 +0.128 -0.216 -0.196 
+
++0.226 +0.089 +0.198 +0.126 +0.124 -0.197 -0.182 
+
++0.235 +0.096 +0.222 +0.124 +0.090 -0.158 -0.178 
+
++0.211 +0.107 +0.231 +0.176 +0.105 -0.178 -0.172 
+
++0.229 +0.094 +0.170 +0.121 +0.076 -0.200 -0.180 
+
++0.223 +0.074 +0.233 +0.085 +0.081 -0.168 -0.173 
+
++0.228 +0.091 +0.207 +0.112 +0.111 -0.155 -0.167 
+
++0.228 +0.135 +0.204 +0.173 +0.102 -0.187 -0.165 
+
++0.239 +0.100 +0.174 +0.164 +0.095 -0.190 -0.180 
+
++0.211 +0.129 +0.232 +0.184 +0.093 -0.141 -0.164 
+
++0.239 +0.086 +0.231 +0.174 +0.088 -0.169 -0.152 
+
++0.249 +0.092 +0.254 +0.105 +0.095 -0.174 -0.188 
+
++0.226 +0.102 +0.229 +0.168 +0.099 -0.201 -0.191 
+
++0.224 +0.096 +0.231 +0.197 +0.116 -0.137 -0.168 
+
+## 0.2 0.1 0.0 0.1 0.2 
+
+(Human Model) Figure 15: Linguistic divergence by language for EurLexSum, averaged across the five models. Rows correspond to the 24 EU languages; columns correspond to the seven linguistic metrics. Warm colors indicate positive ∆ (human higher); cool colors indicate negative ∆ (model higher). 
+
+29 Case Study Prompt 
+
+You are an expert academic researcher. Your task is to write an abstract for the following research paper. 
+
+Instructions: 
+
+1. Summarize the paper’s motivation, methodology, key findings, and conclusions. 2. Preserve the technical terminology and quantitative details reported in the paper. 3. Do not paraphrase quantities in a way that changes their precision or meaning. 4. Do not introduce interpretations or claims that go beyond what the paper explicitly states. 5. Write 100 to 200 words in clear, grammatically correct academic English. 
+
+Paper: {document} 
+
+> Figure 16: Prompt template used for the case study in Appendix H.
+
+Human Reference 
+
+The progress of large language models (LLMs) has fueled claims that model-generated summaries rival or even surpass human-written references, raising questions about whether summarization remains an open research problem. We re-examine this narrative through a multi-track evaluation covering five diverse datasets and five state-of-the-art LLMs, combining controlled human assess-ment, bias-mitigated LLM-as-Judge protocols, factuality verification against external knowledge, and corpus-level linguistic analysis. Our findings reveal a more nuanced landscape in which human reference summaries continue to demonstrate advantages in informativeness and faithfulness, whereas LLM outputs are preferred mainly for surface-level coherence and fluency. Factuality verification indicates that human references remain more reliable, particularly for claims involving reasoning or synthesis, and linguistic analysis uncovers a pattern of stylistic homogeneity across different models. These observations suggest that current LLMs have raised the floor of summa-rization quality, but the ceiling of their performance remains below human capabilities. 
+
+> Figure 17: Human reference summary (the abstract as authored by the paper’s writers).
+
+GPT-Generated Summary 
+
+This paper challenges the prevailing narrative that large language models have largely addressed summarization, presenting a multi-track evaluation across five datasets and five frontier LLMs. The study employs dimension-specific human annotation, bias-mitigated LLM-as-Judge scoring, factu-ality verification against external knowledge sources, and systematic linguistic analysis. Results show that human summaries retain measurable advantages on informativeness and faithfulness. Among the five evaluated models, Claude shows the smallest gap relative to human references in the human evaluation track, followed by GPT. (a) The evaluation controls for verbosity bias and self-preference bias through output-length normalization and self-judgment exclusion, (b) and the resulting preference patterns differ from those obtained without such controls. Factuality analysis reveals that errors are concentrated on claims requiring reasoning or cross-sentence synthesis. Linguistic profiling confirms lower lexical diversity and shallower dependency trees in model outputs, suggesting a persistent gap in information density and linguistic richness. 
+
+> Figure 18: GPT-generated summary. Errors ( a) and ( b) are marked in red with underline.
+
+30 Claude-Generated Summary 
+
+This position paper argues that summarization remains an open research problem despite the strong performance of recent LLMs. The paper designs a multi-track evaluation framework covering five datasets and five LLMs, applying human annotation, LLM-as-Judge scoring, factuality verification, and linguistic analysis. Human annotators assess summaries on four dimensions, and inter-annotator agreement is monitored via Cohen’s kappa, with a threshold of 0.7 required for inclusion. (c) Human summaries retain advantages in informativeness and faithfulness, while LLM outputs are preferred in coherence and conciseness. Linguistic analysis employs eight metrics organized at three levels of analysis (lexical, syntactic, and discourse), (d) revealing lower lexical diversity and shallower dependency structures in model outputs. The authors contend that while LLMs have narrowed the performance gap on surface form dimensions, persistent deficits in information density and factual reliability indicate that summarization is not yet solved. 
+
+> Figure 19: Claude-generated summary. Errors ( c) and ( d) are marked in red with underline.
+
+Gemini-Generated Summary 
+
+The paper presents a multi-dimensional evaluation of LLM-generated summaries against human references across five datasets covering Chinese fiction, lay science communication, news, sci-entific video, and EU legal text. Four evaluation protocols are applied, and factuality is verified using four complementary methods, namely FactCheck (e), SAFE, FActScore, and VeriScore, each decomposing summaries into atomic claims and verifying them against retrieved evidence. Human summaries consistently score higher on informativeness and faithfulness. LLMs perform compara-bly on coherence and conciseness, suggesting that fluency gains do not directly translate to content gains. The self-preference analysis shows that retaining self-judgments primarily inflates model scores on informativeness and faithfulness rather than on coherence or conciseness, (f ) narrowing the gap between human and model outputs on those dimensions. Linguistic analysis confirms lower lexical diversity and less varied discourse structures in LLM outputs.  
+
+> Figure 20: Gemini-generated summary. Errors ( e) and ( f) are marked in red with underline.
+
+Qwen-Generated Summary 
+
+This paper revisits the question of whether LLMs have effectively solved summarization through a four-track evaluation spanning five datasets and five frontier models. The evaluation framework covers human annotation, LLM judging, factuality verification, and linguistic analysis. Human summaries consistently outperform model outputs on informativeness and faithfulness. LLMs match or exceed human references on surface-level coherence and conciseness. Factuality analysis reveals that the gap between human and model summaries is most pronounced on SAFE (0.08 to 0.13), which verifies claims through iterative retrieval against web-sourced evidence. (g) The authors argue that while LLMs raise the floor of summarization quality, the ceiling defined by information density, factual reliability, and linguistic richness remains out of reach. 
+
+> Figure 21: Qwen-generated summary. Error ( g) is marked in red with underline.
+
+31 Kimi-Generated Summary 
+
+This position paper presents evidence against the claim that LLMs have solved summarization, drawing on a multi-track evaluation that covers five datasets and five state-of-the-art models. The study applies human annotation, LLM-as-Judge scoring, factuality verification using four complementary methods, and linguistic analysis at lexical, syntactic, and discourse levels. Human summaries retain clear advantages in informativeness and faithfulness, and LLMs score comparably on coherence and conciseness. Factuality analysis shows that LLMs are more prone to errors on reasoning-heavy claims. Linguistic analysis documents stylistic homogeneity in LLM out-puts, finding that this homogeneity is most pronounced between GPT and Claude, which display near-identical lexical diversity and syntactic depth profiles across all five evaluated datasets. (h)
+
+Discourse-level analysis further shows that model summaries follow source document order more closely and compress less aggressively than human references. 
+
+> Figure 22: Kimi-generated summary. Error ( h) is marked in red with underline.
+
+CNNSum Summarization Prompt (Chinese) 
+
+你是一位专业 的中文长篇小说摘要撰写者，具备跨章节叙事追踪与多线情节梳理能力。
+
+你的任务是根据提 供的完整小说文本，撰写一段结构清晰、内容完 整、客观中立的故事
+
+梗概，使读者无需阅读原文即可 全面把握全篇内容。
+
+输入：
+
+一部长篇中文网络小说的完整正文，篇幅可能超过十万字。
+
+要求：
+
+1. 核心要素覆盖。 梗概须涵盖以下 要素：(a) 主角的身份、出身背景与核心目标或动
+
+机；(b) 与情节直接相关的世界观设定（如特殊力量体系、社会结构、地理环境）； (c) 
+
+贯穿全篇的主线情节及其阶段性发展脉络；(d) 不少于两个 关键转折点或高潮事件 ，并简
+
+要说明其对人物处境与故事走向的影响；(e) 主要配角的身份、立场及其与主 角的关系演
+
+变；(f) 故事的最终结 局或走向（若原文已完结）。
+
+2. 叙事顺序与结构。 按故事内时间顺序叙述，确保因果链条清晰；多线叙事时以主 线为
+
+骨架串联，支线信息在与主 线交汇处简要带过，避免线索断裂。
+
+3. 客观性约束。 严格不得加入原文未出现的情节、人物、地点、时间或因果关系，不得
+
+添加任何主观评价、文学赏析、情感感 叹或对结局的推测，不得使用任何评论 性词汇。
+
+4. 语言规范。 使用规范的中文书面语，避免口语化、网络流行语与作者点评式语气。人
+
+名、地名、特殊术语及专有名词须与原文用字完 全一致，不得替换为常见同义词。
+
+小说正文： {document} 
+
+> Figure 23: Prompt template for CNNSum (Chinese novel summarization).
+
+32 SciNews Summarization Prompt (English) 
+
+You are an expert science communicator with experience translating peer-reviewed research for general audiences. Your task is to write a lay summary of the following scientific research paper for a reader with no specialized background. 
+
+Inputs: 
+
+The full text of a peer-reviewed research paper. 
+
+Instructions: 
+
+1. Structure. Organize the summary around four elements in sequence: (a) the scientific question or problem and why it matters in everyday terms; (b) the approach or method, described in accessible language with a concrete analogy where useful; (c) the main findings, with key quantitative results paraphrased in plain language while preserving their precision; and (d) the broader significance, including any caveats, limitations, or open questions that the authors explicitly acknowledge. 2. Accessibility. Replace specialized terminology with plain-language equivalents wherever possible. For domain-specific terms that cannot be avoided (e.g., names of specific molecules, instruments, species, or statistical procedures), provide a brief parenthetical definition on first use. 3. Hedging fidelity. Preserve the speculative register of hedged statements (e.g., “the authors suggest” rather than “the study proves”; “may be associated with” rather than “causes”). Do not strengthen claims beyond what the paper states. 4. No sensationalism. Avoid framings such as “breakthrough,” “revolutionary,” or “solves” unless the authors themselves use such language. 5. Numerical fidelity. Preserve reported values, units, and statistical qualifiers (e.g., confidence intervals, p-values, sample sizes). Do not paraphrase quantities in a way that changes their precision or implied uncertainty. 6. Style. Write in clear, grammatically correct English prose. 
+
+Paper: {document} 
+
+> Figure 24: Prompt template for SciNews (lay science summarization).
+
+33 DiverseSumm Summarization Prompt (English) 
+
+You are an experienced news editor with expertise in cross-source synthesis. Your task is to write a single coherent summary that integrates information from the following set of news articles covering the same event or topic, capturing both points of consensus and the diverse perspectives that distinguish individual sources. 
+
+Inputs: 
+
+A set of news articles reporting on the same event or topic. 
+
+Instructions: 
+
+1. Core facts. Identify the facts shared across articles (who, what, when, where) and use them as the backbone of the summary. 2. Diverse perspectives. Beyond the consensus, surface information that appears in only a subset of the articles, including (a) unique details, quotations, or background context contributed by individual sources; (b) different framings or interpretations of the same event; and (c) regional, partisan, or institutional angles that distinguish how outlets cover the story. 3. Conflicts and discrepancies. When sources report conflicting details on a materially significant fact (e.g., differing casualty numbers, opposing characterizations of an actor’s motives), present both versions with brief attribution rather than silently adopting the most widely repeated one. 4. Non-redundancy. Report each shared fact once and in its most complete form; do not repeat information solely because it appears in multiple sources. 5. Editorial neutrality. Do not introduce information, editorial judgments, or conclusions absent from all provided articles. Attribute any contested or interpretive claim to its source. 6. Style. Write in clear, neutral, third-person journalistic English. 
+
+Articles: {documents} 
+
+> Figure 25: Prompt template for DiverseSumm (multi-document news summarization).
+
+34 VISTA Summarization Prompt (English) 
+
+You are an expert science writer familiar with the conventions of academic abstracts and the structure of AI/ML conference presentations (e.g., NeurIPS, ICML, ACL, CVPR). Your task is to write an abstract-style summary of the scientific content in the following recorded conference talk, drawing on both the video and its transcript. 
+
+Inputs: 
+
+1. A recorded scientific conference presentation video, including the speaker’s slides and any on-screen demonstrations. 2. A verbatim or near-verbatim transcript of the same presentation. 
+
+Instructions: 
+
+1. Abstract structure. Organize the summary around five elements in order: (a) the scientific motivation, framed as an existing limitation or open question; (b) the proposed approach, model, or experimental design, including any architectural or methodological innovations; (c) the evaluation setup, with datasets, baselines, and metrics where mentioned; (d) the main quantitative or qualitative results; and (e) the primary conclusion or claimed significance. 2. Multimodal integration. Use the video to identify visual content displayed during the talk (slides, figures, tables, diagrams, demos) and integrate it with the transcript. When a visual element complements a verbal description (e.g., a figure illustrates a result, an architecture slide accompanies a method explanation), draw on both sources. 3. Technical precision. Preserve technical terminology, model names, dataset names, and metric names exactly as they appear in the video or transcript, together with their reported numerical values and units (e.g., accuracy points, F1, BLEU, perplexity). 4. Faithfulness. Do not report observations or conclusions absent from both the video and the transcript. Do not extrapolate from a specific result to a broader claim that the speaker does not make. 5. Style. Write in formal, concise academic English in the present tense. 
+
+Video: {video} 
+
+Transcript: {transcript} 
+
+> Figure 26: Prompt template for VISTA (video-to-text scientific summarization).
+
+35 EurLexSum Summarization Prompt (Multilingual) 
+
+You are an expert legal summarizer with training in EU administrative and legislative documents, comparable to staff producing the official summaries of legislation published on the EUR-Lex portal. Your task is to write a concise, accurate summary of the following EU legislative or regulatory document. The summary must be written in the same language as the source document. 
+
+Inputs: 
+
+The full text of an EU legislative or regulatory document in {language} .
+
+Instructions: 
+
+1. Required elements. The summary must address the following in a manner appropriate to the instrument type: (a) the type and title of the instrument (e.g., Regulation, Directive, Decision, Recommendation, Opinion) together with its legal basis in the Treaties; (b) the subject matter and the territorial, sectoral, or personal scope of application; (c) the primary obligations, prohibitions, or entitlements established, with reference to the relevant articles where appropriate; (d) the key defined terms that govern interpretation of the instrument; and (e) the entry-into-force date and any transitional or sunset provisions affecting implementation timing. 2. Recitals vs. operative articles. Treat the operative articles as the primary source of binding content. Recitals may be drawn on to clarify legislative intent or context, but conclusions stated only in recitals must not be presented as legal obligations. 3. Legal precision. Do not paraphrase defined terms in a way that alters their regulatory meaning. Preserve the distinction between obligations ( shall , must ), permissions ( may ), and recommenda-tions ( should ) as used in the original text. 4. No extrapolation. Do not introduce information, legal interpretations, cross-references, or comparisons with other instruments that are absent from the source document. 5. Naming conventions. Institutional names (e.g., the Council, the Commission, the Parliament, the Court of Justice) and proper nouns must appear in the same form as in the original. Numerical identifiers of articles, regulations, and directives must be preserved exactly. 6. Style. Write in formal legal prose in {language} .
+
+Legislative document: {document}   
+
+> Figure 27: Prompt template for EurLexSum (multilingual legal summarization). The {language} placeholder is replaced with the target language name (e.g., English, German, French).
+
+36 Human Evaluation Annotation Guidelines 
+
+Task overview. You will be shown a source document and six candidate summaries (labeled Summary 1 through Summary 6) in randomized order. System identities are hidden, and the presentation order varies across samples. Evaluate each summary on four dimensions independently, then provide an overall ranking. 
+
+Dimension definitions and scoring anchors. 
+
+1. Informativeness. Does the summary capture the key information from the source? Key information refers to the points that a knowledgeable reader of the source would consider essential. • Score 1: Misses most key points or covers only a small fraction of the main content. • Score 3: Covers the most important points but omits several secondary details relevant to a complete understanding. • Score 5: Captures all major points and key supporting details without omitting information that would change the reader’s understanding. 2. Faithfulness. Is every claim in the summary factually accurate? Verify each claim first against the source document; for claims about widely accepted general knowledge that the source presupposes, supplement with credible external references. • Score 1: Contains multiple claims that are factually incorrect or that cannot be verified from the source or credible external references. • Score 3: Mostly accurate but contains one or two statements that are imprecise or weakly supported. • Score 5: Every claim is factually accurate and supported by the source or verifiable through credible external references. 3. Coherence. Is the summary well-organized, grammatically correct, and easy to read? Coherence concerns surface readability and linguistic quality, not length or comprehensiveness; a longer summary is not less coherent for being longer. • Score 1: Difficult to follow due to grammatical errors, disorganized structure, or unclear references. • Score 3: Generally readable but contains some awkward transitions or minor grammatical issues. • Score 5: Well-structured, grammatically correct, and reads naturally throughout. 4. Conciseness. Does the summary avoid unnecessary repetition and verbosity? Conciseness concerns brevity and absence of redundancy, not grammatical quality; a grammatically rough but tight summary should not lose conciseness points for grammar alone. • Score 1: Highly repetitive or padded with irrelevant content. • Score 3: Mostly concise but contains some redundant phrases or minor verbosity. • Score 5: Conveys all essential information without repetition, padding, or off-topic content. 
+
+Evaluation procedure. 
+
+1. Per-dimension Likert scores. For each dimension, assign each summary a score from 1 (very poor) to 5 (excellent). Use intermediate scores (2 and 4) for summaries that fall between the described anchors. 2. Overall ranking. After completing all dimension scores, rank all six summaries from 1 (worst) to 6 (best) based on your judgment of overall quality. Ties are not permitted. 
+
+Important reminders. 
+
+1. Dimension independence. Evaluate each dimension independently; do not let your judgment on one dimension influence scores on another. 2. Summary independence. Score each summary on its own merits; do not let your impression of an earlier summary anchor your scores for later ones, and revisit earlier scores if a later comparison reveals a calibration drift. 3. Faithfulness sources. Verify summary claims first against the source document. Where the summary makes a claim about widely accepted general knowledge, supplement with credible external references (e.g., Wikipedia, peer-reviewed papers, reference works). 4. Edge cases. For truncated summaries, score the content present and reflect any disruption to closure under coherence. For summaries with extraneous formatting (bullet points, headings, model markers), penalize only when the formatting disrupts reading. 5. Cross-lingual evaluation. If the source is in a language other than English, evaluate in that language and apply the same criteria. 6. No AI assistance. Do not use any AI tool for evaluation. 
+
+Figure 28: Annotation guidelines provided to human evaluators. Each annotator receives these instructions together with a source document and six blind, randomized candidate summaries. 
+
+37 LLM-as-Judge Evaluation Prompt 
+
+You are an expert summary evaluator. You will be given a source document and six candidate summaries (labeled Summary A through Summary F) in randomized order. Your task is to score all six summaries on each of four dimensions independently, then provide an overall ranking of summary quality. 
+
+Dimension definitions and scoring anchors. 
+
+1. Informativeness. Does the summary capture the key information from the source? Key information refers to the points that a knowledgeable reader of the source would consider essential. • Score 1: Misses most key points or covers only a small fraction of the main content. • Score 3: Covers the most important points but omits several secondary details relevant to a complete understanding. • Score 5: Captures all major points and key supporting details without omitting information that would change the reader’s understanding. 2. Faithfulness. Is every claim in the summary factually accurate? Verify each claim first against the source document; for claims about widely accepted general knowledge that the source presupposes, supplement with credible external references. • Score 1: Contains multiple claims that are factually incorrect or that cannot be verified from the source or credible external references. • Score 3: Mostly accurate but contains one or two statements that are imprecise or weakly supported. • Score 5: Every claim is factually accurate and supported by the source or verifiable through credible external references. 3. Coherence. Is the summary well-organized, grammatically correct, and easy to read? Coherence concerns surface readability and linguistic quality, not length or comprehensiveness; a longer summary is not less coherent for being longer. • Score 1: Difficult to follow due to grammatical errors, disorganized structure, or unclear references. • Score 3: Generally readable but contains some awkward transitions or minor grammatical issues. • Score 5: Well-structured, grammatically correct, and reads naturally throughout. 4. Conciseness. Does the summary avoid unnecessary repetition and verbosity? Conciseness concerns brevity and absence of redundancy, not grammatical quality; a grammatically rough but tight summary should not lose conciseness points for grammar alone. • Score 1: Highly repetitive or padded with irrelevant content. • Score 3: Mostly concise but contains some redundant phrases or minor verbosity. • Score 5: Conveys all essential information without repetition, padding, or off-topic content. 
+
+Instructions. 
+
+1. Read the source. Read the source document carefully before evaluating any summary. 2. Per-dimension scoring. For each of the four dimensions, assign each of the six summaries a Likert score from 1 (very poor) to 5 (excellent). Multiple summaries may receive the same score on a given dimension. Use intermediate scores (2 and 4) for summaries that fall between the described anchors. 3. Overall ranking. After scoring all four dimensions, provide an overall ranking of all six summaries from worst (rank 1) to best (rank 6). Each rank must be used exactly once; ties are not permitted. 4. Bias mitigation. Score each summary on its own content, not its position in the list (A through F) or its surface style. Do not let stylistic familiarity favor one summary over another. Do not let your impression of an earlier summary anchor your scores for later ones. 5. Dimension independence. Evaluate each dimension independently. Do not allow your assessment of one dimension to influence your scores on another. 
+
+Output format. 
+
+Return your scores and ranking in the following exact format: 
+
+Informativeness: A=[1-5], B=[1-5], C=[1-5], D=[1-5], E=[1-5], F=[1-5] Faithfulness: A=[1-5], B=[1-5], C=[1-5], D=[1-5], E=[1-5], F=[1-5] Coherence: A=[1-5], B=[1-5], C=[1-5], D=[1-5], E=[1-5], F=[1-5] Conciseness: A=[1-5], B=[1-5], C=[1-5], D=[1-5], E=[1-5], F=[1-5] Overall: [A/B/C/D/E/F] < [A/B/C/D/E/F] < ... < [A/B/C/D/E/F] 
+
+Source document: {document} 
+
+Summary A: {summary_a} 
+
+Summary B: {summary_b} 
+
+Summary C: {summary_c} 
+
+Summary D: {summary_d} 
+
+Summary E: {summary_e} 
+
+Summary F: {summary_f} 
+
+Figure 29: Prompt template for LLM-as-Judge evaluation. The six summaries are presented in randomized order per sample. 
+
+38
