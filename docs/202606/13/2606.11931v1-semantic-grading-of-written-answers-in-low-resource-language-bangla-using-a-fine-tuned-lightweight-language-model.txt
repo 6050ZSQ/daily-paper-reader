@@ -1,0 +1,404 @@
+Title: Semantic Grading of Written Answers in Low-Resource Language Bangla Using a Fine-Tuned Lightweight Language Model
+
+URL Source: https://arxiv.org/pdf/2606.11931v1
+
+Published Time: Thu, 11 Jun 2026 01:04:43 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+## Semantic Grading of Written Answers in Low-Resource Language Bangla Using a Fine-Tuned Lightweight Language Model 
+
+Meherun Farzana *, Aniket Joarder *,Mahmudul Hasan , Md. Mosaddek Khan ,Computer Science and Engineering, University of Dhaka 
+
+{meherun-2020815615, aniket-2020115658, mahmudul-2019917803}@cs.du.ac.bd, mosaddek@du.ac.bd 
+
+Abstract 
+
+Bangla is among the world’s most widely spo-ken languages, yet it remains underserved in educational NLP research. In many remote and rural regions, access to qualified subject teachers is limited, and written answers are consequently graded largely by hand, restrict-ing timely and consistent feedback. Auto-matic assessment is challenging because se-mantically correct responses can vary substan-tially in surface form. We present a bilingual (Bangla–English) evaluation system designed for low-resource educational settings that pri-oritizes semantic correctness over lexical over-lap. 12 Our approach fine-tunes a lightweight language model to grade each response using the question, reference answer, and student answer, producing a numeric score and con-cise, context-grounded feedback suitable for classroom deployment. We also construct a synthetic bilingual dataset to enable controlled training and evaluation. Across proprietary and open-source LLMs evaluated under a uni-fied protocol, our QLoRA-tuned Qwen3-8B confirms consistent improvement by producing the most leakage-resistant feedback (R ORA =0.819) in synthetic evaluation and the strongest agreement with human scores ( ρ = 0.936 ,
+
+MAE = 0 .725 ) in a dedicated human study. 
+
+1 Introduction 
+
+Written answers better reflect what students under-stand than multiple-choice items, but grading them at scale is difficult, as responses vary widely in wording and quality. Teachers may assign differ-ent scores to borderline cases where it is unclear whether a student deserves full credit, partial credit, or no credit. The need for a reliable evaluation system is especially acute for Bangla, the 5th most spoken native language in the world (Ethnologue, 2025). However, no widely established end-to-end   
+
+> *Equal contribution
+> 1Demo Video: YouTube
+> 2Live Website: cognifyq.com
+
+system exists for grading Bangla written answers in high school exam settings, particularly for hand-written scripts. In Bangladesh, large class sizes and exam-driven assessment create substantial grading workloads, and in many remote and rural regions limited access to qualified subject teachers further restricts timely and consistent feedback. A prac-tical grading system for Bangla written answers could reduce turnaround time, improve scoring con-sistency, and free teachers to focus on instruction and targeted student support. Prior work on automatic text evaluation began with surface-overlap metrics such as BLEU (Pa-pineni et al., 2002), and later shifted toward se-mantic similarity and learned evaluators, includ-ing BERTScore (Zhang et al., 2020) and UniEval (Zhong et al., 2022). More recently, LLM-based meta-evaluation frameworks such as G-Eval (Liu et al., 2023) and multi-agent deliberation in Chat-Eval (Chan et al., 2024) aim to better align with human preferences, but they are primarily designed for open-ended NLG tasks rather than curriculum-grounded answer correctness. In educational NLP, systems have moved be-yond scoring to feedback. SAF (Filighera et al., 2022) pairs short answers with explanatory feed-back, IFlyEA (Gong et al., 2021) provides essay scoring with review and recommendations, and Chinese narrative comment generation systems (Zhang et al., 2022) generate teacher-like com-ments for essay segments. Parallel work such as PEEP-Talk (Lee et al., 2023) focuses on language learning through dialogue practice and feedback. Despite these advances, existing approaches ex-hibit key limitations: (1) they overwhelmingly tar-get resource-rich languages (e.g., English, Chinese, German, Spanish), with limited attention to low-resource languages such as Bangla; (2) they rarely evaluate curriculum-grounded scientific or factual answers where semantic correctness is central; (3) feedback modules are often template-driven, limit-
+
+> arXiv:2606.11931v1 [cs.CL] 10 Jun 2026
+
+ing adaptability and faithfulness; and (4) many rely on large proprietary models or complex pipelines that are difficult to deploy in low-resource educa-tional settings. Building on these gaps, we present an end-to-end bilingual (Bangla and English) written answer eval-uation system that prioritizes semantic correctness over surface overlap and remains practical under low-resource constraints. Our core contributions are: • We fine-tune an open-weight grader (Qwen3-8B) using task-specific QLoRA and evaluate each response from a fixed context tuple ( question, ref-erence answer, student answer ), ensuring contex-tual grounding and reducing reliance on surface-level word matching. • We introduce a synthetic bilingual benchmark with four answer variants (G OOD /P ARTIAL /P LAUSIBLE /B AD ) per question, explicitly designed to stress-test se-mantic correctness and partial-credit assignment. • We support both typed and handwritten Bangla answers via an HTR module, GraDeT-HTR (Hasan et al., 2025), and produce a numeric score with concise, context-grounded feedback. • We conduct a dedicated human evaluation study and compare our system against proprietary and open-source LLMs under a unified protocol. Our QLoRA-tuned Qwen3-8B produces the most faithful feedback (R ORA = 0.819) synthetically and achieves the strongest alignment with the human-graded scores ( ρ = 0.936 , MAE =0.725 ), outperforming the base model, while re-maining deployable in low-resource classrooms. 
+
+2 System Overview and Architecture 
+
+We propose an end-to-end bilingual assessment sys-tem for written answers designed for realistic exam inputs and low-resource deployment. The pipeline consists of three stages (Figure 1): (i) input-conversion and context extraction, (ii) constraint-controlled question generation, and (iii) answer evaluation with scoring and feedback. 
+
+2.1 Input-conversion and Bangla Handwriting 
+
+The system supports four input formats: PDF, im-age, URL, and plain text, as well as a book from the Book Management. For PDFs, the converter pro-cesses pages sequentially and extracts embedded text; for scanned pages and images, it runs OCR. General-purpose OCR is largely tuned for printed Latin script and often performs poorly on Bangla. Image Handler              
+
+> Image
+> Web Scraper
+> (B eautifulS oup)
+> Text Handler
+> PDF
+> Input
+> PDF Processor
+> Text
+> Input Type?
+> Raw Text
+> Ready for AI
+> proces sing
+> URL
+> OCR Tesser act
+> Clean Formatting
+> Remove Nois eExtract Main
+> Context
+> Clean Text
+> from Step 1
+> Approved
+> Set Exam Par ameter s
+> (Q uality, Type, Difficulty, Time)
+> No
+> Complete
+> Saves to
+> Question Bank
+> Return
+> Questions
+> LLM Generates
+> Questions
+> LLM Refines
+> Content
+> User Response
+> (Typed/ Handwritten)
+> Return the Result
+> Iterate Over Pages
+> Data
+> Structuring
+> Prompt
+> Engineering
+> Generated and
+> Formatted Prompt Cognitive Evaluator
+> ExtractsmeaningIdentifiesconcept:
+> Bangla +E nglis h&Evaluates
+> Output Parser
+> Module JSON/ XML
+> Stores in
+> Database
+> Gener ated:
+> Correct Ans wer & Score
+> PDF to Image
+> Review
+> Enough Questions?
+> Quality Check
+> Needs Change
+> Gener ated:
+> Feedback
+> Step 1: Text Extraction Process
+> Step 2: Text Refinement and
+> Question Generation Process
+> Step 3: Script Evaluation Process
+
+Figure 1: System architecture: (1) text extraction from different types of sources, (2) question generation with refined text, and (3) answer script evaluation producing scores with feedback. 
+
+Hence, for state-of-the-art performance and low-resource deployment, we use GraDeT-HTR (Hasan et al., 2025), a Bangla handwriting text recognition (HTR) component, to handle Bangla handwritten responses. For English handwriting, we use Google Vision OCR. For URLs, it retrieves the main article content while filtering boilerplate such as naviga-tion and ads. After conversion into raw text, we apply lightweight normalization (Unicode cleanup and whitespace standardization) to produce a con-sistent text representation for downstream modules. 
+
+2.2 Constraint-controlled Question Generation 
+
+When teachers provide source materials, the system can generate exam-ready questions under explicit constraints (subject/topic, difficulty, time limit of taking the exam). Generated questions are wrapped in a lightweight “quality gate” that checks for-mat validity, coverage, and near-duplicates; failed questions are revised and regenerated with a small bounded retry budget. Finally, approved ones are stored in a reusable question bank for subsequent assessments. 
+
+2.3 Fixed Context Grading 
+
+For each answer grading instance, we package the inputs as a fixed tuple: 
+
+ui = ( qi, r i, a i), (1) where qi is the question, ri is a reference an-swer, and ai is the student answer (one of the four variants: G OOD /P ARTIAL /P LAUSIBLE /B AD in our dataset). This representation standardises grading across subjects and languages and supports consis-tent evaluation across both proprietary and open-weight graders. 
+
+Bilingual Grading and Feedback Module. 
+
+Given a fixed tuple ui = ( qi, r i, a i), the grader (Gr ) produces a numeric score and feedback: 
+
+( ˆ si, ˆfi) = Gr (qi, r i, a i), ˆsi ∈ [0 , 10] . (2) Here, ˆsi is the graded score and ˆfi is the generated feedback. To ensure language consistency, we gen-erate feedback in the same language as the question. The system returns outputs in a structured format (score, feedback text, and assessment summary) to support progress reporting and overall perfor-mance analysis; validated questions are stored in a reusable question bank. Together, these components form an end-to-end pipeline for bilingual assessment, from heteroge-neous inputs to question sets and graded written answers with appropriate feedback. 
+
+3 Dataset and Fine-tuning 
+
+3.1 Preparing the Dataset Why Synthetic Data? We build a synthetic dataset for controlled grading beyond binary grad-ing by generating multiple student-answer vari-ants per question–reference pair and assigning each variant a score and brief feedback. We use LLM-based synthesis because Bangla curricular materi-als (Grades 6–12) are scarce in standardized digital form; rubric-aligned annotation with explanations is costly. Via synthesis, for each (q, r ), we have generated a synthetic student answer: 
+
+˜a(v) = Gn (q, r, v ),
+
+∀ v ∈ { GOOD , P ARTIAL , P LAUSIBLE , B AD }.
+
+(3) where Gn is the generator. Finally we grade them with an external LLM grader Gr ext :
+
+(˜ s(v), ˜f (v)) = Gr ext (q, r, ˜a(v)). (4) Here, G OOD answers are correct and complete, PARTIAL answers are incomplete but partially cor-rect; P LAUSIBLE answers are lexically similar to the reference yet conceptually wrong, and B AD 
+
+answers are largely incorrect or irrelevant. 
+
+Dataset Construction (Models, Prompting, and Decoding). To construct the dataset, we use a two-stage setup that separates question-answer synthesis from score assignment to reduce self-consistency bias: given Bangla resources, G EMINI 
+
+2.0 F LASH (Gn ) generates questions and variant-diverse student-answers, while G EMINI 2.5 F LASH 
+
+(Gr ext ) assigns scores and feedback. We instruct the model to be concise and apply a small, bounded retry policy, selecting the shorter valid feedback when alternatives are available, keeping all feed-back under 256 tokens. This decoupling lets one model generate diverse student answers, while a separate model scores them using a fixed rubric, making the resulting labels more consistent. Each instance is stored as a structured record (question, reference, student answer, score, and feedback) to support deterministic parsing. Table 1 shows an instance of the dataset, and a prompt template is provided in the Appendix A.1. 
+
+Bilingual Coverage and Feedback Language. 
+
+The dataset is bilingual, comprising 68.7% Bangla and 31.3% English question-answer pairs. We re-quire the user’s answer and the grader’s feedback to be written in the same language as the question, which improves usability in classroom settings and avoids cross-lingual drift (e.g., Bangla inputs pro-ducing English feedback). 
+
+Dataset Integrity, Scale, and Splits. We store each question–reference pair as a structured record containing all four answer variants, their associ-ated scores and feedback. While generating each instance, we apply lightweight validation checks to reduce synthesis noise and regenerate only failed components under a capped retry budget. The final dataset contains 122,710 questions, each with four graded answers (resulting in 490,391 instances, slightly fewer than expected due to failed gener-ations), in total ∼112M tokens ( ∼638.9 MB on disk). Most instances fit within a 1024-token bud-get. We keep a fixed subset of N =1000 question-reference pair records for testing and split the re-maining data into training/validation (90/10). We report model-to-model comparisons on the test sub-set, and from this same subset, a teacher-graded Question Reference Answer Human Answer Variation Type Score Feedback                           
+
+> কিম্পউটােররপ্র ধান কাজ কী? কিম্পউটােররপ্র ধান কাজ হেলা বয্বহারকারীর কাছ েথেক ইনপুট েনওয়া, েসই েডটােকপ্র েসস করা এবং আউটপুট েদওয়া। কিম্পউটােররপ্র ধান কাজ হেলা েডটাগ্র হণ করা, তাপ্র িক্রয়াজাত করা এবং ফলাফল আউটপু টিহেসেবপ্র দান করা।
+> Good 10.00 উত্তরিট েরফােরেন্সর সেঙ্গ পু েরাপুির িমেল যায়। ইনপুট েনওয়া, েডটাপ্র িক্রয়াকরণ করা এবং আউটপু টপ্র দান করা—এই িতনিট েমৗিলক ধাপস্পষ্ট ভােব উেল্লখ কেরেছ। তাই পূ ণর্ নম্বরপ্র াপয্। কিম্পউটার অেনক িকছু করেত পাের, েযমন েগম েখলা বা িসেনমা েদখা। এরপ্র ধান কাজ সম্ভবত তথয্ েদখােনা।
+> Partial 4.00 উত্তরিট আংিশকভােবপ্র াসিঙ্গক হেলও মূ ল সংজ্ঞা সম্পূ ণর্ নয়। এিট আউটপুট/বয্বহােরর উদাহরণ েদয়, িকন্তু ইনপু ট েনওয়া ওপ্র েসস করার অংশ অনুপিস্থত। তাই আংিশক নম্বর। কিম্পউটােররপ্র ধান কাজ হেলা ইেলকট্রিনক সংেকতেক িডিজটাল তথয্রূ পান্তর করা।
+> Plausible 4.00 বক্তবয্িটশু নেতপ্র যু িক্তগতভােব যু িক্তসংগত, িকন্তুপ্র েশ্নরপ্র তয্ািশত সংজ্ঞা নয়। েরফােরন্স অনু যায়ী মূল কাজ হেলা ইনপুট-প্রেসস-আউটপু টচক্র; এখােন ইনপু ট ও আউটপুেটর ভূিমকা উেল্লখ েনই এবং সংজ্ঞািট অসম্পূ ণর্। কিম্পউটােররপ্র ধান কাজ হেলা িবদুয্ ৎ বয্বহার করা।
+> Bad 1.00 িবদুয্ৎ কিম্পউটার চালােনার পূ বর্শতর্, িকন্তু এিট কিম্পউটােররপ্র ধান কাজ নয়। েরফােরেন্সর মূ ল ধারণা (ইনপুট েনওয়া,প্র েসস করা, আউটপুট েদওয়া) অনুপিস্থত, তাই উত্তরিট ভু ল/অপ্রাসিঙ্গক।
+> Table 1: Example dataset record for one question, showing four regime-conditioned student answers with scores and feedback. 1
+
+Table 1: Example dataset record for one question, showing four variants of student answers with scores and feedback. 
+
+subset of N =259 records is used to measure align-ment with human judgement. 
+
+3.2 Fine-tuning in Low Resource Setting Choosing the LLM Grader. Our system needs reliable reasoning : the grader must compare a stu-dent’s answer against the reference answer, assign partial credit when appropriate, and generate feed-back that explains the judgement from the given resource rather than relying on surface word over-lap. Hence, we adopt Q WEN 3-8B as our grader backbone because of its strong reasoning behaviour. Finally, we pick the 8B parameters scale as a prac-tical middle ground: large enough for bilingual, rubric-conditioned semantic judgement, but small enough to support iterative fine-tuning and repeated evaluation runs during system development. 
+
+Fine-tuning Our Grader. To adapt the grader to our rubric and bilingual setting, we fine-tune our model using QLoRA (Dettmers et al., 2023): the backbone is loaded in 4-bit and kept frozen, while only low-rank LoRA adapter parameters are updated. This substantially reduces VRAM require-ments, making fine-tuning feasible on commodity GPUs while retaining the backbone’s general com-petence. We report full fine-tuning hyperparame-ters in Appendix A.4. 
+
+4 Experiments 
+
+4.1 Experimental Setup 
+
+We create a synthetic bilingual Bangla–English dataset (638.9 MB on disk) and use it for task-specific QLoRA fine-tuning of an open-weight LLM (Qwen3-8B) as our grader. Fine-tuning is performed on 2×RTX 3090 GPUs, and we serve the resulting grader on a single RTX 3090 (24GB) for inference. We evaluate the fine-tuned grader against other open-weight and proprietary baselines on a primary held-out set of N =1000 instances under a fixed input/output interface for fair com-parison. Finally, to quantify the remaining gap to human judgment and contextualize performance gains, we conduct a dedicated human study to mea-sure alignment with a separate teacher-graded sub-set of N =259 instances. 
+
+4.2 Evaluation 
+
+We evaluate along two axes: (i) score fidelity with the human study : alignment with teacher grades and (ii) feedback quality : whether the feedback pro-vides evidence-based justification instead of para-phrasing the reference answer. 
+
+Compared Baseline Models. To contextualize our grader against widely deployed systems, we compare against several proprietary LLM graders: GEMINI 3 F LASH , GPT-5.2, C LAUDE SONNET 
+
+4, LL AMA 3.2, and S ONAR REASONING (via the Perplexity API). These serve as API-only baselines with no access to model weights or training details and represent strong graders used in practice; all are evaluated under the same fixed context and a shared [0 , 10] scoring scale. 
+
+Human Evaluation. We analyze model-graded scores against teacher grades on a held-out set of 
+
+N =259 responses, stratified by subject and lan-guage (Bangla/English). We recruited 20 school teachers; each response is scored once by a single teacher on a [0 , 10] scale. Then, we compare model scores to teacher scores using Spearman correlation (Spearman, 1904) ( ρ : measures whether models preserve the same ordering of students’ answers, even if score levels differ slightly), mean absolute error (MAE : average absolute point deviation, easy to interpret in points and less sensitive to outliers than MSE) (Willmott and Matsuura, 2005). 
+
+Automatic Feedback Metrics. Beyond score agreement, we evaluate the quality of each model’s feedback using four complementary measures: RECE VAL (Prasad et al., 2023) (logical consis-tency and informativeness), ROSCOE (Golovneva et al., 2023) (semantic/faithfulness cues), IBE-EVAL (Dalal et al., 2024) (overall explanation qual-Model Human ρ ↑ Human MAE ↓ RoRa ↑ ReCEval ↑ ROSCOE ↑ IBE ↑ Reasoning Mark ↑ Token Length ↓                                                        
+
+> Qwen3-8B (base) 0.904 1.174 0.790 0.458 0.727 0.721 6.74 93
+> Qwen3-8B Fine-tuned (Ours) 0.936 0.725 0.819 0.471 0.715 0.714 6.80 89
+> GPT-5.2 0.902 1.112 0.609 0.413 0.734 0.715 6.18 147 Gemini 3 Flash 0.910 1.120 0.776 0.439 0.752 0.712 6.70 126 Claude Sonnet 4 0.919 0.903 0.653 0.428 0.703 0.688 6.18 164 Sonar Reasoning 0.892 0.992 0.667 0.464 0.684 0.638 6.13 196 LLaMA 3.2 0.778 1.752 0.674 0.432 0.692 0.715 6.28 143
+
+Table 2: Overall performance and reasoning-metrics comparison across graders: Human agreement with 
+
+(Spearman ρ and MAE) , reasoning quality of feedback with R ORA, R ECE VAL , ROSCOE, IBE and Reasoning Mark (average of the previous four metrics scaled by x10), length of tokens with Token Length . Bold marks the best score per column (ties allowed). ( ↑ higher is better, ↓ lower is better.) 
+
+ity), and R ORA (Jiang et al., 2024) (leakage resis-tance). All these metrics are language agnostic, and we compute them on the same evaluation set and report per-model aggregates. RORA is our primary leakage diagnostic: it measures to what extent the feedback provides an independent justi-fication for the score, rather than paraphrasing the reference answer or directly encoding the score. To avoid self-evaluation bias, these metrics are com-puted with independent evaluator backbones (an MNLI-trained NLI model (Williams et al., 2018; Lewis et al., 2020) and a multilingual sentence-embedding model (Reimers and Gurevych, 2019; Song et al., 2020)). Finally, we report the un-weighted mean of these metrics ( Reasoning Mark )as a single aggregate indicator. 
+
+Evaluating Token Length. To control for ver-bosity, we measure feedback length in output to-kens. Token length directly reflects generation cost and latency (i.e., the number of decoding steps). We report the per-model mean of token length to ensure improvements are not mainly driven by only longer outputs. 
+
+4.3 Results and Analysis 
+
+Table 2 shows that task-specific QLoRA fine-tuning on our synthetic bilingual dataset improves scoring alignment with teacher grades: Fine-tuned Qwen3-8B leads the compared graders on human-alignment metrics . We then examine the error distribution (Figure 2), feedback quality, and efficiency to explain where these gains come from. 
+
+Agreement with Human Teachers. We com-pare graders using two alignment signals: rank agreement (Spearman ρ) and absolute error (MAE) against teacher scores. As shown in Table 2, fine-tuned Qwen3-8B achieves the strongest hu-man alignment ( ρ=0 .936 , MAE = 0 .725 ) among all models and improves over Qwen3-8B (base) (ρ=0 .904 , MAE = 1 .174 ). This indicates better 8 6 4 2 0 2 4 
+
+> Human Model Score Difference
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> 120
+> 140
+> Number of Graded Instances
+> Score Difference Distribution (Overall)
+> Gemini 3 Flash
+> GPT-5.2
+> Sonar Reasoning
+> Claude Sonnet 4
+> Qwen3-8B Fine-tuned(Ours)
+> Qwen3-8B (base)
+> LLaMA 3.2
+
+Figure 2: Teacher–model score difference distribu-tion across graders. The x-axis shows the score differ-ence (teacher −model) and the y-axis shows the number of graded instances. Values near 0 indicate closer agree-ment with teacher scoring, while heavier tails indicate more frequent large deviations. 
+
+agreement with teachers on which student answers deserve higher scores, while also reducing absolute deviation from teacher-assigned scores on the same [0,10] scale. To analyze where this gain comes from, Figure 2 plots the distribution of score dif-ferences (teacher −model). Fine-tuned Qwen3-8B shows the tightest concentration around zero and the lightest tails, suggesting fewer extreme over/under-scoring errors among all compared graders . Overall, task-specific fine-tuning im-proves both ranking consistency and point-level accuracy while maintaining concise generation, demonstrating that alignment gains are achieved without increasing output verbosity. 
+
+Reasoning Analysis. We compare feedback qual-ity using leakage-aware and reasoning metrics (R ORA, R ECE VAL , ROSCOE, IBE), together with output length (tokens) (Table 2). As shown in Table 2, fine-tuned Qwen3-8B im-proves over Qwen3-8B (base) on leakage resistance (R ORA: 0.790 →0.819) and reasoning faithfulness (R ECE VAL : 0.458 →0.471), while staying concise (93 →89 tokens). These gains indicate that fine-tuning produces more answer-specific, non-leaked feedback without increasing verbosity. Across all graders, fine-tuned Qwen3-8B is best on R ORA(a) Student's response in 
+
+> Bangla (handwritten)
+> (b) Extracted text in Bangla after
+> uploading the handwritten answer
+
+Figure 3: Answer input: (a) A student can either type or upload a handwritten response image; (b) the inte-grated Bangla HTR module extracts text for downstream grading. 
+
+(0.819) and R ECE VAL (0.471), and remains close to the top on ROSCOE (0.715) and IBE (0.714). Overall, it ranks best in 6 of 8 reported metrics in Table 2, showing that quality gains are broad rather than coming from a single metric. 
+
+Token Efficiency. We compare graders by aver-age output length in tokens. As shown in (Table 2), 
+
+fine-tuned Qwen3-8B is the most token-efficient grader (89 tokens) , slightly below Qwen3-8B (base) (93) and far below proprietary models such as GPT-5.2 (147) and Gemini 3 Flash (126). This efficiency reduces per-response computation and latency, and it comes without sacrificing alignment or leakage-resistant feedback quality. 
+
+5 Demonstration 
+
+We deploy our system as a web-based assessment interface; its main components are illustrated as follows. Once users are taken to the exam interface, they can upload a typed or handwritten text image and submit a grading request (Figure 3). The sys-tem returns a numeric score together with a short, context-grounded feedback (Figure 4). To support practical classroom use, the demo also exposes a summary of the users’ total marks and overall per-formance (Figure 5). 
+
+6 Conclusions 
+
+We present a bilingual (Bangla and English) written-answer evaluation system that produces human-aligned scores together with reliable, context-grounded feedback. To move beyond surface-overlap grading, we introduce a controlled four-variant dataset and fine-tune an open-weight language model to support semantically grounded evaluation. Across experiments, our system im-proves agreement with teacher-assigned scores and yields more faithful explanations than strong propri-
+
+Figure 4: Grading and feedback view: The interface shows the student’s answer, the reference answer, and the model’s predicted score with brief feedback defend-ing the given score. 
+
+Figure 5: Exam-level summary: Aggregated perfor-mance over an exam session. 
+
+etary graders, as confirmed by a dedicated human evaluation study. Overall, we show that an accurate, trustworthy automated assessment for low-resource classrooms is achievable with open models when grading is explicitly grounded in the question and reference answer and paired with bounded, context-aware feedback. 
+
+Limitations and Future Work 
+
+Our system has three main limitations. First, part of our dataset relies on LLM-generated answer vari-ants, scores, and feedback, which may introduce synthetic artifacts and reflect the broader scarcity of large-scale teacher-annotated Bangla exam data with expert rationales. Second, the dataset is not explicitly stratified by curriculum objectives or cog-nitive levels (e.g., Bloom’s taxonomy), limiting fine-grained control over difficulty and skill cov-erage. Third, the current system does not support multimodal exam items that require reasoning over diagrams, tables, or other visual evidence. Fu-ture work can focus on scaling teacher-annotated Bangla data collection, incorporating curriculum-and Bloom-aware controls for grading and feed-back, and extending the framework to visually grounded assessment with systematic evaluation protocols. Ethical Considerations 
+
+Our system is intended to assist educators with question generation and grading, not to replace teacher judgment. As with any automated grader, it can produce incorrect scores or feedback, par-ticularly for ambiguous answers, domain shifts, or degraded OCR/HTR outputs; we therefore recom-mend human oversight for any high-stakes use. Student responses and exam artifacts may con-tain sensitive personal information. Deployments should follow strict data-handling practices, includ-ing data minimization, limited retention, access control, and secure storage and transmission. We do not support uses of the system for surveillance, profiling, or punitive decision-making. Automated grading can also amplify biases (e.g., against dialectal, non-standard, or stylistically dif-ferent writing). Future work should include tar-geted evaluation across demographic and linguistic variations, and provide practical auditing and over-ride mechanisms so teachers can inspect, correct, and contest system outputs. 
+
+Acknowledgements 
+
+We acknowledge Department of Computer Science and Engineering, University of Dhaka, Bangladesh, for computational support. At the same time, we are grateful to the participating teachers for provid-ing graded responses used in the evaluation. 
+
+References 
+
+Chi-Min Chan, Weize Chen, Yusheng Su, Jianxuan Yu, Wei Xue, Shanghang Zhang, Jie Fu, and Zhiyuan Liu. 2024. Chateval: Towards better LLM-based eval-uators through multi-agent debate. In The Twelfth International Conference on Learning Representa-tions .Dhairya Dalal, Marco Valentino, André Freitas, and Paul Buitelaar. 2024. Inference to the best explana-tion in large language models. In Proceedings of the 62nd Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) , pages 217–235. Tim Dettmers, Artidoro Pagnoni, Ari Holtzman, and Luke Zettlemoyer. 2023. QLoRA: Efficient finetun-ing of quantized LLMs. In Advances in Neural Infor-mation Processing Systems .Ethnologue. 2025. What are the 10 largest / most spoken languages in the world? Website. Accessed 2026-02-24. Anna Filighera, Siddharth Parihar, Tim Steuer, Tobias Meuser, and Sebastian Ochs. 2022. Your answer is in-correct... would you like to know why? introducing a bilingual short answer feedback dataset. In Proceed-ings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Pa-pers) , pages 8577–8591, Dublin, Ireland. Association for Computational Linguistics. Olga Golovneva, Moya Peng Chen, Spencer Poff, Mar-tin Corredor, Luke Zettlemoyer, Maryam Fazel-Zarandi, and Asli Celikyilmaz. 2023. ROSCOE: A suite of metrics for scoring step-by-step reasoning. In 
+
+The Eleventh International Conference on Learning Representations .Jiefu Gong, Xiao Hu, Wei Song, Ruiji Fu, Zhichao Sheng, Bo Zhu, Shijin Wang, and Ting Liu. 2021. IFlyEA: A Chinese essay assessment system with automated rating, review generation, and recommen-dation. In Proceedings of the 59th Annual Meet-ing of the Association for Computational Linguistics and the 11th International Joint Conference on Nat-ural Language Processing: System Demonstrations ,pages 240–248, Online. Association for Computa-tional Linguistics. Md. Mahmudul Hasan, Ahmed Nesar Tahsin Choud-hury, Mahmudul Hasan, and Md Mosaddek Khan. 2025. GraDeT-HTR: A resource-efficient Ben-gali handwritten text recognition system utilizing grapheme-based tokenizer and decoder-only trans-former. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing: System Demonstrations , pages 696–706, Suzhou, China. Association for Computational Linguistics. Zhengping Jiang, Yining Lu, Hanjie Chen, Daniel Khashabi, Benjamin Van Durme, and Anqi Liu. 2024. RORA: Robust free-text rationale evaluation. In Pro-ceedings of the 62nd Annual Meeting of the Associa-tion for Computational Linguistics (Volume 1: Long Papers) , pages 1070–1087, Bangkok, Thailand. As-sociation for Computational Linguistics. Seungjun Lee, Yoonna Jang, Chanjun Park, Jungseob Lee, Jaehyung Seo, Hyeonseok Moon, Sugyeong Eo, Seounghoon Lee, Bernardo Yahya, and Heuiseok Lim. 2023. PEEP-talk: A situational dialogue-based chatbot for English education. In Proceedings of the 61st Annual Meeting of the Association for Compu-tational Linguistics (Volume 3: System Demonstra-tions) , pages 190–207, Toronto, Canada. Association for Computational Linguistics. Mike Lewis, Yinhan Liu, Naman Goyal, Marjan Ghazvininejad, Abdelrahman Mohamed, Omer Levy, Ves Stoyanov, and Luke Zettlemoyer. 2020. BART: Denoising sequence-to-sequence pre-training for nat-ural language generation, translation, and comprehen-sion. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pages 7871–7880, Online. Association for Computational Linguistics. Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. 2023. G-eval: NLG evaluation using gpt-4 with better human align-ment. In The 2023 Conference on Empirical Methods in Natural Language Processing .Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. 2002. Bleu: a method for automatic evalu-ation of machine translation. In Proceedings of the 40th Annual Meeting of the Association for Compu-tational Linguistics , pages 311–318, Philadelphia, Pennsylvania, USA. Association for Computational Linguistics. Archiki Prasad, Swarnadeep Saha, Xiang Zhou, and Mohit Bansal. 2023. ReCEval: Evaluating reasoning chains via correctness and informativeness. In Pro-ceedings of the 2023 Conference on Empirical Meth-ods in Natural Language Processing , pages 10066– 10086, Singapore. Association for Computational Linguistics. Nils Reimers and Iryna Gurevych. 2019. Sentence-BERT: Sentence embeddings using siamese BERT-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natu-ral Language Processing (EMNLP-IJCNLP) , pages 3982–3992, Hong Kong, China. Association for Com-putational Linguistics. Kaitao Song, Xu Tan, Tao Qin, Jianfeng Lu, and Tie-Yan Liu. 2020. MPNet: Masked and permuted pre-training for language understanding. In Advances in Neural Information Processing Systems .Charles Spearman. 1904. The proof and measurement of association between two things. The American Journal of Psychology , 15(1):72–101. Adina Williams, Nikita Nangia, and Samuel Bowman. 2018. A broad-coverage challenge corpus for sen-tence understanding through inference. In Proceed-ings of the 2018 Conference of the North American Chapter of the Association for Computational Lin-guistics: Human Language Technologies, Volume 1 (Long Papers) , pages 1112–1122, New Orleans, Louisiana. Association for Computational Linguis-tics. Cort J. Willmott and Kenji Matsuura. 2005. Advan-tages of the mean absolute error (mae) over the root mean square error (rmse) in assessing average model performance. Climate Research , 30(1):79–82. Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q. Weinberger, and Yoav Artzi. 2020. Bertscore: Eval-uating text generation with bert. In International Conference on Learning Representations .Zhexin Zhang, Jian Guan, Guowei Xu, Yixiang Tian, and Minlie Huang. 2022. Automatic comment gen-eration for Chinese student narrative essays. In Pro-ceedings of the 2022 Conference on Empirical Meth-ods in Natural Language Processing: System Demon-strations , pages 214–223, Abu Dhabi, UAE. Associa-tion for Computational Linguistics. Ming Zhong, Yang Liu, Da Yin, Yuning Mao, Yizhu Jiao, Pengfei Liu, Chenguang Zhu, Heng Ji, and Jiawei Han. 2022. Towards a unified multi-dimensional evaluator for text generation. In Pro-ceedings of the 2022 Conference on Empirical Meth-ods in Natural Language Processing , pages 2023– 2038, Abu Dhabi, United Arab Emirates. Association for Computational Linguistics. 
+
+A Appendix 
+
+A.1 Prompt Templates and Output Schemas 
+
+This appendix documents the prompt templates used in our pipeline. We enforce strict JSON-only outputs to enable deterministic parsing and to reduce annotation noise in large-scale generation and evaluation. 
+
+Synthetic Answer-Variant Generation Prompt. 
+
+We generate four controlled student-answer vari-ants (GOOD /PARTIAL /PLAUSIBLE /BAD ) condi-tioned on the question and reference answer. The model must return a JSON array containing ex-actly four objects, each with a type label and a 
+
+user_answer string. 
+
+Prompt: 
+
+> You are an assistant generating possible user answers to a question. Question: {question} Reference Answer (gold standard): {reference_answer} Generate FOUR distinct ’user_answer’ variations in JSON format: 1. A good answer (nearly perfect) 2. A partially correct answer (captures some ideas but misses key parts) 3. An incorrect but plausible answer (sounds right but is wrong) 4. A bad answer (completely off-topic or nonsense) Return in JSON array format like: [{ "type": "good", "user_answer": "..." }, { "type": "partial", "user_answer": "..." }, { "type": "plausible", "user_answer": "..." }, { "type": "bad", "user_answer": "..." } ]
+
+Required JSON schema: 
+
+> [{"type": "good"|"partial"|"plausible"|"bad", " user_answer": string}, ... ]
+
+Synthetic Evaluation (Score + Feedback) Prompt: Each generated answer is then scored against the same evidence packet (question ,
+
+reference_answer , user_answer ). We constrain the output to a JSON object with a numeric score 
+
+and a free-text feedback . We also require the feed-back language to match the question language. 
+
+Prompt: 
+
+> You are an expert grader. Assess a user’s answer against a Reference Answer. Provide: 1. A numerical score (0-10) 2. Detailed reasoning for your score. Make sure the reasoning language is in the provided question’s language and output nothing except the reasoning. Return strictly in JSON format: {"score": <0-10>, "reasoning": "<reasoning>" }Question: {question} Reference Answer: {reference_answer} User Answer: {user_answer}
+
+Required JSON schema: 
+
+> {"score": integer (0..10), "reasoning": string}
+
+Final Grading Prompt Used by the Fine-Tuned Grader. For training the open-weight grader and for inference-time grading, we use the same evidence-packet input fields. The prompt is iden-tical to our Synthetic Evaluation (Score + Feed-back) Prompt and is reused both during QLoRA fine-tuning and at inference time. 
+
+Training target format. During fine-tuning, each training instance packs the above prompt as in-put and uses a JSON string target {"score": int, "reasoning": string} for supervision. 
+
+Parsing and validation. We reject or retry gener-ations that are not valid JSON or that omit required keys. This enables robust, large-scale training data construction and consistent grader outputs. 
+
+A.2 Output Validation and Bounded Retry Policy 
+
+We apply lightweight output validation to every grader response to ensure a stable JSON interface and to reduce malformed or overly verbose gener-ations. Concretely, we require a single parseable JSON object with exactly score and feedback ;
+
+score must be numeric in [0 , 10] , feedback must be a non-empty string written in the same language as the question (Bangla/English), and the reasoning must stay within a fixed token budget. If validation fails, we re-prompt with an explicit correction in-struction under a bounded retry policy ( K=2 ), and when multiple valid outputs are available we select the shortest one by token count to minimize latency and decoding cost. 
+
+A.3 Additional dataset statistics 
+
+Average token lengths are 23.51 (question), 52.43 (reference), 35.46 (student answer), and 71.93 (feedback), with an average combined sequence length of 228.32 tokens and a maximum length of 1448 tokens. Most instances fall within a 1024-token budget (490,384 instances), with only a small remainder exceeding it. 
+
+A.4 Fine-tuning and Inference Settings Fine-tuning. We fine-tune Qwen/Qwen3-8B us-ing QLoRA-style PEFT: the backbone is loaded in 4-bit ( load_in_4bit=True ) with NF4 quantiza-tion, double quantization, and FP16 compute, and kept frozen while training LoRA adapters (causal LM) with r=16 , α=32 , dropout 0.05. We use AdamW with learning rate 2 × 10 −5 for 1 epoch, max sequence length 1024, per-GPU batch size 1 with gradient accumulation 8 (effective batch 16 on 2×RTX 3090). We enable mixed precision (BF16 when available, otherwise FP16), disable KV caching ( use_cache=False ), and enable gra-dient checkpointing to reduce memory. Data are split 90%/10% into train/validation with a fixed seed (42), and we select checkpoints by minimum validation loss (saving the best; save_last=True ). 
+
+Inference. Local grader decoding uses 
+
+max_new_tokens=1024 and temperature=0.2 .For API baselines, we use temperature=0.2 
+
+and max_tokens=800 (where applicable). We apply bounded retries (up to 3) for malformed or non-JSON outputs and keep the shortest valid completion when multiple candidates are available. 
+
+A.5 Teacher evaluation protocol and metrics 
+
+We evaluate score alignment against teacher grad-ing on a held-out set of N =259 responses, strati-fied by subject and language (Bangla/English). We recruited 20 school teachers with subject-matter expertise; each response is scored once by a single teacher on a [0 , 10] scale. For a model m producing predicted scores ˆs(m) 
+
+> i
+
+and teacher scores si, we re-port (i) rank agreement via Spearman correlation ρ
+
+and (ii) absolute deviation via mean absolute error (MAE): 
+
+ρ(m) = Spearman  {ˆs(m) 
+
+> i
+
+}Ni=1 , {si}Ni=1 
+
+, (5) 
+
+MAE (m) = 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+ˆs(m) 
+
+> i
+
+− si . (6) 
+
+A.6 Feedback length statistics 
+
+We measure feedback length in output tokens . For each model m, let ℓ(m) 
+
+> i
+
+be the feedback token count for instance i. In the main paper, we report the per-model mean token length, 
+
+μ(m) = 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+ℓ(m) 
+
+> i
+
+, (7) and we also compute the standard deviation for completeness, 
+
+σ(m) =
+
+vuut 1
+
+N − 1
+
+> N
+
+X
+
+> i=1
+
+ ℓ(m) 
+
+> i
+
+− μ(m)2. (8)
