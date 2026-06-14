@@ -6,42 +6,41 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-13
-- 运行时间：2026-06-13 20:58:42 UTC
+- 最新运行日期：2026-06-14
+- 运行时间：2026-06-14 21:16:34 UTC
 - 运行状态：成功
 - 本次总论文数：7
-- 精读区：0
-- 速读区：7
+- 精读区：6
+- 速读区：1
 
 ### 今日简报（AI）
-今日推荐7篇论文，速读聚焦跨模型一致性、多语言安全退化及低资源机器翻译。值得关注《Cross-LLM Consistency》揭示共享交互中的推理行为，以及《Sycophancy》发现多语言模型安全对齐失败现象。建议读者优先阅读这两篇，了解大模型行为一致性与语言间安全差异。
-- 详情：[/202606/13/README](/202606/13/README)
+今日精读6篇、速读1篇，核心聚焦LLM控制与推理一致性。最值得深入的是两篇8分论文：跨模型推理一致性验证方法，以及可逆潜在变换可控性研究。建议优先阅读《Beyond Linear Activation Steering》中可逆变换实现精细控制的策略，并关注《Q-Delta》的KV状态演化对效率的启示。
+- 详情：[/202606/14/README](/202606/14/README)
 
 ### 精读区论文标签
-- 本次无精读推荐。
+1. [Cross-LLM Consistency in Inference: Evidence from Shared Interactions](/202606/14/2606.08129v1-cross-llm-consistency-in-inference-evidence-from-shared-interactions)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：跨LLM推理一致性及交互模式
+2. [Beyond Linear Activation Steering: Invertible Latent Transformations for Controlling LLM Behavior](/202606/14/2606.08454v1-beyond-linear-activation-steering-invertible-latent-transformations-for-controlling-llm-behavior)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：通过可逆潜在变换进行激活操控以控制LLM表示
+3. [Can LLMs understand LilyPond? A benchmark for symbolic music generation and understanding](/202606/14/2606.08722v1-can-llms-understand-lilypond-a-benchmark-for-symbolic-music-generation-and-understanding)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：针对LLM的符号音乐生成与理解评估基准
+4. [SAGE: Answer-Conditioned Uncertainty Targets for Verbal Uncertainty Alignment](/202606/14/2606.11512v1-sage-answer-conditioned-uncertainty-targets-for-verbal-uncertainty-alignment)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：语言不确定性对齐与评估方法SAGE
+5. [Which Speech Representation Better Matches Text-Native Reasoning? A Study of Speech-Text Alignment on Frame Rate and Representation](/202606/14/2606.12199v1-which-speech-representation-better-matches-text-native-reasoning-a-study-of-speech-text-alignment-on-frame-rate-and-representation)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：分析语音表示与LLM文本原生推理的对齐
+6. [AfriSUD: A Dependency Treebank Collection for Evaluating Models on African Languages](/202606/14/2606.12708v1-afrisud-a-dependency-treebank-collection-for-evaluating-models-on-african-languages)  
+   标签：评分：8.0/10、query:llm-ling
+   evidence：面向非洲语言句法解析和语言模型评估的依存树库集合
 
 ### 速读区论文标签
-1. [Cross-LLM Consistency in Inference: Evidence from Shared Interactions](/202606/13/2606.08129v1-cross-llm-consistency-in-inference-evidence-from-shared-interactions)  
-   标签：评分：7.0/10、query:llm-lang-rep
-   evidence：LLM中共享的推理模式
-2. [Sycophancy as a Multilingual Alignment Failure: How Safety Degrades Across Languages, Topics, and Models](/202606/13/2606.08451v1-sycophancy-as-a-multilingual-alignment-failure-how-safety-degrades-across-languages-topics-and-models)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：LLM多语言谄媚行为评估
-3. [Data Synthesis and Parameter-Efficient Fine-Tuning for Low-Resource NMT: A Case Study on Q'eqchi' Mayan](/202606/13/2606.09767v1-data-synthesis-and-parameter-efficient-fine-tuning-for-low-resource-nmt-a-case-study-on-qeqchi-mayan)  
-   标签：评分：7.0/10、query:llm-ling
-   evidence：教授复杂粘着形态和VOS词序
-4. [When Does Language Matter? Multilingual Instructions Reveal Step-wise Language Sensitivity in Vision-Language-Action Models](/202606/13/2606.11906v1-when-does-language-matter-multilingual-instructions-reveal-step-wise-language-sensitivity-in-vision-language-action-models)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：多语言评估揭示视觉-语言-动作模型的语言敏感性
-5. [HydraQE: OSU's Submission for the IWSLT 2026 Speech Translation Metrics Shared Task](/202606/13/2606.08748v1-hydraqe-osus-submission-for-the-iwslt-2026-speech-translation-metrics-shared-task)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：语音翻译的无参考质量评估
-6. [Phoneme-First Prediction for LLM-Based Speech Recognition](/202606/13/2606.10864v1-phoneme-first-prediction-for-llm-based-speech-recognition)  
+1. [Q-Delta: Beyond Key-Value Associative State Evolution](/202606/14/2606.08804v1-q-delta-beyond-key-value-associative-state-evolution)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：教授LLM进行音素预测以对齐声学和语义嵌入
-7. [Semantic Grading of Written Answers in Low-Resource Language Bangla Using a Fine-Tuned Lightweight Language Model](/202606/13/2606.11931v1-semantic-grading-of-written-answers-in-low-resource-language-bangla-using-a-fine-tuned-lightweight-language-model)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：使用语言模型进行语义评分，涉及自然语言理解评估
+   evidence：面向线性注意力状态演化的查询感知delta规则
 
 
 <div class="dpr-home-promo-card">

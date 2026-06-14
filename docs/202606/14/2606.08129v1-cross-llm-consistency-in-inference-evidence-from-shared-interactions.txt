@@ -1,0 +1,1606 @@
+Title: Cross-LLM Consistency in Inference: Evidence from Shared Interactions
+
+URL Source: https://arxiv.org/pdf/2606.08129v1
+
+Published Time: Tue, 09 Jun 2026 00:38:55 GMT
+
+Number of Pages: 20
+
+Markdown Content:
+# CROSS -LLM C ONSISTENCY IN INFERENCE : E VIDENCE FROM 
+
+# SHARED INTERACTIONS 
+
+Siyu Lou 
+
+School of Computer Science Shanghai Jiao Tong University Ningbo Key Laboratory of Advanced Manufacturing Simulation Eastern Institute of Technology, Ningbo 
+
+siyu.lou@sjtu.edu.cn 
+
+Yao Yan 
+
+College of Computer and Information Science Chongqing Normal University SymtrustAI.com 
+
+yanyao202509@163.com 
+
+Yuntian Chen 
+
+Ningbo Key Laboratory of Advanced Manufacturing Simulation Eastern Institute of Technology, Ningbo 
+
+ychen@eitech.edu.cn 
+
+Quanshi Zhang ∗
+
+School of Computer Science Shanghai Jiao Tong University 
+
+zqs1022@sjtu.edu.cn 
+
+June 9, 2026 
+
+## ABSTRACT 
+
+Large language models (LLMs) differ in architecture, training data, and optimization procedures, yet they may still develop similar internal inference patterns. In this paper, we examine this hypothesis using interaction-based explanations. We find that LLMs often share interaction patterns when predicting the same target token from the same prompt. This consistency is more pronounced among advanced LLMs. Shared interactions also tend to be lower-order and show weaker positive-negative cancellation than non-shared interactions. These results suggest that advanced LLMs may be implicitly optimized toward common inference patterns, even though the mechanisms that give rise to such cross-model consistency remain open. 
+
+## 1 Introduction 
+
+This paper focuses on an essential difference between the representations in large language models (LLMs) and human cognition. Humans have the capacity of aligning their reasoning logic or inference patterns through social communication, i.e. , the calibration of internal inference patterns is a typical mechanism to help people distinguish reliable and unreliable cognition [ 38 ]. In contrast, LLMs lack such a mechanism: they primarily learn to regulate LLM outputs [ 36 ], yet lack a well-developed framework for calibrating internal inference patterns across different models [6, 5, 28]. Although fully achieving post-hoc calibration of LLM inference patterns remains beyond the scope of a single study, our work targets a more fundamental research question: despite differences in training data and architecture, do independently trained LLMs still possess inherently aligned inference patterns? If confirmed, this finding would provide a solid foundation for further research on cross-LLM inference pattern post-hoc calibration and the exploration of consensus representations modeled by diverse LLMs. 
+
+> ∗
+
+corresponding author 
+
+> arXiv:2606.08129v1 [cs.AI] 6 Jun 2026
+
+A PREPRINT - J UNE 9, 2026 𝐼 !                                   
+
+> "#$ =0.65
+> 𝐼 !
+> %& =0.36
+> 𝐼 !
+> %& =−0.26
+> Input prompt 𝒙 :In a viscous medium, a damped wave field 𝑢 (𝑥 ,𝑡 )shows strong spatial
+> LLM’s output score for the
+> target token “variation”
+> 𝑣 (“variation ”|𝒙 )
+> Logical model’s output score
+> 𝜙 (“variation ”|𝒙 )
+> spatial
+> 𝐼 !
+> "#$ =8.56
+> spatial
+> 𝐼 !
+> "#$ =0.87
+> strong
+> 𝐼 !
+> %& =2.02
+> 𝑢 (𝑥 ,𝑡 )
+> field
+> spatial
+> 𝐼 !
+> "#$ =−0.56
+> wave
+> damped
+> spatial
+> 𝐼 !
+> %& =0.89
+> field
+> spatial
+> wave
+> 𝐼 !
+> %& =−0.26
+> viscous
+> damped
+> shows
+> 𝜙 𝒙 =∑!𝐼 !
+> "#$ +∑!𝐼 !
+> %& +𝑏
+
+# ≈
+
+> Equivalent
+> modeling
+
+⋯
+
++          
+
+> Index of all 2'
+> interaction candidates
+> Interaction strength
+> 0
+> negligible interactions
+> Indexes of all 2'
+> masked states 𝒙 ′∈Ψ
+> Model output
+> LLM 𝑣 (𝒙 ()
+> Logical model 𝜙 (𝒙′ )
+> (a)
+> (d)
+> Equivalent
+> modeling Logical
+> model
+> 𝜙 !
+> Equivalent
+> modeling Logical
+> model
+> 𝜙 "
+> spatial
+> field 𝑢 (𝑥 ,𝑡 )
+> field
+
++       
+
+> spatial
+> strong spatial
+> dampled wave spatial
+> spatial wave viscous damped shows
+> spatial
+> field 𝑢 (𝑥 ,𝑡 )
+> field
+
++                          
+
+> spatial
+> strong spatial
+> dampled 𝑢 (𝑥 ,𝑡 )medium
+> shows
+> 𝐼 !
+> "#$ =8.56
+> 𝐼 !
+> %& =2.02
+> 𝐼 !
+> %& =0.89
+> 𝐼 !
+> "#$ =0.87
+> 𝐼 !
+> "#$ =−0.56
+> 𝐼 !
+> %& =−0.26
+> 𝐼 !
+> "#$ =9.24
+> 𝐼 !
+> %& =1.12
+> 𝐼 !
+> %& =0.75
+> Shared
+> interactions
+> 12'
+> 12'
+> Salient interactions
+> (b)
+> (c) Sorting interaction
+> strength ( 𝐼 #
+> $%& and 𝐼 #
+> '( )
+> in a descending order
+
+Figure 1: Interaction-based explanation. (a,b) The prediction score of the target token v(x) can be approximated by a logical model ϕ composed of sparse interactions. The logical model faithfully matches the LLM outputs over all 2n
+
+masked input states. (c) Only very sparse interactions exhibit salient interaction effects. All other interactions have almost 0 effect. (d) Given a pair of LLMs, we find the two LLMs usually share a similar set of interactions for inference. Non-shared interactions usually represent overfitted patterns encoded by a single LLM. Specifically, our study is inspired by recent theoretical progress in interaction-based explanation [ 30 , 32 , 22 ]: for each specific input prompt, the complex inference logic used by an LLM generating the target token can be mathematically decomposed into a small number of interaction patterns. As shown in Figure 1, each interaction represents a phrase pattern modeled by the LLM, and makes a quantifiable contribution to the prediction score of the target token. Both empirical evidence [ 11 , 23 , 31 , 43 ] and theories [ 33 ] guarantee that these interactions can be regarded as primitive inference patterns used by the LLM. As illustrated in Figure 1, an interaction represents a phrase pattern automatically used by the LLM for inference. For example, the LLM encodes a phrase S = {strong, spatial }. The co-occurence of the two words activates the interaction and contributes Iand  
+
+> S
+
+= 0 .87 to boost the prediction score of generating the target token “variation.” Since the inference logic of an LLM for target-token prediction can be decomposed into a set of interaction patterns, 
+
+we empirically investigate whether different off-the-shelf LLMs capture similar interaction patterns. A positive answer would suggest that different LLMs may converge toward similar internal inference logic, even when they differ in architecture and training data. To this end, we analyze LLMs across different parameter scales and model versions, and obtain several encouraging findings. (1) We find that open-source LLMs with different architectures and parameter scales often encode many similar interactions on the same input for inference. In particular, advanced LLMs tend to encode more common interactions that are shared across models, as shown in Figure 5. Unlike shared hidden feature spaces [ 45 ], shared interactions offer a more direct and interpretable view of cross-model consistency. Each interaction is a phrase pattern and has a quantifiable contribution to the target-token score. This allows us to identify, count, and compare the inference patterns shared by different LLMs, as illustrated in Figure 1. 2A PREPRINT - J UNE 9, 2026 (2) Interactions shared across different LLMs usually represent relatively simple inference patterns (i.e. , low-order interactions between a few tokens), whereas non-shared interactions capture more complex inference patterns involving more tokens (Figure 3). In general, simpler interaction patterns are often considered more reliable. (3) We find that non-shared interactions extracted from the same input prompt often exhibit strong cancellation between positive and negative effects. That is, some interactions increase the prediction score of the target token, while others decrease it. As a result, their effects largely offset each other in the final prediction score, making the net contribution of non-shared interactions much smaller than their overall magnitude would suggest (Figure 4). Such interactions may therefore behave like mutually canceling, model-specific noise patterns. In contrast, shared interactions exhibit much weaker positive-negative cancellation. They tend to contribute to the target-token prediction in a more consistent direction, rather than being offset by opposing effects. This shows that shared interactions provide more effective and reliable representations for target-token prediction. Therefore, although this work represents only a preliminary step toward the existence of implicitly calibrated internal inference patterns across LLMs, our findings reveal a non-negligible possibility: despite differences in training data and model architectures, advanced LLMs may have been optimized toward a convergent set of interaction patterns. 
+
+## 2 Interaction-Based Explanation 
+
+2.1 Preliminaries 
+
+Let us consider an LLM v and an input prompt x = [ x1, . . . , x n]T with n input variables indexed by N = {1, . . . , n }.Each input variable can be a token, a word, or a phrase. Given the prompt x, the confidence score of generating the target token xn+1 is usually defined as 
+
+v(x) := log p(xn+1 | x)1 − p(xn+1 | x) , (1) where p(xn+1 | x) denotes the LLM’s probability of generating the target token xn+1 .
+
+AND-OR logical model. Interaction-based explanation provides a formal way to interpret the confidence score v(·)
+
+into a set of interactions. Each interaction corresponds to a phrase automatically used by the LLM. Specifically, Chen et al. [8] have proved that the output score v(·) of a neural network can be decomposed into a set of interactions, each contributing an effect ( Iand  
+
+> S
+
+or Ior  
+
+> S
+
+). That is, we can construct a logical function with such interaction logic to accurately match the shape of the network function v(·) on exponentially many masked states 2 of the input. 
+
+∀x′ ∈ Ψ, |ϕ(x′) − v(x′)| < ϵ, ϕ(x′)= X 
+
+> T∈Ωand
+
+Iand  
+
+> T
+
+· 1and 
+
+ x′triggers AND relation between variables in T
+
+| {z }
+
+> an AND interaction
+
++X 
+
+> T∈Ωor
+
+Ior  
+
+> T
+
+· 1or 
+
+ x′triggers OR relation between variables in T
+
+| {z }
+
+> an OR interaction
+
++b. (2) 
+
+This property is referred to as the universal-matching property , where the tiny scalar ϵ ensures the fidelity of the interaction-based explanation. Ψ = {xS | S ⊆ N } denotes the set of all 2n masked states, where xS represents a masked sample in which the variables in S are masked 2. Ωand and Ωor denote the sets of AND and OR interactions, respectively. The corresponding interaction effects Iand  
+
+> T
+
+, I or  
+
+> T
+
+∈ R and the scalar bias b are learned following Chen et al. [8] (Please see Section C for more details). Many empirical studies [ 22 , 23 , 43 ] and theorems [ 32 ] have shown that interactions can faithfully explain the inference patterns used by LLMs. The AND trigger function 1and (·) ∈ { 0, 1} is activated only when all variables in T ⊆ N are present in x′, capturing their synergistic effect. For example, in Figure 2(a), the AND interaction S = {virtually , virginia } contributes a positive effect Iand  
+
+> S
+
+= 0 .19 to predicting the target token “min”. The OR trigger function 1or (·) ∈ { 0, 1} is activated when at      
+
+> 2An input word is masked by replacing its token embedding(s) with a baseline vector b∈Rd, which represents a no-information state [8].
+
+3A PREPRINT - J UNE 9, 2026 least one variable in T is present, capturing redundant effects among variables in T . For example, in Figure 2(b), the OR interaction S = {fly , airspace } contributes a negative effect Ior  
+
+> S
+
+= −0.53 to predicting “rules”. 
+
+Sparsity of interactions. Ren et al. [32] have shown that the number of interactions extracted from a given input is usually small and theoretically bounded. In practice, empirical studies find that only 50 to 150 interactions are extracted from each input prompt. We provide additional empirical validation of the sparsity property in Appendix A. 
+
+2.2 Interactions as Primitive Inference Patterns 
+
+We now explain why interactions can be treated as primitive inference patterns of an LLM. An ideal primitive pattern should accurately explain the LLM’s prediction score, be semantically interpretable, and be sparse. AND-OR interactions satisfy these properties from both theoretical and empirical perspectives. 
+
+Functional interpretation. The logical model ϕ(x′) can be explained as follows. It decomposes the LLM prediction score on each masked state x′ of the input into two parts vand (x′) and vor (x′), and interaction effects in ϕ(x′) can be derived by the Möbius transform [34]. 
+
+∀x′ ∈ Ψ, v(x′) = vand (x′) + vor (x′),
+
+with {Iand  
+
+> T
+
+}T ⊆N,T ̸ =∅ = Möbius (vand ),
+
+{Ior  
+
+> T
+
+}T ⊆N,T ̸ =∅ = −Möbius (bvor ), (3) where Möbius (vand ) denotes the Möbius transform applied to the output values of the vand function over the 2n masked samples in Ψ.3 vand ∈ R2n
+
+vectorizes all outputs of vand (·) on all masked inputs, and the vector bvor ∈ R2n
+
+is defined by ∀T ⊆ N, bvor (xT ) ≜ vor (xN \T ).
+
+The logical function ϕ(·) in Equation (2) can be viewed as an inverse Möbius transform 3, which uses interaction effects {Iand  
+
+> T
+
+} and {Ior  
+
+> T
+
+} to reconstruct the above functions vand (·) and vor (·), and hence approximates the original network output v(·). Thus, learning {Iand  
+
+> T
+
+} and {Ior  
+
+> T
+
+} is equivalent to learning a decomposition of the network output 
+
+v(x′) = vand (x′) + vor (x′), to achieve the sparse interaction effects [30, 32]. 
+
+Empirical evidence. Figure 2 shows that extracted interactions are sparse and meaningful. Although there are 2n
+
+possible token subsets, only a small number of interactions have salient effects in practice. Empirically, an input sample usually yields 50 -150 interactions. These salient interactions often correspond to interpretable phrase-level patterns: AND interactions capture jointly activated token combinations, while OR interactions capture redundant or substitutable evidence. A positive interaction increases the target-token prediction score, while a negative interaction decreases the prediction score. We also verify the faithfulness of the extracted interactions. As shown in Figure 2, the logical model ϕ(x′) closely matches the original LLM output v(x′) across arbitrary masked states x′ ∈ Ψ. This indicates that interactions are not merely visual artifacts, but provide a compact functional approximation to the LLM prediction. The fact that very sparse interactions can accurately match LLM outputs on exponentially many samples has demonstrated the faithfulness of taking interactions as primitive inference patterns in an LLM. 
+
+2.3 Quantifying shared interactions 
+
+Given the same prompt x, we extract two sets of interactions, (Ω and  
+
+> A
+
+, Ωor  
+
+> A
+
+) and (Ω and  
+
+> B
+
+, Ωor  
+
+> B
+
+), from two LLMs vA and 
+
+vB , respectively. An interaction is considered shared if it is extracted from both models and has the same sign of effect, 
+
+i.e. , it contributes positively or negatively in both models. 
+
+Definition 1 (Shared interaction) . Given the same prompt x as input to two different LLMs vA and vB , we define a binary metric to identify whether the AND interaction S ⊆ N is shared by vA and vB , as follows. 
+
+Hand  
+
+> S
+
+=1S ∈ Ωand  
+
+> A
+
+∩Ωand 
+
+> B
+
+·1sign( Iand 
+
+> S,A
+
+) = sign( Iand  
+
+> S,B
+
+) , (4) 
+
+where sign( ·) denotes the sign function, indicating whether an interaction effect is positive or negative, and 1(·) ∈ { 0, 1}
+
+is a trigger function that returns 1 if the given condition is satisfied. Shared OR interactions are defined in a similar manner, Hor           
+
+> S=1[S∈Ωor
+> A∩Ωor
+> B]·1sign( Ior
+> S,A ) = sign( Ior
+> S,B )
+
+.
+
+> 3Please see Section B for details.
+
+4A PREPRINT - J UNE 9, 2026 Input prompt: purchasing for virtually all of the merchandise for our stores is 
+
+handled by our merchandise teams located in three primary locations: 2022 
+
+store support center in roanoke, virginia ; 2022 regional office in minneapolis, 
+
+Logical model’s output score 𝜙 (“min ”|𝒙 )
+
++
+
+virginia   
+
+> 𝐼 !
+> "#$ =3.21
+
+center   
+
+> 𝐼 !
+> "#$ =0.66
+
+virtually   
+
+> 𝐼 !
+> "#$ =−0.31
+
+center   
+
+> 𝐼 !
+> "#$ =−0.23
+
+office 
+
+store   
+
+> 𝐼 !
+> %& =0.20
+
+purchasing virtually   
+
+> 𝐼 !
+> "#$ =0.19
+
+virginia       
+
+> 𝐼 !
+> "#$ =−0.19
+> 𝐼 !
+> "#$ =0.19
+> 𝐼 !
+> "#$ =−0.18
+
+store   
+
+> 𝐼 !
+> "#$ =−0.18
+
+virginia   
+
+> 𝐼 !
+> %& =−0.17
+
+purchasing virginia   
+
+> 𝐼 !
+> "#$ =−0.17
+
+office 
+
+virtually virginia 
+
+center virginia 
+
+purchasing   
+
+> 𝐼 !
+> %& =−0.17
+
+purchasing virginia 
+
+virtually 
+
+office   
+
+> 𝐼 !
+> %& =0.14
+
+center virginia 
+
+office   
+
+> 𝐼 !
+> %& =0.13
+
+merchandise virginia   
+
+> 𝐼 !
+> "#$ =−0.13
+
+located center 
+
+virginia   
+
+> 𝐼 !
+> "#$ =0.13
+
+office 
+
+teams   
+
+> 𝐼 !
+> %& =−0.13
+
+virginia 
+
+store   
+
+> 𝐼 !
+> %& =−0.13
+
+center 
+
+virginia   
+
+> 𝐼 !
+> %& =0.12
+
+office   
+
+> 𝐼 !
+> "#$ =−0.12
+
+purchasing virginia 
+
+virtually 
+
+virginia   
+
+> 𝐼 !
+> "#$ =−0.12
+
+regional 
+
+⋯
+
+Input prompt: This allows them to fly in UK airspace subject to certain 
+
+limitations , for example being restricted to day @-@ time flights under visual 
+
+flight 
+
++
+
+flight         
+
+> 𝐼 !
+> "#$ =8.66
+> 𝐼 !
+> "#$ =−1.07
+> 𝐼 !
+> "#$ =0.99
+> 𝐼 !
+> "#$ =0.91
+
+fly   
+
+> 𝐼 !
+> "#$ =−0.73
+
+airspace flights   
+
+> 𝐼 !
+> "#$ =0.69
+
+day     
+
+> 𝐼 !
+> %& =0.69
+> 𝐼 !
+> "#$ =0.67
+
+flights   
+
+> 𝐼 !
+> "#$ =−0.54
+
+flight   
+
+> 𝐼 !
+> %& =−0.53
+
+fly airspace 
+
+flight 
+
+flights   
+
+> 𝐼 !
+> %& =0.52
+
+fly airspace 
+
+restricted   
+
+> 𝐼 !
+> "#$ =−0.52
+
+fly flight 
+
+Logical model’s output score 𝜙 (“rul 𝑒𝑠 ”|𝒙 )
+
+⋯
+
+airspace flight 
+
+airspace 
+
+airspace flights 
+
+flight   
+
+> 𝐼 !
+> "#$ =0.52
+
+fly flights 
+
+flight 
+
+day 
+
+time flight   
+
+> 𝐼 !
+> "#$ =−0.51
+
+airspace time 
+
+flights flight 
+
+subject   
+
+> 𝐼 !
+> "#$ =0.47
+
+limitations     
+
+> 𝐼 !
+> "#$ =0.47
+> 𝐼 !
+> %& =−0.46
+
+fly airspace 
+
+day time 
+
+flight   
+
+> 𝐼 !
+> "#$ =0.45
+
+fly airspace 
+
+flight   
+
+> 𝐼 !
+> "#$ =−0.45
+
+fly flights   
+
+> 𝐼 !
+> "#$ =−0.44
+
+restricted day 
+
+flight 
+
+(a) (b) 
+
+LLM’s output 𝑣 (𝒙′ )
+
+Logical model’s 
+
+output 𝜙 (𝒙 ′)
+
+DeepSeek -R1 -Distill -Llama -8B on the AdaptLLM finance tasks dataset Qwen3 -8B on the WikiText dataset 
+
+(c) (d) 
+
+LLM’s output 𝑣 (𝒙′ )
+
+Logical model’s 
+
+output 𝜙 (𝒙 ′)
+
+Figure 2: (a, b) Visualization of logical models extracted from LLMs. (c, d) The logical model ϕ(x′) closely matches the original LLM scores v(x′) over 2n masked states. Input variables are defined by following Chen et al. [8] 5.Therefore, the sets of shared interactions, denoted by (Ω and sh , Ωor sh ), are defined as 
+
+Ωand 
+
+sh ={S ⊆ N : Hand 
+
+S = 1 }, Ωor 
+
+sh ={S ⊆ N : Hor 
+
+S = 1 }. (5) 
+
+Specifically, we characterize interactions from two perspectives. Unless otherwise specified, the following metrics are computed over all interactions in (Ω and 
+
+A , Ωor 
+
+A ) extracted from the LLM vA
+
+Metric 1: complexity distribution of interactions. We measure the complexity of an interaction by its order. For an interaction S ⊆ N , the order is the number of input variables involved in S, i.e. , order( S) = |S|. Low-order interactions involve fewer input tokens and typically correspond to simpler phrase patterns, whereas high-order interactions involve a larger number of tokens and capture more complex phrase patterns. We aggregate the positive and negative interaction effects separately at each order k, as follows. In this way, the complexity distribution of interactions is represented by the strength of positive interactions of different orders 
+
+[p(1) ,+, . . . , p(n),+]T and that of negative interactions over orders [n(1) ,−, . . . , n(n),−]T (see Figure 3). 
+
+p(k),+ = X
+
+type ∈{ and,or }
+
+X
+
+S∈Ωtype  
+
+> A
+
+:|S|=k
+
+max( Itype 
+
+S,A , 0) ,
+
+n(k),− = X
+
+type ∈{ and,or }
+
+X
+
+S∈Ωtype  
+
+> A
+
+:|S|=k
+
+min( Itype 
+
+S,A , 0) . (6) 
+
+Similarly, we can obtain the distribution of shared interactions (p(k),+
+
+sh , n(k),−
+
+sh ) based on the sets of shared interactions in Ωand sh and Ωor sh , respectively. This distribution indicates whether the representation is dominated by low-order patterns or more complex high-order patterns. Zhou et al. [43] , Liu et al. [23] have shown that high-order interactions are often less stable and more likely to reflect overfitted patterns, whereas low-order interactions tend to represent more reliable patterns. 5A PREPRINT - J UNE 9, 2026 4                                                                                 
+
+> 2
+> 0
+> -2
+> 46810 2
+> Sum of  inter.
+> Order
+> 4
+> 2
+> 0
+> -2
+> Sum of  inter.
+> 6
+> 4
+> 2
+> 0
+> -2
+> -4
+> Sum of  inter.
+> Shared
+> inter.
+> Non -shared
+> inter.
+> (e) Uncancelled effect ratio
+> All inter.
+> All interactions 𝕡 !,#
+> All interactions 𝕟 !,$
+> Shared interactions 𝕡 %&
+> !,#
+> Shared interactions 𝕟 %&
+> !,$
+> Non -shared interactions 𝕡 '(' $%&
+> !,#
+> Non -shared interactions 𝕟 '(' $%&
+> !,$
+> Shared
+> inter.
+> Non -shared
+> inter.
+> (d) Overall
+> contribution
+> Shared
+> inter.
+> Non -shared
+> inter.
+> 𝑣 !"#$%& =4.22
+> 𝑣 '(' =0.30
+> (a) Distributio nof all
+> interactions
+> (b) Distribution of
+> share dinteractions
+> (c) Distributio nof non -
+> shared interactions
+> 4
+> 2
+> 0
+> -2
+> 46810 2
+> Order
+> 4
+> 2
+> 0
+> -2
+> 46810 2
+> Order
+> 46810 2
+> Order
+> 4
+> 2
+> 0
+> -2
+> 46810 2
+> Order
+> 4
+> 2
+> 0
+> -2
+> 46810 2
+> Order
+> 46810 2Order
+> 6
+> 4
+> 2
+> 0
+> -2
+> -446810 2Order
+> 6
+> 4
+> 2
+> 0
+> -2
+> -446810 2
+> Order
+> 𝜌 =14 .68%
+> 𝜌 !" =41 .82%
+> 𝜌 '(' )!"
+> =4.03%
+> 𝜌 =22 .25%
+> 𝜌 !" =45 .20%
+> 𝜌 '(' )!"
+> =3.27%
+> 𝜌 =12 .52%
+> 𝜌 !" =43 .34%
+> 𝜌 '(' )!"
+> =3.62%
+> 𝑣 !"#$%& =3.07
+> 𝑣 '(' =−0.43
+> 𝑣 !"#$%& =4.26
+> 𝑣 '(' =0.29
+> Llama 3
+> 8B
+> DeepSeek
+> -R1 -
+> Distill -
+> Llama -8B
+> Qwen3 -
+> 8B
+> Shared
+> inter.
+> Non -shared
+> inter.
+> Shared
+> inter.
+> Non -shared
+> inter.
+> All inter.
+> Shared
+> inter.
+> Non -shared
+> inter.
+> All inter.
+
+Figure 3: The distribution of all interactions (column (a)) can be decomposed into the distribution of shared interactions (column (b)) and that of non-shared interactions (column (c)). Most non-shared interactions exhibit significant mutual cancellation of the positive and negative effects. This makes the overall contribution of shared interactions 
+
+vshared (x) much greater than the contribution of non-shared interactions vnon (x) (column (d)). We also report the higher uncancelled-effect ratio for shared interactions ρsh and the lower uncancelled-effect ratio for non-shared interactions 
+
+ρnon-sh (column (e)). All experiments are conducted on the AdaptLLM finance dataset. 
+
+Metric 2: cancellation between positive and negative interactions. Besides the order of interactions, we further quantify the cancellation between positive and negative interaction effects. Positive interactions increase the prediction score of the target token, while negative interactions decrease it. If the positive and negative effects largely offset each other, the corresponding interactions have limited net influence on the final prediction. Prior studies [ 33 , 17 ] suggest that such mutually offsetting interactions often arise in the overfitting stage of neural networks and are more likely to represent noise patterns. Thus, we define the uncancelled effect ratio as 
+
+ρ =
+
+P
+
+> type ∈{ and, or }
+
+P 
+
+> S∈Ωtype
+
+Itype 
+
+> S,A
+
+P
+
+> type ∈{ and, or }
+
+P 
+
+> S∈Ωtype
+
+Itype 
+
+> S,A
+
+. (7) 
+
+Similarly, the uncancelled effect ratio for shared interactions ρsh is defined by using shared interactions in Ωand sh and 
+
+Ωor sh . If ρ is close to 0, positive and negative effects largely offset each other, showing that the extracted interactions act like noises and make little net contribution to the target-token prediction. In contrast, a larger ρ indicates that most interaction effects point in a consistent direction, indicating more efficient feature representations. 
+
+## 3 Convergent Interactions Across LLMs 
+
+This section analyzes how the interactions modeled by different open-source LLMs differ from one another. In particular, we ask whether larger or more advanced LLMs tend to encode similar sets of interaction patterns. 
+
+3.1 How do interactions vary across LLMs? Models and datasets. We conduct experiments on a broad set of representative open-source LLMs that span multiple model families, parameter scales, and release stages. The model set includes the Qwen family [ 4, 18 , 2, 42 ], i.e. ,Qwen-7B, Qwen2-7B, Qwen2.5-1.5B, Qwen2.5-7B, Qwen2.5-14B, and Qwen3-8B, and the LLaMA family [ 39 , 40 , 15 ], 
+
+i.e. , LLaMA-7B, LLaMA2-7B, and LLaMA3-8B, and additional open-source models with different architectures and training recipes, including BERT-Large [ 13 ], RoBERTa-Large [ 24 ], Falcon-7B [ 3 ], GLM-Z1-9B-0414 [ 14 ], DeepSeek-R1-Distill-LLaMA-8B [ 16 ], Phi-4 [ 1], and Gemma-3-12B [ 19 ]. For evaluation, we sample test examples from two 6A PREPRINT - J UNE 9, 2026 public datasets, i.e. , the AdaptLLM finance tasks [ 10 ] and the WikiText dataset [ 27 ], which cover domain-specific financial texts and general-domain language modeling examples, respectively. 
+
+Comparing interactions extracted from two LLMs. Given two LLMs and an input prompt x, we use Equation (4) to identify a set of interactions shared by the two LLMs to predict the target token, as well as two sets of non-shared interactions corresponding to the two LLMs, respectively. Figure 3 shows the distributions of all interactions [p(1) ,+, . . . , p(n),+]T , [n(1) ,−, . . . , n(n),−]T , shared interactions     
+
+> [p(1) ,+
+> sh , . . . , p(n),+
+> sh ]T
+
+, [n(1) ,−    
+
+> sh , . . . , n(n),−
+> sh ]T
+
+and non-shared interactions [p(1) ,+    
+
+> non-sh , . . . , p(n),+
+> non-sh ]T
+
+, [n(1) ,−    
+
+> non-sh , . . . , n(n),−
+> non-sh ]T
+
+,which are extracted from each pair of LLMs. Strength of shared interactions of each k-th order p(k) 
+
+> sh
+
+and n(k)
+
+> sh
+
+are computed in Equation (6) using shared interactions in Ωand sh and Ωor sh . Strength of non-shared interactions p(k)
+
+> non-sh
+
+and n(k) 
+
+> non-sh
+
+are computed on non-shared interactions in Ωand \ Ωand sh and Ωor \ Ωor sh . We find that each prompt produces a specific distribution of interactions across different orders. For some prompts, the LLM predominantly models shared interactions, whereas for others, non-shared interactions dominate. The complexity of the interactions triggered also varies across samples 4.
+
+(1) We find that shared interactions are more concentrated at lower order, which represent simpler patterns between a few tokens, than non-shared interactions. Figure 3 reports the average distribution of interactions over all input prompts. We find that compared to shared interactions, non-shared interactions are more often associated with higher-order interaction patterns. This suggests that relatively simple interactions are more likely to be consistently modeled by different LLMs 
+
+(2) The prediction score v(x) is mainly attributed to shared interactions. Most shared interactions are positive, 
+
+i.e. , they mainly boost the prediction score v(x) of the target token. In comparison, the substantial mutual cancellation among non-shared interactions suggests that these non-shared interactions behave more like noise than meaningful patterns. This phenomenon is consistently observed across different LLMs and datasets. 
+
+(3) Shared interactions usually represent a few salient inference patterns, while non-shared interactions usually correspond to numerous noise signals. Figure 4 compares the number of shared and non-shared interactions. For the prediction of each specific target token, the number of shared interactions is much smaller (ranging from 2 to 22 ) than non-shared interactions (ranging from 58 to 78 ). This figure also compares the average strength of shared interactions with that of non-shared interactions. Shared interactions tend to have much stronger effects on the prediction score than the non-shared interactions. 
+
+Experimental details. Let the same input prompt x be given to each pair of LLMs. To ensure a fair comparison, interaction extraction from the two LLMs must be conducted with respect to the prediction of the same target token. Thus, we determine the target token for explanation as follows. Specifically, we select a target token that receives a relatively high prediction score from both LLMs. For each LLM, we rank the prediction scores of all candidate tokens. We then sum the ranks of each token across the two LLMs, and select the token with the lowest summed rank as the target token. For each LLM and prompt, we analyze AND–OR interactions with respect to the target-token score in Equation (1). We follow Chen et al. [8] to construct masked input xS by keeping the variables in S ⊆ N unchanged and replacing all other variables with the baseline embedding. 5
+
+3.2 Do more advanced LLMs encode more shared interactions? 
+
+We next examine whether stronger LLMs rely more on shared interaction patterns. In comparison, those non-shared interactions, which are exclusively encoded by a single LLM, usually correspond to idiosyncratic patterns. Specifically, let us input the same prompt x to a pair of LLMs A and B. We decompose the prediction score of the target token v(x) into the utility of shared interactions and that of non-shared interactions according to Equation (2), as 
+
+> 4Please see Section D for examples on individual prompt.
+> 5Variables are defined at the word level, and all subword tokens belonging to the same variable are masked together to ensure consistency. In the experiments, for computational efficiency, we randomly select ten semantically meaningful words from each prompt as input variables.
+
+7A PREPRINT - J UNE 9, 2026 0 10 20 30 40 50 60 70 80 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Average contribution effects
+> (𝑣 !"#$%  or  𝑣 &'& )
+
+Number of shared interactions 
+
+(or non -shared interactions) 
+
+> RoBERTa -large
+> BERT LARGE
+> phi -4
+> Falcon -7b
+> GLM -Z1 -9B -0414
+> Qwen -7B
+> Qwen2 -7B
+> Qwen2.5 -1.5B
+> Qwen2.5 -7B
+> Qwen2.5 -14B
+> Qwen3 -8B
+> LLaMA2 -7B
+> DeepSeek -R1 -
+> Distill -LlaMA -8B
+> LLaMA -7B
+> LLaMA3 -8B
+
+Shared 
+
+interaction 
+
+Non -shared 
+
+interaction 
+
+Figure 4: Comparison of the number and average contribution effect of shared interactions and non-shared interactions. Each dot represents a specific LLM. follows. 
+
+v(x) ≈ ϕ(x) = vshared (x) + vnon (x) + b, s.t. v shared (x) = X
+
+> S∈Ωand sh
+
+Iand  
+
+> S
+
+(x) + X
+
+> S∈Ωor sh
+
+Ior  
+
+> S
+
+(x),vnon (x) = X
+
+> S∈Ωand \Ωand sh
+
+Iand  
+
+> S
+
+(x) + X
+
+> S∈Ωor \Ωor sh
+
+Ior  
+
+> S
+
+(x), (8) where vshared (x) denotes the utility derived from interactions that are shared by the LLM B, and vnon (x) denotes the utility based on interactions exclusively encoded by the LLM A. Ωand and Ωor denote the set of AND interactions and OR interactions encoded by the LLM A. Ωand sh ⊆ Ωand and Ωor sh ⊆ Ωor denotes the subsets of interactions within Ωand 
+
+and Ωor , respectively, which are shared by the LLM B. We define the metric κ to measure the ratio of the prediction score derived from shared interactions. 
+
+κ = Ex∈D 
+
+vshared (x)
+
+|vshared (x)| + |vnon (x)| , (9) where the κ metric is averaged over all testing samples in the set D. κ serves as a heuristic measure of interaction-level calibration. For each pair of LLMs, we compute κ from the perspective of each model and report the average of the two values as their pairwise interaction similarity. Figure 5 reveals two notable findings 6.
+
+First, relatively advanced LLMs, such as Qwen3-8B, Qwen2.5-14B, LLaMA3-8B, and DeepSeek-R1-Distill-LLaMA-8B exhibit higher interaction similarity with one another. This suggests that advanced LLMs tend to be implicitly optimized toward consensus representations. In contrast, relatively weaker or earlier models, such as BERT-large, RoBERTa-large, and Falcon-7B, show lower interaction similarity, indicating a stronger reliance on model-specific interaction patterns. 
+
+> 6
+
+We report results on the AdaptLLM fianance task dataset in Figure 5, please refer to Section D for results on the WikiText dataset. The findings are consistent on both datasets. 
+
+8A PREPRINT - J UNE 9, 2026 LLaMA -7B   
+
+> LLaMA -3-7B LLaMA -2-7B
+> Phi -4 (14B)
+> GLM -Z1 -9B
+> DeepSeek -R1 -
+> Distill -LLaMA -8B
+> Gemma -
+> 3-12B
+> Qwen3 -8B
+> Qwen2.5 -14B Qwen2.5 -7B
+> Qwen2 -7B
+> Qwen -7B
+> RoBERTa -Large
+> BERT -Large
+> Falcon -7B
+> 0.279 0.775
+
+Figure 5: Interaction-level calibration κ among LLMs. Each node denotes an LLM, and each edge reports the fraction 
+
+κ of prediction utility explained by shared interactions between two LLMs. Relatively advanced LLMs achieve higher calibration values ( 60 .99% − 77 .46% ), indicating that more than 2/3 of their prediction scores are derived from shared interactions and suggesting a common optimization direction of LLMs. 
+
+Second, the observed similarity is not restricted to model families. High interaction similarity ( 60 .99% -77 .46% ) is also observed across different LLM families, including Qwen, LLaMA, DeepSeek, Gemma and GLM. This suggests that interaction-level convergence is unlikely to be explained solely by shared architecture or model lineage. Instead, different model families may independently learn similar interaction patterns when they are optimized with sufficient scale or capability. Overall, these results provide heuristic evidence that stronger LLMs encode more shared and coherent interactions. Combined with the findings in Section 3.1, where shared interactions are shown to be lower-order and less affected by positive-negative cancellation, Figure 5 suggests that advanced LLMs may converge toward a common set of stable interaction patterns. By contrast, models with lower interaction similarity appear to rely more heavily on non-shared interactions, which are more model-specific and contribute less consistently to the final prediction score. 
+
+## 4 Related Work and Discussion 
+
+Symbolic interpretation of a DNN’s inference logic. Interaction-based explanation [ 22 , 8] has emerged as a promising approach for analyzing detailed inference patterns in DNNs [ 44 ]. It has been shown that the complex inference logic of a DNN can be concisely interpreted as a small number of interactionss with the proven sparsity property and universal-matching property to guarantee the faithfulness [30, 32]. 
+
+Uncovering the root causes of neural network performance. Critically, the proof of symbolic interaction-based explanations establishes a new lens for interpreting AI models. Interaction patterns capture not only inference logic in each sample, but also the root causes of a DNN’s global properties. The interaction complexity correlates exponentially with adversarial vulnerability [ 29 ] and negatively with learnability and generalization power [ 23 , 43 ]. [ 11 ] have proved a representation bottleneck in interaction. [ 41 ] have used interactions to explain adversarial transferability. [ 12 ] have found that different attribution methods can be unified as specific forms of interaction effect reallocation. 
+
+Interactions shed light on large model optimization. This study elevates the analysis of DNN’s performance to the level of model training and optimization. To this end, the two-stage phenomenon [ 33 ] demonstrates that overfitting in all DNNs can be interpreted as a two-phase learning dynamic of interactions. The early training phase mainly learns generalizable interactions, while the later training phase mainly captures non-generalizable interactions. In comparison, we obtain a more explicit trend, i.e. , advanced LLMs tend to encode consistently shared interactions. By contrast, less sophisticated models capture distinct idiosyncratic interactions, which suffer from strong mutual offset effects and 9A PREPRINT - J UNE 9, 2026 behave like noise. The convergence of interactions across different LLMs observed in our preliminary experiments offers a potential new lens for interpreting optimization and evaluating the representation quality of LLMs. 
+
+## 5 Conclusion 
+
+In this paper, preliminary experiments reveal that most advanced LLMs are implicitly optimized toward a potential set of consensus interactions. Despite differences in architecture and parameter scale, diverse LLMs adopt similar interaction patterns to predict the target token given the same input prompt. This phenomenon is particularly prominent in high-performance models. Moreover, compared with non-shared interactions, interactions shared by different LLMs tend to be much simpler, more coherent, and they exert stable effects on model outputs with much less positive-negative offset effects. These findings suggest that shared interactions may reveal the optimal learning direction for LLMs and lay an experimental foundation for cross-model pattern calibration. 
+
+## Limitations 
+
+As an initial study, this study has several limitations. First, we focus on target-token prediction rather than full generation trajectories. Thus, the extracted interactions may not fully characterize multi-step reasoning or long-form generation. However, the interaction-based framework is not inherently restricted to single-token prediction, and future work may extend it to track how interaction patterns evolve across decoding steps. Second, due to computational constraints, our experiments do not include larger LLMs or closed-source frontier models. Interaction extraction requires evaluating many masked input states, making large-model and long-context analysis expensive. Future work should improve the efficiency of interaction extraction and test whether similar cross-model consistency emerges in larger and more capable LLMs. 
+
+## References 
+
+[1] Marah Abdin, Jyoti Aneja, Harkirat Behl, Sébastien Bubeck, Ronen Eldan, Suriya Gunasekar, Michael Har-rison, Russell J Hewett, Mojan Javaheripi, Piero Kauffmann, et al. Phi-4 technical report. arXiv preprint arXiv:2412.08905 , 2024. [2] Imtiaz Ahmed, Sadman Islam, Partha Protim Datta, Imran Kabir, Md Naseef Ur Rahman Chowdhury, and Ahshanul Haque. Qwen 2.5: A comprehensive review of the leading resource-efficient llm with potentioal to surpass all competitors. 2025. [3] Ebtesam Almazrouei, Hamza Alobeidli, Abdulaziz Alshamsi, Alessandro Cappelli, Ruxandra Cojocaru, Mérouane Debbah, Étienne Goffinet, Daniel Hesslow, Julien Launay, Quentin Malartic, et al. The falcon series of open language models. arXiv preprint arXiv:2311.16867 , 2023. [4] Jinze Bai, Shuai Bai, Yunfei Chu, Zeyu Cui, Kai Dang, Xiaodong Deng, Yang Fan, Wenbin Ge, Yu Han, Fei Huang, et al. Qwen technical report. arXiv preprint arXiv:2309.16609 , 2023. [5] Emily M Bender, Timnit Gebru, Angelina McMillan-Major, and Shmargaret Shmitchell. On the dangers of stochastic parrots: Can language models be too big? In Proceedings of the 2021 ACM conference on fairness, accountability, and transparency , pages 610–623, 2021. [6] Rishi Bommasani, Percy Liang, and Tony Lee. Holistic evaluation of language models. Annals of the New York Academy of Sciences , 1525(1):140–146, 2023. [7] Landon Butler, Abhineet Agarwal, Justin Kang, Yigit Efe Erginbas, Bin Yu, and Kannan Ramchandran. Proxyspex: Inference-efficient interpretability via sparse feature interactions in llms. Advances in Neural Information Processing Systems , 38:72306–72340, 2026. [8] Lu Chen, Siyu Lou, Benhao Huang, and Quanshi Zhang. Defining and extracting generalizable interaction primitives from dnns. In International Conference on Learning Representations , volume 2024, pages 23780– 23802, 2024. [9] Zhiyu Chen, Shiyang Li, Charese Smiley, Zhiqiang Ma, Sameena Shah, and William Yang Wang. Convfinqa: Exploring the chain of numerical reasoning in conversational finance question answering. In Proceedings of the 2022 conference on empirical methods in natural language processing , pages 6279–6292, 2022. [10] Daixuan Cheng, Shaohan Huang, and Furu Wei. Adapting large language models via reading comprehension. In 
+
+International Conference on Learning Representations , volume 2024, pages 48624–48652, 2024. 10 A PREPRINT - J UNE 9, 2026 [11] Huiqi Deng, Qihan Ren, Hao Zhang, and Quanshi Zhang. Discovering and explaining the representation bottleneck of dnns. In International Conference on Learning Representations , 2022. [12] Huiqi Deng, Na Zou, Mengnan Du, Weifu Chen, Guocan Feng, Ziwei Yang, Zheyang Li, and Quanshi Zhang. Unifying fourteen post-hoc attribution methods with taylor interactions. IEEE Transactions on Pattern Analysis and Machine Intelligence , 46(7):4625–4640, 2024. [13] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. Bert: Pre-training of deep bidirectional transformers for language understanding. In Proceedings of the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies, volume 1 (long and short papers) ,pages 4171–4186, 2019. [14] Team Glm, Aohan Zeng, Bin Xu, Bowen Wang, Chenhui Zhang, Da Yin, Dan Zhang, Diego Rojas, Guanyu Feng, Hanlin Zhao, et al. Chatglm: A family of large language models from glm-130b to glm-4 all tools. arXiv preprint arXiv:2406.12793 , 2024. [15] Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 , 2024. [16] Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu Zhang, Shirong Ma, Xiao Bi, et al. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. 
+
+arXiv preprint arXiv:2501.12948 , 2025. [17] Yuxuan He, Junpeng Zhang, Hongyuan Zhang, and Quanshi Zhang. Towards the three-phase dynamics of generalization power of a dnn. arXiv e-prints , pages arXiv–2505, 2025. [18] Binyuan Hui, Jian Yang, Zeyu Cui, Jiaxi Yang, Dayiheng Liu, Lei Zhang, Tianyu Liu, Jiajun Zhang, Bowen Yu, Keming Lu, et al. Qwen2. 5-coder technical report. arXiv preprint arXiv:2409.12186 , 2024. [19] Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin, Tatiana Mate-jovicova, Alexandre Ramé, Morgane Rivière, Louis Rouillard, et al. Gemma 3 technical report. arXiv preprint arXiv:2503.19786 , 4, 2025. [20] Justin S Kang, Yigit E Erginbas, Landon Butler, Ramtin Pedarsani, and Kannan Ramchandran. Learning to understand: Identifying interactions via the möbius transform. Advances in Neural Information Processing Systems , 37:46160–46202, 2024. [21] Justin Singh Kang, Landon Butler, Abhineet Agarwal, Yigit Efe Erginbas, Ramtin Pedarsani, Kannan Ramchan-dran, and Bin Yu. Spex: Scaling feature interaction explanations for llms. arXiv preprint arXiv:2502.13870 ,2025. [22] Mingjie Li and Quanshi Zhang. Does a neural network really encode symbolic concepts? In International conference on machine learning , pages 20452–20469. PMLR, 2023. [23] Dongrui Liu, Huiqi Deng, Xu Cheng, Qihan Ren, Kangrui Wang, and Quanshi Zhang. Towards the difficulty for a deep neural network to learn concepts of different complexities. Advances in Neural Information Processing Systems , 36:41283–41304, 2023. [24] Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi, Danqi Chen, Omer Levy, Mike Lewis, Luke Zettlemoyer, and Veselin Stoyanov. Roberta: A robustly optimized bert pretraining approach. arXiv preprint arXiv:1907.11692 , 2019. [25] Macedo Maia, Siegfried Handschuh, André Freitas, Brian Davis, Ross McDermott, Manel Zarrouk, and Alexandra Balahur. Www’18 open challenge: financial opinion mining and question answering. In Companion proceedings of the the web conference 2018 , pages 1941–1942, 2018. [26] Pekka Malo, Ankur Sinha, Pekka Korhonen, Jyrki Wallenius, and Pyry Takala. Good debt or bad debt: Detecting semantic orientations in economic texts. Journal of the Association for Information Science and Technology , 65 (4):782–796, 2014. [27] Stephen Merity, Caiming Xiong, James Bradbury, and Richard Socher. Pointer sentinel mixture models. arXiv preprint arXiv:1609.07843 , 2016. [28] Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. Training language models to follow instructions with human feedback. Advances in neural information processing systems , 35:27730–27744, 2022. [29] Jie Ren, Die Zhang, Yisen Wang, Lu Chen, Zhanpeng Zhou, Yiting Chen, Xu Cheng, Xin Wang, Meng Zhou, Jie Shi, et al. Towards a unified game-theoretic view of adversarial perturbations and robustness. Advances in Neural Information Processing Systems , 34:3797–3810, 2021. 11 A PREPRINT - J UNE 9, 2026 [30] Jie Ren, Mingjie Li, Qirui Chen, Huiqi Deng, and Quanshi Zhang. Defining and quantifying the emergence of sparse concepts in dnns. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition ,pages 20280–20289, 2023. [31] Qihan Ren, Huiqi Deng, Yunuo Chen, Siyu Lou, and Quanshi Zhang. Bayesian neural networks avoid encoding complex and perturbation-sensitive concepts. In International Conference on Machine Learning , pages 28889– 28913. PMLR, 2023. [32] Qihan Ren, Jiayang Gao, Wen Shen, and Quanshi Zhang. Where we have arrived in proving the emergence of sparse interaction primitives in dnns. In The Twelfth International Conference on Learning Representations , 2024. [33] Qihan Ren, Junpeng Zhang, Yang Xu, Yue Xin, Dongrui Liu, and Quanshi Zhang. Towards the dynamics of a dnn learning symbolic interactions. Advances in Neural Information Processing Systems , 37:50653–50688, 2024. [34] Gian-Carlo Rota. On the foundations of combinatorial theory: I. theory of möbius functions. In Classic Papers in Combinatorics , pages 332–360. Springer, 1964. [35] Agam Shah, Abhinav Gullapalli, Ruchit Vithani, Michael Galarnyk, and Sudheer Chava. Finer-ord: financial named entity recognition open research dataset. arXiv preprint arXiv:2302.11157 , 2023. [36] Murray Shanahan. Talking about large language models. Communications of the ACM , 67(2):68–79, 2024. [37] Ankur Sinha, Satishwar Kedas, Rishu Kumar, and Pekka Malo. Sentfin 1.0: Entity-aware sentiment analysis for financial news. Journal of the Association for Information Science and Technology , 73(9):1314–1335, 2022. [38] Michael Tomasello, Malinda Carpenter, Josep Call, Tanya Behne, and Henrike Moll. Understanding and sharing intentions: The origins of cultural cognition. Behavioral and brain sciences , 28(5):675–691, 2005. [39] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al. Llama: Open and efficient foundation language models. arXiv preprint arXiv:2302.13971 , 2023. [40] Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine Babaei, Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, et al. Llama 2: Open foundation and fine-tuned chat models. 
+
+arXiv preprint arXiv:2307.09288 , 2023. [41] Xin Wang, Jie Ren, Shuyun Lin, Xiangming Zhu, Yisen Wang, and Quanshi Zhang. A unified approach to interpreting and boosting adversarial transferability. In International Conference on Learning Representations ,2021. [42] An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388 , 2025. [43] Huilin Zhou, Hao Zhang, Huiqi Deng, Dongrui Liu, Wen Shen, Shih-Han Chan, and Quanshi Zhang. Explaining generalization power of a dnn using interactive concepts. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 38, pages 17105–17113, 2024. [44] Huilin Zhou, Qihan Ren, Junpeng Zhang, and Quanshi Zhang. Towards the first principles of explaining dnns: interactions explain the learning dynamics. Frontiers of Information Technology & Electronic Engineering , 26(7): 1017–1026, 2025. [45] Lexin Zhou, Lorenzo Pacchiardi, Fernando Martínez-Plumed, Katherine M Collins, Yael Moros-Daval, Seraphina Zhang, Qinlin Zhao, Yitian Huang, Luning Sun, Jonathan E Prunty, et al. General scales unlock ai evaluation with explanatory and predictive power. Nature , 652(8108):58–67, 2026. 12 A PREPRINT - J UNE 9, 2026 
+
+## A Sparsity Property of Interactions 
+
+Ren et al. [32] showed that a DNN tends to encode only a small number of salient AND-OR interactions when the following three conditions hold. Under these conditions, most possible interactions have negligible effects, and the remaining sparse interactions can faithfully approximate the network output over all masked samples {xS | S ⊆ N }.1. Bounded interaction order. The network does not rely on extremely high-order interactions. That is, interactions involving too many input variables have zero or negligible contribution to the output. Formally, there exists an order threshold M such that the interaction effect I(S) vanishes for any subset S with |S| > M .2. Monotonic response under masking. When more input variables are masked, the average network response decreases monotonically. Specifically, let ¯u(m) denote the average output change when m variables are revealed, compared with the fully masked baseline: 
+
+¯u(m) = ES⊆N, |S|=m [v(xS ) − v(x∅)] .
+
+Then, for m′ < m , the average response satisfies 
+
+¯u(m′) ≤ ¯u(m).
+
+This condition implies that adding more input variables, on average, provides more evidence for the model prediction. 3. Polynomial lower bound on average response. The average response does not decay too sharply when fewer variables are revealed. In particular, for any m′ < m , there exists a positive constant p > 0 such that 
+
+¯u(m′) ≥
+
+ m′
+
+m
+
+p
+
+¯u(m).
+
+This polynomial lower bound rules out the case where the model output is dominated by dense, extremely high-order interactions. Together, these conditions imply that the network output is mainly governed by a limited number of lower-order interactions, while most high-order interactions have negligible effects. This provides theoretical support for the sparsity assumption used in our interaction-based analysis. 
+
+Empirical verification Given an input sample, the previous subsection summarizes the theoretical conditions under which sparse interactions emerge. We now empirically examine whether such sparsity also appears in LLMs. For each model-dataset setting, we randomly sample 20 prompts and extract the AND-OR interactions used for target-token prediction. Following Ren et al. [32] , we normalize each interaction strength by the largest absolute interaction strength under the same model-dataset setting. We then collect all extracted interactions from the sampled prompts, sort them in descending order according to their absolute strengths, and visualize the resulting distribution. Figure 6 shows the sorted interaction-strength curves for multiple model-dataset settings, including DeepSeek-R1-Distill-LLaMA-8B, Falcon-7B, LLaMA3-8B, Phi-4, Qwen3-8B, and RoBERTa-large on the AdaptLLM finance tasks dataset, as well as BERT-large, Falcon-7B, Gemma-3-12B, GLM-Z1-9B, Qwen2-7B, and Qwen2.5-14B on the WikiText dataset. Across all settings, the curves exhibit a sharp drop near the beginning and quickly approach zero. This indicates that only a very small fraction of interactions have salient effects, while the vast majority contribute negligibly to the prediction score. These results provide empirical support for the sparsity assumption used in our analysis. Although the number of possible interactions grows exponentially with the number of input variables, LLM predictions are dominated by a compact set of high-strength interactions in practice. Therefore, the extracted AND-OR interactions provide a sparse and tractable representation of the model’s inference behavior. 
+
+## B Möbius Transform and Logical-Model Reconstruction 
+
+This section explains how the interaction effects in the logical model ϕ(·) can be derived from the Möbius transform, and how these interactions reconstruct the model output on arbitrary masked states. Let N = {1, . . . , n } denote the set of input variables, and let xS denote the masked input where variables in S ⊆ N
+
+are kept and all other variables are masked. For any set function f defined on masked inputs, its Möbius transform is given by 
+
+Mf (S) = X
+
+> L⊆S
+
+(−1) |S|−| L|f (xL). (10) 13 A PREPRINT - J UNE 9, 2026 The coefficient Mf (S) measures the irreducible effect of the variable subset S, after subtracting the effects that can already be explained by its smaller subsets. In the AND–OR logical model, the prediction function is decomposed into two parts, 
+
+∀T ⊆ N v(xT ) = vand (xT ) + vor (xT ). (11) The AND interaction effect is defined as the Möbius coefficient of vand :
+
+Iand  
+
+> S
+
+= X
+
+> L⊆S
+
+(−1) |S|−| L|vand (xL). (12) For OR interactions, we apply the Möbius transform to the reversed set function bvor , where 
+
+bvor (xS ) = vor (xN \S ). (13) Then the OR interaction effect is defined as 
+
+Ior  
+
+> S
+
+= − X
+
+> L⊆S
+
+(−1) |S|−| L|vor (xN \L). (14) The negative sign makes the OR interaction activated when at least one variable in S is present in the masked input. We next show that these interaction effects reconstruct the logical model. For a masked sample xT , an AND interaction 
+
+S is activated only when S ⊆ T . Therefore, 
+
+X
+
+> S⊆N
+
+Iand  
+
+> S
+
+1and (S|xT ) = X 
+
+> S⊆T,S ̸=∅
+
+Iand 
+
+> S
+
+= X
+
+> S⊆T
+
+Iand  
+
+> S
+
+− vand (x∅). (15) Substituting the definition of Iand  
+
+> S
+
+, we have 
+
+X
+
+> S⊆T
+
+Iand  
+
+> S
+
+= X
+
+> S⊆T
+
+X
+
+> L⊆S
+
+(−1) |S|−| L|vand (xL)= X
+
+> L⊆T
+
+vand (xL) X
+
+> S:L⊆S⊆T
+
+(−1) |S|−| L|. (16) The inner summation is zero for L̸ = T and one for L = T . Hence, 
+
+X
+
+> S⊆N
+
+Iand  
+
+> S
+
+1and (S|xT ) = vand (xT ) − vand (x∅). (17) Similarly, an OR interaction S is activated when S ∩ T̸ = ∅. Thus, 
+
+X
+
+> S⊆N
+
+Ior  
+
+> S
+
+1or (S|xT )= X  
+
+> S∩T̸=∅,S ̸=∅
+
+Ior 
+
+> S
+
+= − X  
+
+> S∩T̸=∅,S ̸=∅
+
+X
+
+> L⊆S
+
+(−1) |S|−| L|vor (xN \L)= − X
+
+> L⊆N
+
+vor (xN \L) X 
+
+> S:S∩T̸=∅, S ⊇L
+
+(−1) |S|−| L|. (18) By the inclusion–exclusion identity, all terms cancel except the terms corresponding to L = N and L = N \ T .Therefore, X
+
+> S⊆N
+
+Ior  
+
+> S
+
+1or (S|xT ) = vor (xT ) − vor (x∅). (19) Finally, let the bias term be 
+
+b0 = v(x∅). (20) 14 A PREPRINT - J UNE 9, 2026 Then the logical model is reconstructed as 
+
+ϕ(xT ) = X
+
+> S⊆N
+
+Iand  
+
+> S
+
+1and (S|xT )+ X
+
+> S⊆N
+
+Ior  
+
+> S
+
+1or (S|xT ) + b0
+
+= vand (xT ) − vand (x∅)+ vor (xT ) − vor (x∅) + v(x∅)= v(xT ) − v(x∅) + v(x∅)= v(xT ). (21) Thus, the AND-OR interactions, together with the bias term, reconstruct the model output on any masked state xT .This shows that the interaction effects can be understood as Möbius components of the prediction function, while the logical model ϕ(·) corresponds to the inverse reconstruction from these components. 
+
+## C Experimental Details 
+
+C.1 Models and Datasets 
+
+We evaluate a diverse set of publicly available open-weight language models, covering different model families, architectures, parameter scales, and release stages. The model set includes the Qwen family [ 4, 18 , 2, 42 ], i.e., Qwen-7B, Qwen2-7B, Qwen2.5-1.5B, Qwen2.5-7B, Qwen2.5-14B, and Qwen3-8B; the LLaMA family [ 39 , 40 , 15 ], i.e., LLaMA-7B, LLaMA2-7B, and LLaMA3-8B; and additional models with different architectures and training recipes, including BERT LARGE [ 13 ], RoBERTa-large [ 24 ], Falcon-7B [ 3], GLM-Z1-9B-0414 [ 14 ], DeepSeek-R1-Distill-LLaMA-8B [16], Phi-4 [1], and Gemma-3-12B [19]. The licenses of these models are summarized in Table 1. For evaluation, we build sentence-level next-token prediction examples from two public text sources, with 20 samples from each dataset. Although this sample size is limited, it is sufficient for our initial exploratory analysis. Our goal is not to build a large-scale benchmark, but to examine whether cross-model consistency in interaction patterns can be observed under a controlled setting. In the finance-domain setting, we use the AdaptLLM finance tasks [ 10 ], which collect several financial NLP datasets, including ConvFinQA [ 9], FPB [ 26 ], FiQA-SA [ 25 ], Headline [ 37 ], and NER [ 35 ]. In the general-domain setting, we use WikiText-103 [ 27 ]. For both sources, we split the raw text into sentences and retain sentences with sufficient length and semantic content. Each example is constructed by using a sentence prefix as the input prompt. The target token is then selected according to the prediction scores of the paired LLMs, ensuring that both models are evaluated on the same target-token prediction. This setup enables us to analyze interaction patterns in controlled sentence-level contexts across both financial and general-domain text. Due to the computational cost of pairwise interaction extraction, we do not evaluate all possible model pairs. Instead, we select representative pairs to cover two types of comparisons. First, we compare models within the same family, such as Qwen and LLaMA, to examine how interaction patterns change across model generations and parameter scales. Second, we compare models from different families, such as Qwen, LLaMA, DeepSeek, GLM, Falcon, Phi, Gemma, BERT, and RoBERTa, to test whether shared interactions also emerge across different architectures and training recipes. This design allows us to analyze both within-family consistency and cross-family convergence while keeping the computation tractable. 
+
+C.2 Extraction of interactions Selecting input variables. Given an input prompt with n input variables, extracting AND-OR interactions requires evaluating the model on 2n masked samples. In this paper, we define input variables at the word level, rather than the token level, to facilitate semantic analysis. However, real-world prompts usually contain many words, making exhaustive interaction extraction computationally infeasible. Following Chen et al. [8] , we therefore select a subset of words as input variables and treat the remaining words as a fixed background. This allows us to extract AND-OR interactions among the selected variables while keeping the computation manageable. Specifically, we select 10 words from the prompt x of each sample. For prompts containing more than 10 words, we remove words with weak semantic content, such as articles, prepositions, and conjunctions, before selecting the variables. 
+
+Extracting interactions. The inference logic of neural networks is often too complex to be faithfully and compactly represented by only one type of interaction, either AND or OR. To address this issue, Zhou et al. [43] decomposed 15 A PREPRINT - J UNE 9, 2026                      
+
+> Resource Models / Dataset License
+> Qwen family Qwen-7B Tongyi Qianwen License Agreement Qwen family Qwen2-7B, Qwen2.5-1.5B/7B/14B, Qwen3-8B Apache-2.0 LLaMA family LLaMA-7B Meta non-commercial research license LLaMA family LLaMA2-7B, LLaMA3-8B Meta community license agreements Encoder models BERT LARGE , RoBERTa-large Apache-2.0 / MIT Other LLMs Falcon-7B Apache-2.0 Other LLMs GLM-Z1-9B-0414, DeepSeek-R1-Distill-LLaMA-8B, Phi-4 MIT Other LLMs Gemma-3-12B Gemma Terms of Use Dataset AdaptLLM finance tasks No unified license; see original datasets Dataset WikiText-103 CC BY-SA 3.0 / GFDL
+
+Table 1: Licenses of the models and datasets used in our experiments. the network output v(xT ) into two components: an AND component uand  
+
+> T
+
+= 0 .5v(xT ) + γT , and an OR component 
+
+uor  
+
+> T
+
+= 0 .5v(xT ) − γT , where {γT } are learnable parameters. Thus, finding an appropriate AND-OR decomposition of 
+
+v is equivalent to learning the optimal values of {γT }, where γT ∈ R.Following Zhou et al. [43] and Chen et al. [8] , we learn {γT } by minimizing the L1 norm of both AND and OR interaction effects, encouraging the sparsest possible AND-OR explanation: 
+
+min   
+
+> {γT}
+
+∥Iand ∥1 + ∥Ior ∥1, (22) where Iand = [ Iand  
+
+> T1
+
+, . . . , I and  
+
+> T2n
+
+]⊤ and Ior = [ Ior  
+
+> T1
+
+, . . . , I or  
+
+> T2n
+
+]⊤, with Tk ⊆ N .
+
+Modeling noises. In practice, network outputs may contain small fluctuations that cannot be well captured by sparse AND-OR interactions [ 8 ]. To account for such effects, we introduce a small noise term ϵT for each masked sample, where ϵT ∼ N (0 , σ 2). The decomposition is then rewritten as 
+
+uand  
+
+> T
+
+= 0 .5 v(xT ) − ϵT
+
+ + γT ,uor  
+
+> T
+
+= 0 .5 v(xT ) − ϵT
+
+ − γT . (23) The parameters {ϵT } and {γT } are learned jointly by minimizing the objective in Equation (22). Following Chen et al. [8], we constrain each noise term to the range [−ζ, ζ ], where ζ = 0 .01 · | v(x) − v(x∅)|.Algorithm 1 provides the pseudocode for the above procedure. 
+
+Defining interactions. For simplicity, we refer to the most salient subsets of input variables as interactions in our analysis. Specifically, after computing the AND-OR interaction effects for all candidate subsets, we rank them by their absolute effect magnitudes and retain only the subsets with salient effects. These selected subsets are treated as the effective interaction patterns used by the model for the target-token prediction, while subsets with near-zero effects are regarded as negligible. This convention is consistent with the sparsity property of interaction-based explanations, where only a small fraction of all possible variable combinations contribute substantially to the model output. 
+
+C.3 Computational Resources 
+
+Experiments were conducted on a Linux server equipped with NVIDIA A800 80GB PCIe GPUs and two Intel(R) Xeon(R) Platinum 8352V CPUs @ 2.10GHz. The server has 36 CPU cores per socket, 2 sockets, and 2 threads per core, totaling 144 CPU threads. For each LLM, masked-sample inference was performed on a single GPU. Given n = 10 selected input variables, each prompt requires 210 = 1024 forward passes, which we evaluate with a batch size of 512 . Thus, the runtime mainly depends on the inference speed of each model. After obtaining the model outputs on masked samples, the optimization for learning AND-OR interaction effects is performed on CPU and usually takes 30 -60 seconds per sample. 
+
+Package versions. We implemented model inference using PyTorch and HuggingFace Transformers. The main package versions used in our experiments are PyTorch 2.12.0+cu126 and Transformers 4.51.3. 
+
+Remaks on computational cost. Similar to Shapley-value estimation, exact interaction extraction has an exponential worst-case cost because it requires evaluating the model on masked variants of the input. In practice, however, this cost 16 A PREPRINT - J UNE 9, 2026 
+
+Algorithm 1 Compute AND/OR interactions and select salient interactions 
+
+Require: A deep neural network v, input sample x = [ x1, x 2, . . . , x n]T , indexed by N = {1, 2, . . . , n }, noise threshold ζ, salience threshold τ , convergence threshold δ, baseline value b = [ b1, b 2, . . . , b n]T .
+
+Ensure: AND interaction Iand  
+
+> T
+
+, OR interaction Ior  
+
+> T
+
+, and salient interaction sets Ωand and Ωor . 
+
+> 1:
+
+Initialize learnable parameters {γL} and {ϵL} for all L ⊆ N . 
+
+> 2:
+
+Compute output v(x∅), where x∅ is the masked sample with all variable values replaced by baseline values b, i.e. ,
+
+v(x∅) = v(b). 
+
+> 3:
+
+Initialize previous loss Lprev ← ∞ . 
+
+> 4:
+
+repeat  
+
+> 5:
+
+for each subset L ⊆ N do  
+
+> 6:
+
+Compute masked sample xL by replacing the values of variables not in L with their baseline values.  
+
+> 7:
+
+Compute network output v(xL). 
+
+> 8:
+
+Comput noise term ϵL constrained in [−ζ, ζ ], where ζ = 0 .01 · | v(x) − v(x∅)|. 
+
+> 9:
+
+Decompose v(xL) into AND and OR components:  
+
+> 10:
+
+uand  
+
+> L
+
+← 0.5 · (v(xL) − ϵL) + γL 
+
+> 11:
+
+uor  
+
+> L
+
+← 0.5 · (v(xL) − ϵL) − γL 
+
+> 12:
+
+end for  
+
+> 13:
+
+for each subset T ⊆ N do  
+
+> 14:
+
+Compute scalar weight for AND interaction Iand  
+
+> T
+
+:
+
+Iand  
+
+> T
+
+← X
+
+> L⊆T
+
+(−1) |T |−| L|uand  
+
+> L
+> 15:
+
+Compute scalar weight for OR interaction Ior  
+
+> T
+
+:
+
+Ior  
+
+> T
+
+← − X
+
+> L⊆T
+
+(−1) |T |−| L|uor   
+
+> N\L
+> 16:
+
+end for  
+
+> 17:
+
+COmpute current loss L ← P  
+
+> T⊆N
+
+(|Iand  
+
+> T
+
+| + |Ior  
+
+> T
+
+|). 
+
+> 18:
+
+Optimize parameters {γL} and {epsilon L} to minimize L. 
+
+> 19:
+
+Check for convergence: |L − L prev | < δ  
+
+> 20:
+
+Update previous loss: Lprev ← L . 
+
+> 21:
+
+until convergence  
+
+> 22:
+
+Select salient AND interactions: 
+
+Ωand ← { T ⊆ N : |Iand  
+
+> T
+
+| > τ } 
+
+> 23:
+
+Select salient OR interactions: 
+
+Ωor ← { T ⊆ N : |Ior  
+
+> T
+
+| > τ }
+
+return Iand  
+
+> T
+
+, I or  
+
+> T
+
+, Ωand and Ωor .can be reduced substantially. Existing methods exploit the fact that only a limited number of interactions are usually salient: for example, the Sparse Möbius Transform can reduce the complexity to O(nK log n) when there are only 
+
+K important interactions [ 20 ]; Spectral Explainer targets important interactions in long-sequence LLM inputs [ 21 ]; and ProxySPEX further improves efficiency by using lightweight proxy models to approximate the local behavior of the original model [ 7]. In addition, interactions for LLMs need not always be computed at the token level. Depending on the analysis goal, variables can be defined as words, phrases, or sentences, which greatly reduces the effective input dimension. For studies such as ours, where the goal is to estimate the distribution and consistency of salient interactions rather than enumerate every possible interaction, it is often sufficient to compute interactions over a small set of semantically meaningful variables. Therefore, although exact extraction is expensive in theory, sparsity-aware algorithms, flexible variable granularity, and engineering optimizations make interaction-based analysis feasible in practical LLM settings. 
+
+## D More Experimental Results 
+
+Interaction distribution on individual prompts. Figure 7 presents additional prompt-level examples of interaction distributions for different LLM pairs. For each prompt, we group the extracted interaction effects by order and separately show positive and negative effects for all interactions, and shared interactions. These examples illustrate that the 17 A PREPRINT - J UNE 9, 2026 interaction distribution is input-dependent. Some prompts activate relatively strong shared interactions at low orders, while others contain more non-shared interactions and stronger positive-negative cancellation. This provides a more fine-grained view of the sample-level variation behind the averaged results reported in the main manuscript as shown in Figure 3. 
+
+Interaction-level calibration among LLMs on WikiText. Figure 8 visualizes the pairwise interaction-level calibra-tion κ among LLMs on the WikiText dataset. Each node denotes an LLM, and the edge value indicates the fraction of prediction utility attributed to interactions shared by a pair of models. We observe that recent LLMs, such as Qwen3-8B, Qwen2.5-14B, LLaMA3-8B, DeepSeek-R1-Distill-LLaMA-8B, GLM-Z1-9B, and Gemma-3-12B, generally exhibit higher calibration with one another. In contrast, earlier or relatively weaker models, such as BERT-large, Falcon-7B, and Qwen2.5-1.5B, tend to show lower calibration. This suggests that the cross-model consistency of interaction patterns also appears in general-domain language modeling, not only in the finance-domain setting. 18 A PREPRINT - J UNE 9, 2026 DeepSeek -R1 -Distill -LLaMA -8B on the                                    
+
+> AdaptLLM finance dataset
+> Falcon -7B on the
+> AdaptLLM finance dataset
+> LLaMA -3-8B on the
+> AdaptLLM finance dataset
+> Phi -4 on the AdaptLLM finance dataset
+> Qwen3 -8B on the
+> AdaptLLM finance dataset
+> RoBERTa -Large on the
+> AdaptLLM finance dataset
+> BERT -Larg eon the WikiText dataset Falcon -7B on the WikiText dataset Gemma -3-12B on the WikiText dataset
+> GLM -Z1 -9B on the WikiText dataset Qwen2 -7B on the WikiText dataset Qwen2.5 -14B on the WikiText dataset
+
+Figure 6: Sparsity of extracted interactions across different model-dataset settings. For each setting, we merge the interactions extracted from all selected samples, normalize their strengths, and sort them by absolute magnitude in descending order. Only a small fraction of interactions have large strengths, whereas most interaction effects rapidly decay to values close to zero. This demonstrates that the extracted interactions are highly sparse in practice. 19 A PREPRINT - J UNE 9, 2026 Gemma -3-12B BERT -Large DeepSeek -R1 -Distill -   
+
+> LLaMA -8B LLaMA3 -8B Qwen2 -7B Qwen2.5 -7B
+
+All interactions 𝕡 ! ,# All interactions 𝕟 ! ,$ Shared interactions 𝕡 %&   
+
+> !,#
+
+Shared interactions 𝕟 %&  
+
+> !,$
+> (a)
+> (b)
+> (c)
+> (d)
+
+Figure 7: Prompt-level interaction distributions for different LLM pairs. Rows (a,b) show examples from the AdaptLLM finance tasks, and rows (c,d) show examples from WikiText. For each prompt, interaction effects are grouped by order and separated into all interactions and shared interactions, with positive and negative effects plotted separately. LLaMA -7B  
+
+> LLaMA -3-7B LLaMA -2-7B
+> Phi -4 (14B)
+> GLM -Z1 -9B
+> DeepSeek -R1 -
+> Distill -LLaMA -8B
+> Gemma -
+> 3-12B
+> Qwen3 -8B
+> Qwen2.5 -14B
+> Qwen2.5 -7B
+> Qwen -7B
+> Qwen2.5 -1.5B
+> BERT -Large
+> Falcon -7B
+> 0.309 0.828
+> Qwen2 -7B
+
+Figure 8: Interaction-level calibration κ among LLMs. Each node denotes an LLM, and each edge represents the fraction of prediction utility explained by shared interactions between two models. Relatively advanced LLMs exhibit higher calibration, suggesting stronger cross-model consistency in their interaction patterns. The experiments are on WikiText dataset. 20
