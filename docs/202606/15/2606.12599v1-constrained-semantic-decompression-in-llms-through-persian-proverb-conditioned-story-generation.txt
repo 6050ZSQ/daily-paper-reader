@@ -1,0 +1,1471 @@
+Title: Constrained Semantic Decompression in LLMs through Persian Proverb-Conditioned Story Generation
+
+URL Source: https://arxiv.org/pdf/2606.12599v1
+
+Published Time: Fri, 12 Jun 2026 00:12:03 GMT
+
+Number of Pages: 35
+
+Markdown Content:
+## Constrained Semantic Decompression in LLMs through Persian Proverb-Conditioned Story Generation 
+
+Zahra Habibzadeh 2, *,, Paria Khoshtab 2, *,, Amir Mesbah 2*
+
+, and Yadollah Yaghoobzadeh 1,2 
+
+> 1
+
+Tehran Institute for Advanced Studies, Khatam University, Iran 
+
+> 2
+
+School of Electrical and Computer Engineering, College of Engineering, University of Tehran, Tehran, Iran  
+
+> Correspondence: z.habibzadeh213@ut.ac.ir y.yaghoobzadeh@ut.ac.ir
+
+Abstract 
+
+Transforming a dense, abstract proverb into an engaging and morally faithful narrative re-quires deep cultural understanding and robust semantic grounding. We frame this problem as a constrained semantic decompression task and study proverb-conditioned story genera-tion as a testbed for abstraction-to-realization in large language models (LLMs). Focusing on Persian, we introduce the Proverb Aligned Narrative Dataset (PAND), pairing proverbs with human-written stories and explicit mean-ings. By a hybrid evaluation framework that combines human-calibrated LLM-as-a-Judge with structural metrics, we analyze model behavior across multiple prompting regimes. Our findings reveal a persistent decompres-sion gap : current LLMs often achieve strong surface-level fluency while failing to faithfully instantiate the underlying moral and causal structure encoded in proverbs. We further show that explicit reasoning and iterative re-finement can partially mitigate these failures, suggesting that many decompression errors arise from difficulties in translating abstract meaning into narrative form rather than a com-plete lack of relevant knowledge. Our pro-posed task naturally extends to other forms of compressed cultural knowledge. 
+
+1 Introduction 
+
+Stories are an important source of education and cultural transmission. Parents, teachers, and sto-rytellers rely on narratives to communicate life lessons, social norms, and moral values. In many cultures, particularly within the Persian tradition, such narratives are closely tied to proverbs: short, memorable expressions that compress cultural wis-dom, moral lessons, and traditional worldviews into condensed linguistic forms (Mieder, 2004). Developing automated systems capable of un-derstanding and generating proverb-driven nar-
+
+> *Equal contribution.
+
+ratives has both practical and scientific impor-tance. From an application perspective, large language models (LLMs) capable of generating culturally grounded stories could support edu-cational and heritage-preservation tools, particu-larly in mid-resource and low-resource languages that remain underrepresented in predominantly Western-centric training corpora (Agarwal et al., 2025). More fundamentally, proverb-conditioned story generation provides a challenging testbed for evaluating whether LLMs can faithfully transform abstract cultural knowledge into coherent narrative structure. We formalize this challenge through a con-strained semantic decompression task. Proverbs encode moral and cultural abstractions in highly compressed form; generating an appropriate story therefore requires models to transform abstract principles into concrete narrative realizations in-volving characters, events, and causal relations. Unlike open-ended creative writing tasks (Gómez-Rodríguez and Williams, 2023; Teleki et al., 2025), proverb-conditioned generation constrains narra-tives to remain faithful to the underlying moral logic rather than merely produce fluent or imagi-native text. Simultaneously, the task imposes addi-tional constraints related to narrative structure and audience appropriateness, particularly in the con-text of children’s stories (Valentini et al., 2023). To study this problem, we introduce the Proverb Aligned Narrative Dataset (PAND), a curated cor-pus pairing Persian proverbs with explicit mean-ings and human-written short stories for children. Using this resource, we evaluate a number of pro-prietary and smaller open-weight models across three prompting regimes illustrated in Figure 1: (i) 
+
+Pure , which evaluates generation and reasoning without external guidance; (ii) Surface-Assisted ,which introduces lexical cues to test reliance on surface-level signals; and (iii) Feedback-Guided ,which utilizes iterative refinement through model 1
+
+> arXiv:2606.12599v1 [cs.CL] 10 Jun 2026 Figure 1: The top section illustrates our decompression regimes (pure, surface-assisted, and feedback-guided) and examples of pure and surface-assisted prompts. The bottom section depicts our evaluation pipeline in which generated stories are compared to human stories via a calibrated LLM judge and structural metrics.
+
+critique. While our experiments focus on Per-sian proverbs, we view semantic decompression as a broader abstraction-to-realization challenge that extends to other compressed knowledge forms, in-cluding fables, legal maxims, and moral heuristics. We evaluate generation quality using a hybrid framework combining human-calibrated LLM-as-a-Judge with structural metrics. Specifically, judge assessments measure dimensions such as moral relatedness, creativity, and child suitabil-ity, while structural metrics quantify narrative di-versity, novelty, surprise, and readability. To-gether, these evaluations allow us to study not only whether LLMs can generate stories from proverbs, but also how successfully they transform com-pressed moral knowledge into grounded narrative form faithfully. Our results reveal a consistent decoupling be-tween surface fluency and semantic grounding, ex-posing a persistent decompression gap . While pro-prietary and open-weight models often generate fluent narratives, they frequently fail to preserve the deeper wisdom encoded in proverbs. We find that explicit moral reasoning improves proverb alignment, suggesting that semantic decompres-sion benefits from separating abstraction from nar-rative realization. Iterative refinement further miti-gates these failures, enabling smaller open-weight models to improve semantic grounding and cre-ative narrative quality, a finding supported by a blinded human preference study. Our contributions are as follows. (i) We for-malize proverb-conditioned story generation as a constrained semantic decompression task, provid-ing a new framework for evaluating abstraction-to-realization capabilities in LLMs. (ii) We introduce PAND 1, the first Persian dataset pairing proverbs with explicit meanings and human-written stories for evaluating culturally grounded narrative gen-eration. (iii) Through extensive evaluation, we identify a decompression gap in which models achieve strong surface fluency while failing to pre-serve deeper moral and causal structure. (iv) We show that explicit reasoning and iterative refine-ment can improve semantic grounding, enabling smaller open-weight models to approach the per-formance of single-pass proprietary baselines. 
+
+2 Related Work 
+
+Proverbs and Moral Reasoning: Prior work on proverbs and figurative expressions, such as idioms and similes, has largely focused on in-terpretation tasks, including detection, paraphras-ing, and meaning prediction (Zhou et al., 2021; Chakrabarty et al., 2022; Tayyar Madabushi et al., 2022; Cecilia Liu et al., 2024; Magdy et al., 2025; Khoshtab et al., 2025; Banou et al., 2025). While LLMs often recover figurative meanings, recent studies show that they struggle to apply these ab-stractions appropriately in context, revealing a gap between abstract understanding and execution (At-tia et al., 2026). Research in moral reasoning has explored both moral extraction and narrative generation from ab-stract or visual inputs (Guan et al., 2022; Mar-cuzzo et al., 2025; Rezapour et al., 2025). These approaches typically rely on explicit moral state-ments, whereas proverbs encode moral content implicitly. The closest work to our approach is 
+
+ePiC (Ghosh and Srivastava, 2022), which stud-
+
+> 1The dataset and code will be released publicly upon ac-ceptance.
+
+2ies proverb-conditioned narrative generation in En-glish using fine-tuned models. We extend this line by framing proverb-to-story generation as a 
+
+constrained semantic decompression task, requir-ing models to expand implicit morals into target-appropriate narratives via prompting. 
+
+Automatic Story Generation: Advances in LLMs have improved automatic story genera-tion, with extensive work dedicated to hierarchical and planning-based approaches that separate high-level content planning from surface realization (Fan et al., 2018, 2019; Yao et al., 2019; Goldfarb-Tarrant et al., 2020). Modern approaches like Re3 
+
+(Yang et al., 2022), Agents’ Room (Huot et al., 2025), DOME (Wang et al., 2025), and Book-World (Ran et al., 2025) decompose generation into multi-stage or persona-based multi-agent pro-cesses. Another prominent research branch emphasizes iterative, feedback-based refinement. Self-Refine 
+
+(Madaan et al., 2023) shows that an LLM can gen-erate feedback to improve its own outputs, while methods such as CritiCS (Bae and Kim, 2024), 
+
+SWAG (Pei et al., 2024), and Dramaturge (Xie et al., 2025) integrate external critics or structured editorial guidance. These approaches and simi-lar work on other tasks, such as translation (Chen et al., 2024b), primarily focus on evaluating pro-prietary models in English and target open-ended, long-form narratives. We specifically focus on abstraction-to-realization under cultural and se-mantic constraints in Persian. Importantly, our feedback regime exclusively utilizes open-weight models, enabling local, cost-effective deployment. 
+
+Story Generation Evaluation: Early evalua-tion frameworks focused on surface-level narra-tive properties such as structural coherence, text redundancy, and basic linguistic fluency (Chhun et al., 2022). Recent methodologies have shifted toward creativity-oriented benchmarks, evaluat-ing LLM-generated narratives against human writ-ing via human annotation and automated metrics (Chakrabarty et al., 2023; Johnson et al., 2023; Or-wig et al., 2024; Tian et al., 2024; Marco et al., 2024; Atmakuru et al., 2024; Marco et al., 2025; Lu et al., 2025). Despite high surface fluency, these studies uncover limitations in stylistic diver-sity and originality. They primarily evaluate gen-eration in unconstrained, open-ended settings. In contrast, we treat story generation as a constrained semantic grounding problem rather than an open writing task, disentangling moral faithfulness from surface text quality. We align our subjective crite-ria with ePiC (Ghosh and Srivastava, 2022) and adapt structural metrics from (Ismayilzada et al., 2025) to Persian, enabling a robust evaluation of moral grounding alongside creative narrative ex-pansion. 
+
+3 Dataset 
+
+Our Persian gold dataset, called PAND, contains 150 instances. Each instance consists of a proverb, its meaning, and a human-written short children’s story corresponding to that proverb. This is the first Persian resource to combine these three ele-ments into a single, structured corpus. Detailed statistics of the PAND dataset appear in Table 1. Table 4 in Appendix A presents an example of our dataset.             
+
+> Category Metric Value Dataset Scale Total Number of Stories 150 Unique Proverbs 116
+> Story Length
+> Average Words per Story 369 Maximum Words in a Story 1462 Average Sentences per Story 22.3 Maximum Sentences in a Story 83
+> Proverb Length Average Words per Proverb 7.6 Maximum Words in a Proverb 18
+> Table 1: PAND dataset statistical summary.
+
+3.1 Data Collection 
+
+We built this dataset by crawling public Persian literary and educational websites for pairs of Per-sian proverbs and children’s short stories (listed in Table 3, Appendix A). Then, we separately col-lect semantic meanings for each proverb from rep-utable online Persian resources, including Abadis 2,an online dictionary, and Daneshchi 3, an educa-tional platform. These meanings provide explicit explanations of the proverb’s moral or metaphori-cal content. They are used in our subjective eval-uation to assess the relatedness between generated stories and the intended moral meanings of the proverbs (see Section 5.1). 
+
+3.2 Data Preprocessing and Cleaning 
+
+The limited size of our dataset stems from our strict quality constraints for a mid-resource lan-guage. We prioritized a high-quality, human-
+
+> 2https://abadis.ir/
+> 3https://www.daneshchi.ir/
+
+3verified benchmark over a larger, noisy dataset. Therefore, we manually verified that every proverb and human-written story was published before the LLM era to prevent synthetic contamination. To improve data quality, we preprocess and clean the raw data by removing irrelevant proverb-story pairs, discarding stories shorter than 50 words or longer than 1500 words, normalizing punctuation, and correcting half-space and paragraph structure issues common in Persian text. We utilized LLMs for normalization instead of established rule-based tools because of their power in handling context-sensitive punctuation and inconsistencies in web crawls (Figure 25 in Appendix J). The cleaned dataset contains 150 proverb-story pairs covering 116 unique proverbs. For proverbs with multiple stories, we retain a single reference human-written story per proverb for our experiments, selected by the highest Overall score, with ties broken by the sum of remaining metrics (see Section 5.1). 
+
+4 Proverb Decompression Strategies 
+
+We formalize proverb-conditioned story genera-tion as mapping a compressed proverb P to an expanded narrative S. We treat this process as a 
+
+constrained semantic decompression task in which 
+
+S must preserve the moral intent of P while sat-isfying narrative length and child-appropriateness constraints. Due to the scarcity of domain-specific Persian instruction data for post-training, we in-vestigate inference-time prompting strategies that vary in the degree of external guidance. Our goal is to identify mechanisms that improve semantic grounding while preserving narrative quality. We evaluate these strategies across several mod-els with verified Persian proficiency (Abaskohi et al., 2024), including GPT-4.1 (OpenAI et al., 2024b), Gemma 3 (12B and 27B) (Team et al., 2025), and Mistral Small 3.2 24B (Team, 2025a). Detailed model settings and prompt templates are provided in Appendix B and Appendix J. 
+
+4.1 Pure 
+
+This regime provides only the proverb and a word limit, isolating the models intrinsic ability to in-terpret and ground abstract moral meaning with-out external cues. We evaluate four prompting strategies: (i) Zero-Shot , which directly instructs the model to generate a children’s story from the proverb; (ii) Persona , which asks the model to act as a professional Persian children’s author; (iii) 
+
+Moral CoT , a chain-of-thought approach (Wei et al., 2022) in which the model explicitly iden-tifies the proverbs moral lesson before story gen-eration; and (iv) Outline CoT , a plan-and-write strategy in which the model first generates a nar-rative outline based on a classical three-act struc-ture (Aristotle, 1902) before realizing the final story. 
+
+4.2 Surface-Assisted 
+
+This regime augments prompts with hints derived from human-written stories in PAND to examine how surface-level cues influence semantic ground-ing and generation behavior. Because these cues partially expose reference content, this regime also introduces a potential risk of memorization. We consider two prompting strategies: (i) Prefix-Conditioned , which provides the first two sen-tences of the reference story as a continuation prompt; and (ii) Cue Words , which supplies a small set of keywords extracted from the reference story that the model must incorporate into the gen-erated narrative. The extraction prompt is shown in Figure 23 in Appendix J. 
+
+4.3 Feedback-Guided 
+
+Writing is inherently iterative (Eckstein et al., 2011). Motivated by human editorial workflows, we introduce a Feedback-Guided regime in which story generation is refined through critique and re-vision. As illustrated in Figure 1, this regime de-composes generation into three personas: a Writer ,a Critic , and an Editor .The process begins with the Writer generating an initial story conditioned on the proverb. The 
+
+Critic then evaluates this draft according to the subjective criteria described in Section 5.1, pro-ducing both scalar scores and natural-language feedback identifying abstraction or grounding fail-ures. Finally, the Editor revises the narrative by in-corporating the critique to improve semantic align-ment with the proverb. This interaction forms an iterative refinement loop that can be repeated mul-tiple times. Prompt of each persona and implemen-tation details are provided in Appendix J and Ap-pendix C. 
+
+5 Evaluation Methods 
+
+We evaluate generated stories through a hybrid framework pairing human-calibrated LLM judg-ments with objective structural metrics to capture 4both qualitative alignment and structural creativ-ity. 
+
+5.1 Subjective Evaluation of Story Quality 
+
+Evaluating semantic decompression requires as-sessing not only surface narrative quality but also the faithful grounding of abstract moral content. We define five subjective metrics that capture dif-ferent interpretive dimensions of semantic decom-pression. All criteria are rated on a 5-point Lik-ert scale. Relatedness measures how faithfully the generated story conveys the meaning or moral of the given proverb (1: unrelated; 5: fully faith-ful). Creativity assesses the originality and nar-rative interest of the story beyond literal restate-ment (1: repetitive or uninteresting; 5: highly cre-ative and engaging). Fluency evaluates grammat-ical correctness and readability (1: frequent er-rors and poor readability; 5: grammatically correct and easy to read). Suitability for Children rates the appropriateness of content, language, and con-veyed message (1: inappropriate; 5: highly suit-able). Overall provides a holistic assessment of narrative quality (1: very low; 5: excellent). Ex-cept suitability for children, all other metrics are adopted from ePiC (Ghosh and Srivastava, 2022) framework.                          
+
+> Metric Human–Human Gemini–Human Agreement Agreement Mean Median All
+> Relatedness 0.88 0.74 0.72 0.87 Creativity 0.83 0.55 0.51 0.79 Fluency 0.48 0.43 0.38 0.53 Suitability for children 0.76 0.68 0.69 0.78 Overall 0.82 0.72 0.66 0.83
+
+Table 2: Inter-annotator agreement (ICC3k) between human annotators and between Gemini 2.5 Pro and hu-man annotators. 
+
+While human evaluation offers the highest fi-delity, it does not scale efficiently. To scale these evaluations efficiently while preserving cultural and linguistic nuances, we deploy a calibrated LLM-as-a-Judge (Li et al., 2025). We verified the judge’s reliability by conducting a calibration study comparing a diverse range of proprietary and open-weight models against a human gold stan-dard (Appendix D details our study and analysis). Three graduate students annotated a control set of 40 paired human and GPT-4.1 stories (80 total) us-ing our annotation guidelines (see Appendix F). Annotation reliability was assessed using the Intr-aclass Correlation Coefficient (ICC(3,k)) (Shrout and Fleiss, 1979). As shown in Table 2, annotators exhibit strong agreement on key metrics, including relatedness (0.88) and creativity (0.83), confirm-ing the reliability of our evaluation protocol. Table 2 also reports agreement metrics for our selected judge, Gemini 2.5 Pro (Comanici et al., 2025). Under the “All” aggregation setting, where the judge acts as a fourth independent annotator, Gemini 2.5 Pro achieves strong agreement with humans, with correlations of 0.87 for relatedness and 0.83 for overall quality, supporting its use as a reliable and scalable proxy for human judg-ment in our subsequent experiments. We note that agreement on fluency was lower across both hu-mans and the LLM because modern models rarely make explicit grammatical errors. Therefore, flu-ency evaluations often shift from objective error-counting to highly subjective stylistic preferences. 
+
+5.2 Structural Metrics 
+
+To complement subjective scores, we apply struc-tural metrics to measure narrative diversity and originality from lexical and semantic perspectives by leveraging embedding-based representations. All of these structural metrics, except readability, are adopted from Ismayilzada et al. (2025) with modifications specific to our setting. Mathemati-cal definitions and implementation details are pro-vided in Appendix G. We quantify Diversity along two complemen-tary dimensions. Lexical diversity evaluates surface-level word variation via unique-to-total n-gram ratios ( n ∈ { 1, . . . , 5}). Semantic diversity 
+
+measures the embedding-based cosine distance be-tween the generated story and its human reference text, reflecting the extent to which a model’s se-mantic decompression diverges from human nar-rative realizations. Novelty measures the seman-tic uniqueness relative to a broader narrative con-text (Maher, 2010; Runco and Jaeger, 2012). We compute novelty by comparing a story’s embed-ding against a background pool consisting of all other generated stories for that prompt alongside human stories. Higher values indicate greater de-viation from the collective narrative distribution. 
+
+Surprise captures the degree to which a story deviates from expectations as it unfolds (Boden, 1991; Maher, 2010; Grace et al., 2015). We com-pute surprise as the average semantic distance be-tween consecutive sentences (Karampiperis et al., 2014), where larger shifts correspond to higher narrative unpredictability. Readability assesses surface-level reading ease in Persian using the 5Flesch-Dayani metric based on word and sentence length (Dayani, 2000). While formal readability metrics correlate poorly with human stylistic pref-erences (Cachola et al., 2025), we use it as a struc-tural baseline for lexical complexity in combina-tion with other metrics. 
+
+6 Results and Analysis 
+
+We present an extensive evaluation of propri-etary and open-weight models across generation regimes. Human-written stories serve as our hu-man benchmark in our experiments. 
+
+Prompting Strategies Reveal the Decompres-sion Gap: Figure 2 reveals a clear decoupling be-tween surface narrative quality and semantic faith-fulness. While GPT-4.1 and the Gemma 3 fam-ily approach or even surpass human-written sto-ries in Fluency and Suitability, they exhibit sub-stantially lower Relatedness scores, particularly among smaller open-weight models. This pat-tern exposes a persistent decompression gap : mod-els can generate fluent and well-formed narratives while failing to faithfully instantiate the underly-ing moral abstraction of the proverb. A similar gap emerges in Creativity, where even the strongest models remain below human performance, high-lighting the difficulty of transforming compressed cultural knowledge into engaging narrative form. Prompting strategy further influences decom-pression quality. Approaches that explicitly sepa-rate semantic interpretation from narrative realiza-tion, particularly Moral CoT, consistently achieve higher Relatedness and Overall scores across mod-els. This suggests that extracting and verbalizing the proverb’s moral before story generation pro-vides a more effective path to semantic ground-ing than relying solely on implicit associations or surface-level cues. Notably, Moral CoT in the Pure regime often outperforms strategies in the Surface-Assisted regime, indicating that explicit abstraction may be more beneficial than access to partial narrative context. Detailed results for all model–prompt combinations are reported in Ta-ble 6 in Appendix E.1. Examples illustrating the decompression gap are provided in Table 12 of Ap-pendix I. 
+
+Analysis of Structural Metrics: Figure 3 shows that meaning-level metrics (Semantic Diver-sity, Surprise, and Novelty) are substantially more sensitive to prompting strategy than surface-level metrics (Lexical Diversity and Readability), which remain relatively stable across regimes. This sug-gests that modern LLMs have largely saturated ba-sic narrative fluency, while the manner in which they perform semantic decompression varies con-siderably. A clear pattern emerges across prompting regimes. The Prefix-Conditioned strategy consis-tently produces the lowest Semantic Diversity, Sur-prise, and Novelty scores. By providing the open-ing sentences of a reference story, this regime con-strains the space of plausible narrative realizations and reduces semantic exploration. In contrast, prompts in the Pure regime, particularly the CoT variants, allow models to construct narratives from abstract moral interpretations, resulting in greater semantic dispersion and more diverse decompres-sion trajectories. Model-level analysis reveals an additional dis-tinction between semantic deviation and narrative Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words     
+
+> 2
+> 3
+> 4
+> 5
+> Avrage Score  Human Benchmark
+> Relatedness
+> Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words
+> Creativity
+> Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words
+> Fluency
+> Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words
+> Suitability for Children
+> Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words
+> Overall
+> GPT 4.1 Gemma 3 12b Gemma 3 27b Mistral 3.2 24b Human Benchmark
+
+Figure 2: Average score of LLMs given by our Judge on different metrics for different prompts. Scores of human stories serve as our Human benchmark. For full statistical results (Mean ± std), refer to Table 6 in Appendix E.1. 
+
+6Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words 
+
+> 0.2
+> 0.3
+> 0.4
+> Metric Value
+
+Semantic Diversity 
+
+> Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words
+> 0.75
+> 0.80
+> 0.85
+> 0.90
+
+Lexical Diversity 
+
+> Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words
+> 0.15
+> 0.20
+
+Surprise 
+
+> Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words
+> 0.07
+> 0.08
+> 0.09
+
+Novelty 
+
+> Pure-Zero-Shot Pure-Persona Pure-Outline CoT Pure-Moral CoT Assisted-Prefix-Cond. Assisted-Cue Words
+> 93
+> 94
+
+Readability     
+
+> GPT 4.1 Gemma 3 12b Gemma 3 27b Mistral 3.2 24b Human Benchmark
+
+Figure 3: Performance of different models with different prompts from the lens of structural metrics. Y-axis scaling indicates relative trends of each metric. The average value of each metric for human stories serves as our Human benchmark. For full statistical results (Mean ± std), refer to Appendix E.2. 
+
+quality. Smaller open-weight models tend to gen-erate stories with larger semantic distances from human references and higher Surprise scores than GPT-4.1, indicating less conventional and more unpredictable narrative development. However, greater semantic deviation does not necessarily correspond to better stories. For example, Mis-tral achieves the highest Novelty scores while simultaneously performing poorly on subjective evaluations, suggesting that its novelty stems from semantic instability rather than meaningful creative exploration. In contrast, GPT-4.1 and Gemma 3 27B exhibit lower novelty but achieve stronger overall performance through more con-trolled and coherent narrative realizations. These findings highlight the importance of combining subjective and structural evaluations to distin-guish grounded creativity from stochastic diver-gence. Full results are reported in Table 7 in Ap-pendix E.2. 
+
+Feedback Can Help Decompression: The de-compression gap raises a natural question: are ab-straction failures intrinsic to open-weight models, or can they be repaired through revision? To inves-tigate this, we apply the Feedback-Guided regime to Gemma 3 12B and 27B under Self-Correction 
+
+and Cross-Model Critique (12B writer, 27B critic) settings. As shown in Figure 4, iterative refinement consistently improves semantic grounding. For Before After (12b) After (27b) 
+
+> 2
+> 3
+> 4
+> 5
+> Gemma3-12b Average Score
+
+Relatedness 
+
+Before After (12b) After (27b) 
+
+Creativity 
+
+Before After (12b) After (27b) 
+
+Fluency 
+
+Before After (12b) After (27b) 
+
+Suitability for Children 
+
+Before After (12b) After (27b) 
+
+Overall 
+
+Before After (27b) 
+
+> 2
+> 3
+> 4
+> 5
+> Gemma3-27b Average Score
+
+Before After (27b) 
+
+Before After (27b) 
+
+Before After (27b) 
+
+Before After (27b) 
+
+Before Refinement Human Ref. (Mean ± Std) GPT-4.1 Ref. (Mean ± Std) After Refinement (Critic: Gemma3-12b) After Refinement (Critic: Gemma3-27b) 
+
+Figure 4: Judge scores for Gemma 3 12B (top) and Gemma 3 27B (bottom) before and after feedback-guided refinement (three iterations). Scores of human stories and stories generated with our Persona prompt by GPT 4.1 serve as our Human and GPT 4.1 references, respectively. Full statistical results are provided in Appendix E.1. 
+
+7BeforeAfter (12b) After (27b)      
+
+> 0.36
+> 0.42
+> 0.48
+> 0.54
+> Gemma3-12b Average Value  Semantic Diversity
+> BeforeAfter (12b) After (27b)
+> 0.84
+> 0.87
+> 0.90
+> 0.93
+> Lexical Diversity
+> BeforeAfter (12b) After (27b)
+> 0.12
+> 0.18
+> 0.24
+> 0.30
+> Surprise
+> BeforeAfter (12b) After (27b)
+> 0.060
+> 0.075
+> 0.090
+> Novelty
+> BeforeAfter (12b) After (27b)
+> 92
+> 93
+> 94
+> 95
+> Readability
+> Before After (27b)
+> 0.35
+> 0.40
+> 0.45
+> 0.50
+> Gemma3-27b Average Value
+> Before After (27b)
+> 0.84
+> 0.87
+> 0.90
+> 0.93
+> Before After (27b)
+> 0.08
+> 0.16
+> 0.24
+> 0.32
+> Before After (27b)
+> 0.060
+> 0.075
+> 0.090
+> Before After (27b)
+> 92
+> 93
+> 94
+> 95
+> Before Refinement Human Ref. (Mean ± Std) GPT-4.1 Ref. (Mean ± Std) After Refinement (Critic: Gemma3-12b) After Refinement (Critic: Gemma3-27b)
+
+Figure 5: Changes in structural metrics values for Gemma 3 12B (top) and Gemma 3 27B (bottom) before and after feedback-guided refinement (three iterations). Scores of human stories and stories generated with our Persona prompt by GPT 4.1 serve as our Human and GPT 4.1 references, respectively. Y-axis scaling indicates relative trends of each metric. Full statistical results are provided in Appendix E.2. 
+
+Gemma 3 12B, the stronger 27B critic yields substantially larger gains in Relatedness, Creativ-ity, and Overall score than self-correction, indi-cating that critique quality is a key factor in re-pairing decompression failures. Notably, refined Gemma 3 27B surpasses single-pass GPT-4.1 in Creativity while improving Relatedness, Suitabil-ity, and Overall quality. These results suggest that many abstraction failures are correctable through targeted feedback and revision. The gains come with a modest decrease in Fluency, reflecting a surface–semantic trade-off as stories become more tightly aligned with the proverb’s moral logic. Structural metrics in Fig-ure 5 support this interpretation: refinement in-creases Semantic Diversity and Surprise while slightly reducing Novelty and Lexical Diversity, consistent with convergence toward a more coher-ent thematic realization. Moreover, the stronger 27B critic incurs smaller reductions in Lexical Di-versity and Readability than self-correction, sug-gesting that higher-capacity critics provide more precise feedback with fewer stylistic compromises. Full results are reported in Appendix E. 
+
+Human Validation of Refinement Improve-ments: To verify that improvements observed by the LLM judge are reflected in human perception, we conducted a blinded pairwise preference study using the Gemma 3 27B self-correction pipeline. Human annotators compared 40 randomly sam-pled pairs consisting of the initial and refined ver-sions of the same generated story. Based on ma-jority voting, annotators preferred the refined sto-ries in 65% of cases, providing independent evi-dence that iterative refinement yields perceptible improvements in narrative quality. We further examined the relationship between human preferences and changes in LLM-as-a-Judge scores. Most metrics exhibited positive cor-relations, with Creativity showing the strongest as-sociation ( r = 0 .24 ). Although these correlations are not statistically significant given the limited sample size, they indicate broad directional agree-ment between human judgments and the calibrated judge. Detailed results are reported in Tables 10 and 11 in Appendix H. 
+
+7 Conclusion 
+
+We formalized proverb-conditioned short story generation as a constrained semantic decompres-sion task, where compressed moral abstractions must be transformed into concrete narratives. Us-ing the curated PAND corpus, we evaluated model behavior across multiple prompting regimes with a calibrated judge and complementary structural metrics. Our results reveal a persistent decom-pression gap : current LLMs often achieve strong surface-level fluency while failing to faithfully in-stantiate the deeper moral and causal structure en-coded in proverbs. This finding highlights a funda-mental distinction between linguistic competence and semantic grounding in creative generation. We further show that explicit reasoning and it-erative refinement can partially mitigate these fail-ures, suggesting that many decompression errors arise not from a complete lack of knowledge but from difficulties in reliably translating abstract 8meaning into narrative form. More broadly, our findings indicate that abstraction-to-realization re-mains a challenging capability even for state-of-the-art models. In addition to mathematical analysis, future work could internalize the WriterCritic dynamic via self-play (Chae et al., 2025) to learn refinement policies, replacing explicit prompts. Beyond Per-sian proverbs, we view semantic decompression as a general framework for studying how LLMs transform compressed knowledge representations, including fables, legal maxims, and moral heuris-tics, into grounded and contextually appropriate language. 
+
+8 Limitations 
+
+The primary limitation of this study is the scarcity of high-quality, aligned Persian proverb-story pairs. While our curated dataset is sufficient for evaluation and in-context learning experiments, its scale is inadequate for pre-training or post-training interventions such as supervised fine-tuning or re-inforcement learning. As a result, our investi-gation is necessarily restricted to inference-time prompting strategies, which limits the extent to which models can internalize semantic decompres-sion mechanisms. A related limitation concerns generalization. Our experiments focus on short narratives and a specific cultural form, proverbs, which may not fully represent other forms of abstract knowledge or longer narrative structures. Although we be-lieve the semantic decompression framework is broadly applicable, its effectiveness for other gen-res, domains, or languages remains to be empiri-cally validated. Finally, while we mitigate scalability con-straints through a calibrated LLM-as-a-Judge, au-tomated evaluation remains an imperfect proxy for human judgment, particularly for culturally grounded interpretation. Although our calibra-tion shows strong agreement with human annota-tors, subtle pragmatic or stylistic nuances may still be underrepresented. Future work incorporating larger-scale human evaluation or hybrid human-LLM assessment could further strengthen evalua-tion reliability. We hypothesize that access to larger-scale aligned corpora would enable open-weight mod-els to internalize abstraction-to-realization dynam-ics through training rather than prompting alone. Such training could reduce the surface-semantic trade-off observed in this study and potentially al-low open-weight models to achieve state-of-the-art performance in culturally grounded narrative generation. 
+
+9 Ethical Considerations 
+
+Our work primarily addresses story generation for children, a vulnerable audience. While our quan-titative and qualitative evaluations indicate that the decompression regimes we investigated pro-duce suitable and non-violent narratives, LLMs re-main stochastic by nature. We cannot guarantee 100% safety against the generation of toxic, bi-ased (Rooein et al., 2025), or inappropriate content in rare edge cases. Consequently, any real-world deployment of this work would require strict con-tent moderation guardrails and human oversight. Additionally, our findings are rooted in Persian literary traditions and cultural logic. There is a risk of overgeneralization if these findings are assumed to apply universally to other languages or cultures without empirical validation. Finally, our prompts were optimized for the specific models evaluated in this study; utilizing them in user-facing appli-cations or with untested models without rigorous safety testing could lead to unpredictable or lower-quality outputs. 
+
+References 
+
+Amirhossein Abaskohi, Sara Baruni, Mostafa Ma-soudi, Nesa Abbasi, Mohammad Hadi Ba-balou, Ali Edalat, Sepehr Kamahi, Samin Mahdizadeh Sani, Nikoo Naghavian, Danial Namazifard, Pouya Sadeghi, and Yadollah Yaghoobzadeh. 2024. Benchmarking large language models for Persian: A preliminary study focusing on ChatGPT. In Proceed-ings of the 2024 Joint International Conference on Computational Linguistics, Language Re-sources and Evaluation (LREC-COLING 2024) ,pages 2189--2203, Torino, Italia. ELRA and ICCL. Dhruv Agarwal, Mor Naaman, and Aditya Vashistha. 2025. Ai suggestions homogenize writing toward western styles and diminish cul-tural nuances. In Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems , CHI ’25, New York, NY, USA. Asso-ciation for Computing Machinery. 9Anthropic. 2025. Claude opus 4 & claude sonnet 4 system card. Accessed: Jan 3, 2026. Aristotle. 1902. The Poetics of Aristotle . Poetics. English & Greek. Macmillan, London and New York. Greek and English on opposite pages. Anirudh Atmakuru, Jatin Nainani, Rohith Siddhartha Reddy Bheemreddy, Anirudh Lakkaraju, Zonghai Yao, Hamed Zamani, and Haw-Shiuan Chang. 2024. Cs4: Measuring the creativity of large language models automati-cally by controlling the number of story-writing constraints. Preprint , arXiv:2410.04197. Mena Attia, Aashiq Muhamed, Mai Alkhamissi, Thamar Solorio, and Mona T. Diab. 2026. Be-yond understanding: Evaluating the pragmatic gap in LLMs’ cultural processing of figurative language. In Proceedings of the 19th Confer-ence of the European Chapter of the Associa-tion for Computational Linguistics (Volume 1: Long Papers) , pages 7238--7265, Rabat, Mo-rocco. Association for Computational Linguis-tics. Minwook Bae and Hyounghun Kim. 2024. Col-lective critics for creative story generation. In 
+
+Proceedings of the 2024 Conference on Empir-ical Methods in Natural Language Processing ,pages 18784--18819, Miami, Florida, USA. As-sociation for Computational Linguistics. Zouheir Banou, Sanaa El Filali, El Habib Benlah-mar, Fatima-Zahra Alaoui, Laila El Jiani, and Hasnae Sakhi. 2025. A systematic review of figurative language detection: Methods, chal-lenges, and multilingual perspectives. Natural Language Processing Journal , 13:100192. Margaret A. Boden. 1991. The Creative Mind: Myths and Mechanisms . Basic Books, Inc., New York, NY, USA. Isabel Cachola, Daniel Khashabi, and Mark Dredze. 2025. Evaluating the evaluators: Are readability metrics good measures of readabil-ity? In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Pro-cessing , pages 24011--24027, Suzhou, China. Association for Computational Linguistics. Chen Cecilia Liu, Fajri Koto, Timothy Baldwin, and Iryna Gurevych. 2024. Are multilingual LLMs culturally-diverse reasoners? an investi-gation into multicultural proverbs and sayings. In Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 2016--2039, Mexico City, Mexico. Association for Computational Linguistics. Justin Yang Chae, Md Tanvirul Alam, and Nidhi Rastogi. 2025. Towards understanding self-play for llm reasoning. Preprint , arXiv:2510.27072. Tuhin Chakrabarty, Yejin Choi, and Vered Shwartz. 2022. It’s not rocket science: Interpret-ing figurative language in narratives. Transac-tions of the Association for Computational Lin-guistics , 10:589--606. Tuhin Chakrabarty, Vishakh Padmakumar, He He, and Nanyun Peng. 2023. Creative natural language generation. In Proceedings of the 2023 Conference on Empirical Methods in Nat-ural Language Processing: Tutorial Abstracts ,pages 34--40, Singapore. Association for Com-putational Linguistics. Jianlv Chen, Shitao Xiao, Peitian Zhang, Kun Luo, Defu Lian, and Zheng Liu. 2024a. Bge m3-embedding: Multi-lingual, multi-functionality, multi-granularity text embed-dings through self-knowledge distillation. arXiv preprint arXiv:2402.03216 .Pinzhen Chen, Zhicheng Guo, Barry Haddow, and Kenneth Heafield. 2024b. Iterative translation refinement with large language models. In 
+
+Proceedings of the 25th Annual Conference of the European Association for Machine Transla-tion (Volume 1) , pages 181--190, Sheffield, UK. European Association for Machine Translation (EAMT). Cyril Chhun, Pierre Colombo, Fabian M. Suchanek, and Chloé Clavel. 2022. Of human criteria and automatic metrics: A benchmark of the evaluation of story generation. In Proceed-ings of the 29th International Conference on Computational Linguistics , pages 5794--5836, Gyeongju, Republic of Korea. International Committee on Computational Linguistics. Gheorghe Comanici, Eric Bieber, Mike Schaek-ermann, Ice Pasupat, Noveen Sachdeva, Inder-jit Dhillon, Marcel Blistein, Ori Ram, Dan 10 Zhang, Evan Rosen, Luke Marris, Sam Petulla, Colin Gaffney, Asaf Aharoni, Nathan Lintz, Tiago Cardal Pais, Henrik Jacobsson, Idan Szpektor, Nan-Jiang Jiang, and 3416 others. 2025. Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long con-text, and next generation agentic capabilities. 
+
+Preprint , arXiv:2507.06261. Mohammad-Hossein Dayani. 2000. A criteria for assessing the persian texts readability. Jour-nal of Social Sciences and Humanities of Shiraz University , 10(1):35--48. DeepSeek-AI, Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu, Shirong Ma, Peiyi Wang, Xiao Bi, Xiaokang Zhang, Xingkai Yu, Yu Wu, Z. F. Wu, Zhibin Gou, Zhihong Shao, Zhu-oshu Li, Ziyi Gao, and 181 others. 2025a. Deepseek-r1: Incentivizing reasoning capabil-ity in llms via reinforcement learning. Preprint ,arXiv:2501.12948. DeepSeek-AI, Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang, Bochao Wu, Chengda Lu, Chenggang Zhao, Chengqi Deng, Chenyu Zhang, Chong Ruan, Damai Dai, Daya Guo, Dejian Yang, Deli Chen, Dongjie Ji, Erhang Li, Fangyun Lin, Fucong Dai, and 181 others. 2025b. Deepseek-v3 technical report. Preprint ,arXiv:2412.19437. DeepSeek-AI, Aixin Liu, Aoxue Mei, Bangcai Lin, Bing Xue, Bingxuan Wang, Bingzheng Xu, Bochao Wu, Bowei Zhang, Chaofan Lin, Chen Dong, Chengda Lu, Chenggang Zhao, Chengqi Deng, Chenhao Xu, Chong Ruan, Damai Dai, Daya Guo, Dejian Yang, and 245 others. 2025c. Deepseek-v3.2: Pushing the fron-tier of open large language models. Preprint ,arXiv:2512.02556. Grant Eckstein, Jessica Chariton, and Robb Mark McCollum. 2011. Multi-draft composing: An iterative model for academic argument writ-ing. Journal of English for Academic Purposes ,10(3):162--172. Angela Fan, Mike Lewis, and Yann Dauphin. 2018. Hierarchical neural story generation. In 
+
+Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Vol-ume 1: Long Papers) , pages 889--898, Mel-bourne, Australia. Association for Computa-tional Linguistics. Angela Fan, Mike Lewis, and Yann Dauphin. 2019. Strategies for structuring story generation. In Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics ,pages 2650--2660, Florence, Italy. Association for Computational Linguistics. Sayan Ghosh and Shashank Srivastava. 2022. ePiC: Employing proverbs in context as a bench-mark for abstract language understanding. In 
+
+Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 3989--4004, Dublin, Ireland. Association for Computational Linguistics. Seraphina Goldfarb-Tarrant, Tuhin Chakrabarty, Ralph Weischedel, and Nanyun Peng. 2020. Content planning for neural story generation with aristotelian rescoring. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP) , pages 4319--4338, Online. Association for Computa-tional Linguistics. Carlos Gómez-Rodríguez and Paul Williams. 2023. A confederacy of models: a compre-hensive evaluation of LLMs on creative writ-ing. In Findings of the Association for Com-putational Linguistics: EMNLP 2023 , pages 14504--14528, Singapore. Association for Com-putational Linguistics. Kazjon Grace, Mary Lou Maher, Douglas Fisher, and Katherine Brady. 2015. Modeling expecta-tion for evaluating surprise in design creativity. In Design Computing and Cognition ’14 , pages 189--206, Cham. Springer International Publish-ing. Jian Guan, Ziqi Liu, and Minlie Huang. 2022. A corpus for understanding and generating moral stories. In Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguis-tics: Human Language Technologies , pages 5069--5087, Seattle, United States. Association for Computational Linguistics. Fantine Huot, Reinald Kim Amplayo, Jennimaria Palomaki, Alice Shoshana Jakobovits, Eliza-beth Clark, and Mirella Lapata. 2025. Agents’ 11 room: Narrative generation through multi-step collaboration. In The Thirteenth International Conference on Learning Representations .Mete Ismayilzada, Claire Stevenson, and Lonneke van der Plas. 2025. Evaluating creative short story generation in humans and large language models. In Proceedings of the 2025 Interna-tional Conference on Computational Creativity .Association for Computational Creativity. Sadegh Jafari, Farhan Farsi, Navid Ebrahimi, Mo-hamad Bagher Sajadi, and Sauleh Eetemadi. 2025. Dadmatools v2: an adapter-based natural language processing toolkit for the persian lan-guage. In Proceedings of the 1st Workshop on NLP for Languages Using Arabic Script , pages 37--43. Dan R Johnson, James C Kaufman, Brendan S Baker, John D Patterson, Baptiste Barbot, Adam E Green, Janet van Hell, Evan Kennedy, Grace F Sullivan, Christa L Taylor, and 1 oth-ers. 2023. Divergent semantic integration (dsi): Extracting creativity from narratives with distri-butional semantic modeling. Behavior Research Methods , 55(7):3726--3759. Pythagoras Karampiperis, Antonis Koukourikos, and Evangelia Koliopoulou. 2014. Towards machines for measuring creativity: The use of computational tools in storytelling activi-ties. In 2014 IEEE 14th International Con-ference on Advanced Learning Technologies ,pages 508--512. Paria Khoshtab, Danial Namazifard, Mostafa Ma-soudi, Ali Akhgary, Samin Mahdizadeh Sani, and Yadollah Yaghoobzadeh. 2025. Compar-ative study of multilingual idioms and simi-les in large language models. In Proceedings of the 31st International Conference on Com-putational Linguistics , pages 8680--8698, Abu Dhabi, UAE. Association for Computational Linguistics. Dawei Li, Bohan Jiang, Liangjie Huang, Alimo-hammad Beigi, Chengshuai Zhao, Zhen Tan, Amrita Bhattacharjee, Yuxuan Jiang, Canyu Chen, Tianhao Wu, Kai Shu, Lu Cheng, and Huan Liu. 2025. From generation to judg-ment: Opportunities and challenges of LLM-as-a-judge. In Proceedings of the 2025 Con-ference on Empirical Methods in Natural Lan-guage Processing , pages 2757--2791, Suzhou, China. Association for Computational Linguis-tics. Ximing Lu, Melanie Sclar, Skyler Hallinan, Niloo-far Mireshghallah, Jiacheng Liu, Seungju Han, Allyson Ettinger, Liwei Jiang, Khyathi Chandu, Nouha Dziri, and Yejin Choi. 2025. AI as hu-manity’s salieri: Quantifying linguistic creativ-ity of language models via systematic attribu-tion of machine text against web text. In The Thirteenth International Conference on Learn-ing Representations .Aman Madaan, Niket Tandon, Prakhar Gupta, Skyler Hallinan, Luyu Gao, Sarah Wiegr-effe, Uri Alon, Nouha Dziri, Shrimai Prabhu-moye, Yiming Yang, Shashank Gupta, Bod-hisattwa Prasad Majumder, Katherine Hermann, Sean Welleck, Amir Yazdanbakhsh, and Peter Clark. 2023. Self-refine: iterative refinement with self-feedback. In Proceedings of the 37th International Conference on Neural Informa-tion Processing Systems , NIPS ’23, Red Hook, NY, USA. Curran Associates Inc. Samar Mohamed Magdy, Sang Yun Kwon, Fakhraddin Alwajih, Safaa Taher Abdelfadil, Shady Shehata, and Muhammad Abdul-Mageed. 2025. JAWAHER: A multidialectal dataset of Arabic proverbs for LLM benchmark-ing. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Hu-man Language Technologies (Volume 1: Long Papers) , pages 12320--12341, Albuquerque, New Mexico. Association for Computational Linguistics. Mary Lou Maher. 2010. Evaluating creativity in humans, computers, and collectively intelligent systems. In Proceedings of the 1st DESIRE Net-work Conference on Creativity and Innovation in Design , DESIRE ’10, page 2228, Lancaster, GBR. Desire Network. Guillermo Marco, Julio Gonzalo, M.Teresa Mateo-Girona, and Ramón Del Castillo Santos. 2024. Pron vs prompt: Can large language mod-els already challenge a world-class fiction au-thor at creative text writing? In Proceed-ings of the 2024 Conference on Empirical Meth-ods in Natural Language Processing , pages 12 19654--19670, Miami, Florida, USA. Associa-tion for Computational Linguistics. Guillermo Marco, Luz Rello, and Julio Gon-zalo. 2025. Small language models can out-perform humans in short creative writing: Astudy comparing SLMs with humans and LLMs. In Proceedings of the 31st International Con-ference on Computational Linguistics , pages 6552--6570, Abu Dhabi, UAE. Association for Computational Linguistics. Matteo Marcuzzo, Alessandro Zangari, Andrea Albarelli, Jose Camacho-Collados, and Moham-mad Taher Pilehvar. 2025. Morables: A bench-mark for assessing abstract moral reasoning in LLMs with fables. In Proceedings of the 2025 Conference on Empirical Methods in Natu-ral Language Processing , pages 27715--27739, Suzhou, China. Association for Computational Linguistics. W. Mieder. 2004. Proverbs: A Handbook . Green-wood Folklore Handbooks. Bloomsbury Aca-demic. OpenAI, :, Sandhini Agarwal, Lama Ahmad, Ja-son Ai, Sam Altman, Andy Applebaum, Edwin Arbus, Rahul K. Arora, Yu Bai, Bowen Baker, Haiming Bao, Boaz Barak, Ally Bennett, Tyler Bertao, Nivedita Brett, Eugene Brevdo, Greg Brockman, Sebastien Bubeck, and 108 others. 2025. gpt-oss-120b & gpt-oss-20b model card. 
+
+Preprint , arXiv:2508.10925. OpenAI, :, Aaron Hurst, Adam Lerer, Adam P. Goucher, Adam Perelman, Aditya Ramesh, Aidan Clark, AJ Ostrow, Akila Welihinda, Alan Hayes, Alec Radford, Aleksander Mdry, Alex Baker-Whitcomb, Alex Beutel, Alex Borzunov, Alex Carney, Alex Chow, Alex Kirillov, and 401 others. 2024a. Gpt-4o system card. Preprint ,arXiv:2410.21276. OpenAI. 2025. Gpt-5 system card. Accessed: Jan 3, 2026. OpenAI, Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Floren-cia Leoni Aleman, Diogo Almeida, Janko Al-tenschmidt, Sam Altman, Shyamal Anadkat, Red Avila, Igor Babuschkin, Suchir Balaji, Va-lerie Balcom, Paul Baltescu, Haiming Bao, Mo-hammad Bavarian, Jeff Belgum, and 262 oth-ers. 2024b. Gpt-4 technical report. Preprint ,arXiv:2303.08774. William Orwig, Emma R Edenbaum, Joshua D Greene, and Daniel L Schacter. 2024. The lan-guage of creativity: Evidence from humans and large language models. The Journal of creative behavior , 58(1):128--136. Vishakh Padmakumar and He He. 2023. Does writing with language models reduce content di-versity? arXiv preprint arXiv:2309.05196 .Jonathan Pei, Zeeshan Patel, Karim El-Refai, and Tianle Li. 2024. SWAG: Storytelling with ac-tion guidance. In Findings of the Association for Computational Linguistics: EMNLP 2024 ,pages 14086--14106, Miami, Florida, USA. As-sociation for Computational Linguistics. Yiting Ran, Xintao Wang, Tian Qiu, Jiaqing Liang, Yanghua Xiao, and Deqing Yang. 2025. BOOK-WORLD: From novels to interactive agent so-cieties for story creation. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 15898--15912, Vienna, Austria. Association for Computational Linguistics. Rezvaneh Rezapour, Sullam Jeoung, Zhiwen You, and Jana Diesner. 2025. Tales of morality: Com-paring human- and LLM-generated moral sto-ries from visual cues. In Findings of the Asso-ciation for Computational Linguistics: EMNLP 2025 , pages 18915--18933, Suzhou, China. As-sociation for Computational Linguistics. Donya Rooein, Vilém Zouhar, Debora Nozza, and Dirk Hovy. 2025. Biased tales: Cultural and topic bias in generating children’s stories. In 
+
+Proceedings of the 2025 Conference on Empir-ical Methods in Natural Language Processing ,pages 52--72, Suzhou, China. Association for Computational Linguistics. Mark A. Runco and Garrett J. Jaeger. 2012. The standard definition of creativity. Creativity Re-search Journal , 24(1):92--96. Patrick E Shrout and Joseph L Fleiss. 1979. Intr-aclass correlations: uses in assessing rater relia-bility. Psychological bulletin , 86(2):420. Harish Tayyar Madabushi, Edward Gow-Smith, Marcos Garcia, Carolina Scarton, Marco Idiart, 13 and Aline Villavicencio. 2022. SemEval-2022 task 2: Multilingual idiomaticity detection and sentence embedding. In Proceedings of the 16th International Workshop on Semantic Evalua-tion (SemEval-2022) , pages 107--121, Seattle, United States. Association for Computational Linguistics. Gemma Team, Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin, Tatiana Matejovicova, Alexan-dre Ramé, Morgane Rivière, Louis Rouil-lard, Thomas Mesnard, Geoffrey Cideron, Jean bastien Grill, Sabela Ramos, Edouard Yvinec, Michelle Casbon, Etienne Pot, Ivo Penchev, and 197 others. 2025. Gemma 3 technical report. 
+
+Preprint , arXiv:2503.19786. Mistral AI Team. 2025a. Mistral online documents for mistral small 3.2. Accessed: Dec 31, 2025. Mistral AI Team. 2025b. Mistral online docu-ments for mistral small creative. Accessed: Dec 31, 2025. Maria Teleki, Vedangi Bengali, Xiangjue Dong, Sai Tejas Janjur, Haoran Liu, Tian Liu, Cong Wang, Ting Liu, Yin Zhang, Frank Shipman, and James Caverlee. 2025. A survey on LLMs for story generation. In Findings of the Asso-ciation for Computational Linguistics: EMNLP 2025 , pages 13954--13966, Suzhou, China. As-sociation for Computational Linguistics. Yufei Tian, Tenghao Huang, Miri Liu, Derek Jiang, Alexander Spangher, Muhao Chen, Jonathan May, and Nanyun Peng. 2024. Are large language models capable of generating human-level narratives? In Proceedings of the 2024 Conference on Empirical Meth-ods in Natural Language Processing , pages 17659--17681, Miami, Florida, USA. Associa-tion for Computational Linguistics. Maxim Tkachenko, Mikhail Malyuk, An-drey Holmanyuk, and Nikolai Liubimov. 2020-2025. Label Studio: Data labeling software. Open source software available from https://github.com/HumanSignal/label-studio. Maria Valentini, Jennifer Weber, Jesus Salcido, Téa Wright, Eliana Colunga, and Katharina von der Wense. 2023. On the automatic gen-eration and simplification of children’s stories. In Proceedings of the 2023 Conference on Em-pirical Methods in Natural Language Process-ing , pages 3588--3598, Singapore. Association for Computational Linguistics. Qianyue Wang, Jinwu Hu, Zhengping Li, Yufeng Wang, Daiyuan Li, Yu Hu, and Mingkui Tan. 2025. Generating long-form story using dynamic hierarchical outlining with memory-enhancement. In Proceedings of the 2025 Con-ference of the Nations of the Americas Chap-ter of the Association for Computational Lin-guistics: Human Language Technologies (Vol-ume 1: Long Papers) , pages 1352--1391, Albu-querque, New Mexico. Association for Compu-tational Linguistics. Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed H. Chi, Quoc V. Le, and Denny Zhou. 2022. Chain-of-thought prompting elicits reasoning in large language models. In Proceedings of the 36th In-ternational Conference on Neural Information Processing Systems , Red Hook, NY, USA. Cur-ran Associates Inc. Wenda Xie, Chao Guo, Yanqing Jing. Junle Wang, Yisheng Lv, and Fei-Yue Wang. 2025. Plug-and-play dramaturge: A divide-and-conquer approach for iterative narrative script refine-ment via collaborative llm agents. Preprint ,arXiv:2510.05188. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chu-jie Zheng, Dayiheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jia-long Tang, and 41 others. 2025. Qwen3 techni-cal report. Preprint , arXiv:2505.09388. Kevin Yang, Yuandong Tian, Nanyun Peng, and Dan Klein. 2022. Re3: Generating longer sto-ries with recursive reprompting and revision. In 
+
+Proceedings of the 2022 Conference on Empir-ical Methods in Natural Language Processing ,pages 4393--4479, Abu Dhabi, United Arab Emirates. Association for Computational Lin-guistics. Lili Yao, Nanyun Peng, Ralph Weischedel, Kevin Knight, Dongyan Zhao, and Rui Yan. 2019. Plan-and-write: towards better automatic sto-rytelling. In Proceedings of the Thirty-Third 
+
+14 Link Count         
+
+> https://lelb.net/ 73 https://esanj.ir/ 43 https://www.kanoon.ir/ 17 https://setare.com/ 8https://roozaneh.net/ 5https://namnak.com/ 3https://taaghche.com/ 1Total 150
+> Table 3: Source websites and counts of proverb-story pairs included in the PAND dataset.
+
+AAAI Conference on Artificial Intelligence and Thirty-First Innovative Applications of Artificial Intelligence Conference and Ninth AAAI Sympo-sium on Educational Advances in Artificial In-telligence , AAAI’19/IAAI’19/EAAI’19. AAAI Press. Jianing Zhou, Ziheng Zeng, Hongyu Gong, and Suma Bhat. 2021. Idiomatic expression para-phrasing without strong supervision. Preprint ,arXiv:2112.08592. 
+
+A Data Sources and Example of Dataset 
+
+This section provides supplementary details about the PAND dataset. Table 3 lists the source web-sites along with the corresponding numbers of proverb-story pairs included in the final corpus, and Table 4 presents an example instance from the PAND dataset. PAND dataset is intended strictly for non-commercial, academic research purposes to evaluate constrained semantic decompression. 
+
+B Experimental Details 
+
+To automatically generate Persian stories, we utilize a combination of proprietary and open-weight LLMs with strong Persian support. We specifically focus on smaller, efficient models to evaluate whether they can perform compa-rably to larger closed-source systems. Our fi-nal set of models comprises GPT-4.1 (OpenAI et al., 2024b), Gemma 3 (12B and 27B) (Team et al., 2025), and Mistral Small 3.2 24B (Team, 2025a). We additionally evaluated several other models for story generation, including Gemma3 4B (Team et al., 2025), Qwen3 (4B and 14B) (Yang et al., 2025), DeepSeek-V3.2 (DeepSeek-AI et al., 2025c), GPT-OSS-20B (OpenAI et al., 2025), and Mistral Small Creative (Team, 2025b). However, their performance was not reportable, as they frequently produced nonsensical outputs, non-Persian characters, or content unrelated to the target proverb. We access all models via the Open-Router API 4 using the default temperature of 1 to encourage diverse and creative responses. All other parameters are also set to their default values. The total cost of running the experiments amounts to approximately $100 USD. It is notable to men-tion that all models were accessed and employed in strict accordance with their respective licenses and Terms of Service, as well as their acceptable and intended use policies. 
+
+C Details of Feedback-Guided Semantic Decompression Experiment 
+
+To ensure the reproducibility of the feedback-guided regime experiments, we provide an algo-rithmic overview in Algorithm 1 and the specific configuration details below. 
+
+Model Configurations We utilized the Gemma 3 family of open-weight models. The Self-Correction setup involved a single model instance (either Gemma 3 12B or 27B) performing all roles. The Cross-Model Critique setup utilized Gemma 3 12B as the Writer and Editor, with Gemma 3 27B acting as the Critic. 
+
+Refinement Loop The process was executed for a fixed duration of three iterations. To ensure a strictly controlled comparison between the self-correction and cross-model settings, we generated a single set of initial drafts (Iteration 0) using the Writer persona and froze these drafts. Both the Self-Correction and Cross-Model pipelines then operated on this identical starting set. This ensures that any observed performance differences are at-tributable solely to the quality of the critique and 
+
+> 4https://openrouter.ai
+
+15 Proverb ﺑﺸکﻨﻪ اﯾﻦ دﺳﺖ کﻪ ﻧﻤک ﻧﺪاره.     
+
+> (Broken be the hand that has no salt.)
+> Meaning ﻧﺘﯿﺠﻪ ﻋکﺲ گﺮﻓﺘﻦ از ﺧﻮﺑی ﺑﻪ دﯾگﺮان.
+> (The act of receiving the opposite result of doing good to others.)
+> Story در ﯾک روﺳﺘﺎی ﺳﺮﺳﺒﺰ و زﯾﺒﺎ، ﯾک درﺧﺖ گﺮدوی ﺗﻨﻮﻣﻨﺪ و پﺮﺑﺎر زﻧﺪگی ﻣیکﺮد. اﯾﻦ درﺧﺖ گﺮدو ﻫﺮ ﺳﺎل ﺑﺎر و ﻣﯿﻮه ٔﺧﯿﻠی زﯾﺎدی ﻣی داد و ﻣﺮدم زﯾﺎدی از ﻣﯿﻮه و ﺳﺎﯾﻪ ٔآن اﺳﺘﻔﺎده ﻣیکﺮدﻧﺪ. اﯾﻦ درﺧﺖ گﺮدو در کﻨﺎر ﺟﺎده ﻗﺮار داﺷﺖ و ﺑﻪ اﯾﻦ دﻟﯿﻞ، ﻣﺴﺎﻓﺮاﻧی کﻪ ﺑﻪ روﺳﺘﺎ ﻣی آﻣﺪﻧﺪ، ﺑﺮای ﺧﻮردن گﺮدوی ﺧﻮﺷﻤﺰه و اﺳﺘﺮاﺣﺖ در ﺳﺎﯾﻪ ٔدرﺧﺖ، ﺑﻪ او پﻨﺎه ﻣی آوردﻧﺪ. وﻟی رﻓﺘﺎر ﻣﺴﺎﻓﺮان و ﺣﺘی ﻣﺮدم روﺳﺘﺎ ﺑﺎ اﯾﻦ درﺧﺖ اﺻﻼ ًﺧﻮب ﻧﺒﻮد. ﻣﺮدم ﺑﺮای اﯾﻨکﻪ گﺮدوی ﺑﯿﺸﺘﺮی از درﺧﺖ ﺑچﯿﻨﻨﺪ و ﺑﺨﻮرﻧﺪ، ﻫﻤﯿﺸﻪ ﺳﻨگ و چﻮب ﺑﻪ ﺷﺎﺧﻪﻫﺎی ﺑﺎﻻﯾی درﺧﺖ گﺮدو پﺮﺗﺎب ﻣیکﺮدﻧﺪ ﺗﺎ گﺮدوﻫﺎﯾی کﻪ ﺑﺮ روی ﺷﺎﺧﻪﻫﺎی ﺑﺎﻻﺗﺮ ﻫﺴﺘﻨﺪ، ﺑﻪ زﻣﯿﻦ ﺑﺮﯾﺰﻧﺪ. کﻢکﻢ ﺑﻪ ﺧﺎﻃﺮ اﯾﻦ رﻓﺘﺎر زﺷﺖ ﻣﺮدم و ﻧﺎﺳپﺎﺳی آنﻫﺎ، درﺧﺖ گﺮدو آﺳﯿﺐ زﯾﺎدی دﯾﺪ و ﺷﺎﺧﻪﻫﺎﯾﺶ ﺷکﺴﺖ. ﺑﻪ اﯾﻦ دﻟﯿﻞ، دﯾگﺮ ﻧﻤی ﺗﻮاﻧﺴﺖ ﻣﺜﻞ ﻗﺒﻞ، ﻣﯿﻮه و ﺳﺎﯾﻪ ﺑﻪ ﻣﺮدم ﺑﺪﻫﺪ. درﺧﺖ ﺑﯿچﺎره زﯾﺮ ﻟﺐ ﺑﺎ ﺧﻮد گﻔﺖ: »ﺑﺸکﻨﻪ اﯾﻦ دﺳﺖ کﻪ ﻧﻤک ﻧﺪاره! ﻫﻤﺎن ﻣﺮدﻣی کﻪ از ﻣﯿﻮه و ﺳﺎﯾﻪ ٔﻣﻦ اﺳﺘﻔﺎده ﻣیکﺮدﻧﺪ، ﺑﻪ ﺟﺎی ﺗﺸکﺮ کﺮدن، ﺑﺎ ﺳﻨگ و چﻮب از ﻣﻦ پﺬﯾﺮاﯾی کﺮدﻧﺪ!«
+> (In a lush and beautiful village, there lived a sturdy and fruitful walnut tree. Every year, it gave plenty of fruit, and many people enjoyed its shade. Since it was by the road, travelers sought refuge under it. However, the people were ungrateful. They threw stones and sticks to knock down the walnuts, breaking its branches. Eventually, the tree could no longer provide fruit or shade. The poor tree whispered to itself: “Broken be the hand that has no salt! The same people who enjoyed my fruit and shade treated me with stones instead of thanks!” )
+
+Table 4: An example from the PAND Dataset. Literal English translations are provided in parentheses in gray below the original Persian text. These translations are not included in the prompts presented to the model. 
+
+Algorithm 1 Iterative Story Generation  
+
+> 1:
+
+Input: Proverb P , Iterations K 
+
+> 2:
+
+Output: Final Story S 
+
+> 3:
+
+S ← Gen (P ) 
+
+> 4:
+
+for i ← 1 to K do  
+
+> 5:
+
+Sc, Exp, Rec ← Critic (S, P ) 
+
+> 6:
+
+S ← Editor (S, Sc, Exp, Rec ) 
+
+> 7:
+
+end for  
+
+> 8:
+
+return S
+
+editing, rather than random variations in the initial generation. To compare the effect of this refine-ment loop, we evaluate the initial draft (iteration 0, before entering the refinement loop) and the fi-nal draft (iteration 3, after finishing the refinement loop) utilizing our LLM-as-a-Judge and automatic scores. 
+
+D Calibration and Selection of LLM-as-a-Judge 
+
+To ensure our automatic evaluation acts as a reli-able proxy for human judgment, particularly re-garding the cultural nuances of Persian proverbs, we conducted an extensive calibration study. This section details the candidate models, agreement methodologies, and quantitative results that led to the selection of Gemini 2.5 Pro as our evaluator. 
+
+D.1 Candidate Models 
+
+We evaluated a diverse set of LLMs to serve as the judge. Our selection criteria balanced SOTA per-formance with the potential accessibility of open-weight models. 
+
+Proprietary SOTA Models To maximize the likelihood of capturing deep semantic and cul-tural alignment, we tested the strongest available closed-source models, including GPT-5 (OpenAI, 2025), GPT-4o (OpenAI et al., 2024a), Claude Sonnet 4 (Anthropic, 2025), and Gemini 2.5 Pro (Comanici et al., 2025). 
+
+Open-Weight Models We also investigated open-weight models to determine whether a cost-effective, locally hosted judge could achieve hu-man parity, including DeepSeek R1 (DeepSeek-AI et al., 2025a) and DeepSeek v3 (DeepSeek-AI et al., 2025b), Gemma 3 4B (Team et al., 2025), and Mistral Small 3.2 24B (Team, 2025a). 
+
+D.2 Methodology and Aggregation Strategies 
+
+We utilized the dataset described in Section 5.1, consisting of 40 human-written and 40 GPT-4.1-generated stories using the Prefix-Conditioned prompt (80 total), annotated by three human ex-perts. Each candidate LLM was prompted to 16 rate these stories on the same Likert scale used by humans and against the same qualitative met-rics (Relatedness, Creativity, Fluency, Suitability, and Overall Quality). To rigorously quantify the alignment between the LLM judge and human perception, we calculated four agreement metrics: ICC(2,k), ICC(3,k), Krippendorffs Alpha, and Ex-act Match accuracy. Furthermore, acknowledging that human agreement is not monolithic, we com-puted these metrics using four distinct aggregation strategies to verify robustness: 1. LLM vs. Median: Agreement between the LLM and the median human score, mitigat-ing outlier influence. 2. LLM vs. Mean: Agreement between the LLM and the average human score. 3. Pooled Consensus (All): Treating the LLM as a fourth independent annotator alongside the three humans to calculate group inter-rater reliability. 
+
+D.3 Results and Selection 
+
+The comparative results of these experiments are presented in Table 5. 
+
+SOTA vs. Open-Weight Gap A clear di-chotomy emerged between proprietary and open-weight models. While open-weight models (e.g., Mistral, Gemma, DeepSeek) offer efficiency, they consistently showed poor correlation with human judges on this task. This suggests that current open-weight models generally lack the cultural depth or instruction-following precision required for Persian semantic decompression evaluation. 
+
+Selection of Gemini 2.5 Pro Among the SOTA models, the competition was tight. GPT-5 and GPT-4o demonstrated strong alignment, perform-ing nearly on par with the leader in several cate-gories. However, Gemini 2.5 Pro emerged as the most robust model overall, achieving the highest agreement scores in 3 out of the 5 evaluation crite-ria (specifically Fluency, Suitability for Children, and Overall) within the Pooled Consensus setting. Furthermore, it maintained highly competitive per-formance in Relatedness and Creativity. Given its superior alignment on pragmatic constraints (Suit-ability) and overall consistency, we adopted Gem-ini 2.5 Pro as the fixed evaluator for all subsequent experiments. 
+
+E Detailed Results 
+
+This section provides complete numerical results for all experiments reported in the main paper, including both LLM-as-a-judge evaluations and structural metrics, across our different proverb de-compression strategies. 
+
+E.1 LLM-as-a-Judge 
+
+Table 6 presents judge scores (Mean ± Stan-dard Deviation) for all evaluated models on non-iterative prompts from the pure and surface-assisted regimes. Table 8 provides the corre-sponding scores for experiments under the itera-tive refinement framework of the feedback-guided regime. All scores were generated by our judge (Gemini 2.5 Pro) using the 5-point Likert scale de-scribed in Section 5.1. 
+
+E.2 Structural Metrics 
+
+Table 7 provides structural metrics for non-iterative prompts from the pure and surface-assisted regimes. Table 9 reports the corre-sponding metrics for experiments under the itera-tive refinement framework of the feedback-guided regime. 
+
+F Guidelines for Annotating Persian Children´ s Stories 
+
+This appendix provides instructions for three grad-uate annotators who evaluate Persian childrens stories in relation to specific Persian proverbs. Our annotators were Computer Engineering stu-dents and did the annotations voluntarily. The annotation process is conducted in Label Stu-dio (Tkachenko et al., 2020-2025) 5, where each story is assessed against five metrics: Relatedness, Creativity, Fluency, Suitability for Children, and Overall. Some stories may have been written by humans, and others may have been generated by large language models; however, all evaluations should be based on the content and the criteria de-scribed below. 
+
+Evaluation Criteria 1. Relatedness 
+
+This criterion measures how well a story reflects the meaning of the corresponding proverb. • 1: Not related: No meaningful connection to the proverb. 
+
+> 5https://labelstud.io/
+
+17 Type Model Measure Relatedness Creativity Fluency Suitability for Ch. Overall 
+
+Mean Med All Mean Med All Mean Med All Mean Med All Mean Med All 
+
+> Closed-Source
+
+GPT-4o 
+
+ICC2k 0.67 0.69 0.84 0.69 0.66 0.82 0.26 0.30 0.44 0.22 0.27 0.60 0.55 0.51 0.77 ICC3k 0.71 0.72 0.86 0.69 0.66 0.83 0.45 0.43 0.52 0.42 0.45 0.72 0.72 0.69 0.83 
+
+Krip’s α 0.48 0.51 0.57 0.53 0.49 0.54 -0.12 0.00 0.12 -0.18 -0.09 0.22 0.25 0.21 0.43 Match 14 41 13 20 50 16 12 43 11 3 23 3 5 20 4
+
+GPT-5 
+
+ICC2k 0.78 0.79 0.87 0.41 0.41 0.76 0.31 0.30 0.47 0.34 0.40 0.65 0.68 0.65 0.81 ICC3k 0.81 0.81 0.89 0.48 0.47 0.78 0.31 0.30 0.48 0.45 0.49 0.71 0.68 0.66 0.82 Krip’s α 0.62 0.64 0.62 0.18 0.19 0.43 0.18 0.18 0.17 0.08 0.15 0.29 0.51 0.48 0.52 Match 16 44 15 8 30 6 12 40 12 5 24 3 24 49 20 
+
+Sonnet 4 
+
+ICC2k 0.69 0.68 0.85 0.64 0.56 0.81 0.27 0.22 0.45 0.39 0.45 0.67 0.63 0.59 0.80 ICC3k 0.71 0.69 0.86 0.64 0.56 0.81 0.32 0.26 0.48 0.43 0.48 0.70 0.63 0.60 0.81 Krip’s α 0.52 0.51 0.58 0.46 0.39 0.52 0.06 0.03 0.14 0.19 0.26 0.33 0.45 0.42 0.50 Match 16 41 15 18 48 13 12 40 11 8 30 7 23 48 20 
+
+Gemini 2.5 Pro 
+
+ICC2k 0.69 0.68 0.85 0.40 0.37 0.73 0.40 0.36 0.51 0.63 0.65 0.75 0.73 0.66 0.82 ICC3k 0.74 0.72 0.87 0.55 0.51 0.79 0.43 0.38 0.53 0.68 0.69 0.78 0.72 0.66 0.83 
+
+Krip’s α 0.51 0.50 0.57 0.09 0.08 0.37 0.22 0.20 0.19 0.42 0.46 0.42 0.57 0.49 0.54 Match 16 37 16 8 24 6 13 40 12 13 36 13 21 45 17 
+
+> Open-Weight
+
+DeepSeek R1 
+
+ICC2k 0.47 0.48 0.80 0.34 0.26 0.75 0.27 0.32 0.45 0.17 0.23 0.59 0.39 0.37 0.74 ICC3k 0.59 0.57 0.84 0.34 0.26 0.76 0.31 0.35 0.48 0.31 0.39 0.70 0.48 0.47 0.77 Krip’s α 0.19 0.23 0.48 0.19 0.14 0.43 0.08 0.14 0.14 -0.22 -0.12 0.21 0.14 0.11 0.39 Match 16 41 14 13 37 9 11 42 11 4 22 4 17 33 14 
+
+DeepSeek V3 
+
+ICC2k 0.37 0.39 0.77 0.36 0.35 0.77 0.06 0.04 0.36 0.29 0.33 0.63 0.29 0.26 0.67 ICC3k 0.53 0.52 0.84 0.39 0.37 0.78 0.16 0.07 0.45 0.50 0.51 0.73 0.57 0.53 0.80 Krip’s α 0.06 0.11 0.44 0.19 0.17 0.45 -0.36 -0.25 0.06 -0.08 0.00 0.25 -0.16 -0.19 0.28 Match 15 37 14 19 49 15 12 37 12 5 29 5 5 13 4
+
+Gemma 3 
+
+ICC2k 0.46 0.52 0.78 0.09 0.09 0.64 -0.03 -0.02 0.13 0.17 0.23 0.69 -0.05 -0.01 0.62 ICC3k 0.46 0.52 0.79 0.11 0.11 0.68 -0.04 -0.02 0.15 0.17 0.23 0.61 -0.05 -0.01 0.64 Krip’s α 0.29 0.34 0.46 -0.05 -0.04 0.29 -0.12 -0.11 0.00 0.08 0.13 0.26 -0.07 -0.04 0.27 Match 9 32 9 16 37 11 8 26 7 11 26 9 20 33 16 
+
+Mistral 3.2 
+
+ICC2k 0.45 0.45 0.80 0.65 0.61 0.81 0.24 -0.05 0.44 0.47 0.50 0.71 0.52 0.49 0.78 ICC3k 0.45 0.45 0.81 0.65 0.61 0.82 0.25 -0.05 0.46 0.49 0.51 0.73 0.53 0.51 0.79 Krip’s α 0.29 0.29 0.50 0.48 0.44 0.52 0.11 -0.03 0.15 0.29 0.33 0.37 0.34 0.31 0.46 Match 12 41 10 17 44 13 13 35 12 16 42 12 24 48 19 
+
+Table 5: Inter-annotator agreement between human annotators and both closed-source and open-source LLMs across various metrics. Bold indicates the highest ICC(3,k) agreement score for each metric across all models. 
+
+• 2: Weakly related: Only minimal or indirect reference. • 3: Moderately related: Partially conveys the intended meaning. • 4: Well related: Clearly communicates the meaning. • 5: Fully related: Completely and accurately represents the meaning of the proverb. 
+
+2. Creativity 
+
+This metric assesses how much the story is like a short, creative, or interesting story. • 1: Very uninteresting: Very bor-ing/uninteresting. • 2: Slightly interesting: Limited creativity or entertainment value. • 3: Moderately interesting: Somewhat engag-ing and creative. • 4: Very interesting: Creative and engaging. • 5: Highly creative: Very creative/story-like 
+
+3. Fluency 
+
+Fluency assesses the grammatical correctness, clarity, and overall readability of the story. • 1: Very poor: multiple grammatical errors; difficult to read. • 2: Poor: Contains noticeable errors. • 3: Average: Generally readable but includes some issues. • 4: Good: Mostly accurate and fluent. • 5: Excellent: Clear, well-written, and free of errors. 
+
+4. Suitability for Children 
+
+This criterion determines whether the storys lan-guage, tone, and content are appropriate for a child audience. • 1: Completely unsuitable: Includes themes or elements inappropriate for children. 18 Story Details Judge Scores Decompression Regime Prompt Writer/Model Relatedness Creativity Fluency Suitability for Children Overall 
+
+– – Human 4.69 ± 0.84 3.20 ± 0.72 4.55 ± 0.66 3.95 ± 1.17 3.83 ± 0.86 
+
+Pure Zero-Shot 
+
+GPT-4.1 4.27 ± 1.31 3.11 ± 0.69 4.64 ± 0.56 4.85 ± 0.49 3.94 ± 0.82 
+
+Gemma-3-12B 2.87 ± 1.63 2.40 ± 0.61 3.70 ± 0.83 4.23 ± 1.01 2.75 ± 0.93 
+
+Gemma-3-27B 3.51 ± 1.55 2.65 ± 0.69 4.65 ± 0.56 4.75 ± 0.61 3.33 ± 0.96 
+
+Mistral-3.2-24B 2.37 ± 1.54 1.89 ± 0.59 2.65 ± 0.79 3.07 ± 0.97 2.08 ± 0.78 
+
+Persona 
+
+GPT-4.1 4.40 ± 1.16 3.12 ± 0.59 4.69 ± 0.54 4.93 ± 0.23 3.98 ± 0.68 
+
+Gemma-3-12B 3.16 ± 1.60 2.15 ± 0.44 3.85 ± 0.63 4.43 ± 0.70 2.81 ± 0.69 
+
+Gemma-3-27B 3.54 ± 1.66 2.37 ± 0.51 4.33 ± 0.67 4.57 ± 0.74 3.16 ± 0.83 
+
+Mistral-3.2-24B 2.27 ± 1.51 1.81 ± 0.63 2.65 ± 0.86 3.01 ± 1.10 1.94 ± 0.82 
+
+Outline CoT 
+
+GPT-4.1 4.55 ± 1.05 3.11 ± 0.61 4.77 ± 0.47 4.92 ± 0.35 4.07 ± 0.67 
+
+Gemma-3-12B 3.11 ± 1.60 2.72 ± 0.72 3.95 ± 0.86 4.38 ± 0.86 3.18 ± 1.00 
+
+Gemma-3-27B 3.47 ± 1.59 2.85 ± 0.68 4.27 ± 0.77 4.61 ± 0.76 3.43 ± 0.97 
+
+Mistral-3.2-24B 2.44 ± 1.60 1.99 ± 0.55 2.86 ± 0.80 3.26 ± 0.94 2.18 ± 0.83 
+
+Moral CoT 
+
+GPT-4.1 4.54 ± 1.02 2.96 ± 0.65 4.68 ± 0.66 4.92 ± 0.29 3.90 ± 0.64 
+
+Gemma-3-12B 3.39 ± 1.61 2.68 ± 0.59 3.70 ± 0.82 4.36 ± 0.78 3.15 ± 0.90 
+
+Gemma-3-27B 3.52 ± 1.57 2.83 ± 0.73 4.55 ± 0.65 4.64 ± 0.71 3.43 ± 0.92 
+
+Mistral-3.2-24B 2.54 ± 1.65 1.89 ± 0.53 3.06 ± 0.84 3.35 ± 0.99 2.14 ± 0.81 
+
+Surface-Assisted Prefix-Conditioned 
+
+GPT-4.1 4.43 ± 1.18 2.93 ± 0.63 4.40 ± 0.64 4.48 ± 0.86 3.73 ± 0.80 
+
+Gemma-3-12B 2.99 ± 1.70 2.22 ± 0.60 3.43 ± 0.86 3.39 ± 1.06 2.54 ± 0.88 
+
+Gemma-3-27B 3.35 ± 1.57 2.55 ± 0.56 4.31 ± 0.72 4.25 ± 0.89 3.18 ± 0.86 
+
+Mistral-3.2-24B 2.44 ± 1.56 1.76 ± 0.62 2.70 ± 1.02 2.90 ± 1.22 2.12 ± 0.90 
+
+Cue-Words 
+
+GPT-4.1 4.32 ± 1.12 2.97 ± 0.67 4.60 ± 0.54 4.81 ± 0.49 3.88 ± 0.74 
+
+Gemma-3-12B 3.06 ± 1.60 2.43 ± 0.57 3.64 ± 0.83 4.14 ± 1.01 2.93 ± 0.91 
+
+Gemma-3-27B 3.31 ± 1.62 2.73 ± 0.73 4.19 ± 0.72 4.42 ± 0.80 3.25 ± 1.02 
+
+Mistral-3.2-24B 2.47 ± 1.55 1.96 ± 0.54 2.70 ± 0.72 3.22 ± 0.99 2.19 ± 0.72 
+
+Table 6: LLM-as-a-judge scores (Gemini 2.5 Pro) for human and model-generated stories under different prompt-ing strategies. 
+
+• 2: Slightly unsuitable: Contains issues that reduce child-appropriateness or appeal. • 3: Moderately suitable: Generally acceptable but not strongly oriented toward children. • 4: Suitable: Appropriate, accessible, and ap-pealing for children. • 5: Highly suitable: Strongly child-friendly in tone, vocabulary, and content. 
+
+5. Overall 
+
+This rating reflects a general evaluation of the over-all quality of the story. • 1: Very poor: Lacks coherence or value. • 2: Poor: Contains significant weaknesses. • 3: Average: Acceptable but unremarkable. • 4: Good: Coherent, well-structured, and of solid quality. • 5: Excellent: High-quality. 
+
+General Annotation Instructions 
+
+• Objectivity : Annotators should focus only on the storys content and how well it aligns with the evaluation criteria. The storys origin, whether written by a human or generated by a model, should not affect their judgment. • Consistency : Annotators are expected to ap-ply the scoring standards uniformly across all stories to ensure reliability and fairness throughout the dataset. • Understanding the Proverb : Before evalu-ating any story associated with a proverb, an-notators should review the proverb and its in-tended meaning. • Accurate Recording : All scores ( 1–5) must be entered correctly into Label Studio. Anno-tators should verify that their inputs are prop-erly saved. • Optional Notes : If an annotator wants to comment on a specific annotation or high-light something unusual, they may include it in the comment section provided on the plat-form. 19 Story Details Structural Metrics Decompression Regime Prompt Writer/Model Semantic Diversity Lexical Diversity Surprise Novelty Readability                                                                                                                                                                                                                                                                                                                                                                                      
+
+> ––Human –0.89 ±0.03 0.17 ±0.10 –92 .66 ±1.27
+> Pure Zero-Shot
+> GPT-4.1 0.39 ±0.07 0.91 ±0.02 0.16 ±0.08 7.93 E-2±0.01 93 .29 ±0.75
+> Gemma-3-12B 0.41 ±0.07 0.91 ±0.03 0.18 ±0.10 7.68 E-2±0.02 94 .17 ±0.77
+> Gemma-3-27B 0.39 ±0.07 0.90 ±0.03 0.19 ±0.10 8.25 E-2±0.01 94 .09 ±0.63
+> Mistral-3.2-24B 0.41 ±0.07 0.85 ±0.16 0.17 ±0.10 8.44 E-2±0.02 93 .59 ±0.94
+> Persona
+> GPT-4.1 0.38 ±0.08 0.91 ±0.02 0.16 ±0.10 8.17 E-2±0.01 93 .30 ±0.80
+> Gemma-3-12B 0.41 ±0.07 0.91 ±0.02 0.18 ±0.10 8.49 E-2±0.01 93 .79 ±0.85
+> Gemma-3-27B 0.41 ±0.07 0.90 ±0.02 0.18 ±0.09 8.05 E-2±0.01 93 .97 ±0.61
+> Mistral-3.2-24B 0.40 ±0.07 0.77 ±0.20 0.16 ±0.10 9.57 E-2±0.01 92 .96 ±0.80
+> Outline CoT
+> GPT-4.1 0.39 ±0.08 0.92 ±0.02 0.15 ±0.09 8.01 E-2±0.01 93 .24 ±0.84
+> Gemma-3-12B 0.41 ±0.07 0.91 ±0.02 0.22 ±0.11 7.76 E-2±0.01 94 .13 ±0.77
+> Gemma-3-27B 0.41 ±0.07 0.91 ±0.02 0.20 ±0.11 7.65 E-2±0.01 94 .20 ±0.76
+> Mistral-3.2-24B 0.40 ±0.07 0.87 ±0.05 0.20 ±0.14 9.58 E-2±0.02 93 .47 ±0.81
+> Moral CoT
+> GPT-4.1 0.38 ±0.08 0.92 ±0.02 0.15 ±0.10 7.89 E-2±0.01 93 .20 ±0.77
+> Gemma-3-12B 0.42 ±0.06 0.91 ±0.02 0.18 ±0.09 7.47 E-2±0.01 93 .71 ±0.76
+> Gemma-3-27B 0.42 ±0.07 0.91 ±0.03 0.20 ±0.11 7.61 E-2±0.01 93 .95 ±0.81
+> Mistral-3.2-24B 0.41 ±0.07 0.88 ±0.05 0.20 ±0.13 8.74 E-2±0.01 92 .91 ±0.83
+> Surface-Assisted Prefix-Conditioned
+> GPT-4.1 0.17 ±0.07 0.91 ±0.02 0.12 ±0.08 7.40 E-2±0.01 92 .27 ±1.13
+> Gemma-3-12B 0.18 ±0.07 0.91 ±0.02 0.15 ±0.10 6.96 E-2±0.01 92 .88 ±1.25
+> Gemma-3-27B 0.20 ±0.08 0.90 ±0.03 0.15 ±0.10 7.56 E-2±0.01 93 .32 ±0.92
+> Mistral-3.2-24B 0.20 ±0.08 0.74 ±0.31 0.13 ±0.11 7.80 E-2±0.02 92 .78 ±1.12
+> Cue-Words
+> GPT-4.1 0.25 ±0.08 0.91 ±0.02 0.14 ±0.08 8.10 E-2±0.01 93 .10 ±0.80
+> Gemma-3-12B 0.31 ±0.07 0.91 ±0.02 0.19 ±0.09 7.76 E-2±0.01 94 .07 ±0.71
+> Gemma-3-27B 0.30 ±0.07 0.90 ±0.02 0.18 ±0.09 7.49 E-2±0.01 94 .01 ±0.74
+> Mistral-3.2-24B 0.27 ±0.06 0.86 ±0.09 0.21 ±0.12 8.42 E-2±0.01 93 .53 ±0.82
+
+Table 7: Evaluation of structural metrics for human and model-generated stories under different prompting strate-gies. 
+
+G Structural Metric Definitions 
+
+This section provides the formal definitions, equa-tions, and implementation details for all automatic evaluation metrics used in the main paper. It is notable to mention that we have used Dadma-Tools (Jafari et al., 2025) for extracting the lemma-tization of the tokens for implementing the metrics needed. 
+
+G.1 Diversity Lexical Diversity Lexical diversity measures surface-level variation in word usage. It is defined as the ratio of unique n-grams to the total number of n-grams in a story, for n ∈ { 1, 2, 3, 4, 5}:LexDiv n = #unique n-grams 
+
+#total n-grams .
+
+Values closer to 1 indicate richer and less repet-itive language. 
+
+Semantic Diversity Semantic diversity captures variation in meaning across stories written for the same proverb. Following (Padmakumar and He, 2023), we use the inverse homogenization score ,defined as the average pairwise semantic distance between stories for a given proverb. Given a story s written for proverb p, the score is defined as: inv_hom (s | p) = 1
+
+|Sp| − 1
+
+∑
+
+s′̸ =s
+
+semdis (s, s ′),
+
+where Sp is the set of all stories written for proverb p. In our experiments, |Sp| = 2,consisting of one human-written story and one LLM-generated story. The semantic distance be-tween two stories, semdis (s, s ’), is defined as 
+
+1 − cosine _similarity , where cosine similarity is computed between sentence embeddings. Sen-tence embeddings are generated using the bge-m3 
+
+model (Chen et al., 2024a). The resulting seman-tic distance lies in the range [0 , 2] , where higher values indicate greater semantic divergence. 
+
+G.2 Novelty 
+
+Novelty measures how semantically different a story is relative to the overall corpus (Runco and Jaeger, 2012; Maher, 2010). Follow-ing (Karampiperis et al., 2014; Johnson et al., 2023), each story is represented using dominant terms, defined as lemmatized content words. Let Sn denote a story and SG denote the corpus of all stories, with dominant term sets Tn and TG,20 Judge Scores Critic Writer/Editor Relatedness Creativity Fluency Suitability for Children Overall                                                                                                                 
+
+> —Human 4.69 ±0.84 3.20 ±0.72 4.55 ±0.66 3.95 ±1.17 3.83 ±0.86
+> —GPT-4.1 4.40 ±1.16 3.12 ±0.59 4.69 ±0.54 4.93 ±0.23 3.98 ±0.68
+> —Gemma-3-12B 3.16 ±1.60 2.15 ±0.44 3.85 ±0.63 4.43 ±0.70 2.81 ±0.69
+> —Gemma-3-27B 3.54 ±1.66 2.37 ±0.51 4.33 ±0.67 4.57 ±0.74 3.16 ±0.83
+> Gemma-3-12B Gemma-3-12B 3.45 ±1.63 2.85 ±0.66 3.53 ±0.61 4.43 ±0.82 3.27 ±0.79
+> Gemma-3-27B Gemma-3-12B 3.56 ±1.55 3.02 ±0.71 3.58 ±0.61 4.43 ±0.90 3.31 ±0.81
+> Gemma-3-27B Gemma-3-27B 3.75 ±1.53 3.18 ±0.63 4.21 ±0.66 4.78 ±0.61 3.68 ±0.79
+
+Table 8: LLM-as-a-judge scores (Gemini 2.5 Pro) for stories generated within our feedback-guided semantic decompression experiment.                                                                                                            
+
+> Structural Metrics Critic Writer/Editor Semantic Diver-sity Lexical Diver-sity Surprise Novelty Readability
+> —Human –0.89 ±0.03 0.17 ±0.10 –92 .66 ±1.27
+> —GPT-4.1 0.38 ±0.08 0.91 ±0.02 0.16 ±0.10 8.17 E−2±0.01 93 .30 ±0.80
+> —Gemma-3-12B 0.41 ±0.07 0.91 ±0.02 0.18 ±0.10 8.49 E−2±0.01 93 .79 ±0.85
+> —Gemma-3-27B 0.41 ±0.07 0.90 ±0.02 0.18 ±0.09 8.05 E−2±0.01 93 .97 ±0.61
+> Gemma-3-12B Gemma-3-12B 0.43 ±0.07 0.89 ±0.02 0.19 ±0.08 7.35 E−2±0.01 93 .45 ±0.80
+> Gemma-3-27B Gemma-3-12B 0.43 ±0.07 0.90 ±0.02 0.19 ±0.08 7.29 E−2±0.01 93 .75 ±0.77
+> Gemma-3-27B Gemma-3-27B 0.42 ±0.07 0.90 ±0.02 0.21 ±0.09 7.19 E−2±0.01 93 .77 ±0.70
+
+Table 9: Automatic evaluation results for stories generated within our feedback-guided semantic decompression experiment. 
+
+respectively. We compute the average semantic distance between all unordered term pairs within a story: 
+
+D(Sn) = 1
+
+|P (Tn)|
+
+∑ 
+
+> (i,j )∈P(Tn)
+
+semdis (Tn,i , T n,j ),
+
+and analogously for the corpus: 
+
+D(SG) = 1
+
+|P (TG)|
+
+∑ 
+
+> (i,j )∈P(TG)
+
+semdis (TG,i , T G,j ).
+
+The novelty of the story Sn is defined as: Nov (Sn) = 2 · | D(Sn) − D(SG)| .
+
+The novelty score ranges from 0 to 2, where higher values indicate greater semantic deviation from the corpus. 
+
+G.3 Surprise 
+
+Surprise reflects how much a story deviates from expectations as it unfolds (Boden, 1991; Maher, 2010; Grace et al., 2015). Follow-ing (Karampiperis et al., 2014), surprise is com-puted by comparing consecutive sentences. Let a story Sn consist of |F | sentences 
+
+{F1, . . . , F |F |}. The surprise score is defined as: Sur (Sn) = 2
+
+|F | − 1 
+
+> |F|
+
+∑
+
+> i=2
+
+|D(Fi) − D(Fi−1)| ,
+
+where D(·) refers to the average semantic distance defined in the previous metric. This score lies in the range [0 , 2] . Lower values indicate grad-ual semantic changes between sentences, while higher values indicate stronger and more unex-pected shifts in meaning. 
+
+G.4 Readability 
+
+To assess readability for Persian texts, we employ the Flesch–Dayani metric (Dayani, 2000), which estimates reading difficulty based on surface lin-guistic features: FD = 262 .835 −0.846 · |letters ||words | −1.01 · |words ||sentences | .
+
+Higher Flesch–Dayani scores indicate easier-to-read text, while lower scores correspond to greater textual complexity. 21 H Statistical Alignment of Feedback-Guided Enhancements with Human Preference 
+
+To establish a human ground truth for quality im-provement, we employed the same three expert an-notators who collaborated on collecting the gold data for our subjective metrics. We presented them with 40 randomly selected pairs of initial and final story drafts from the Gemma 3 27B self-correction experiment in a completely blind pro-cess (i.e., without revealing which version was the refined draft). Annotators were asked to select the preferred story. As shown in Table 10, results of the human eval-uation indicate a consistent preference for the post-feedback final drafts over the initial drafts across all three independent annotators. Individually, An-notators 1, 2, and 3 favored the final stories in 29, 23, and 25 of the evaluated pairs, respectively. When these individual selections are aggregated via majority vote, the final drafts were chosen 65% of the time (26 out of 40 pairs), compared to only 35% (14 out of 40) for the initial drafts. Further-more, out of the 40 samples, all three annotators were perfectly unanimous on 15 stories. Notably, 13 of these 15 exact matches favored the post-feedback stories, with only 2 favoring the initial drafts. This clear majority and the number of full consensus demonstrate that the applied feedback loop consistently yields noticeable improvements in the overall quality and appeal of the generated stories according to human judges.         
+
+> Annotator Initial Draft (before feedback) Selected Final Draft (after feedback) Selected
+> Annotator 1 11 29 Annotator 2 17 23 Annotator 3 15 25 Majority Vote between annotators 14 (35%) 26 (65%)
+> Table 10: Results of a blinded human pairwise prefer-ence study on 40 story pairs.
+
+To evaluate the alignment between human pref-erences and our calibrated LLM-as-a-Judge (Gem-ini 2.5 pro) scores, we analyzed the correlation be-tween human choices and the change in our subjec-tive metric scores following the refinement loop in our feedback-guided decompression regime. Given the limited sample size ( N = 40 ) of the hu-man evaluation set, we employed a non-parametric bootstrap approach to estimate the robustness of the observed correlations.                          
+
+> Metric Pearson r95% CI Sig.
+> Creativity 0.24 [−0.09 ,0.54] No Relatedness 0.19 [−0.06 ,0.42] No Overall Score 0.17 [−0.15 ,0.45] No Suitability (Children) 0.08 [−0.25 ,0.40] No Fluency -0.04 [−0.37 ,0.30] No
+> Table 11: Bootstrap analysis ( N= 40 , 10k iterations) of the correlation between metric score improvements and human preference. The table is sorted by correla-tion strength.
+
+We performed 10,000 bootstrap iterations. In each iteration, we resampled the 40 data pairs (hu-man preference, metric change) with replacement and calculated the Pearson correlation coefficient (r). The reported Mean Correlation represents the average r across all iterations. To assess statistical significance, we computed 95% Confidence Inter-vals (CI) using the percentile method (2.5th and 97.5th percentiles of the bootstrap distribution). Table 11 summarizes the results. A metric is considered to have a statistically significant corre-lation with human preference at the α = 0 .05 level if the 95% CI does not cross zero. As shown in the table, while Creativity and Relatedness exhibit positive directional trends (mean r > 0.19 ), the confidence intervals for all metrics include zero, indicating that the correlations are not statistically significant for this sample size. 
+
+I Examples of Decompression Gap 
+
+In this appendix section, we highlight instances of the decompression gap, illustrating situations where language models generate highly fluent text but fail to accurately ground abstract concepts into their narratives. Table 12 presents exam-ples of this phenomenon using GPT 4.1 instructed by the Moral CoT prompt to write stories based on proverbs. In these cases, the model ignores the underlying moral intent of the idioms and in-stead builds stories around their literal interpreta-tions. We attribute this shortcoming to the inherent difficulty of constrained semantic decompression, alongside a noticeable deficit in cultural knowl-edge and alignment within the model. For example, the literal translation of the first proverb in Table 12 is "What you read from the page, I know by heart." Its true cultural meaning emphasizes that an experienced person possesses 22 deep, internalized wisdom and does not need to rely on explicit sources. Rather than capturing this contrast between superficial knowledge and true mastery, GPT 4.1 took the phrase literally and wrote a story specifically about a child memoriz-ing a school poem, completely missing the deeper theme of wisdom. The second proverb translates literally to "Nei-ther a khan has come, nor a khan has gone." This idiom is culturally used to express that a situation remains entirely unchanged and that someone’s ac-tions had absolutely no impact. Once more, GPT 4.1 failed to build a narrative embodying this con-cept. Instead, it simply dropped the literal phrase into the dialogue of an unrelated story about a stolen seed. Finally, the third proverb translates to "With a new sleeve, eat the rice." Culturally, this is a cynical observation about how society values out-ward appearance and wealth over true inner worth. However, GPT 4.1 generated a story that con-cluded with the exact opposite moral. It wrote a narrative teaching that inner character matters more than clothes, thereby entirely reversing the intended cynical message of the original proverb. 
+
+J Prompt Templates 
+
+All prompt templates used in our experiments are presented in this appendix, in both their original Persian form and their English translations, span-ning Figures 6 through 27. 23 Idx Proverb Generated Story Rel. Flu. 
+
+1 آﻧچﻪ ﺗﻮ از رو ﻣی ﺧﻮاﻧی، ﻣﻦ از ﺑَﺮَم 
+
+(What you read from the page, I know by heart.) 
+
+در دﻫکﺪهای ﺳﺒﺰ و آرام، دو دوﺳﺖ ﺑﻪ ﻧﺎمﻫﺎی ﺳﺤﺮ و ﻧﺴﺘﺮن زﻧﺪگی ﻣیکﺮدﻧﺪ. ﺳﺤﺮ ﺧﯿﻠی ﺑﺎﻫﻮش ﺑﻮد و ﻋﺎﺷﻖ ﯾﺎدگﯿﺮی ﺷﻌﺮﻫﺎی ﺟﺪﯾﺪ، اﻣﺎ ﻧﺴﺘﺮن ﻫﻤﯿﺸﻪ دوﺳﺖ داﺷﺖ ﺣﺮفﻫﺎی ﺗﺎزه را از روی کﺘﺎب ﺑﺨﻮاﻧﺪ. ﯾک روز ﻣﺮﺑی ﻣﺪرﺳﻪ از ﺑچﻪﻫﺎ ﺧﻮاﺳﺖ ﺷﻌﺮی را ﺣﻔﻆ کﻨﻨﺪ و ﻓﺮدا ﺑﺮاﯾﺶ ﺑﺨﻮاﻧﻨﺪ. ﺷﺐ، ﺳﺤﺮ ﺑﺎ ﺷﻮر و ﺷﻮق ﺷﻌﺮ را چﻨﺪ ﺑﺎر ﺧﻮاﻧﺪ و آن را ﺑﻪ راﺣﺘی از ﺑﺮ کﺮد اﻣﺎ ﻧﺴﺘﺮن ﻧﺘﻮاﻧﺴﺖ ﺷﻌﺮ را ﺣﻔﻆ کﻨﺪ و ﻫﺮ ﺑﺎر ﻣﺠﺒﻮر ﺷﺪ ﺑﻪ کﺘﺎب ﻧگﺎه کﻨﺪ. ﻓﺮدا ﺻﺒﺢ، ﺑچﻪﻫﺎ ﺟﻤﻊ ﺷﺪﻧﺪ. ﻧﺨﺴﺖ ﻧﻮﺑﺖ ﻧﺴﺘﺮن ﺷﺪ. او کﺘﺎب ﺑﻪ دﺳﺖ گﺮﻓﺖ و ﺳﻌی کﺮد ﺷﻌﺮ را از روی کﺘﺎب ﺑﺨﻮاﻧﺪ اﻣﺎ ﺑﻌﻀی ﺑﯿﺖﻫﺎ را اﺷﺘﺒﺎه ﺧﻮاﻧﺪ. ﺑﻌﺪ ﻧﻮﺑﺖ ﺳﺤﺮ رﺳﯿﺪ. او ﺑﺎ ﻟﺒﺨﻨﺪ و ﺻﺪاﯾی ﺑﻠﻨﺪ، ﺷﻌﺮ را ﺑﺪون ﻫﯿچ ﻧگﺎه کﺮدﻧی ﺑﻪ کﺘﺎب، کﺎﻣﻞ و درﺳﺖ ﺧﻮاﻧﺪ. ﺑچﻪﻫﺎ ﺗﺸﻮﯾﻘﺶ کﺮدﻧﺪ. ﻣﺮﺑی ﻣﻬﺮﺑﺎن گﻔﺖ: "ﺑﻌﻀیﻫﺎ ﻣﺜﻞ ﺳﺤﺮ ﻫﺴﺘﻨﺪ کﻪ زود چﯿﺰﻫﺎ را ﯾﺎد ﻣی گﯿﺮﻧﺪ و از ﺑﺮ ﻣیکﻨﻨﺪ، ﺑﻌﻀیﻫﺎ ﻫﻢ ﺑﺎﯾﺪ ﺑﯿﺸﺘﺮ ﺗﻤﺮﯾﻦ کﻨﻨﺪ ﺗﺎ ﺑﻪ ﻫﻤﺎن ﺧﻮﺑی ﺷﻮﻧﺪ. ﻫﺮکﺴی راه ﺧﻮدش را دارد، اﻣﺎ ﻫﻤﯿﺸﻪ ﺗﻼش و ﺗﻤﺮﯾﻦ از ﻫﻤﻪ ﻣﻬﻢﺗﺮ اﺳﺖ." از آن روز ﺑﻪ ﺑﻌﺪ، ﻧﺴﺘﺮن از ﺳﺤﺮ ﺧﻮاﺳﺖ کﻪ راهﻫﺎی ﺧﻮب ﺣﻔﻆ کﺮدن ﺷﻌﺮ را ﺑﻪ او ﯾﺎد ﺑﺪﻫﺪ. ﺳﺤﺮ ﺑﺎ ﺧﻮﺷﺤﺎﻟی ﺑﻪ دوﺳﺘیاش اداﻣﻪ داد و ﺑﺎ ﻫﻢ ﺷﻌﺮﻫﺎی ﺑﯿﺸﺘﺮی ﯾﺎد گﺮﻓﺘﻨﺪ و دﯾگﺮ ﺗﻨﻬﺎ ﺑﻪ ﺧﻮاﻧﺪن از روی کﺘﺎب ﻗﺎﻧﻊ ﻧﺸﺪﻧﺪ. 
+
+(In a calm and green village, two friends named Sahar and Nastaran lived together. Sahar was very clever and loved learning new poems, but Nastaran always preferred to read new things from a book. One day, their teacher asked the children to memorize a poem and recite it the next day. That night, Sahar eagerly read the poem several times and easily memorized it, while Nastaran could not and had to keep looking at the book. The next morning, the children gathered. Nastaran went first. She held the book and tried to read the poem from it, but she misread some lines. Then it was Sahar’s turn. She smiled and recited the poem aloud, perfectly, without glancing at the book. The children cheered. The kind teacher said: “Some people, like Sahar, learn things quickly and memorize them; others need more practice to reach the same level. Everyone has their own path, but effort and practice are always what matter most.” From that day on, Nastaran asked Sahar to teach her good ways to memorize poems. Sahar happily continued their friendship, and together they learned more poems, no longer content with only reading from the book.) 
+
+2 52 ﻧﻪ ﺧﺎﻧی آﻣﺪه، ﻧﻪ ﺧﺎﻧی رﻓﺘﻪ 
+
+(Neither has a khan come, nor has a khan gone.) 
+
+در ﯾک دﻫکﺪهی کﻮچک و زﯾﺒﺎ، ﺗﻌﺪادی ﻣﺮغ و ﺧﺮوس در کﻨﺎر ﻫﻢ زﻧﺪگی ﻣیکﺮدﻧﺪ. آنﻫﺎ ﻫﺮ روز ﺻﺒﺢ ﺑﺎ ﻫﻢ ﺑﯿﺪار ﻣیﺷﺪﻧﺪ و دﻧﺒﺎل داﻧﻪ و کﺮم ﻣیگﺸﺘﻨﺪ. ﻣﯿﺎن گﻠﻪ، ﯾک ﺧﺮوس پُﺮ ﺳﺮ و ﺻﺪا ﺑﻪ اﺳﻢ ﻗﻠﻘﻠی ﺑﻮد کﻪ ﻫﻤﯿﺸﻪ دوﺳﺖ داﺷﺖ ﻣﺎﺟﺮا درﺳﺖ کﻨﺪ. ﯾک روز، وﻗﺘی ﻫﻤﻪ ﻣﺮغﻫﺎ و ﺧﺮوسﻫﺎ ﻣﺸﻐﻮل ﺧﻮردن ﺑﻮدﻧﺪ، ﻗﻠﻘﻠی چﺸﻤﺶ ﺑﻪ ﯾک داﻧﻪی ﺑﺰرگ اﻓﺘﺎد کﻪ کﻨﺎر ﻻﻧﻪ اﻓﺘﺎده ﺑﻮد. داﻧﻪ را ﺑﺮداﺷﺖ و ﺑﺎ ﺧﻮدش ﻓکﺮ کﺮد: »اگﺮ اﯾﻦ داﻧﻪ را ﺧﻮدم ﺗﻨﻬﺎﯾی ﺑﺨﻮرم، ﻫﯿچ کﺲ ﻫﻢ ﻣﺘﻮﺟﻪ ﻧﻤیﺷﻮد!« او داﻧﻪ را ﻗﻮرت داد و آرام ﺑﻪ کﻨﺎر دﯾگﺮ ﻣﺮغﻫﺎ ﺑﺮگﺸﺖ. وﻟی ﻫﻤﺎن ﻣﻮﻗﻊ، ﺧﺮوس داﻧﺎ کﻪ اﺳﻤﺶ ﻣﺶ ﻗُﻤﺮی ﺑﻮد ﺑﺎ ﺻﺪای ﺑﻠﻨﺪ پﺮﺳﯿﺪ: »ﺑچﻪﻫﺎ! کﺴی داﻧﻪی ﺑﺰرگ کﻨﺎر ﻻﻧﻪ را دﯾﺪه؟ ﻣﻦ دﻟﻢ ﻣی ﺧﻮاﺳﺖ ﺑﺮای ﻫﻤﻪ از آن داﻧﻪ ﻧﻘﻞ درﺳﺖ کﻨﻢ.« ﻣﺮغﻫﺎ و ﺧﺮوسﻫﺎ ﺑﺎ ﺗﻌﺠﺐ ﺑﻪ ﻫﻢ ﻧگﺎه کﺮدﻧﺪ. ﻫﯿچکﺲ ﺧﺒﺮ ﻧﺪاﺷﺖ داﻧﻪ کﺠﺎ رﻓﺘﻪ... وﻟی ﻗﻠﻘﻠی ﺑﺎ ﻣﻌﺼﻮﻣﯿﺖ ﺷﺎﻧﻪ ﺑﺎﻻ اﻧﺪاﺧﺖ و ﻃﻮری رﻓﺘﺎر کﺮد کﻪ اﻧگﺎر از چﯿﺰی ﺧﺒﺮ ﻧﺪارد. ﻣﺶ ﻗُﻤﺮی کﻤی اﯾﻦ ﻃﺮف و آن ﻃﺮف رﻓﺖ، ﺑﺎ کﻠﻪاش ﺧﺎکﻫﺎ را کﻨﺎر زد اﻣﺎ اﺛﺮی از داﻧﻪ پﯿﺪا ﻧکﺮد. ﺑﺎﻻﺧﺮه گﻔﺖ: »ﻋﺠﺐ! پﺲ داﻧﻪ گﻢ ﺷﺪ!« ﻣﺮغﻫﺎ کﻤی پچپچ کﺮدﻧﺪ وﻟی ﺑﻌﺪ ﻫﻤﻪ ﻓﺮاﻣﻮش کﺮدﻧﺪ و دوﺑﺎره ﻣﺸﻐﻮل ﻏﺬا ﺧﻮردن ﺷﺪﻧﺪ. روز گﺬﺷﺖ و ﻫﯿچکﺲ راﺟﻊ ﺑﻪ داﻧﻪ ﺣﺮﻓی ﻧﺰد. ﻗﻠﻘﻠی ﺑﺎ ﺧﻮدش ﻓکﺮ کﺮد: »ﻋﺠﺐ! ﻧﻪ ﺧﺎﻧی آﻣﺪه، ﻧﻪ ﺧﺎﻧی رﻓﺘﻪ! کﺴی ﻧﻔﻬﻤﯿﺪ چﻪ اﺗﻔﺎﻗی اﻓﺘﺎد!« اﻣﺎ ﺷﺐ وﻗﺘی در ﻻﻧﻪ ﺧﻮاﺑﯿﺪه ﺑﻮد، کﻤی دﻟﺶ گﺮﻓﺖ. ﺑﺎ ﺧﻮدش ﻓکﺮ کﺮد: »اگﺮ داﻧﻪ را ﺑﻪ دوﺳﺘﺎﻧﻢ ﻣی دادم، ﻫﻤﻪ ﺷﺎد ﻣیﺷﺪﯾﻢ و ﺑﺎ ﻫﻢ ﻣیﺧﻨﺪﯾﺪﯾﻢ، وﻟی اکﻨﻮن ﻓﻘﻂ ﺳﺎکﺖ و ﺑی ﺻﺪا ﯾک داﻧﻪ ﺧﻮردم.« ﺻﺒﺢ ﻓﺮدا، ﻗﻠﻘﻠی دﻟﺶ ﻃﺎﻗﺖ ﻧﯿﺎورد و پﯿﺶ ﻣﺶ ﻗُﻤﺮی رﻓﺖ. ﺑﺎ ﺷﺮﻣﻨﺪگی گﻔﺖ: »داداش ﻗﻤﺮی، ﻣﻦ داﻧﻪ را ﺧﻮردم و چﯿﺰی ﻧگﻔﺘﻢ. دﻟﻢ ﻣی ﺧﻮاﺳﺖ ﻫﻤﻪ ﺧﻮﺷﺤﺎل ﺷﻮﻧﺪ، اﻣﺎ ﺧﻮدﺧﻮاﻫی کﺮدم. دﯾگﺮ ﺗکﺮار ﻧﻤیکﻨﻢ.« ﻣﺶ ﻗُﻤﺮی ﻟﺒﺨﻨﺪ زد و گﻔﺖ: »ﻣﻬﻢ اﯾﻦ اﺳﺖ کﻪ راﺳﺘﺶ را گﻔﺘی و دوﺳﺖ داﺷﺘی ﺷﺎدی را ﺗﻘﺴﯿﻢ کﻨی. ﺑﺒﯿﻦ چﻄﻮر ﻫﻤﻪ چﯿﺰ دوﺑﺎره ﺧﻮب ﺷﺪ.« از آن روز ﺑﻪ ﺑﻌﺪ، ﻗﻠﻘﻠی ﯾﺎد گﺮﻓﺖ اگﺮ اﺷﺘﺒﺎﻫی کﺮد و ﻧﺎدﯾﺪه گﺮﻓﺖ، ﺷﺎﯾﺪ دﯾگﺮان ﻣﺘﻮﺟﻪ ﻧﺸﻮﻧﺪ، اﻣﺎ ﺧﻮدش ﺑﻬﺘﺮ از ﻫﺮ کﺴی ﻣیﻓﻬﻤﺪ و ﺑﻬﺘﺮ اﺳﺖ ﺷﺠﺎع ﺑﺎﺷﺪ و راﺳﺘﺶ را ﺑگﻮﯾﺪ. 
+
+(In a small and beautiful village, a group of hens and roosters lived together. Every morning, they woke up together and searched for seeds and worms. Among the flock was a very noisy rooster named Gholgholi, who always loved to stir up trouble. One day, while all the hens and roosters were busy eating, Gholgholi noticed a large seed lying beside the coop. He picked it up and thought to himself, If I eat this seed all by myself, no one will even notice! He swallowed the seed and quietly returned to the others. Just then, the wise rooster, whose name was Mash Ghomri, loudly asked, Everyone! Has anyone seen the big seed beside the coop? I wanted to make a sweet treat from it for all of us. The hens and roosters looked at each other in surprise. No one knew where the seed had gone but Gholgholi innocently shrugged his shoulders and acted as if he knew nothing about it. Mash Ghomri searched here and there, pushing the dirt aside with his beak, but he could not find any sign of the seed. Finally, he said, How strange! The seed has disappeared! The hens whispered among themselves for a while, but soon everyone forgot about it and went back to eating. The day passed, and no one talked about the seed again. Gholgholi thought to himself, Well, neither has a khan come, nor has a khan gone! No one realized what I did! But that night, as he lay in the coop, he began to feel sad. He thought, If I had shared the seed with my friends, we all could have been happy and laughed together. But instead, I selfishly ate it all alone. The next morning, Gholgholi could no longer bear the guilt and went to Mash Ghomri. Embarrassed, he said, Brother Ghomri, I ate the seed and didnt say anything. I wanted everyone to be happy, but I acted selfishly. I won’t do it again. Mash Ghomri smiled and said, What matters is that you told the truth and wanted to share happiness with others. See how everything became good again. From that day on, Gholgholi learned that if he made a mistake and ignored it, others might not notice, but he himself would always know. And it is better to be brave and tell the truth.) 
+
+2 53 آﺳﺘﯿﻦ ﻧﻮ پﻠﻮ ﺑﺨﻮر 
+
+(With a new sleeve, eat rice.) 
+
+روزی روزگﺎری، ﻣﻮش کﻮچﻮﻟﻮﯾی ﺑﻪ اﺳﻢ ﻧﺎزی ﺑﻮد کﻪ ﻟﺒﺎسﻫﺎﯾﺶ کﻬﻨﻪ و پﺎره ﺑﻮد. روزی ﺷﻨﯿﺪ ﻗﺮار اﺳﺖ در ﺟﺸﻦ ﺟﻨگﻞ ﻏﺬای ﺧﻮﺷﻤﺰه ای ﺑﺪﻫﻨﺪ اﻣﺎ ﻓﻘﻂ ﺑﻪ ﻣﻬﻤﺎنﻫﺎی ﺧﻮشﻟﺒﺎس ﻏﺬا ﻣی دﻫﻨﺪ. ﻧﺎزی ﻧﺎراﺣﺖ ﺷﺪ، ﺗﺎ اﯾﻨکﻪ روﺑﺎه ﻣﻬﺮﺑﺎن ﯾک آﺳﺘﯿﻦ ﻧﻮی زﯾﺒﺎ ﺑﻪ او داد. ﻧﺎزی ﺑﺎ ﺧﻮﺷﺤﺎﻟی آﺳﺘﯿﻦ را پﻮﺷﯿﺪ و ﺑﻪ ﺟﺸﻦ رﻓﺖ. اﻣﺎ او ﺑﻪ ﺟﺰ آﺳﺘﯿﻦ، ﻫﻤﺎن ﻟﺒﺎسﻫﺎی کﻬﻨﻪی ﻫﻤﯿﺸگی را داﺷﺖ. وﻗﺘی ﻧﻮﺑﺖ ﻏﺬا ﺧﻮردن او رﺳﯿﺪ، ﻣﯿﺰﺑﺎن ﺑﻪ آﺳﺘﯿﻦ او ﻧگﺎه کﺮد و ﺑﺎ ﺗﻌﺠﺐ گﻔﺖ: "چﺮا ﻓﻘﻂ آﺳﺘﯿﻨﺖ ﻧﻮ اﺳﺖ؟ ﺗﻮ ﻫﻤﺎﻧی کﻪ ﻫﻤﯿﺸﻪ ﻣﻬﺮﺑﺎن و ﺧﻮش رﻓﺘﺎری، ﻣﺎ ﺗﻮ را ﺑﻪ ﺧﺎﻃﺮ دل ﺧﻮﺑﺖ دوﺳﺖ دارﯾﻢ، ﻧﻪ ﻟﺒﺎﺳﺖ!" ﻧﺎزی ﯾﺎد گﺮﻓﺖ کﻪ ارزش آدمﻫﺎ ﺑﻪ دل و رﻓﺘﺎرﺷﺎن اﺳﺖ، ﻧﻪ ﻟﺒﺎسﻫﺎﯾﺸﺎن. از آن روز ﻧﺎزی ﺑﺎ اﻣﯿﺪ ﺑﯿﺸﺘﺮی زﻧﺪگی کﺮد و ﻓﻬﻤﯿﺪ دوﺳﺘی و ﻣﻬﺮﺑﺎﻧی از ﻫﺮ ﻟﺒﺎﺳی زﯾﺒﺎﺗﺮ اﺳﺖ. 
+
+(Once upon a time, there was a little mouse named Nazi whose clothes were old and torn. One day she heard that at the forest festival delicious food would be served, but only to well-dressed guests. Nazi felt sad, until a kind fox gave her a beautiful new sleeve. Happily, Nazi put it on and went to the festival. But apart from the sleeve, she was wearing the same old clothes as always. When it was her turn to eat, the host looked at her sleeve and said in surprise: “Why is only your sleeve new? You are the one who is always kind and well-mannered. We love you for your good heart, not your clothes!” Nazi learned that a person’s worth lies in their heart and behavior, not their clothing. From that day on, Nazi lived with greater hope and understood that friendship and kindness are more beautiful than any clothing.) 
+
+1 4
+
+Table 12: Examples of decompression gap for generated stories by GPT 4.1 using the Moral CoT prompt. Literal English translations are provided in parentheses in gray below the original Persian text. These translations are not included in the prompts provided to the model or in the model’s outputs. Rel. = Judge Relatedness Score, Flu. = Judge Fluency Score. 
+
+24 Zero-Shot Prompt (Original) 
+
+.ﺪھد نﺎﺸﻧ یﺑﻮﺧﮫﺑ را  ﺮﯾز ﻞﺜﻤﻟابﺮﺿ یﻗﻼﺧا مﺎﯿپ و مﻮﮭﻔﻣ ﮫک (ﮫﻤﻠک {word_count } ﺮﺜکاﺪﺣ) ﺲﯾﻮﻨﺑ یﺳرﺎﻓ نﺎﺑز ﮫﺑ ﮫﻧﺎکدﻮک نﺎﺘﺳدا  کﯾ
+
+:ﻞﺜﻤﻟابﺮﺿ
+
+{proverb }
+
+.ﻦکﻧ ﮫﻓﺎﺿا یﺤﯿﺿﻮﺗ چﯿھ و دان ﺮگﺮﺑ یﺳرﺎﻓ نﺎﺑز ﮫﺑ را  نﺎﺘﺳدا  ﻦﺘﻣ ﻂﻘﻓFigure 6: Zero-shot story generation prompt (original Persian). Zero-Shot Prompt (Translated) 
+
+Generate a children's story in Persian (no more than {word_count} words) that clearly illustrates the meaning of the following proverb. 
+
+Proverb: 
+
+{proverb} 
+
+Only return the story in Persian, and do not add any explanations. 
+
+Figure 7: Zero-shot story generation prompt (translated from Persian). Moral CoT Prompt (Original) 
+
+و قﻼﺧ یﮫﻧﺎکدﻮک نﺎﺘﺳدا  کﯾ م، ﻮﮭﻔﻣ نﺎﻤھ سﺎﺳا ﺮﺑ ﺲپﺳ .هﺪﺑ ﺢﯿﺿﻮﺗ هﺎﺗﻮک ﮫﻠﻤﺟ دو  ﺎﯾ کﯾ در  را  ﺮﯾز ﻞﺜﻤﻟابﺮﺿ یﻗﻼﺧا مﺎﯿپ و مﻮﮭﻔﻣ اﺪﺘﺑا
+
+.(ﮫﻤﻠک {word_count } ﺮﺜکاﺪﺣ) ﺲﯾﻮﻨﺑ یﺳرﺎﻓ نﺎﺑز ﮫﺑ ﻢﺠﺴﻨﻣ
+
+:ﻞﺜﻤﻟابﺮﺿ
+
+{proverb }
+
+:ﻦکﻧ ﮫﻓﺎﺿا یﺤﯿﺿﻮﺗ چﯿھ و دان ﺮگﺮﺑ ﺮﯾز ﺐﻟﺎﻗ در  ً ﺎﻘﯿﻗد را  یﺟوﺮﺧ ن، ﺎﯾﺎپ در 
+
+<MORAL >
+
+[ﻞﺜﻤﻟابﺮﺿ مﻮﮭﻔﻣ]
+
+<MORAL />
+
+<STORY >
+
+[نﺎﺘﺳدا  ﻦﺘﻣ]
+
+<STORY />
+
+Figure 8: Moral CoT story generation prompt (original Persian). 
+
+25 Moral CoT Prompt (Translated) 
+
+First, explain the meaning and moral message of the following proverb in one or two short sentences. Then, based on that meaning, write a creative and coherent children's story in Persian (no more than {word_count} words). 
+
+Proverb: 
+
+{proverb} 
+
+Finally, return the output exactly in the following format and do not add any explanations: 
+
+<MORAL> 
+
+[Meaning of the proverb] 
+
+</MORAL> 
+
+<STORY> 
+
+[Text of the story] 
+
+</STORY> Figure 9: Moral CoT story generation prompt (translated from Persian). Outline CoT Prompt (Original) 
+
+اﺪﺘﺑا .ﺪھد نﺎﺸﻧ یﺑﻮﺧﮫﺑ را  ﺮﯾز ﻞﺜﻤﻟابﺮﺿ یﻗﻼﺧا مﺎﯿپ و مﻮﮭﻔﻣ ﮫک ﺲﯾﻮﻨﺑ یﯾﻮﻄﺳار  رﺎﺘﺧﺎﺳ ٔ ﮫﯾﺎپ ﺮﺑ ﮫﻧﺎکدﻮک نﺎﺘﺳدا  کﯾ و ﻦک ﺮکﻓ مﺎگﮫﺑمﺎگ
+
+ﺮﺜکاﺪﺣ) ﺲﯾﻮﻨﺑ یﺳرﺎﻓ نﺎﺑز ﮫﺑ ﻞﻣﺎک نﺎﺘﺳدا  آن،  سﺎﺳا ﺮﺑ ﺲپﺳ ،ﻦک دﺎﺠﯾا نﺎﯾﺎپ و ﮫﻧﺎﯿﻣ ز، ﺎﻏآ ﻞﻣﺎﺷ نﺎﺘﺳدا  ای ﮫﻠﺣﺮﻣﮫﺳ یﻠک حﺮط کﯾ
+
+.(ﮫﻤﻠک {word_count }
+
+:ﻞﺜﻤﻟابﺮﺿ
+
+{proverb }
+
+:ﻦکﻧ ﮫﻓﺎﺿا یﺤﯿﺿﻮﺗ چﯿھ و دان ﺮگﺮﺑ ﺮﯾز ﺐﻟﺎﻗ در  ً ﺎﻘﯿﻗد را  یﺟوﺮﺧ ن، ﺎﯾﺎپ در 
+
+<OUTLINE >
+
+[یﯾﻮﻄﺳار  ای ﮫﻠﺣﺮﻣ ﮫﺳ حﺮط]
+
+<OUTLINE />
+
+<STORY >
+
+[نﺎﺘﺳدا  ﻦﺘﻣ]
+
+<STORY />
+
+Figure 10: Outline CoT story generation prompt (original Persian). 
+
+26 Outline CoT Prompt (Translated) 
+
+Think step by step and write a children’s story based on an Aristotelian structure that clearly conveys the meaning and moral message of the following proverb. First, create a three-act outline of the story consisting of a beginning, a middle, and an end. Then, based on that outline, write the complete story in Persian (no more than {word_count} words). 
+
+Proverb: 
+
+{proverb} 
+
+Finally, return the output exactly in the following format and do not add any explanations: 
+
+<OUTLINE> 
+
+[Three-act Aristotelian outline] 
+
+</OUTLINE> 
+
+<STORY> 
+
+[Text of the story] 
+
+</STORY> Figure 11: Outline CoT story generation prompt (translated from Persian). Persona Prompt (Original) 
+
+System Prompt: 
+
+ای ﺮﺑ ﺐﺳﺎﻨﻣ یﻗﻼﺧا مﺎﯿپ کﯾ دارای  ﮫﺸﯿﻤھ و اب، ﺬﺟ ،ﮫﻧﺎﻗﻼﺧ ﺖﯾﺎھنﺎﺘﺳدا  .یﺘﺴھ یﺳرﺎﻓ نﺎﺑز ﮫﺑ ﮫﻧﺎکدﻮک یﺎھنﺎﺘﺳدا  ای ﮫﻓﺮﺣ هﺪﻨﺴﯾﻮﻧ کﯾ ﻮﺗ
+
+.ﺪﻨﺘﺴھ نﺎکدﻮک
+
+User Prompt: 
+
+نﺎﺷﻧ یﺑوﺧﮫﺑ ر را ﯾل ز ﺛﻣﻟارب ﺿ یﻗﻼﺧم ا ﺎﯾپ وم و ﮭﻔﻣ ﮫک (ﮫﻣﻠک {word_count } رﺛکدا ﺣ) سﯾوﻧﺑ یﺳرﺎﻓ نﺎﺑز ﮫﺑ ﮫﻧﺎکود ک نﺎﺗﺳدا  کﯾ
+
+د. ھد
+
+:ﻞﺜﻤﻟابﺮﺿ
+
+{proverb }
+
+.ﻦکﻧ ﮫﻓﺎﺿا یﺤﯿﺿﻮﺗ چﯿھ و دان ﺮگﺮﺑ یﺳرﺎﻓ نﺎﺑز ﮫﺑ را  نﺎﺘﺳدا  ﻦﺘﻣ ﻂﻘﻓ
+
+Figure 12: Persona story generation prompt (original Persian). 
+
+27 Persona Prompt (Translated) 
+
+System Prompt: 
+
+You are a professional Persian children's story writer. Your stories are creative, engaging, and always reflect a moral lesson suitable for children. 
+
+User Prompt: 
+
+Generate a children's story in Persian (no more than {word_count} words) that clearly illustrates the meaning of the following proverb. 
+
+Proverb: 
+
+{proverb} 
+
+Only return the story in Persian, and do not add any explanations. Figure 13: Persona story generation prompt (translated from Persian). Prefix-Conditioned  Prompt (Original) 
+
+نﺎﺸﻧ یﺑﻮﺧﮫﺑ را  ﺮﯾز ﻞﺜﻤﻟابﺮﺿ مﻮﮭﻔﻣ ﮫک ای ﮫﻧﻮگﮫﺑ (ﮫﻤﻠک {word_count } ﺮﺜکاﺪﺣ) ﻦک ﻞﻣﺎک یﺳرﺎﻓ نﺎﺑز ﮫﺑ را  ﺮﯾز ﮫﻧﺎکدﻮک نﺎﺘﺳدا 
+
+.ﺪھد
+
+:ﻞﺜﻤﻟابﺮﺿ
+
+{proverb }
+
+:نﺎﺘﺳدا  زﺎﻏآ
+
+{two_sentences }
+
+.ﻦکﻧ ره ﺎﺷا ﺰﯿﻧ ﻞﺜﻤﻟابﺮﺿ ﮫﺑ و ﻦکﻧ ﮫﻓﺎﺿا یﺤﯿﺿﻮﺗ چﯿھ دان؛ ﺮگﺮﺑ یﺳرﺎﻓ نﺎﺑز ﮫﺑ را  اول،  ٔ ﮫﻠﻤﺟ دو  ﻞﻣﺎﺷ ن، ﺎﺘﺳدا  ﻞﻣﺎک ﻦﺘﻣ ﻂﻘﻓ
+
+Figure 14: Prefix-Conditioned story generation prompt (original Persian). Prefix-Conditioned Prompt (Translated) 
+
+Complete the following children's story in Persian (no more than {word_count} words), ensuring that it illustrates the meaning of the given proverb. 
+
+Proverb: 
+
+{proverb} 
+
+Beginning of the story: 
+
+{two_sentences} 
+
+Only return the complete story text, including the first two sentences, in Persian; do not include any explanations and do not mention the proverb. 
+
+Figure 15: Prefix-Conditioned story generation prompt (translated from Persian). 
+
+28 Cue-Words  Prompt (Original) 
+
+.ﺪھد نﺎﺸﻧ یﺑﻮﺧﮫﺑ را  ﺮﯾز ﻞﺜﻤﻟابﺮﺿ یﻗﻼﺧا مﺎﯿپ و مﻮﮭﻔﻣ ﮫک (ﮫﻤﻠک {word_count } ﺮﺜکاﺪﺣ) ﺲﯾﻮﻨﺑ یﺳرﺎﻓ نﺎﺑز ﮫﺑ ﮫﻧﺎکدﻮک نﺎﺘﺳدا  کﯾ
+
+{keywords } :ﺪﺷﺎﺑ ﺰﯿﻧ نﺎگواژ  ﻦﯾا ﻞﻣﺎﺷ ﺪﯾﺎﺑ نﺎﺘﺳدا 
+
+:ﻞﺜﻤﻟابﺮﺿ
+
+{proverb }
+
+.ﻦکﻧ ﮫﻓﺎﺿا یﺤﯿﺿﻮﺗ چﯿھ و دان ﺮگﺮﺑ یﺳرﺎﻓ نﺎﺑز ﮫﺑ را  نﺎﺘﺳدا  ﻦﺘﻣ ﻂﻘﻓFigure 16: Cue-Words story generation prompt (original Persian). Cue-Words Prompt (Translated) 
+
+Generate a children's story in Persian (no more than {word_count} words) that clearly illustrates the meaning of the following proverb. The story must also include the following words: {keywords} 
+
+Proverb: 
+
+{proverb} 
+
+Only return the story in Persian, and do not add any explanations. 
+
+Figure 17: Cue-Words story generation prompt (translated from Persian). Editor Persona Prompt for the Feedback-Guided Framework  (Original) 
+
+.یﺘﺴھ ﮫﻧﺎکدﻮک یﺎھنﺎﺘﺳدا  ای ﮫﻓﺮﺣ رﺎﺘﺳاﺮﯾو کﯾ ﻮﺗ
+
+ﻞﺜﻤﻟابﺮﺿ سﺎﺳا ﺮﺑ نﺎﺘﺳدا  کﯾ "{proverb}"  ﺖﺳا هﺪﺷ ﮫﺘﺷﻮﻧ.
+
+نﺎﺘﺳدا  یﻠﻌﻓ ﻦﺘﻣ:
+
+{current_story} 
+
+ﺖﺳا داده  را  ﺎھﮫﯿﺻﻮﺗ و ات ﺮﻤﻧ رد، ﻮﺧزﺎﺑ ﻦﯾا نﺎﺘﺳدا  ﻦﯾا ﮫﺑ ﺪﻘﺘﻨﻣ کﯾ:
+
+"رد ﻮﺧزﺎﺑ: {feedback}" 
+
+(ﺖﺳا 5 ﻦکﻤﻣ هﺮﻤﻧ ﻦﯾﺮﺘﺸﯿﺑ) یﻠﻌﻓ ات ﺮﻤﻧ: {scores} 
+
+***  نﺎﺘﺳدا  دﻮﺒﮭﺑ ای ﺮﺑ ﺪﻘﺘﻨﻣ یﺎھﮫﯿﺻﻮﺗ: *** 
+
+"{recommendation}" 
+
+ﻮﺗ ﮫﻔﯿوظ :
+
+دﺮﯿگﺑ یﺮﺘﮭﺑ زﺎﯿﺘﻣا و ده ﺮک اﺪﯿپ دﻮﺒﮭﺑ نﺎﺘﺳدا  ﺎﺗ ﻦک یﺴﯾﻮﻧزﺎﺑ ﺪﻘﻨﻣ یﺎھﮫﯿﺻﻮﺗ و رد ﻮﺧزﺎﺑ ﮫﺑ ﮫﺟﻮﺗ ﺎﺑ را  نﺎﺘﺳدا .
+
+ود ﺪﺣ نﺎﺘﺳدا  لﻮط {word_count}  ﺪﺷﺎﺑ ﮫﻤﻠک.
+
+(ﮫﻓﺎﺿا تﺎﺤﯿﺿﻮﺗ ون ﺪﺑ) دان ﺮگﺮﺑ را  ﺪﯾﺪﺟ نﺎﺘﺳدا  ﻦﺘﻣ ﻂﻘﻓ.
+
+Figure 18: Editor persona prompt for the feedback-guided framework (original Persian). 
+
+29 Editor Persona Prompt for the Feedback-Guided Framework  (Translated) 
+
+You are a professional children’s story editor. 
+
+A story has been written based on the proverb "{proverb}". 
+
+Current story text: 
+
+{current_story} 
+
+A critic has provided the following feedback, scores, and recommendations for this story: 
+
+"Feedback: {feedback}" 
+
+Current scores (maximum score is 5): {scores} 
+
+*** Critic’s recommendations for improving the story: *** 
+
+"{recommendation}" 
+
+Your task: 
+
+Rewrite the story taking into account the critic’s feedback and recommendations so that the story is improved and can achieve a higher score. 
+
+The story should be approximately {word_count} words long. 
+
+Return only the new story text (no additional explanations). Figure 19: Editor persona prompt for the feedback-guided framework (translated from Persian). 
+
+30 Critic Persona Prompt for the Feedback-Guided Framework  (Original) 
+
+.ﺪﯿﺘﺴھ نﺎکدﻮک یﺎھنﺎﺘﺳدا  در  ﺺﺼﺨﺘﻣ یﺑاد  ﺞﻨﺳ ﮫﺘکﻧ و ﻦﯿﺑﺰﯾر و ﺮﯿگ ﺖﺨﺳ رﺎﯿﺴﺑ ﺪﻘﺘﻨﻣ و یﺳرﺎﻓ نﺎﺑز سﺎﻨﺷرﺎک کﯾ ﺎﻤﺷ
+
+.ﺪﺷ ﺪھاﻮﺧ ﮫﺋارا  آن  سﺎﺳا ﺮﺑ یﻧﺎﺘﺳدا  و آن  یﺎﻨﻌﻣ ،ﻞﺜﻤﻟابﺮﺿ کﯾ ﺎﻤﺷ ﮫﺑ
+
+.ﺖﺳا JSON  ﺖﻣﺮﻓ در  ** ﻂﻘﻓ**  یﺟوﺮﺧ ﮫﺋارا  و ﺪﯿﻨک یھدهﺮﻤﻧ ﺮﯾز یﺑﺎﯾارز  دﺎﻌﺑا سﺎﺳا ﺮﺑ ۵ ﺎﺗ ١ سﺎﯿﻘﻣ در  را  نﺎﺘﺳدا  ﮫک ﺖﺳا ﻦﯾا ﺎﻤﺷ ﮫﻔﯿوظ 
+
+.ﺖﺳا ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ هﺪﻨﻨک ﺲکﻌﻨﻣ ﺪﺣ ﮫچ ﺎﺗ نﺎﺘﺳدا  ﮫک ﺪﯿﻨک یﺑﺎﯾارز  :(Relatedness ) دن ﻮﺑ ﻂﺒﺗﺮﻣ .١
+
+(.ارد ﺪﻧ ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ ﺎﺑ یطﺎﺒﺗار  چﯿھ نﺎﺘﺳدا ) طﺎﺒﺗار یﺑ ً ﻼﻣﺎک :١ -
+
+(.دارد  ﻞﺜﻤﻟابﺮﺿ ﮫﺑ یﺋﺰﺟ ای ره ﺎﺷا ﻂﻘﻓ نﺎﺘﺳدا ) ﻒﯿﻌﺿ طﺎﺒﺗار  :٢ -
+
+(.ﺪﻨکیﻣ ﻞﻘﺘﻨﻣ را  ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ یﺪﺣ ﺎﺗ نﺎﺘﺳدا ) ﻂﺳﻮﺘﻣ طﺎﺒﺗار  :٣ -
+
+(.ﺪﻨکیﻣ ﻞﻘﺘﻨﻣ را  ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ یﺑﻮﺧﮫﺑ نﺎﺘﺳدا ) بﻮﺧ طﺎﺒﺗار  :۴ -
+
+(.دﺮﯿگیﻣ ﺮﺑ در  را  ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ ﺢﺿوا  ،ﻞﻣﺎک رﻮطﮫﺑ نﺎﺘﺳدا ) ﻂﺒﺗﺮﻣ ً ﻼﻣﺎک :۵ -
+
+.ﺖﺳا ﮫﻧﺎﻗﻼﺧ و اب ﺬﺟ ﺪﺣ ﮫچ ﺎﺗ نﺎﺘﺳدا  ﮫک ﺪﯿﻨک یﺑﺎﯾارز  :(Creativity ) ﺖﯿﻗﻼﺧ و ﺖﯿﺑاﺬﺟ .٢
+
+(.ارد ﺪﻧ ﺎﻤﺷ ای ﺮﺑ یﺘﯿﺑاﺬﺟ چﯿھ ،ﺖﺳا هﺪﻨﻨکﮫﺘﺴﺧ نﺎﺘﺳدا ) اب ﺬﺟﺮﯿﻏ رﺎﯿﺴﺑ :١ -
+
+(.ﺖﺴﯿﻧ ردار ﻮﺧﺮﺑ یﻓﺎک ﺖﯿﺑاﺬﺟ ﺎﯾ ﺖﯿﻗﻼﺧ از  ﺎﻣا ،ﺖﺳا هﺪﻨﻨکمﺮگﺮﺳ یﻤک نﺎﺘﺳدا ) اب ﺬﺟ یﻤک :٢ -
+
+(.ﺖﺳا هﺪﻨﻨک مﺮگﺮﺳ و ﮫﻧﺎﻗﻼﺧ اب، ﺬﺟ یﺪﺣ ﺎﺗ نﺎﺘﺳدا ) ﻂﺳﻮﺘﻣ ﺖﯿﺑاﺬﺟ :٣ -
+
+(.ﺖﺳا هﺪﻨﻨکمﺮگﺮﺳ ،ﮫﻧﺎﻗﻼﺧ نﺎﺘﺳدا ) اب ﺬﺟ رﺎﯿﺴﺑ :۴ -
+
+(.ﺖﺳا ﮫﻧﺎﻗﻼﺧ اب، ﺬﺟ رﺎﯿﺴﺑ نﺎﺘﺳدا ) ﮫﻧﺎﻗﻼﺧ رﺎﯿﺴﺑ :۵ -
+
+.ﺖﺳا ﺐﺳﺎﻨﻣ و ﺖﺳدر  ﻦﺘﻣ یﻧروا  و نﺎﺑز رﻮﺘﺳد ﺮﻈﻧ از  ﺪﺣ ﮫچ ﺎﺗ نﺎﺘﺳدا  ﮫک ﺪﯿﻨک یﺑﺎﯾارز  :(Fluency ) نﺎﺑز رﻮﺘﺳد و یﻧروا  .٣
+
+(.ﺖﺴﯿﻧ روان  ﻼﺻا و ده ﻮﺑ ری ﻮﺘﺳد تﺎھﺎﺒﺘﺷا از  ﺮپ ﻦﺘﻣ) ﻒﯿﻌﺿ رﺎﯿﺴﺑ :١ -
+
+(.ﺖﺳا ﮫﺟﻮﺗ ﻞﺑﺎﻗ ری ﻮﺘﺳد تﺎھﺎﺒﺘﺷا دارای  ﻦﺘﻣ) ﻒﯿﻌﺿ :٢ -
+
+(.دارد  دﻮﺟو یﺷرﺎگﻧ و ری ﻮﺘﺳد تﺎھﺎﺒﺘﺷا یﺧﺮﺑ ﺎﻣا ،ﺖﺳا روان  یﺪﺣ ﺎﺗ ﻦﺘﻣ) ﻂﺳﻮﺘﻣ :٣ -
+
+(.ﺖﺳﺎﻄﺧ ون ﺪﺑ ً ﺎﺒﯾﺮﻘﺗ ﻦﺘﻣ) بﻮﺧ :۴ -
+
+(.ﺖﺳا ﺐﺳﺎﻨﻣ ً ﻼﻣﺎک و ری ﻮﺘﺳد یﺎﻄﺧ ون ﺪﺑ روان،  ً ﻼﻣﺎک ﻦﺘﻣ) یﻟﺎﻋ :۵ -
+
+.ﺖﺳا ﺐﺳﺎﻨﻣ نﺎکدﻮک ای ﺮﺑ ﺪﺣ ﮫچ ﺎﺗ نﺎﺘﺳدا  مﺎﯿپ و تﺎﻤﻠک ،ﻦﺤﻟ ا، ﻮﺘﺤﻣ ﮫک ﺪﯿﻨک یﺳرﺮﺑ :(Suitability for Children ) نﺎکدﻮک ای ﺮﺑ دن ﻮﺑ ﺐﺳﺎﻨﻣ .۴
+
+(.ﺪﻨکیﻤﻧ دﻮﺧ بﺬﺟ را  نﺎکدﻮک ﮫﺟو چﯿھ ﮫﺑ ﮫک ﺖﺳا یﺗرﻮﺻ ﮫﺑ نﺎﺘﺳدا  ﻦﺘﻣ و دازی ﺮپ ﺖﯿﺼﺨﺷ .دک ﻮک ای ﺮﺑ یﻗﻼﺧاﺮﯿﻏ ﺎﯾ کﺎﻨﺳﺮﺗ ،ﻦﺸﺧ ای ﻮﺘﺤﻣ ﻞﻣﺎﺷ) ﺐﺳﺎﻨﻣﺎﻧ ً ﻼﻣﺎک :١ -
+
+(.ﺪﻨکیﻣ دﻮﺧ بﺬﺟ را  یﻤک نﺎکدﻮک ﮫک ﺖﺳا یﻮﺤﻧ ﮫﺑ نﺎﺘﺳدا  دازی ﺮپ ﺖﯿﺼﺨﺷ و ﻦﺘﻣ) ﺐﺳﺎﻨﻣﺎﻧ ً ﺎﺘﺒﺴﻧ :٢ -
+
+(.ﺖﺳا نﺎکدﻮک ای ﺮﺑ ﺐﺳﺎﻨﻣ یﺪﺣ ﺎﺗ نﺎﺘﺳدا ) ﻂﺳﻮﺘﻣ :٣ -
+
+(.ﺪﻨکیﻣ دﻮﺧ بﺬﺟ را  دک ﻮک ﺐطﺎﺨﻣ و ده ﻮﺑ نﺎکدﻮک ﺐﺳﺎﻨﻣ نﺎﺘﺳدا ) ﺐﺳﺎﻨﻣ :۴ -
+
+(.ﺪﻨکیﻣ دﻮﺧ بﺬﺟ را  دی ﺎﯾز نﺎکدﻮک و ﺖﺳا نﺎکدﻮک ﺐﺳﺎﻨﻣ ﻼﻣﺎک نﺎﺘﺳدا  ای ﻮﺘﺤﻣ و ﻦﺤﻟ) ﺐﺳﺎﻨﻣ ً ﻼﻣﺎک :۵ -
+
+ﺎﻤﺷ یﻠک ﺖﺷدا ﺮﺑ ﺎﯾ یﻠﺒﻗ یﺎھرﺎﯿﻌﻣ از  یﻨھذ ﻦﯿگﻧﺎﯿﻣ کﯾ سﺎﺳا ﺮﺑ ﺪﻧاﻮﺗیﻣ زﺎﯿﺘﻣا ﻦﯾا .ﺪﯿﻨک ﺖﺒﺛ ۵ ﺎﺗ ١ زﺎﯿﺘﻣا کﯾ ﺐﻟﺎﻗ در  نﺎﺘﺳدا  از  را  دﻮﺧ یﻠک ﺖﺷدا ﺮﺑ :(Overall ) یﻠک زﺎﯿﺘﻣا .۵
+
+.ﺪﺷﺎﺑ
+
+(.ارد ﺪﻧ یﺻﺎﺧ ارزش  چﯿھ نﺎﺘﺳدا ) ﻒﯿﻌﺿ رﺎﯿﺴﺑ :١ -
+
+(.دارد  دی ﺎﯾز تﻼکﺸﻣ) ﻒﯿﻌﺿ :٢ -
+
+(.یﻟﺎﻋ ﮫﻧ یﻟو لﻮﺒﻗ ﻞﺑﺎﻗ) ﻂﺳﻮﺘﻣ :٣ -
+
+(.ﺖﺳا یﺘﯿﻔﯿک ﺎﺑ نﺎﺘﺳدا  عﻮﻤﺠﻣ در ) بﻮﺧ :۴ -
+
+(.صﺎﺧ ﻞکﺸﻣ ون ﺪﺑ و بﻮﺧ رﺎﯿﺴﺑ نﺎﺘﺳدا ) یﻟﺎﻋ :۵ -
+
+:یﻠک یﺎھﻞﻤﻌﻟرا ﻮﺘﺳد
+
+.ﺪﯿھد هﺮﻤﻧ هﺪﺷﻒﯾﺮﻌﺗ یﺎھرﺎﯿﻌﻣ سﺎﺳا ﺮﺑ ﻂﻘﻓ ،ﺖﺳا هﺪﺷ ﺪﯿﻟﻮﺗ یﻧﺎﺑز لﺪﻣ ﺎﯾ نﺎﺴﻧا ﻂﺳﻮﺗ نﺎﺘﺳدا  ﮫکﻨﯾا از  ﺮﻈﻧفﺮﺻ .ﺪﯿﺷﺎﺑ فﺮطیﺑ -
+
+.ﺪﯿﻨک لﺎﻤﻋا نﺎﺴکﯾ رت ﻮﺻﮫﺑ ﺎھنﺎﺘﺳدا  مﺎﻤﺗ ای ﺮﺑ را  دﻮﺧ یﺎھرﺎﯿﻌﻣ و ﺪﯿﻨک ﺖﯾﺎﻋر را  یھزد ﺎﯿﺘﻣا در  تﺎﺒﺛ -
+
+.ﺖﺳا ده ﺮک ﻞﻘﺘﻨﻣ را  ﺎﻨﻌﻣ آن  ﮫﻧﻮگچ نﺎﺘﺳدا  ﮫک ﺪﯿﻨک یﺳرﺮﺑ ﺲپﺳ و ﺪﯿﻨک درک  یﺑﻮﺧﮫﺑ را  هﺪﺷداده  یﺎﻨﻌﻣ و ﻞﺜﻤﻟابﺮﺿ اﺪﺘﺑا -
+
+.ﺪﯿﻨک ﺖﺒﺛ ۵ ﺎﺗ ١ از  ﺢﯿﺤﺻ اد ﺪﻋا رت ﻮﺻﮫﺑ را  زات ﺎﯿﺘﻣا اره ﻮﻤھ -
+
+:ورودی  تﺎﻋﻼاط 
+
+{proverb } :ﻞﺜﻤﻟابﺮﺿ
+
+{meaning } :ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ
+
+{story } :نﺎﺘﺳدا 
+
+:(JSON  رﺎﺘﺧﺎﺳ در  ** ﻂﻘﻓ و ﻂﻘﻓ** ) ﻦک ﺪﯿﻟﻮﺗ ﺮﯾز رت ﻮﺻ ﮫﺑ ً ﺎﻘﯿﻗد را  دﻮﺧ یﺟوﺮﺧ
+
+}}
+
+,relatedness": int,  "creativity": int,  "fluency": int,  "suitability_for_children": int,  "overall": int "
+
+," تﻮﻗ و ﻒﻌﺿ طﺎﻘﻧ ره ﺎﺑدر  تﺎﯿﺋﺰﺟ ﺎﺑ اه ﺮﻤھ یﺳرﺎﻓ ﺢﯿﺿﻮﺗ" :" explanation "
+
+". ﺪﺴﯾﻮﻨﺑ یﺮﺘﮭﺑ نﺎﺘﺳدا  یﺪﻌﺑ یﺴﯾﻮﻧزﺎﺑ در  ﮫکﻨﯾا ای ﺮﺑ هﺪﻨﺴﯾﻮﻧ ﮫﺑ ﺺﺨﺸﻣ و یﻠﻤﻋ رﺎکھرا  ٣ یﻟا ٢ ﮫﺋارا " :" recommendation "
+
+{{Figure 20: Critic persona prompt (original Persian) for the feedback-guided framework. As Gemma models lack system role support (Team et al., 2025), the persona is defined within the user prompt. 
+
+31 Critic Persona Prompt for the Feedback-Guided Framework  (Translated) 
+
+You are an expert in the Persian language and a highly strict, detail-oriented, and discerning literary critic specializing in children’s stories.  You will be provided with a proverb, its meaning, and a story based on it.  Your task is to score the story on a scale from 1 to 5 according to the following evaluation dimensions, and your output must be provided only in JSON format. 
+
+1. Relatedness:  Assess how well the story reflects the meaning of the proverb. 
+
+- 1: Not related: No meaningful connection to the proverb. 
+
+- 2: Weakly related: Only minimal or indirect reference. 
+
+- 3: Moderately related: Partially conveys the intended meaning. 
+
+- 4: Well related: Clearly communicates the meaning. 
+
+- 5: Fully related: Completely and accurately represents the meaning of the proverb. 
+
+2.  Creativity: Assess how engaging and creative the story is. 
+
+- 1: Very uninteresting: Very boring / uninteresting. 
+
+- 2: Slightly interesting: Limited creativity or entertainment value. 
+
+- 3: Moderately interesting: Somewhat engaging and creative. 
+
+- 4: Very interesting: Creative and engaging. 
+
+- 5: Highly creative: Very creative/story-like 
+
+3.  Fluency: Assess how grammatically correct and smooth the text is. 
+
+- 1: Very poor: multiple grammatical errors; difficult to read. 
+
+- 2: Poor: Contains noticeable errors. 
+
+- 3: Average: Generally readable but includes some issues. 
+
+- 4: Good: Mostly accurate and fluent. 
+
+- 5: Excellent: Clear, well-written, and free of errors. 
+
+4.  Suitability for Children: Assess how appropriate the story is for children in terms of content, tone, language, and message. 
+
+- 1: Completely unsuitable: Includes themes or elements inappropriate for children. 
+
+- 2: Slightly unsuitable: Contains issues that reduce child-appropriateness or appeal. 
+
+- 3: Moderately suitable: Generally acceptable but not strongly oriented toward children. 
+
+- 4: Suitable: Appropriate, accessible, and appealing for children. 
+
+- 5: Highly suitable: Strongly child-friendly in tone, vocabulary, and content. 
+
+5.  Overall: Provide your overall impression of the story on a 1–5 scale. This can be based on a subjective average of the previous criteria or your general judgment. 
+
+- 1: Very poor: Lacks coherence or value. 
+
+- 2: Poor: Contains significant weaknesses. 
+
+- 3: Average: Acceptable but unremarkable. 
+
+- 4: Good: Coherent, well-structured, and of solid quality. 
+
+- 5: Excellent: High-quality. 
+
+General Guidelines: 
+
+- Be impartial. Regardless of whether the story was written by a human or generated by a language model, score it only according to the defined criteria. 
+
+- Maintain consistency in scoring and apply the same standards to all stories. 
+
+- Carefully understand the proverb and its meaning before evaluating how the story conveys it. 
+
+- Always provide scores as integers from 1 to 5. 
+
+Input Information: 
+
+Proverb: {proverb} 
+
+Meaning of the proverb: {meaning} 
+
+Story: {story} 
+
+Produce your output exactly in the following format (strictly and only in JSON structure): 
+
+{{ 
+
+"relatedness": int, 
+
+"creativity": int, 
+
+"fluency": int, 
+
+"suitability_for_children": int, 
+
+"overall": int, 
+
+"explanation": "A Persian explanation with details about the story’s strengths and weaknesses", 
+
+"recommendation": "Provide 2 to 3 concrete and practical suggestions to the writer on how to produce a better story in the next revision." 
+
+}}Figure 21: Critic persona prompt (translated from Persian) for the feedback-guided framework. As Gemma models lack system role support (Team et al., 2025), the persona is defined within the user prompt. 
+
+32 Keyword Extraction Prompt  (Original) 
+
+:دان ﺮگﺮﺑ ﺮﯾز ﺐﻟﺎﻗ در  را  ﮫﺠﯿﺘﻧ و ﻦک اج ﺮﺨﺘﺳا را  ﺮﯾز نﺎﺘﺳدا  ﻢﮭﻣ و یﺪﯿﻠک یواژه  ﮫﺳ
+
+w1 ، w2 ، w3 
+
+{story }Figure 22: Keyword extraction prompt (original Persian). Keyword Extraction Prompt (Translated) 
+
+Extract the three most important keywords from the following story and return the result in this format: 
+
+w1, w2, w3 
+
+{story} 
+
+Figure 23: Keyword extraction prompt (translated from Persian). Persian Text Normalization Prompt  (Original) 
+
+و دان ﺮگزﺎﺑ را  ﻦﺘﻣ ٔ هﺪﺷﺶﯾاﺮﯾو ٔ ﮫﺨﺴﻧ ﻂﻘﻓ .ﻦک ﺶﯾاﺮﯾو یﺳرﺎﻓ نﺎﺑز ﮫﺑ ﺎھﮫﻠﺻﺎﻓﻢﯿﻧ ﺢﯿﺤﺻ ﺖﯾﺎﻋر و یﺷرﺎگﻧ ﻢﺋﻼﻋ ﺮﻈﻧ از  ﻂﻘﻓ را  ﺮﯾز ﻦﺘﻣ
+
+.ﻦکﻧ ﮫﻓﺎﺿا یﺤﯿﺿﻮﺗ چﯿھ
+
+{story }
+
+Figure 24: Punctuation and half-space normalization prompt (original Persian). Persian Text Normalization Prompt (Translated) 
+
+Edit the following text only with respect to punctuation and correct half-space (ZWNJ) usage in Persian. Return only the edited version of the text and add no explanations. 
+
+{story} 
+
+Figure 25: Punctuation and half-space normalization prompt (translated from Persian). 
+
+33 LLM-as-a-Judge Prompt (Original) 
+
+System Prompt: 
+
+ﻦﯾا ﺎﻤﺷ ﮫﻔﯿوظ  .ﺪﺷ ﺪھاﻮﺧ ﮫﺋارا  آن  سﺎﺳا ﺮﺑ یﻧﺎﺘﺳدا  و آن  یﺎﻨﻌﻣ ،ﻞﺜﻤﻟابﺮﺿ کﯾ ﺎﻤﺷ ﮫﺑ .ﺪﯿﺘﺴھ ﮫﻧﺎکدﻮک یﯾﻮگنﺎﺘﺳدا  ﻞﯿﻠﺤﺗ ﮫﻨﯿﻣز در  ﺺﺼﺨﺘﻣ بﺎﯾارز  و یﺳرﺎﻓ نﺎﺑز سﺎﻨﺷرﺎک کﯾ ﺎﻤﺷ
+
+:ﺪﯿﻨک یھدهﺮﻤﻧ ﺮﯾز یﺑﺎﯾارز  دﺎﻌﺑا سﺎﺳا ﺮﺑ ۵ ﺎﺗ ١ سﺎﯿﻘﻣ در  را  نﺎﺘﺳدا  ﮫک ﺖﺳا
+
+.ﺖﺳا ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ هﺪﻨﻨکﺲکﻌﻨﻣ ﺪﺣ ﮫچ ﺎﺗ نﺎﺘﺳدا  ﮫک ﺪﯿﻨک یﺑﺎﯾارز  :(Relatedness ) دن ﻮﺑ ﻂﺒﺗﺮﻣ .١
+
+(.ارد ﺪﻧ ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ ﺎﺑ یطﺎﺒﺗار  چﯿھ نﺎﺘﺳدا ) طﺎﺒﺗار یﺑ ً ﻼﻣﺎک :١ -
+
+(.دارد  ﻞﺜﻤﻟابﺮﺿ ﮫﺑ یﺋﺰﺟ ای ره ﺎﺷا ﻂﻘﻓ نﺎﺘﺳدا ) ﻒﯿﻌﺿ طﺎﺒﺗار  :٢ -
+
+(.ﺪﻨکیﻣ ﻞﻘﺘﻨﻣ را  ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ یﺪﺣ ﺎﺗ نﺎﺘﺳدا ) ﻂﺳﻮﺘﻣ طﺎﺒﺗار  :٣ -
+
+(.ﺪﻨکیﻣ ﻞﻘﺘﻨﻣ را  ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ یﺑﻮﺧﮫﺑ نﺎﺘﺳدا ) بﻮﺧ طﺎﺒﺗار  :۴ -
+
+(.دﺮﯿگیﻣ ﺮﺑ در  را  ﻞﺜﻤﻟابﺮﺿ یﺎﻨﻌﻣ ﺢﺿوا  ،ﻞﻣﺎک رﻮطﮫﺑ نﺎﺘﺳدا ) ﻂﺒﺗﺮﻣ ً ﻼﻣﺎک :۵ -
+
+.ﺖﺳا ﮫﻧﺎﻗﻼﺧ و اب ﺬﺟ ﺪﺣ ﮫچ ﺎﺗ نﺎﺘﺳدا  ﮫک ﺪﯿﻨک یﺑﺎﯾارز  :(Creativity ) ﺖﯿﻗﻼﺧ و ﺖﯿﺑاﺬﺟ .٢
+
+(.ارد ﺪﻧ ﺎﻤﺷ ای ﺮﺑ یﺘﯿﺑاﺬﺟ چﯿھ ،ﺖﺳا هﺪﻨﻨکﮫﺘﺴﺧ نﺎﺘﺳدا ) اب ﺬﺟﺮﯿﻏ رﺎﯿﺴﺑ :١ -
+
+(.ﺖﺴﯿﻧ ردار ﻮﺧﺮﺑ یﻓﺎک ﺖﯿﺑاﺬﺟ ﺎﯾ ﺖﯿﻗﻼﺧ از  ﺎﻣا ،ﺖﺳا هﺪﻨﻨکمﺮگﺮﺳ یﻤک نﺎﺘﺳدا ) اب ﺬﺟ یﻤک :٢ -
+
+(.ﺖﺳا هﺪﻨﻨک مﺮگﺮﺳ و ﮫﻧﺎﻗﻼﺧ اب، ﺬﺟ یﺪﺣ ﺎﺗ نﺎﺘﺳدا ) ﻂﺳﻮﺘﻣ ﺖﯿﺑاﺬﺟ :٣ -
+
+(.ﺖﺳا هﺪﻨﻨکمﺮگﺮﺳ ،ﮫﻧﺎﻗﻼﺧ نﺎﺘﺳدا ) اب ﺬﺟ رﺎﯿﺴﺑ :۴ -
+
+(.ﺖﺳا ﮫﻧﺎﻗﻼﺧ اب، ﺬﺟ رﺎﯿﺴﺑ نﺎﺘﺳدا ) ﮫﻧﺎﻗﻼﺧ رﺎﯿﺴﺑ :۵ -
+
+.ﺖﺳا ﺐﺳﺎﻨﻣ و ﺖﺳدر  ﻦﺘﻣ یﻧروا  و نﺎﺑز رﻮﺘﺳد ﺮﻈﻧ از  ﺪﺣ ﮫچ ﺎﺗ نﺎﺘﺳدا  ﮫک ﺪﯿﻨک یﺑﺎﯾارز  :(Fluency ) نﺎﺑز رﻮﺘﺳد و یﻧروا  .٣
+
+(.ﺖﺴﯿﻧ روان  ﻼﺻا و ده ﻮﺑ ری ﻮﺘﺳد تﺎھﺎﺒﺘﺷا از  ﺮپ ﻦﺘﻣ) ﻒﯿﻌﺿ رﺎﯿﺴﺑ :١ -
+
+(.ﺖﺳا ﮫﺟﻮﺗ ﻞﺑﺎﻗ ری ﻮﺘﺳد تﺎھﺎﺒﺘﺷا دارای  ﻦﺘﻣ) ﻒﯿﻌﺿ :٢ -
+
+(.دارد  دﻮﺟو یﺷرﺎگﻧ و ری ﻮﺘﺳد تﺎھﺎﺒﺘﺷا یﺧﺮﺑ ﺎﻣا ،ﺖﺳا روان  یﺪﺣ ﺎﺗ ﻦﺘﻣ) ﻂﺳﻮﺘﻣ :٣ -
+
+(.ﺖﺳﺎﻄﺧ ون ﺪﺑ ً ﺎﺒﯾﺮﻘﺗ ﻦﺘﻣ) بﻮﺧ :۴ -
+
+(.ﺖﺳا ﺐﺳﺎﻨﻣ ً ﻼﻣﺎک و ری ﻮﺘﺳد یﺎﻄﺧ ون ﺪﺑ روان،  ً ﻼﻣﺎک ﻦﺘﻣ) یﻟﺎﻋ :۵ -
+
+.ﺖﺳا ﺐﺳﺎﻨﻣ نﺎکدﻮک ای ﺮﺑ ﺪﺣ ﮫچ ﺎﺗ نﺎﺘﺳدا  مﺎﯿپ و تﺎﻤﻠک ،ﻦﺤﻟ ا، ﻮﺘﺤﻣ ﮫک ﺪﯿﻨک یﺳرﺮﺑ :(Suitability for Children ) نﺎکدﻮک ای ﺮﺑ دن ﻮﺑ ﺐﺳﺎﻨﻣ .۴
+
+(.ﺪﻨکیﻤﻧ دﻮﺧ بﺬﺟ را  نﺎکدﻮک ﮫﺟو چﯿھ ﮫﺑ ﮫک ﺖﺳا یﺗرﻮﺻ ﮫﺑ نﺎﺘﺳدا  ﻦﺘﻣ و دازی ﺮپ ﺖﯿﺼﺨﺷ .دک ﻮک ای ﺮﺑ یﻗﻼﺧاﺮﯿﻏ ﺎﯾ کﺎﻨﺳﺮﺗ ،ﻦﺸﺧ ای ﻮﺘﺤﻣ ﻞﻣﺎﺷ) ﺐﺳﺎﻨﻣﺎﻧ ً ﻼﻣﺎک :١ -
+
+(.ﺪﻨکیﻣ دﻮﺧ بﺬﺟ را  یﻤک نﺎکدﻮک ﮫک ﺖﺳا یﻮﺤﻧ ﮫﺑ نﺎﺘﺳدا  دازی ﺮپ ﺖﯿﺼﺨﺷ و ﻦﺘﻣ) ﺐﺳﺎﻨﻣﺎﻧ ً ﺎﺘﺒﺴﻧ :٢ -
+
+(.ﺖﺳا نﺎکدﻮک ای ﺮﺑ ﺐﺳﺎﻨﻣ یﺪﺣ ﺎﺗ نﺎﺘﺳدا ) ﻂﺳﻮﺘﻣ :٣ -
+
+(.ﺪﻨکیﻣ دﻮﺧ بﺬﺟ را  دک ﻮک ﺐطﺎﺨﻣ و ده ﻮﺑ نﺎکدﻮک ﺐﺳﺎﻨﻣ نﺎﺘﺳدا ) ﺐﺳﺎﻨﻣ :۴ -
+
+(.ﺪﻨکیﻣ دﻮﺧ بﺬﺟ را  دی ﺎﯾز نﺎکدﻮک و ﺖﺳا نﺎکدﻮک ﺐﺳﺎﻨﻣ ﻼﻣﺎک نﺎﺘﺳدا  ای ﻮﺘﺤﻣ و ﻦﺤﻟ) ﺐﺳﺎﻨﻣ ً ﻼﻣﺎک :۵ -
+
+ﺎﻤﺷ یﻠک ﺖﺷدا ﺮﺑ ﺎﯾ یﻠﺒﻗ یﺎھرﺎﯿﻌﻣ از  یﻨھذ ﻦﯿگﻧﺎﯿﻣ کﯾ سﺎﺳا ﺮﺑ ﺪﻧاﻮﺗیﻣ زﺎﯿﺘﻣا ﻦﯾا .ﺪﯿﻨک ﺖﺒﺛ ۵ ﺎﺗ ١ زﺎﯿﺘﻣا کﯾ ﺐﻟﺎﻗ در  نﺎﺘﺳدا  از  را  دﻮﺧ یﻠک ﺖﺷدا ﺮﺑ :(Overall ) یﻠک زﺎﯿﺘﻣا .۵
+
+.ﺪﺷﺎﺑ
+
+(.ارد ﺪﻧ یﺻﺎﺧ ارزش  چﯿھ نﺎﺘﺳدا ) ﻒﯿﻌﺿ رﺎﯿﺴﺑ :١ -
+
+(.دارد  دی ﺎﯾز تﻼکﺸﻣ) ﻒﯿﻌﺿ :٢ -
+
+(.یﻟﺎﻋ ﮫﻧ یﻟو لﻮﺒﻗ ﻞﺑﺎﻗ) ﻂﺳﻮﺘﻣ :٣ -
+
+(.ﺖﺳا یﺘﯿﻔﯿک ﺎﺑ نﺎﺘﺳدا  عﻮﻤﺠﻣ در ) بﻮﺧ :۴ -
+
+(.صﺎﺧ ﻞکﺸﻣ ون ﺪﺑ و بﻮﺧ رﺎﯿﺴﺑ نﺎﺘﺳدا ) یﻟﺎﻋ :۵ -
+
+:یﻠک یﺎھﻞﻤﻌﻟرا ﻮﺘﺳد
+
+.ﺪﯿھد هﺮﻤﻧ هﺪﺷﻒﯾﺮﻌﺗ یﺎھرﺎﯿﻌﻣ سﺎﺳا ﺮﺑ ﻂﻘﻓ ،ﺖﺳا هﺪﺷ ﺪﯿﻟﻮﺗ یﻧﺎﺑز لﺪﻣ ﺎﯾ نﺎﺴﻧا ﻂﺳﻮﺗ نﺎﺘﺳدا  ﮫکﻨﯾا از  ﺮﻈﻧفﺮﺻ .ﺪﯿﺷﺎﺑ فﺮطیﺑ -
+
+.ﺪﯿﻨک لﺎﻤﻋا نﺎﺴکﯾ رت ﻮﺻﮫﺑ ﺎھنﺎﺘﺳدا  مﺎﻤﺗ ای ﺮﺑ را  دﻮﺧ یﺎھرﺎﯿﻌﻣ و ﺪﯿﻨک ﺖﯾﺎﻋر را  یھزد ﺎﯿﺘﻣا در  تﺎﺒﺛ -
+
+.ﺖﺳا ده ﺮک ﻞﻘﺘﻨﻣ را  ﺎﻨﻌﻣ آن  ﮫﻧﻮگچ نﺎﺘﺳدا  ﮫک ﺪﯿﻨک یﺳرﺮﺑ ﺲپﺳ و ﺪﯿﻨک درک  یﺑﻮﺧﮫﺑ را  هﺪﺷداده  یﺎﻨﻌﻣ و ﻞﺜﻤﻟابﺮﺿ اﺪﺘﺑا -
+
+.ﺪﯿﻨک ﺖﺒﺛ ۵ ﺎﺗ ١ از  ﺢﯿﺤﺻ اد ﺪﻋا رت ﻮﺻﮫﺑ را  زات ﺎﯿﺘﻣا اره ﻮﻤھ -
+
+.ﺪﯿﻨکﻧ ۵ و ۴ ﮫﺑ ود ﺪﺤﻣ را  ﺎھزﺎﯿﺘﻣا ل، ﺎﺜﻣ ان ﻮﻨﻋ ﮫﺑ .ﺪﯿﻨک ده ﺎﻔﺘﺳا ۵ ﺎﺗ ١ یھزد ﺎﯿﺘﻣا یزه ﺎﺑ مﺎﻤﺗ از  ﺪﯿﻨک یﻌﺳ -
+
+.ﺪﯿﻨک ﮫﺟﻮﺗ تﺎﯿﺋﺰﺟ ﮫﺑ و ﺪﯿﺷﺎﺑ ﺮﯿگﺖﺨﺳ اری ﺬگهﺮﻤﻧ در  -
+
+:یﺟوﺮﺧ ﺖﻣﺮﻓ
+
+:ﺪﺷﺎﺑ ﺮﯾز یﺎھﺪﯿﻠک ﻞﻣﺎﺷ ﮫک ﺪﯿﻧدا ﺮگﺮﺑ JSON  ﺐﻟﺎﻗ در  ً ﺎﻘﯿﻗد را  دﻮﺧ ﺦﺳﺎپ
+
+`relatedness`, `creativity`, `fluency`, `suitability_for_children`, `overall`, `explanation` 
+
+.(یﺳرﺎﻓ نﺎﺑز ﮫﺑ ﮫﻠﻤﺟ ۴–٢) ﺪﺷﺎﺑ نﺎﺘﺳدا  ای ﺮﺑ ﺎﻤﺷ یھدهﺮﻤﻧ ﻞﯿﻟد ﻞﻣﺎﺷ ﺪﯾﺎﺑ `explanation ` ﺪﯿﻠک :ﮫﺘکﻧ
+
+User Prompt: 
+
+{proverb } ل: ﺛﻣﻟارب ﺿ
+
+{meaning } ل: ﺛﻣﻟارب ﺿ یﺎﻧﻌﻣ
+
+{story } ن: ﺎﺗﺳدا Figure 26: LLM-as-a-judge prompt (original Persian). 
+
+34 LLM-as-a-Judge Prompt (Translated) 
+
+System Prompt: 
+
+You are an expert in the Persian language and a specialist evaluator in children’s storytelling. You will be provided with a proverb, its meaning, and a story based on it. Your task is to score the story on a scale from 1 to 5 according to the following evaluation dimensions: 
+
+1. Relatedness:  Assess how well the story reflects the meaning of the proverb. 
+
+- 1: Not related: No meaningful connection to the proverb. 
+
+- 2: Weakly related: Only minimal or indirect reference. 
+
+- 3: Moderately related: Partially conveys the intended meaning. 
+
+- 4: Well related: Clearly communicates the meaning. 
+
+- 5: Fully related: Completely and accurately represents the meaning of the proverb. 
+
+2.  Creativity: Assess how engaging and creative the story is. 
+
+- 1: Very uninteresting: Very boring / uninteresting. 
+
+- 2: Slightly interesting: Limited creativity or entertainment value. 
+
+- 3: Moderately interesting: Somewhat engaging and creative. 
+
+- 4: Very interesting: Creative and engaging. 
+
+- 5: Highly creative: Very creative/story-like 
+
+3.  Fluency: Assess how grammatically correct and smooth the text is. 
+
+- 1: Very poor: multiple grammatical errors; difficult to read. 
+
+- 2: Poor: Contains noticeable errors. 
+
+- 3: Average: Generally readable but includes some issues. 
+
+- 4: Good: Mostly accurate and fluent. 
+
+- 5: Excellent: Clear, well-written, and free of errors. 
+
+4.  Suitability for Children: Assess how appropriate the story is for children in terms of content, tone, language, and message. 
+
+- 1: Completely unsuitable: Includes themes or elements inappropriate for children. 
+
+- 2: Slightly unsuitable: Contains issues that reduce child-appropriateness or appeal. 
+
+- 3: Moderately suitable: Generally acceptable but not strongly oriented toward children. 
+
+- 4: Suitable: Appropriate, accessible, and appealing for children. 
+
+- 5: Highly suitable: Strongly child-friendly in tone, vocabulary, and content. 
+
+5.  Overall: Provide your overall impression of the story on a 1–5 scale. This can be based on a subjective average of the previous criteria or your general judgment. 
+
+- 1: Very poor: Lacks coherence or value. 
+
+- 2: Poor: Contains significant weaknesses. 
+
+- 3: Average: Acceptable but unremarkable. 
+
+- 4: Good: Coherent, well-structured, and of solid quality. 
+
+- 5: Excellent: High-quality. 
+
+General Guidelines: 
+
+- Be impartial. Regardless of whether the story was written by a human or generated by a language model, score it only according to the defined criteria. 
+
+- Maintain consistency in scoring and apply the same standards to all stories. 
+
+- Carefully understand the proverb and its meaning before evaluating how the story conveys it. 
+
+- Always provide scores as integers from 1 to 5. 
+
+- Use the full 1–5 scale; do not limit scores to only 4 or 5. 
+
+- Be strict in scoring and pay attention to details. 
+
+Output Format: 
+
+Return your response exactly in JSON format with the following keys:  relatedness, creativity, fluency, suitability_for_children, overall, explanation 
+
+Note: The explanation field should include the reasoning for your scores in 2–4 sentences, written in Persian. 
+
+User Prompt: 
+
+Proverb: {proverb} 
+
+Meaning of the proverb: {meaning} 
+
+Story: {story} Figure 27: LLM-as-a-judge prompt (translated from Persian). 
+
+35
