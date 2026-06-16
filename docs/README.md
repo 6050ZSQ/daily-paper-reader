@@ -6,62 +6,65 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-15
-- 运行时间：2026-06-15 22:20:59 UTC
+- 最新运行日期：2026-06-16
+- 运行时间：2026-06-16 23:19:44 UTC
 - 运行状态：成功
-- 本次总论文数：14
-- 精读区：5
-- 速读区：9
+- 本次总论文数：15
+- 精读区：8
+- 速读区：7
 
 ### 今日简报（AI）
-今日聚焦多语言大模型表征交互与检索优化，同时关注低资源语言对齐与生成能力评估。最值得看：多语言表征可分离性及跨语言影响（9.0分），以及查询嵌入插值对稠密检索的提升（8.0分）。建议后续关注孟加拉语、波斯语、斯洛伐克语等低资源语言的基准测试与模型适配进展。
-- 详情：[/202606/15/README](/202606/15/README)
+今日精选15篇文献，精读聚焦ClinicalBERT语言预测中的人口统计学关联编码偏误与多语言语法纠错的演示检索新方法。最值得关注：临床NLP模型存在隐式人口关联编码，以及基于表征检索的纠错演示能提升跨语言效果。建议普通读者优先了解模型偏见审计思路，并关注多语言NLP的实用技术动向。
+- 详情：[/202606/16/README](/202606/16/README)
 
 ### 精读区论文标签
-1. [When Language Representations Interact: Separability and Cross-Lingual Effects in LLMs](/202606/15/2606.14347v1-when-language-representations-interact-separability-and-cross-lingual-effects-in-llms)  
+1. [A Computational Audit of Demographic Association Encoding in ClinicalBERT Language Predictions](/202606/16/2606.14460v1-a-computational-audit-of-demographic-association-encoding-in-clinicalbert-language-predictions)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：多语言 LLM 中语言表示的因果几何分析
-2. [When Does Mixing Help? Analyzing Query Embedding Interpolation in Multilingual Dense Retrieval](/202606/15/2606.13537v1-when-does-mixing-help-analyzing-query-embedding-interpolation-in-multilingual-dense-retrieval)  
+   evidence：通过探针方法分析ClinicalBERT中人口统计学关联的编码，直接研究语言表征的可解释性
+2. [Encode Errors: Representational Retrieval of In-Context Demonstrations for Multilingual Grammatical Error Correction](/202606/16/2606.15416v1-encode-errors-representational-retrieval-of-in-context-demonstrations-for-multilingual-grammatical-error-correction)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：从LLM内部状态提取语法错误表示
+3. [Extending Item Response Theory for Efficient and Meaningful Multilingual Evaluation](/202606/16/2606.15643v1-extending-item-response-theory-for-efficient-and-meaningful-multilingual-evaluation)  
+   标签：评分：9.0/10、query:llm-eval
+   evidence：使用项目反应理论的多语言LLM评估方法
+4. [Evaluating LLM Personalization via Semantic Constraint Verification](/202606/16/2606.16368v1-evaluating-llm-personalization-via-semantic-constraint-verification)  
+   标签：评分：9.0/10、query:llm-eval
+   evidence：使用语义约束验证的LLM个性化评估新框架
+5. [A theoretical model for task routing in mixture-of-expert transformers](/202606/16/2606.14398v2-a-theoretical-model-for-task-routing-in-mixture-of-expert-transformers)  
+   标签：评分：8.0/10、query:llm-ling
+   evidence：使用句法模板建模MoE专家专业化，关注句法和语义知识
+6. [Emergent retokenization symmetry in large language models: phenomenology and applications](/202606/16/2606.15521v1-emergent-retokenization-symmetry-in-large-language-models-phenomenology-and-applications)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：分析多语言稠密检索中的查询嵌入插值，揭示多语言语义表示性质
-3. [The Holistic Storage of Verb+Up Phrases in Text-based and Audio-based Language Models](/202606/15/2606.13993v1-the-holistic-storage-of-verbup-phrases-in-text-based-and-audio-based-language-models)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：探究LLM中多词语言单元的整体存储
-4. [Hidden in Plain Sight: Benchmarking Agent Safety Against Decomposition Attacks with DECOMPBENCH](/202606/15/2606.13994v1-hidden-in-plain-sight-benchmarking-agent-safety-against-decomposition-attacks-with-decompbench)  
+   evidence：研究LLM中token化对称性和token组合理解，直接涉及语言表示
+7. [A Large-Scale Multi-Dimensional Empirical Study of LLMs for Conversation Summarization](/202606/16/2606.15974v1-a-large-scale-multi-dimensional-empirical-study-of-llms-for-conversation-summarization)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：提出DeCompBench基准，用于评估智能体面对分解攻击的安全性
-5. [Code Correctness Signals in LLM Hidden States: Pre-Generation Probing and Repair Geometry](/202606/15/2606.14530v1-code-correctness-signals-in-llm-hidden-states-pre-generation-probing-and-repair-geometry)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：从LLM隐藏状态解码代码正确性信号，探索表示的可解释性
+   evidence：提出大规模多维度的LLM对话摘要评测基准
+8. [P3B3: A Multi-Turn Conversational Benchmark for Measuring European and Brazilian Portuguese Variety Bias in LLMs](/202606/16/2606.16753v1-p3b3-a-multi-turn-conversational-benchmark-for-measuring-european-and-brazilian-portuguese-variety-bias-in-llms)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：用于测量LLM语言变体偏见的基准
 
 ### 速读区论文标签
-1. [BenSyc: Benchmarking Conversational Sycophancy and Human Alignment in LLMs for Bengali Contexts](/202606/15/2606.10061v1-bensyc-benchmarking-conversational-sycophancy-and-human-alignment-in-llms-for-bengali-contexts)  
+1. [Revisiting the Systematicity in Negation in the Era of In-Context Learning](/202606/16/2606.16867v1-revisiting-the-systematicity-in-negation-in-the-era-of-in-context-learning)  
+   标签：评分：8.0/10、query:llm-ling
+   evidence：分析LLM对否定的系统性理解
+2. [High-Dimensional Random Projection for Activation Steering in Language Models](/202606/16/2606.15092v1-high-dimensional-random-projection-for-activation-steering-in-language-models)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：无训练激活操控方法，捕获LLM表示中的判别结构以提升可解释性
+3. [On the Adversarial Robustness of Multimodal LLM Judges](/202606/16/2606.15608v1-on-the-adversarial-robustness-of-multimodal-llm-judges)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：提出LLM对话谄媚行为基准
-2. [Constrained Semantic Decompression in LLMs through Persian Proverb-Conditioned Story Generation](/202606/15/2606.12599v1-constrained-semantic-decompression-in-llms-through-persian-proverb-conditioned-story-generation)  
+   evidence：评估多模态大语言模型判断器对抗鲁棒性的通用框架
+4. [RetailBench: Benchmarking long horizon reasoning and coherent decision making of LLM agents in realistic retail environments](/202606/16/2606.15862v1-retailbench-benchmarking-long-horizon-reasoning-and-coherent-decision-making-of-llm-agents-in-realistic-retail-environments)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：为LLM的文本生成提出评估框架
-3. [SkMTEB: Slovak Massive Text Embedding Benchmark and Model Adaptation](/202606/15/2606.13647v1-skmteb-slovak-massive-text-embedding-benchmark-and-model-adaptation)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：斯洛伐克语文本嵌入基准
-4. [A Two-Stage Statistical Framework for Evaluating Associative Interference in Large Language Models](/202606/15/2606.14117v1-a-two-stage-statistical-framework-for-evaluating-associative-interference-in-large-language-models)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：LLM偏见评估框架
-5. [Does the Judge Prefer English? Evaluating Language-Switching Invariance in LLM-as-a-Judge](/202606/15/2606.14278v1-does-the-judge-prefer-english-evaluating-language-switching-invariance-in-llm-as-a-judge)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：评估LLM作为裁判的语言切换不变性
-6. [TimpaTeks: Automatic In-place Text Sequence Modification via Diffusion Language Model Steering](/202606/15/2606.08408v1-timpateks-automatic-in-place-text-sequence-modification-via-diffusion-language-model-steering)  
+   evidence：提出RetailBench基准，用于评估LLM智能体在长期决策中的表现
+5. [UR-BERT: Scaling Text Encoders for Massively Multilingual TTS Through Universal Romanization and Speech Token Prediction](/202606/16/2606.11681v2-ur-bert-scaling-text-encoders-for-massively-multilingual-tts-through-universal-romanization-and-speech-token-prediction)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：将激活引导扩展到扩散语言模型进行原位文本修改，揭示编码机制
-7. [Attention Expansion: Enhancing Keyphrase Extraction from Long Documents with Attention-Augmented Contextualized Embeddings](/202606/15/2606.10716v2-attention-expansion-enhancing-keyphrase-extraction-from-long-documents-with-attention-augmented-contextualized-embeddings)  
+   evidence：提出UR-BERT文本编码器，通过统一罗马化和语音令牌预测学习语音感知的语音表征
+6. [Equity with Efficiency: An Empirical Study of Tokenizers for Multilingual Large Language Models](/202606/16/2606.15044v1-equity-with-efficiency-an-empirical-study-of-tokenizers-for-multilingual-large-language-models)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：注意力扩展机制增强PLM词元表示用于关键短语提取，利用学到的语义表示
-8. [MLUBench: A Benchmark for Lifelong Unlearning Evaluation in MLLMs](/202606/15/2606.12809v1-mlubench-a-benchmark-for-lifelong-unlearning-evaluation-in-mllms)  
+   evidence：研究分词器对多语言LLM表征和公平性的影响
+7. [Let LLMs Judge Each Other: Multi-Agent Peer-Reviewed Reasoning for Medical Question Answering](/202606/16/2606.15419v1-let-llms-judge-each-other-multi-agent-peer-reviewed-reasoning-for-medical-question-answering)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：提出多模态LLM终身遗忘评估基准
-9. [A theoretical model for task routing in mixture-of-expert transformers](/202606/15/2606.14398v1-a-theoretical-model-for-task-routing-in-mixture-of-expert-transformers)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：使用句法模板和键值字典理论模型化MoE中的语言表示
+   evidence：多智能体互相评审作为评估LLM推理质量的方法
 
 
 <div class="dpr-home-promo-card">

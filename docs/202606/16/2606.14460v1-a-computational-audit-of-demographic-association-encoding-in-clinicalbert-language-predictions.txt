@@ -1,0 +1,318 @@
+Title: A Computational Audit of Demographic Association Encoding in ClinicalBERT Language Predictions
+
+URL Source: https://arxiv.org/pdf/2606.14460v1
+
+Published Time: Mon, 15 Jun 2026 00:56:42 GMT
+
+Number of Pages: 29
+
+Markdown Content:
+# A Computational Audit of Demographic Association Encoding in ClinicalBERT Language Predictions 
+
+Kehinde Temitayo Soetan Department of Medical Humanities and Social Sciences The Ohio State University soetan.6@osu.edu 
+
+ABSTRACT 
+
+Transformer-based clinical language models are increasingly integrated into high-stakes clinical deci-sion support pipelines, yet the computational mechanisms through which demographic associations encoded in medical documentation propagate into model probability distributions remain empir-ically underspecified. We present a systematic computational audit of representational bias in ClinicalBERT (Alsentzer et al., 2019), a BERT-based model pretrained on MIMIC-III discharge summaries, employing two complementary probing methodologies: Log Probability Bias Analy-sis (LPBA), which quantifies demographic descriptor-induced shifts in masked token probability distributions across behavioral and evaluative semantic categories, and Masked Language Model-based analysis (MLM), which probes internal representational structure for demographic agency attribution encoding across 98 real clinical sentence templates and eight intersectional race-gender combinations. Corpus frequency analysis operationalizes the distinction between statistical dispar-ity and bias amplification by benchmarking model outputs against empirical term frequencies in the MIMIC-III training corpus. Of 32 statistically significant findings, 65.6% contradict observed corpus distributions, rising to 80% for Black patients and 87.5% for agency attribution under MLM probing, providing direct empirical evidence that representational bias in ClinicalBERT operates predominantly through model-internal amplification rather than training data inheritance. 
+
+Keywords: natural language processing, clinical documentation, algorithmic auditing, representa-tional bias, health equity 1
+
+> arXiv:2606.14460v1 [cs.CL] 12 Jun 2026
+
+# 1 INTRODUCTION 
+
+Buolamwini and Gebru (2018) demonstrated that commercial facial analysis systems performed well in aggregate but failed disproportionately along demographic lines, with darker-skinned women bearing error rates exceeding 34% above lighter-skinned men, revealing that strong overall accuracy actively conceals serious equity problems. Institutional bias in clinical practice predates large language models. For instance, Hoffman et al. (2016) found that medical students and residents who endorsed false biological beliefs about Black patients were more likely to underestimate their pain and recommend inadequate treatment. The bias was not incidental; it was documented and traceable to what clinicians had read, learned, internalized, and trained within clinical language. Clinical language shapes perception, guides decision-making, and, over time, encodes institutional assumptions into medical practice. When large language models are trained on the notes, discharge summaries, and records produced within these systems, they learn its language as well. This paper presents a computational audit of representational bias in ClinicalBERT (Alsentzer et al., 2019), a language model pretrained on MIMIC-III discharge summaries and clinical notes, examining how demographic descriptors shift model probability distributions across behavioral, evaluative, and agency attribution language. We operationalize representational harm — defined as damage inflicted through symbolic depiction and categorization of social groups (Crawford, 2017; Blodgett et al., 2020) — as an empirical analytical lens connecting computational probability out-puts to their clinical and social implications. Probing 98 real clinical sentence templates across eight intersectional race-gender combinations, we find that 65.6% of significant model findings con-tradict MIMIC-III corpus distributions, rising to 80% for Black patients and 87.5% for agency attribution. This demonstrates that representational bias in ClinicalBERT operates predominantly through model-internal amplification rather than training data inheritance, with direct implications for bias auditing, clinical AI governance, and equitable deployment. The remainder of this paper is organized as follows. Section 2 reviews related work on al-gorithmic bias in clinical NLP, probing methodologies, and the representational harm framework. Section 3 describes the clinical corpus, model, semantic categories, and formal definitions of sta-tistical disparity and bias amplification. Section 5 presents the probing design, LPBA and MLM 2methodologies, and corpus frequency analysis approach. Section 6 presents empirical findings across behavioral language, evaluative framing, and agency attribution. Section 7 discusses implications for bias amplification theory, linguistic mechanisms of representational harm, and clinical AI gov-ernance. Section 8 concludes. 
+
+# 2 RELATED WORK 
+
+Algorithmic bias in clinical NLP manifests consequentially across racial, gender, and socioeconomic dimensions. Obermeyer et al. (2019) demonstrated that a widely deployed healthcare needs algo-rithm systematically underestimated requirements for Black patients due to training data biases. Sharma et al. (2025) attribute such disparities to imbalanced training datasets that overrepresent specific demographics, producing skewed clinical predictions. Critically, existing work focuses pre-dominantly on outcome-level disparities rather than the computational mechanisms through which demographic associations are encoded in model probability distributions — the gap this study directly addresses. Template-based log-probability probing of masked language models represents the method-ological foundation of demographic bias detection in transformer architectures. Kurita et al. (2019) first demonstrated that BERT assigns systematically different probabilities to occupational terms depending on demographic descriptors, while Zhao et al. (2019) extended this to racial and ethnic bias, showing that ethnicity-associated names co-occur with distinct attribute words in model prob-ability distributions. Unlike static word embedding models where bias is locatable in fixed vector spaces, transformer-based models distribute bias across dynamic context-dependent representations that resist direct inspection. Critically, Hofmann et al. (2024) demonstrate that post-training align-ment procedures suppress overt bias signals without eliminating their structural sources — a finding that directly motivates the present study’s focus on model-internal representational structure rather than surface-level output behavior. The present study applies the log-probability probing method-ology of Kurita et al. (2019) to clinical semantic categories across intersectional race-gender com-binations, extending this approach from general domain bias detection into the high-stakes clinical NLP domain. 33 PROBLEM SETUP 
+
+The MIMIC-III clinical database (Johnson et al., 2016) comprises de-identified health records from over 40,000 patients admitted to Beth Israel Deaconess Medical Center between 2001 and 2012. This study operates on the NOTEEVENTS table, specifically discharge summaries and caregiver notes, which constitute the primary pretraining corpus of ClinicalBERT and represent the primary site at which demographic-associated linguistic patterns are encoded into model representations. Patient demo-graphic variables such as race and gender were extracted from the ADMISSIONS and PATIENTS tables and merged with clinical notes on SUBJECT_ID and HADM_ID keys, producing a dataset stratified across four racial groups, two gender categories, and eight intersectional demographic combina-tions, with White Male as the reference group throughout. 
+
+# 4 MODEL 
+
+We audit ClinicalBERT ( emilyalsentzer/Bio_ClinicalBERT ; Alsentzer et al. 2019), a transformer-based masked language model developed through domain-adaptive pretraining of BERT on MIMIC-III clinical notes. ClinicalBERT’s masked language modeling objective predicts masked tokens given surrounding bidirectional context: 
+
+P (wi | w1, . . . , w i−1, w i+1 , . . . , w n) (1) where wi denotes the masked target token. This objective enables template-based log-probability probing of demographic associations, the methodological foundation of the present study. The model was loaded using the Hugging Face Transformers library in Python. 
+
+4.1 Representational Harm Framework 
+
+We operationalize representational harm — defined as damage inflicted through symbolic depiction and categorization of social groups (Crawford, 2017; Blodgett et al., 2020) — as the primary ana-lytical lens connecting computational probability outputs to their clinical and social implications. Formally, let 4D ∈ { Black Male, Black Female, Hispanic Male, Hispanic Female, Asian Male, Asian Female, White Female }
+
+(2) denote the set of demographic descriptors under analysis, with White Male serving as the reference group D0.For a given target word w ∈ β ∪ E ∪ α and clinical sentence templates, representational harm is operationalized through three analytically distinct dimensions: stereotyping , where P (w |
+
+D) reflects group-based associations inconsistent with clinical evidence; erasure , where P (w | D)
+
+systematically underrepresents attributes for group D; and demeaning , where P (w | D) encodes evaluative characterizations that negatively frame group D.
+
+4.2 Statistical Disparity and Bias Amplification 
+
+We operationalize two complementary empirical indicators of representational harm that together constitute the analytical core of this study. Let fC (w, D ) denote the corpus frequency of target word 
+
+w in clinical notes for demographic group D, and let PM (w | D) denote ClinicalBERT’s masked token probability for w given demographic descriptor D in an identical sentence context. 
+
+Statistical disparity is defined as the difference in model probability assignments across demographic groups for identical clinical contexts: 
+
+∆S (w, D ) = PM (w | D) − PM (w | D0) (3) where D0 denotes the White Male reference group. A statistically significant ∆S (w, D )̸ = 0 indi-cates that demographic identity systematically shifts model predictions for target words in identical clinical contexts. 
+
+Bias amplification is operationalized as a directional divergence between model probability differences and corpus frequency differences. For each significant model finding, we compute the sign of the model difference: 5sign(∆ S (w, D i)) = 
+
+
+
++1 if PM (w | Di) > P M (w | D0)
+
+−1 if PM (w | Di) < P M (w | D0)
+
+(4) A finding is classified as bias amplification — model-generated rather than data-inherited — when: 
+
+sign(∆ S (w, D i)) ̸ = sign(∆ C (w, D i)) (5) The overall bias amplification rate is defined as the proportion of statistically significant model findings where this directional divergence holds. The corpus frequency analysis operational-izes this distinction empirically by benchmarking PM (w | D) against fC (w, D ) for all significant target words and demographic groups, enabling direct empirical determination of whether observed representational harm reflects statistical disparity, bias amplification, or both. 
+
+# 5 PROBING DESIGN 
+
+Both auditing methods operate on a shared set of 98 real clinical sentence templates extracted directly from the MIMIC-III corpus — specifically discharge summaries and caregiver notes — rather than artificially constructed templates. This design choice ensures ecological validity by grounding the analysis in the same clinical language on which ClinicalBERT was pretrained. Each template contains a single demographic descriptor slot instantiated across eight intersectional race-gender combinations: 
+
+D = {D0, D 1, . . . , D 7} = {White Male, Black Male, Black Female, Hispanic Male, Hispanic Female, Asian Male, A 
+
+(6) producing a fully crossed design of 98 templates × 8 demographic combinations for each target word. Paired t-tests compare log probability distributions across demographic groups within identical sentence contexts, accounting for sentence-level structure by treating each template as its own unit of comparison. Statistical significance is set at p < 0.05 throughout. To account for multiple 6comparisons across target words and demographic groups, all reported findings were additionally evaluated using the Benjamini–Hochberg false discovery rate correction at FDR = 0 .05 . All 17 statistically significant findings survived correction, confirming robustness. Prior to conducting paired t-tests, normality of log-probability difference distributions was verified using the Shapiro– Wilk test for all significant findings; all distributions satisfied the normality assumption ( p > 0.05 ). 
+
+5.1 Log Probability Bias Analysis (LPBA) 
+
+LPBA quantifies the extent to which substituting a demographic descriptor Di for the reference descriptor D0 shifts ClinicalBERT’s predicted log-probability for a target word w ∈ β ∪ E in an identical clinical sentence context. Formally, for a sentence template S with masked target position, the log-probability bias score is defined as: LPBA (w, D i, S ) = log PM (w | S, D i) − log PM (w | S, D 0) (7) where PM (w | S, D ) denotes ClinicalBERT’s masked token probability for target word w in sentence 
+
+S with demographic descriptor D, and D0 denotes the White Male reference group. A positive LPBA score indicates higher predicted probability for w under Di relative to D0; a negative score indicates suppression. Sentence templates were selected from MIMIC-III discharge summaries and caregiver notes according to three criteria: the sentence directly describes patient behavior, contains between five and thirty words, and has no MIMIC-III de-identification artifacts. Templates with fewer than five available instances per target word were excluded. LPBA observations total 488 rather than 784 because the LPBA analysis was applied only to behavioral language ( β) and evaluative framing ( E) target words, whereas MLM was applied to all agency attribution ( α) target words across the same 98 templates. 
+
+5.2 Masked Language Model Analysis (MLM) 
+
+MLM extends the LPBA approach from behavioral and evaluative semantic categories into agency attribution language, applying the same masked token probability framework to a semantically distinct category of clinical language. While both methods query ClinicalBERT’s final output 7layer probability distributions, MLM operates on raw masked token probabilities rather than log-probability differences, enabling direct comparison of absolute probability assignments across de-mographic groups. For a sentence template S with masked target position, the MLM probability score is defined as: MLM (w, D i, S ) = PM (w | S, D i) (8) where w ∈ α denotes an agency attribution target word. Agency attribution terms are organized into three subcategories reflecting distinct constructions of patient causal responsibility: 
+
+Aresist = {refused, declined } (9) 
+
+Acooperate = {requested, agreed } (10) 
+
+Apassive = {responded, presented } (11) where Aresist encodes active resistance to clinical instructions, Acooperate encodes active cooperation with clinical instructions, and Apassive encodes passive receipt of clinical action. This three-way subcategorization captures whether the model constructs patients from different demographic groups as active decision-making subjects or passive objects of clinical action. 
+
+5.3 Corpus Frequency Analysis 
+
+The corpus frequency analysis operationalizes the distinction between statistical disparity ∆S (w, D )
+
+and bias amplification ∆A(w, D ) defined in Section 4.2 by benchmarking model probability outputs directly against empirical term frequencies in the MIMIC-III training corpus. For each statistically significant target word w ∈ β ∪ E ∪ α and demographic group Di, corpus frequency is computed as: 
+
+fC (w, D i) = count (w, D i)
+
+count (all tokens , D i) × 10 ,000 (12) where count (w, D i) denotes the raw frequency of target word w in clinical notes for demographic group Di, normalized per 10,000 tokens to ensure comparability across demographic groups with different total documentation volumes. 8∆C (w, D i) = fC (w, D i) − fC (w, D 0) (13) is compared against the model probability difference ∆S (w, D ) from LPBA or MLM analysis. Afinding is classified as Reflection if sign(∆ S ) = sign(∆ C ), and as a Contradiction if sign(∆ S )̸ =sign(∆ C ).
+
+# 6 FINDINGS 
+
+6.1 Overview 
+
+Across 98 clinical sentence templates and eight intersectional demographic combinations, LPBA produced 488 observations and MLM produced 784 observations. Of 32 statistically significant model findings ( p < 0.05 ), 21 contradicted corpus frequency patterns while only 11 reflected them, yielding an overall contradiction rate of 65.6% (21/32). This pattern was most pronounced for Black patients at 80.0% (12/15). MLM-based analysis showed an even higher rate of 87.5% (7/8), indi-cating that agency attribution bias is predominantly model-generated rather than data-inherited. Table 1 summarizes the distribution of significant findings across demographic groups and semantic categories. 
+
+6.2 LPBA Findings: Behavioral Language and Evaluative Framing 
+
+Table 2 reports all statistically significant LPBA findings across β and E target words. The most consistent finding concerns the behavioral term w = agitated , which produced significant LPBA (w, D i, S ) scores across all three minority groups but in opposing directions: 9LPBA (agitated , D BF ) < 0 (t = 3 .924 , p = 0 .004) (14) LPBA (agitated , D BM ) < 0 (t = 3 .490 , p = 0 .008) (15) LPBA (agitated , D HM ) > 0 (t = −2.615 , p = 0 .031) (16) LPBA (agitated , D AM ) > 0 (t = −2.308 , p = 0 .050) (17) LPBA (confused , D HM ) < 0 (t = 3 .207 , p = 0 .033) (18) LPBA (confused , D HF ) < 0 (t = 2 .809 , p = 0 .048) (19) For the evaluative framing term w = refused :LPBA (refused , D HM ) < 0 (t = 2 .837 , p = 0 .012) (20) LPBA (refused , D BF ) < 0 (t = 2 .566 , p = 0 .021) (21) LPBA (refused , D W F ) < 0 (t = 2 .213 , p = 0 .043) (22) These results indicate systematic suppression of evaluative language for patients across iden-tical sentence contexts. 
+
+6.3 MLM Findings: Agency Attribution 
+
+Table 3 reports all statistically significant MLM findings across Aresist , Acooperate , and Apassive 
+
+subcategories. The most statistically robust findings concern active cooperation language. For 
+
+w = requested and w = agreed :10 MLM (requested , D BM ) ≪ MLM (requested , D 0) (t = 5 .906 , p = 0 .0001) (23) MLM (agreed , D BM ) ≪ MLM (agreed , D 0) (t = 3 .555 , p = 0 .002) (24) MLM (requested , D BF ) ≪ MLM (requested , D 0) (t = 4 .419 , p = 0 .0008) (25) MLM (agreed , D BF ) ≪ MLM (agreed , D 0) (t = 4 .529 , p = 0 .0003) (26) MLM (requested , D AF ) ≫ MLM (requested , D 0) (t = −2.343 , p = 0 .037) (27) For the active resistance term w = declined ∈ A resist :MLM (declined , D BM ) < MLM (declined , D 0) (t = 2 .223 , p = 0 .043) (28) MLM (declined , D BF ) < MLM (declined , D 0) (t = 2 .286 , p = 0 .038) (29) Combined with the active cooperation suppression findings, this produces a coherent pat-tern in which Black patients are assigned lower probability for both active cooperation and active resistance language in identical clinical contexts — a systematic suppression of active agency across the full spectrum of Aresist ∪ A cooperate .For the passive cooperation term w = presented ∈ A passive :MLM (presented , D BF ) > MLM (presented , D 0) (t = −2.095 , p = 0 .050) (30) completing a representational profile in which Black Female patients are simultaneously less likely to be encoded as active agents — whether cooperating or resisting — and more likely to be encoded as passive recipients of clinical action. 
+
+6.4 Corpus Frequency Analysis: Statistical Disparity vs. Bias Amplification 
+
+Two striking corpus patterns directly contradict the model probability findings reported in Sec-tions 6.2 and 6.3. First, for active agency language in Black patient notes: 11 fC (refused , D Black ) = 15 .38 ≫ fC (refused , D White ) = 7 .75 per 10,000 tokens (31) 
+
+fC (requesting , D Black ) = 8 .46 ≫ fC (requesting , D White ) = 4 .49 per 10,000 tokens (32) Active agency language appears substantially more frequently in Black patient clinical notes than in White patient notes, yet the model systematically suppresses active agency predictions for Black patients, constituting a direct contradiction: 
+
+sign(∆ C )̸ = sign(∆ S ) (33) Second, for the behavioral term agitated :
+
+fC (agitated , D White ) = 4 .38 ≈ fC (agitated , D Black ) = 4 .62 per 10,000 tokens (34) 
+
+fC (agitated , D Hispanic ) = 4 .17 , fC (agitated , D Asian ) = 0 .00 per 10,000 tokens (35) Applying the classification scheme defined in Section 5.3: Contradiction rate (overall) = 21 32 = 65 .6% (36) Contradiction rate (Black patients) = 12 15 = 80 .0% (37) Contradiction rate (MLM agency) = 78 = 87 .5% (38) 
+
+# 7 DISCUSSION 
+
+7.1 Bias Amplification vs. Bias Inheritance 
+
+The 65.6% overall contradiction rate, rising to 80% for Black patients and 87.5% for agency attribu-tion under MLM probing, demonstrates that representational bias in ClinicalBERT is predominantly model-generated rather than data-inherited. This finding directly operationalizes the distinction be-tween statistical disparity and bias amplification established in Section 4.2, providing the first direct 12 empirical evidence in the clinical NLP domain that a widely deployed clinical language model am-plifies demographic associations beyond what its training corpus warrants, constituting a non-trivial 
+
+∆A(w, D )̸ = 0 across the majority of significant findings. Hall et al. (2022) note that the conditions under which bias amplification arises in machine learning models remain poorly understood. The present findings contribute directly to this gap by demonstrating that in the clinical domain, bias amplification is not an incidental feature of ClinicalBERT’s representations but a structural property, most severe precisely for the demographic groups facing the greatest existing healthcare disparities. Hofmann et al. (2024) corroborate this interpretation, demonstrating that large language models produce covertly racially discriminatory outputs even after alignment procedures specifically designed to reduce bias. 
+
+7.2 Linguistic Mechanisms of Representational Harm 
+
+The LPBA and MLM findings collectively demonstrate that representational bias in ClinicalBERT operates through three analytically distinct linguistic mechanisms — behavioral characterization, evaluative framing, and agency attribution — each producing demographically specific patterns that vary by racial group and gender in ways that race-level analysis alone cannot detect. Across behavioral language, the suppression of agitated for Black patients while amplifying it for Hispanic and Asian Male patients constitutes demeaning harm. The suppression of confused 
+
+for Hispanic patients of both genders constitutes erasure harm, systematically underrepresenting a clinically significant cognitive state for this group (Crawford, 2017). Across evaluative framing, the suppression of refused across multiple demographic groups encodes a judgment about their relationship to medical authority that, as Goddu et al. (2018) demonstrated, directly influences physician attitudes and treatment decisions when reproduced in clinical documentation. Across agency attribution, the systematic suppression of active agency for Black patients across both cooperation and resistance terms, both gender groups, and both LPBA and MLM methods constitutes the most coherent and clinically consequential representational profile in the study. The passive cooperation profile of Black Female patients, visible only through intersectional analysis, extends Crenshaw (1989)’s argument that the compound effects of race and gender produce distinct representational outcomes that race-level analysis systematically obscures. 13 7.3 Implications for Bias Mitigation and Clinical AI Governance 
+
+The finding that 65.6% of significant model outputs contradict corpus frequency patterns carries a direct implication for bias mitigation practice: rebalancing training data to ensure more equitable demographic representation is unlikely to be sufficient, because the biases identified here are pre-dominantly model-generated rather than data-inherited. As Hofmann et al. (2024) demonstrate, post-training alignment procedures are similarly insufficient when bias is structurally encoded in model representations. Effective mitigation requires three coordinated interventions. First, ongoing auditing of model outputs across intersectional demographic combinations throughout deployment. Second, transparent reporting of demographic probability disparities to clinical practitioners. Third, gov-ernance frameworks capable of holding deployed systems accountable for representational harms, specifying behavioral characterization, evaluative framing, and agency attribution as concrete au-diting targets. 
+
+7.4 Limitations and Future Work 
+
+Three methodological limitations constrain the generalizability of the present findings. First, the analysis is conducted on a single masked language model, ClinicalBERT, pretrained on MIMIC-III from a single academic medical center, and findings cannot be assumed to generalize to other clinical language models, corpora, or architectures. Second, the study does not address post-training procedures. Third, the template construction method inserts explicit demographic descriptors that may be syntactically rare relative to MIMIC-III training data. Two analytical limitations motivate future expansion. The target word sets β, E, and α
+
+represent a theoretically grounded but necessarily partial sample. Additionally, the corpus frequency analysis relies on global unigram frequencies rather than context-conditional distributions. Future research should expand target word sets, incorporate context-conditional baselines, and develop probing frameworks appropriate for autoregressive clinical language models. 14 8 CONCLUSION 
+
+This paper presents a computational audit demonstrating that representational bias in Clinical-BERT is predominantly model-generated rather than data-inherited, with 65.6% of significant find-ings contradicting MIMIC-III corpus distributions, rising to 80% for Black patients and 87.5% for agency attribution under MLM probing. Across behavioral characterization, evaluative framing, and agency attribution, ClinicalBERT encodes demographically specific associations that amplify and in critical cases invert its training corpus distributions. The probing framework introduced here provides a replicable auditing methodology for clinical AI governance, and future work should ex-tend it to autoregressive clinical language models, broader target word sets, and multi-institutional corpora. 15 Table 1: Distribution of significant findings across demographic groups and semantic categories. 
+
+Group Total Contradictions Reflections Contradiction Rate 
+
+Black 15 12 3 80.0% Hispanic 8 6 2 75.0% Asian 9 3 6 33.3% Overall 32 21 11 65.6% Table 2: Complete LPBA significant findings for behavioral language ( β) and evaluative framing (E). 
+
+Target Word Group t-statistic p-value Direction 
+
+agitated Black Female 3.924 0.004 lower agitated Black Male 3.490 0.008 lower refused Hispanic Male 2.837 0.012 lower refused Black Female 2.566 0.021 lower agitated Hispanic Male -2.615 0.031 higher confused Hispanic Male 3.207 0.033 lower refused White Female 2.213 0.043 lower confused Hispanic Female 2.809 0.048 lower agitated Asian Male -2.308 0.050 higher Table 3: Complete MLM significant findings for agency attribution ( α). 
+
+Target Word Group t-statistic p-value Direction 
+
+requested Black Male 5.906 0.0001 lower agreed Black Female 4.529 0.0003 lower requested Black Female 4.419 0.0008 lower agreed Black Male 3.555 0.002 lower requested Asian Female -2.343 0.037 higher declined Black Female 2.286 0.038 lower declined Black Male 2.223 0.043 lower presented Black Female -2.095 0.050 higher 16 Table 4: Corpus frequency rates per 10,000 tokens for all target words across demographic groups. 
+
+Target Word White Black Hispanic Asian 
+
+agreed 5.17 5.38 8.33 0.00 difficult 17.08 22.31 12.50 19.05 confused 10.56 10.00 8.33 4.76 compliance 5.17 7.69 4.17 9.52 oriented 38.20 41.54 41.67 33.33 refused 7.75 15.38 12.50 0.00 agitated 4.38 4.62 4.17 0.00 presented 41.91 50.77 37.50 38.10 cooperative 4.61 3.08 12.50 4.76 refusing 1.69 6.15 0.00 0.00 requested 4.49 8.46 4.17 0.00 declined 5.96 8.46 4.17 4.76 17 ACKNOWLEDGMENTS 
+
+The author gratefully acknowledges the supervision of Dr. Micha Elsner and Prof. James Phelan, whose guidance was invaluable to the development of this work. 18 References 
+
+Alsentzer, E., Murphy, J., Boag, W., Weng, W., Jindi, D., Naumann, T., and McDermott, M. (2019). Publicly available clinical BERT embeddings. In Proceedings of the 2nd Clinical Natural Language Processing Workshop , pages 72–78, Minneapolis, Minnesota. Association for Computa-tional Linguistics. Birhane, A. (2022). Automating ambiguity: Challenges and pitfalls of artificial intelligence. arXiv preprint arXiv:2206.04179 .Blodgett, S. L., Barocas, S., Daumé III, H., and Wallach, H. (2020). Language (technology) is power: A critical survey of “bias” in NLP. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pages 5454–5476. Bolukbasi, T., Chang, K. W., Zou, J. Y., Saligrama, V., and Kalai, A. T. (2016). Man is to computer programmer as woman is to homemaker? Debiasing word embeddings. Advances in Neural Information Processing Systems , 29. Buolamwini, J. and Gebru, T. (2018). Gender shades: Intersectional accuracy disparities in com-mercial gender classification. In Proceedings of the 1st Conference on Fairness, Accountability and Transparency , pages 77–91. Chien, J. and Danks, D. (2024). Beyond behaviorist representational harms: A plan for measurement and mitigation. In Proceedings of the 2024 ACM Conference on Fairness, Accountability, and Transparency , pages 933–946. Corvi, E., Washington, H., Reed, S., Atalla, C., Chouldechova, A., Dow, P., Garcia-Gathright, J., Pangakis, N., Sheng, E., Vann, D., Vogel, M., and Wallach, H. (2025). Taxonomizing representa-tion harms using speech act theory. In Findings of the Association for Computational Linguistics: ACL 2025 , pages 3907–3932, Vienna, Austria. Crawford, K. (2017). The trouble with bias. Keynote address, Neural Information Processing Systems Conference (NeurIPS), Long Beach, CA. Crenshaw, K. (1989). Demarginalizing the intersection of race and sex: A Black feminist critique of 19 antidiscrimination doctrine, feminist theory and antiracist politics. University of Chicago Legal Forum , 1989(1):139–167. Devlin, J., Chang, M. W., Lee, K., and Toutanova, K. (2019). BERT: Pre-training of deep bidi-rectional transformers for language understanding. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies , volume 1, pages 4171–4186. Goddu, A. P., O’Conor, K. J., Lanzkron, S., Saheed, M. O., Peak, S., Kelen, G. D., Doyle, P. A., and Beach, M. C. (2018). How language shapes prejudice against patients: An experimental study with simulated medical records. Journal of General Internal Medicine , 33(5):685–691. Hall, P., Gill, N., and Schmidt, N. (2022). A systematic study of bias amplification in graph neural networks. In Proceedings of the AAAI/ACM Conference on AI, Ethics, and Society .Hofmann, V., Kalluri, P. R., Jurafsky, D., and King, S. (2024). AI generates covertly racist decisions about people based on their dialect. Nature , 633(8028):147–154. Hoffman, K. M., Trawalter, S., Axt, J. R., and Oliver, M. N. (2016). Racial bias in pain assessment and treatment recommendations, and false beliefs about biological differences between Blacks and Whites. Proceedings of the National Academy of Sciences , 113(16):4296–4301. Johnson, A. E., Pollard, T. J., Shen, L., Lehman, L. W., Feng, M., Ghassemi, M., Moody, B., Szolovits, P., Celi, L. A., and Mark, R. G. (2016). MIMIC-III, a freely accessible critical care database. Scientific Data , 3:160035. Kurita, K., Vyas, N., Pareek, A., Black, A. W., and Tsvetkov, Y. (2019). Measuring bias in contextualized word representations. In Proceedings of the First Workshop on Gender Bias in Natural Language Processing , pages 166–172. Mehrabi, N., Morstatter, F., Saxena, N., Lerman, K., and Galstyan, A. (2021). A survey on bias and fairness in machine learning. ACM Computing Surveys , 54(6):1–35. Obermeyer, Z., Powers, B., Vogeli, C., and Mullainathan, S. (2019). Dissecting racial bias in an algorithm used to manage the health of populations. Science , 366(6464):447–453. 20 Park, J., Saha, S., Chee, B., Taylor, J., and Beach, M. C. (2021). Physician use of stigmatizing language in patient medical records. JAMA Network Open , 4(7):e2117052. Zhao, J., Wang, T., Yatskar, M., Cotterell, R., Ordonez, V., and Chang, K. W. (2019). Gender bias in contextualized word embeddings. In Proceedings of the 2019 Conference of the North Amer-ican Chapter of the Association for Computational Linguistics: Human Language Technologies ,volume 1, pages 629–634. 
+
+# A TARGET WORD LIST AND SELECTION CRITERIA 
+
+Target words across all three semantic categories were selected through a two-stage process. First, candidate terms were identified through a systematic review of medical humanities literature doc-umenting demographic-associated language patterns in clinical documentation, specifically Goddu et al. (2018), Park et al. (2021), and Hoffman et al. (2016). Second, candidate terms were validated against the MIMIC-III corpus to confirm sufficient frequency for statistical analysis; a minimum of five instances per target word across demographic group comparisons was required for inclusion. 
+
+A.1 Semantic Categories 
+
+We organize target words into three theoretically grounded semantic categories: 
+
+β = {difficult, resistant, agitated, confused, oriented, appropriate, inappropriate } (39) 
+
+E = {cooperative, compliance, refused, refusing } (40) 
+
+α = {refused, declined, requested, agreed, responded, presented } (41) 
+
+A.2 Behavioral Language ( β)
+
+Behavioral language terms characterize patients through inferred patterns of conduct, constructing the patient as a particular type of person whose behavior requires evaluation and management. Each term was selected on the basis of documented disproportionate application to minority patient groups in clinical auditing research: 21 • Difficult : Park et al. (2021) identified “difficult” as one of the primary linguistic channels through which physicians encode subjective evaluative judgments in clinical documentation, with significant racial and socioeconomic patterning in its application. Goddu et al. (2018) demonstrated that its presence in clinical charts directly influences subsequent provider atti-tudes and treatment decisions. 
+
+• Resistant : Selected on the basis of its functional relationship to compliance-related language, encoding patient non-cooperation as a behavioral trait rather than a situational response. Medical humanities research has documented its disproportionate application to Black and Hispanic patients in psychiatric and primary care settings. 
+
+• Agitated : Selected because it encodes an affective behavioral state that carries clinical conse-quences for medication decisions, restraint use, and discharge planning. Its near-equal corpus frequency across White and Black patient notes — 4.38 versus 4.62 per 10,000 tokens — made it a particularly critical test case for bias amplification, as the training data does not warrant the significant model probability differences the LPBA analysis identified. 
+
+• Confused : Selected as a behavioral descriptor encoding cognitive state with direct impli-cations for clinical decision-making around capacity, consent, and treatment. Its inclusion enables examination of whether the model encodes demographic assumptions about cognitive clarity in ways that parallel the stereotypes documented in medical education literature. 
+
+• Oriented : Selected as the cognitive complement to “confused,” enabling directional analysis of whether demographic descriptors shift the model’s encoding of cognitive clarity in opposing directions across racial groups. 
+
+• Appropriate : Selected because its use as a behavioral descriptor in clinical documentation encodes a normative judgment about patient conduct relative to clinical expectations, with documented variation across demographic groups in psychiatric and emergency medicine set-tings. 
+
+• Inappropriate : Selected as the behavioral complement to “appropriate,” enabling analysis of whether the model encodes asymmetric normative judgments about patient conduct across demographic groups. 22 A.3 Evaluative Framing ( E)
+
+Evaluative framing terms position patients explicitly in relation to medical authority, encoding judgments about cooperation with or resistance to clinical instructions. Unlike behavioral lan-guage, evaluative framing terms encode a power dynamic; the patient’s relationship to institutional authority becomes the primary object of clinical judgment: 
+
+• Cooperative : Selected as the prototypical positive evaluative framing term, encoding patient alignment with clinical authority. Its inclusion enables examination of whether demographic descriptors suppress positive institutional evaluations for specific patient groups in ways that parallel the compliance literature. 
+
+• Compliance : Selected as the most frequently studied evaluative framing term in medical humanities research. Documented disproportionate application to Black patients and women makes it a critical test case for representational harm in evaluative framing. Its corpus fre-quency difference across racial groups — 8.21 for White patients versus 6.43 for Black patients per 10,000 tokens — provides a meaningful baseline for comparing model probability assign-ments. 
+
+• Refused : Selected because its use as an evaluative framing term encodes active resistance to medical authority, with documented racial patterning in its application. The corpus finding that “refused” appears in 15.38 per 10,000 tokens of Black patient notes compared to 7.75 for White patient notes — nearly double the rate — makes it the most analytically significant term for examining the contradiction between corpus distribution and model output. 
+
+• Refusing : Selected as the present-participle complement to “refused,” enabling examination of whether the model encodes resistance as an ongoing behavioral state differently across demographic groups than as a discrete past action. 
+
+A.4 Agency Attribution ( α)
+
+Agency attribution terms encode causal responsibility by assigning patients either active or passive agency in relation to their care. The three-way subcategorization into active resistance ( Aresist ), ac-tive cooperation ( Acooperate ), and passive cooperation ( Apassive ) reflects the full spectrum of patient 23 agency construction in clinical language: 
+
+• refused (Aresist ): Encodes active resistance to clinical instructions as a completed past action, assigning full causal agency to the patient. Its inclusion in both E and α reflects its dual function as both an evaluative framing term and an agency attribution term, a semantic overlap that is analytically significant for understanding how the two mechanisms interact. 
+
+• declined (Aresist ): Selected as a semantically related but pragmatically distinct alternative to “refused,” “declined” carries a more neutral valence while still encoding active patient agency in resisting clinical recommendations. Its inclusion enables examination of whether the model’s agency suppression pattern for Black patients extends across both neutral and negatively valenced active resistance terms. 
+
+• requested (Acooperate ): Encodes active patient agency in initiating clinical interactions, con-structing the patient as a causal agent making decisions about their own care. Its selection is grounded in the NIH framework for patient agency in clinical documentation, which identifies initiating requests as a primary marker of active clinical decision-making. 
+
+• agreed (Acooperate ): Encodes active patient cooperation as a completed past decision, as-signing causal agency to the patient for accepting clinical recommendations. Its inclusion alongside “requested” enables examination of whether the model’s agency suppression pattern applies to both forms of active cooperation. 
+
+• responded (Apassive ): Encodes patient reaction to clinical stimuli without implying active decision-making, constructing the patient as a responsive rather than initiating agent. Its inclusion enables examination of whether demographic descriptors shift the model’s encoding of passive clinical participation. 
+
+• presented (Apassive ): Selected as the most common passive agency attribution term in clinical discharge summaries, encoding the patient as an object of clinical observation rather than a decision-making subject. Its high corpus frequency — 18.54 per 10,000 tokens for White patients — makes it a statistically robust test case for passive agency attribution across demographic groups. 24 B FULL STATISTICAL RESULTS 
+
+Tables 5 and 6 report complete paired t-test results for all LPBA and MLM target words and demographic combinations, including non-significant findings. Findings reported as significant in the main paper are marked with an asterisk. Table 5: Complete LPBA significant findings for behavioral language and evaluative framing. 
+
+Target Word Group t-statistic p-value Direction 
+
+agitated* Black Female 3.924 0.004 lower agitated* Black Male 3.490 0.008 lower refused* Hispanic Male 2.837 0.012 lower refused* Black Female 2.566 0.021 lower agitated* Hispanic Male -2.615 0.031 higher confused* Hispanic Male 3.207 0.033 lower refused* White Female 2.213 0.043 lower confused* Hispanic Female 2.809 0.048 lower agitated* Asian Male -2.308 0.050 higher Table 6: Complete MLM significant findings for agency attribution. 
+
+Target Word Group t-statistic p-value Direction 
+
+requested* Black Male 5.906 0.0001 lower agreed* Black Female 4.529 0.0003 lower requested* Black Female 4.419 0.0008 lower agreed* Black Male 3.555 0.002 lower requested* Asian Female -2.343 0.037 higher declined* Black Female 2.286 0.038 lower declined* Black Male 2.223 0.043 lower presented* Black Female -2.095 0.050 higher 
+
+# C CLINICAL SENTENCE TEMPLATE EXAMPLES 
+
+C.1 Template Construction Method 
+
+Demographic descriptors were inserted using two systematic methods. In Method 1, the word “patient” was replaced directly with the demographic descriptor. In Method 2, a demographic prefix was prepended to sentences that did not contain an explicit patient reference. Both methods preserve the original clinical language while systematically varying only the demographic descriptor 25 across all eight race-gender combinations. 
+
+C.2 Representative LPBA Templates — Behavioral Language ( β)
+
+Template β-01: “The [DEMOGRAPHIC] patient became [MASK] when attempts were made to reposition them.” 
+
+Template β-02: “Staff noted that the [DEMOGRAPHIC] patient appeared [MASK] throughout the morning shift.” 
+
+Template β-03: “The [DEMOGRAPHIC] patient was [MASK] to verbal stimuli upon assessment.” 
+
+Template β-04: “The [DEMOGRAPHIC] patient remained [MASK] during the physical examina-tion.” 
+
+Template β-05: “Nursing documented that the [DEMOGRAPHIC] patient became increasingly [MASK] following the procedure.” 
+
+C.3 Representative Agency Attribution Templates ( α)
+
+Table 7: Template A-03 — Active Cooperation (requested). 
+
+Original Sentence Modified Sentence Demographic 
+
+The patient requested not to unwrap. The white male patient requested not to unwrap. White Male The patient requested not to unwrap. The black male patient requested not to unwrap. Black Male The patient requested not to unwrap. The black female patient requested not to unwrap. Black Female The patient requested not to unwrap. The asian female patient requested not to unwrap. Asian Female 
+
+C.4 Demographic Descriptor Substitution Table 
+
+# D CORPUS FREQUENCY DATA 
+
+D.1 Corpus Frequency Rates 
+
+See Table 4 in the main text. 26 Table 8: Demographic descriptor index and reference group assignment. 
+
+Index Descriptor Reference Group 
+
+D0 White Male Yes 
+
+D1 Black Male No 
+
+D2 Black Female No 
+
+D3 Hispanic Male No 
+
+D4 Hispanic Female No 
+
+D5 Asian Male No 
+
+D6 Asian Female No 
+
+D7 White Female No 
+
+D.2 Full RQ3 Comparison — LPBA Findings 
+
+Table 9: Complete RQ3 comparison between model probability differences and corpus frequency differences for all LPBA findings. 
+
+Word Group Model diff. Model dir. Corpus diff. Corpus dir. Alignment 
+
+cooperative Black +0.049 higher -1.530 lower Contradict cooperative Hispanic -0.051 lower +7.893 higher Contradict cooperative Asian +0.047 higher +0.155 higher Reflect compliance Black -0.447 lower +2.524 higher Contradict compliance Hispanic +0.026 higher -1.002 lower Contradict compliance Asian +0.297 higher +4.355 higher Reflect refused Black -0.123 lower +7.632 higher Contradict refused Hispanic -0.115 lower +4.747 higher Contradict refused Asian -0.063 lower -7.753 lower Reflect refusing Black +0.081 higher +4.468 higher Reflect refusing Hispanic -0.011 lower -1.685 lower Reflect refusing Asian +0.043 higher -1.685 lower Contradict LPBA contradiction rate: 7/12 = 58.3% 
+
+D.3 Full RQ3 Comparison — MLM Findings 
+
+# E INTERSECTIONAL RESULTS 
+
+E.1 Intersectional Contradiction Rates E.2 Key Intersectional Patterns 
+
+Four intersectional patterns emerge from the full results that extend the race-level analysis in the main paper. 27 Table 10: Complete RQ3 comparison between model probability differences and corpus frequency differences for all MLM findings. 
+
+Word Group Model diff. Model dir. Corpus diff. Corpus dir. Alignment 
+
+requested Black Male -0.247 lower +3.967 higher Contradict agreed Black Female -0.274 lower +0.216 higher Contradict requested Black Female -0.177 lower +3.967 higher Contradict agreed Black Male -0.217 lower +0.216 higher Contradict requested Asian Female +0.218 higher -4.494 lower Contradict declined Black Female -0.297 lower +2.506 higher Contradict declined Black Male -0.122 lower +2.506 higher Contradict presented Black Female +0.053 higher +8.859 higher Reflect MLM contradiction rate: 7/8 = 87.5% Table 11: Contradiction rates by demographic group. 
+
+Group Total Contradictions Reflections Contradiction Rate 
+
+Black 15 12 3 80.0% Hispanic 8 6 2 75.0% Asian 9 3 6 33.3% Overall 32 21 11 65.6% The presented finding for Black Female patients ( t = −2.095 , p = 0 .050 ) is specific to Black Female patients and does not appear for Black Male patients ( t = −0.979 , p = 0 .340 ), making it entirely invisible to race-level analysis. Combined with the active cooperation and active resistance suppression patterns shared by both Black Male and Black Female patients, this creates a representational profile unique to Black Female patients: simultaneously less likely to be encoded as active agents in any capacity and more likely to be encoded as passive recipients of clinical action. This is the clearest demonstration in the study that intersectional analysis is methodologically necessary rather than optional. Also, the agitated pattern shows opposing directions within minority groups that race-level analysis would obscure. Black patients of both genders show a lower probability for agitated while Hispanic Male and Asian Male patients show a higher probability. This divergence — suppres-sion for Black patients and amplification for Hispanic and Asian Male patients — constitutes a structured set of group-specific associations that cannot be captured by any aggregate metric and reveals that ClinicalBERT encodes not a simple minority-versus-majority distinction but a complex, demographically specific mapping of behavioral language. 28 The refused suppression pattern for White Female patients ( t = 2 .213 , p = 0 .043 ) introduces a gender dimension operating independently of race. White Female patients are assigned a signifi-cantly lower probability for refused language than White Male patients in identical clinical sentence contexts, suggesting that the suppression of active resistance language is not exclusively a racial phenomenon but also operates along gender lines within the White patient group. This finding extends the scope of evaluative framing bias beyond racial minority groups and has implications for how clinical AI governance frameworks define the scope of demographic auditing. Finally, the White Female borderline finding for the requested test ( t = −2.154 , p = 0 .052 )falling just above the significance threshold warrants attention in future research. The trend toward amplification of active cooperation language for White Female patients contrasts with the active cooperation suppression for Black patients. This suggests that the model may encode opposing agency attributions along both racial and gender lines simultaneously. A larger template set may be sufficient to detect this pattern at statistical significance. 29
