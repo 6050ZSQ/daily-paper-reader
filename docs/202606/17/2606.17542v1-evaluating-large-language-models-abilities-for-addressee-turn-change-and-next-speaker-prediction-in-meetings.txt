@@ -1,0 +1,398 @@
+Title: Evaluating Large Language Models Abilities for Addressee, Turn-change, and Next Speaker Prediction in Meetings
+
+URL Source: https://arxiv.org/pdf/2606.17542v1
+
+Published Time: Wed, 17 Jun 2026 00:34:03 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# Evaluating Large Language Models Abilities for Addressee, Turn-change, and Next Speaker Prediction in Meetings 
+
+# Ryo Fukuda ID 1,∗∗ , Takatomo Kano ID 1, Siddhant Arora ID 2, Marc Delcroix ID 1, Naohiro Tawara ID 1,Atsunori Ogawa ID 1, Yuya Chiba ID 1, Atsushi Ando ID 1, William Chen 2, Shinji Watanabe ID 21 NTT, Inc., Japan, 2 Language Technologies Institute, Carnegie Mellon University, USA 
+
+ryo.fukuda@ntt.com 
+
+# Abstract 
+
+We investigate turn-taking in multimodal multi-party conversa-tions using large language models (LLMs). We construct an evaluation framework for three tasks: addressee detection, turn-change prediction, and next speaker prediction. We compare supervised models trained for these tasks, text-based LLMs, multimodal LLMs (MM-LLMs), and human subjects. Exper-iments on the AMI corpus showed that LLMs outperformed su-pervised models and humans in next speaker prediction, despite not being trained on the target domain and without access to audio or visual information. An MM-LLM performed better than text-based LLMs on addressee detection and turn-change prediction but remained below human performance, indicating difficulty leveraging raw audio-visual signals. Ablation anal-yses revealed that conversational context was critical, particu-larly for next speaker prediction. We observed that human and LLM prediction patterns were similar, and intervals with fre-quent turn changes were difficult for both. 
+
+Index Terms : turn-taking modeling, multi-party conversation, multimodal speech processing, conversational context 
+
+# 1. Introduction 
+
+Advances in large language models (LLMs) have substantially improved the ability of conversational agents to understand and generate natural language. With the emergence of multimodal LLMs (MM-LLMs) capable of processing audio and visual in-puts in addition to text [1,2], it is becoming possible to integrate linguistic and non-linguistic information to understand non-verbal communication. These developments have increased in-terest in systems that can engage in human multi-party conver-sations (MPCs), such as meeting assistants and collaborative agents [3, 4], as studied in several MPC corpora [5–9]. Conversational agents participating in MPCs are required to understand turn-taking behaviors, which are more complex than those in dyadic interactions [10]. In dyadic conversa-tions, understanding turn-taking only requires detecting speaker changes, as the addressee of the current utterance and the next speaker are self-evident (i.e., the interlocutor). In contrast, MPCs involve multiple potential addressees and multiple can-didates for the next speaker. An utterance may be directed to a specific individual, several participants, or the group as a whole. Successful participation therefore requires inferring who is be-ing addressed and whether and to whom the conversational floor will shift. Failure to appropriately manage turn-taking can re-sult in long pauses or inappropriate interruptions that signifi-cantly disrupt the fluidity of the interaction [11]. 
+
+> **
+
+indicates the corresponding author. 
+
+Previous studies have extensively investigated turn-taking in dyadic conversations [12–14], recently examining the turn-taking capabilities of LLMs and audio foundation models [15– 17]. In comparison, turn-taking in MPCs has received less at-tention, although interest has grown in recent years [18]. In MPCs, turn-taking has been studied through individual tasks such as addressee detection [19], turn-change prediction [20], and next speaker prediction [21]. These tasks have been shown to benefit from multimodal information. For example, visual cues such as gaze contribute to addressee detection and next speaker prediction [19, 21], while prosodic features provide cues for turn-change prediction [22]. Earlier work primar-ily employed supervised models such as conditional random fields [23], support vector machines (SVM) [24], and deep neu-ral networks [25, 26], typically combining textual features with audio-visual signals. More recently, LLM-based approaches have been explored. Several studies have evaluated the abil-ity of text-based LLMs to perform addressee detection and next speaker prediction [27, 28]. The effectiveness of incorporating visual information, such as gaze or images, to text-based and MM-LLMs has also been investigated [27, 29]. Despite these efforts, three limitations remain. First, it is unclear to what extent MM-LLMs can perform these tasks di-rectly from raw audio and video signals. Although such mod-els accept multimodal inputs, their ability to exploit these sig-nals effectively for turn-taking prediction in MPCs has not been systematically examined. Second, comprehensive evaluations across modeling paradigms, such as supervised models trained to predict these tasks, text-based LLMs, and MM-LLMs, under a unified experimental protocol are limited. Third, and most im-portantly, human performance on these tasks has not been suf-ficiently quantified under comparable multimodal conditions. Understanding the inherent difficulty of these tasks for humans and the factors that contribute to it is essential for developing conversational agents that approximate human behavior. In this study, we address these limitations by evaluating addressee detection, turn-change prediction, and next speaker prediction in a unified framework. Both models and humans address each task using only past and current conversation in-formation, which reflects real-time conversational constraints. We use the AMI Meeting Corpus [33], which consists of natural MPCs in meetings involving four English speakers. The corpus provides synchronized audio, video, and manual transcriptions, as well as annotations such as addressee and focus-of-attention (FOA) labels, making it suitable for our experiments. We com-pare three classes of models: supervised models, text-based LLMs, and MM-LLMs. As supervised baselines, we imple-ment four conventional models. For text-based LLMs, we eval-uate three variants of Qwen3 [34]. For MM-LLMs, we examine Qwen-Omni models [35, 36] and Gemini 2.5 Pro. In addition, 
+
+> arXiv:2606.17542v1 [cs.CL] 16 Jun 2026
+
+Table 1: LLM-based approaches for turn-taking in multi-party conversation.                                 
+
+> Study Data # Spk. Turn-taking tasks Input modality Compared approaches Inoue et al. [27] TEIDAN [27] 3Addr., Next Text MM-LLM Hilgert & Niehues [28] AMI, DiPCo [30], ML [31] 3–4 Next Text LLM, Human
+> Mori et al. [29] TEIDAN 3Next Text, Image MM-LLM Chang et al. [32] TV-MMPC [32] 4.18 (Avg.) Addr. (Offline) Text, Audio, Video, Image MM-LLM Ours AMI (+Multisimo) 4Addr., Turn, Next Text, Audio, Video LLM, MM-LLM, Human
+
+we conduct human evaluations under comparable multimodal settings to directly compare humans and models. The evaluation revealed several key findings. • First, human performance on these tasks was not particularly high. 1 For example, in next speaker prediction, where four candidates were possible, the F1 score was approximately 60%. This indicates that turn-taking in MPCs is difficult to predict, even for humans. • Second, text-based LLMs outperformed human subjects and supervised models in next speaker prediction. We confirmed that conversational context was critical for this task, consis-tent with prior findings [28]. • Third, among MM-LLMs, Gemini 2.5 Pro achieved higher performance than text-based LLMs in addressee detection and turn-change prediction, but still underperformed human performance. Our analysis indicates that current MM-LLMs still face difficulties in effectively leveraging raw audio-visual signals for turn-taking prediction. • Finally, we observed that the prediction tendencies of humans and LLMs were broadly similar. Intervals that were difficult for humans also tended to be difficult for LLMs. In particular, segments with frequent speaker changes and more balanced participation among speakers were harder to predict. 
+
+# 2. Related Work 
+
+2.1. Evaluation of LLMs 
+
+Several recent studies have examined the ability of LLMs to un-derstand turn-taking in MPCs (Table 1). Inoue et al. [27] con-structed a benchmark for addressee detection and next speaker prediction using three-party conversations. They reported that LLM performance with ground-truth transcriptions was close to chance level and that incorporating gaze information did not substantially improve performance. Hilgert and Niehues [28] evaluated text-based LLMs on next speaker prediction using several MPC datasets. Their results showed that some models outperformed human subjects and highlighted the importance of conversational context for predicting the next speaker. Mori et al. [29] investigated next speaker prediction using an MM-LLM with text and image inputs on the TEIDAN dataset. They found no clear performance improvement from incorporating visual information, suggesting that current models may have a limited ability to exploit visual cues for this task. Chang et al. [32] explored whether MM-LLMs can understand conversa-tional structure from audio and video signals. Using a television dialogue dataset, they evaluated models on discourse-related at-tributes such as addressee prediction. However, their evaluation assumes an offline setting in which the entire conversation is available, which differs from online prediction scenarios. 
+
+> 1We should note that a limitation of the study is that, as explained later, our human evaluation was carried out by non-native speakers, who may perform worse than native speakers on these tasks.
+
+While these studies demonstrate increasing interest in LLM-based approaches to MPC understanding, most focus on a single turn-taking task or rely on limited modalities. More-over, systematic comparisons across different model types re-main limited. In contrast, our study focuses on an online sce-nario simulating an agent participating in a meeting, predicting conversational dynamics without access to future information. Moreover, we compare text-based and MM-LLMs across mul-tiple turn-taking tasks. 
+
+2.2. Human Performance 
+
+Several studies have explored human performance on related turn-taking tasks. The AMI corpus includes addressee an-notations that were carefully produced by trained annotators with access to the entire conversation and guided by dialogue act information. Inter-annotator agreement for these annota-tions has been reported to be moderate (Krippendorff’s α ≈
+
+0.45–0.56) [37], indicating that addressee identification is in-herently ambiguous. However, in natural conversation, partici-pants infer addressees intuitively, without explicitly referring to dialogue act definitions. The extent to which such online human judgments align with annotations remains unclear. Human ability to predict turn changes has also been inves-tigated. De Ruiter et al. [38] reported that listeners predict turn ends approximately 200 milliseconds before the current speaker finishes. Casillas and Frank [39] found that even 1–2-year-old children can predict turn changes by integrating lexical and prosodic cues. However, their experiments were limited to dyadic conversations, and did not quantify utterance-level pre-diction accuracy. Hilgert and Niehues [28] evaluated human performance of next speaker prediction in MPCs, but their eval-uation relied solely on textual information. This setup may un-derestimate human performance in natural conversations where multimodal cues such as gaze and prosody are available. To the best of our knowledge, no prior study has quanti-tatively evaluated human performance on addressee detection, turn-change prediction, and next speaker prediction under a multimodal and online setting in MPCs. Our study provides the first unified comparison of humans and models on these tasks, enabling direct assessment of their relative performance. 
+
+# 3. Task Definition 
+
+In this study, we evaluate turn-taking prediction in MPCs through three tasks: (1) addressee detection , (2) turn-change prediction , and (3) next speaker prediction . In addition to evaluating models, we also measure human performance on the same tasks to clarify the gap between humans and current mod-els for these tasks. In our experiments, systems perform only two tasks: (1) addressee detection and (2) next speaker prediction at the utter-ance level, from which turn-change labels can be directly de-rived. This formulation simplifies the prediction process while enabling evaluation of different aspects of turn-taking. 3.1. Addressee detection 
+
+Let a conversation be represented as an N -length sequence of utterances (u1, u 2, . . . , u N ). Each utterance ui is associated with a speaker ID si ∈ P , a transcription ti, an utterance-level audio segment ai, and an utterance-level video segment 
+
+vi, where P denotes the set of participants and |P| = K. In our experiments using the AMI corpus, K = 4 . At time step i, the goal is to predict the addressee label yi ∈ P ∪ { Group , None }
+
+for the current utterance ui. Group indicates multiple partic-ipants, and None indicates that the utterance is not directed to any specific participant. Addressee detection predicts yi from 
+
+(si, t i, a i, v i, c i), where ci is conversational context derived from preceding utterances. The form of the conversational con-text ci depends on the systems (see Section 4.2). For evaluation, we report classification accuracy ( Acc ). To account for class imbalance, we additionally report the macro-averaged F1 score ( F1 ma ) over all classes. 
+
+3.2. Turn-change and next speaker prediction 
+
+We consider two closely related tasks: turn-change prediction and next speaker prediction. Both tasks are defined based on predicting who will speak immediately after each utterance 
+
+ui. Models and humans predict a possibly multi-valued set of next speaker candidates ˆSi+1 ⊆ P from the current inputs 
+
+(si, t i, a i, v i, c i).2
+
+Turn-change prediction: Turn-change prediction is the task of predicting whether the speaker will change in the next utter-ance. We define the ground-truth turn-change label ri as 
+
+ri =
+
+Hold if si+1 = si,
+
+Shift otherwise .
+
+The predicted label is derived from ˆSi+1 as 
+
+ˆri =
+
+Hold if ˆSi+1 = {si},
+
+Shift otherwise .
+
+A Hold is predicted only when the predicted set contains exclusively the current speaker. For turn-change prediction, we report Acc and F1 ma over the two classes. 
+
+Next speaker prediction: Next speaker prediction is evaluated only on turns with a speaker change ( ri=Shift ). We report a strict accuracy that counts a prediction as correct only when the predicted set contains exactly one speaker and it matches the ground-truth next speaker, i.e., ˆSi+1 ={si+1 }. Because this strict criterion does not account for ambiguous situations, we also report Precision , Recall , and F1 , computed based on whether the ground-truth next speaker si+1 is included in ˆSi+1 .
+
+# 4. Dataset 
+
+We constructed an evaluation set for the above tasks. We used the AMI corpus, which consists of 100 hours of meeting record-ings, as in previous studies [24, 28]. The AMI corpus provides synchronized audio recordings, video streams, and manual tran-scriptions. This corpus includes scenario-based meetings where four participants, each playing different roles in a design team, complete a design project over the course of a day. A subset of the corpus is annotated with dialogue acts, and within a fur-ther subset of these sessions, the dialogue act annotations in-clude manually marked addressee information. Separately, an-
+
+> 2In a pilot study, subjects often found it difficult to commit to a single next speaker candidate. Therefore, both models and humans are allowed to output one or more candidates.
+
+Table 2: Statistics of the dataset. †Single refers to labels A, B, C or D.              
+
+> Full Set Human-Eval. Subset
+> # Sessions 10 2# Unique speakers 16 8# Utterances 4051 347 Duration (minutes) 262 29 Addressee ratio [%] Single†/Group/None 30.7/47.6/21.7 49.6/28.2/22.2 Turn-change ratio [%] Shift/Hold 63.7/36.3 63.5/36.5
+
+other subset of the corpus is annotated with FOA, which rep-resents the speaker’s gaze target. FOA labels take one of eight values: one of the four participants, table , whiteboard ,
+
+slidescreen , or Unspecified . Further details on the an-notations are provided on the AMI corpus website 3. In the orig-inal annotation, addressee labels are assigned to spans of con-secutive words. To obtain utterance-level labels suitable for our tasks, we construct addressee labels yi ∈ P ∪ { Group , None }
+
+for each utterance as follows. For each word in a given utter-ance, collect all of the original addressee annotations associated with that word. If no annotation is found, the utterance is la-beled as None . If one annotation is found, the corresponding addressee label is assigned to that utterance. If multiple annota-tions are found, the label Group is assigned. For turn-change and next speaker prediction in Section 3.2, we simply use the speaker label si+1 as the ground truth target for given the ut-terance ui, in line with previous work [28]. Utterances at the end of a session, for which no subsequent speaker exists, are excluded from these evaluations. For audio, we use close-talking headset microphone record-ings for each participant. Due to speech overlap, the micro-phone of one speaker occasionally captures the voice of another participant. In some cases, this leakage makes the identity of the next speaker partially observable. Manual inspection confirmed such leakage in approximately 8.5% of utterances. Because our goal is to evaluate continuous turn-taking prediction in realis-tic multi-party interactions, we did not exclude these instances. Only short utterances completely overlapping other utterances (typically fillers or backchannels) were excluded. 
+
+4.1. Data Selection 
+
+We manually inspected the corpus and selected sessions accord-ing to the following criteria: (i) availability of addresse and FOA labels, (ii) the camera view clearly captures the faces of all participants, and (iii) availability of headset microphone record-ings for all speakers. As a result, the following 11 sessions remained: IS1000a, IS1001a, IS1001b, IS1001c, IS1003d, IS1006b, IS1006d, IS1008a, IS1008b, IS1008c, IS1008d. Of these, ten sessions, excluding IS1000a, which was used for de-bugging, were used for evaluation. In addition, we constructed a subset for human evaluation using IS1001a and IS1008a, due to time and resource con-straints. These sessions involve different groups of participants, ensuring diversity in speaker characteristics. In the AMI cor-pus, the session suffixes (a, b, c, d) correspond to four phases of the same meeting conducted by a single group (e.g., IS1001 or IS1008). We therefore selected phase-a sessions, which are 
+
+> 3https://groups.inf.ed.ac.uk/ami/corpus/ annotation.shtml
+
+Table 3: Summary of input features.                   
+
+> Symbol Description
+> siSpeaker ID of utterance ui(ground-truth)
+> tiGround-truth transcription of ui
+> aiUtterance-level audio segment aligned to ui
+> viUtterance-level video clip aligned to ui
+> ciConversational context available at step igiFOA label aligned to ui(annotated from video)
+> ϕiText-derived features (e.g., pronouns, length)
+> ˜tiASR transcription derived from audio ai
+
+the least influenced by preceding conversational context. Ta-ble 2 summarizes the statistics of the selected data. Except for a higher proportion of individually addressed interactions, the turn-change ratio and addressee distribution are comparable to those of the full sessions. 
+
+4.2. Features 
+
+Table 3 summarizes the input features. In the primary setting, ground-truth si and ti, and the utterance-aligned raw signals ai
+
+and vi, are provided. Speaker IDs are overlaid on the video to associate visual streams with P (see Figure 1). The form of the conversation context ci varies depend-ing on the systems. For LLMs (Section 5.2 and 5.3), it con-sists of speaker-transcription pairs from preceding utterances, 
+
+(s<i , t <i ). For supervised models (Section 5.1), following prior work [24], we provide a speaker ID of an preceding utter-ance, ci = si−1. Human subjects (Section 6) are not explicitly given contextual information. However, because they solve the tasks sequentially, they may implicitly rely on contextual infor-mation retained in memory from previous utterances. We additionally consider optional inputs. For supervised models, the transcription is represented via a text-derived fea-ture vector ϕi computed from ti, rather than raw text. Specifi-cally, ϕi consists of second-person pronoun usage ( you ), pres-ence of conjunctions, and sentence length ( [24] for details). To assess robustness under practical conditions, we also consider an ASR setting in which ti is replaced with the ASR transcript 
+
+˜ti (see Section 7.3). We also evaluated a modular setting in which FOA labels gi are provided as visual cues (Section 7.4). 
+
+# 5. Model Evaluation 
+
+We evaluate three classes of models: conventional supervised learning models, and off-the-shelf text-based and MM-LLMs. As a naive baseline, we report majority or chance-level strate-gies for each task. For addressee detection, the naive baseline always predicts Group label. For turn-change prediction, it al-ways predicts Shift label. For next speaker prediction, we re-port the expected accuracy of random selection among the four participants, which is 25.0. 
+
+5.1. Supervised Learning Models 
+
+We implemented four supervised models used in prior work of addressee detection [24]: Naive Bayes [40], Random For-est [41], Multi-layer Perceptron (MLP) [42], and Support Vec-tor Machine (SVM) [43]. Hyperparameters were set follow-ing [24]. The input consists of the current speaker si, the text-derived features ϕi, and the context ci = si−1.All models were implemented using scikit-learn [44]. We conducted five-fold cross-validation over the ten sessions using 
+
+GroupKFold , ensuring that utterances from the same session did not appear in both training and test sets. Predictions on the Table 4: Prompt used for the MM-LLM (Next Speaker Predic-tion). The prompt was slightly edited for brevity.    
+
+> Description : You are an expert model of multi-party conversation analysis. Your task is to predict who will speak next in a meeting with four participants: A, B, C, and D. You are given the current speaker ID, the current utterance (transcription), and an audio-visual video clip, optionally with conversation context (previous speakers and ut-terances) and focus of attention (where the current speaker is visually attending). The video shows four participants in a meeting room. Seating positions: A (back right), B (back left), C (front right), D (front left). Video frames are overlaid with participant labels (A–D). Participants may stand or move; use overlaid labels rather than abso-lute positions. You may use visual cues (gaze direction, head orien-tation, posture, gestures) and prosodic cues (intonation, pauses, turn-final cues) to infer the next speaker. The next speaker may be the same as the current speaker. You may predict one or multiple candi-dates if ambiguous.
+> Output : One or more labels from {A, B, C, D }.
+> Context (Speaker: Transcription) :C: Oops. C: That’s as far as it goes. A: Hi guys uh good morning everybody here.
+> Current speaker : A.
+> Transcription : I am a project manager for this new project which we are going to discuss now.
+> Focus of attention : Table.
+> Video : (video clip path)
+
+test split of each fold were aggregated, and performance metrics were computed over the combined test data. 
+
+5.2. LLMs 
+
+As LLMs, we evaluated three variants of Qwen3 [34], a recently proposed model with the Transformer-based decoder architec-ture [45]: Qwen3-8B, Qwen3-14B, and Qwen3-32B. For these models, the thinking mode was enabled by default, and its con-tribution was examined through an ablation study. Inference was performed in bfloat16 precision using greedy decoding. For each utterance ui, text-based LLMs were given the task instruc-tion and the text-based inputs (si, t i, c i). The prompt for text-based LLMs is the same as that for MM-LLMs described below, except for the absence of audio-visual inputs (ai, v i).
+
+5.3. MM-LLMs 
+
+We evaluate MM-LLMs that jointly process text, audio, and video inputs. For each utterance ui, the models were given the task instruction and the multimodal inputs (si, t i, a i, v i, c i).Table 4 presents an example prompt for next speaker prediction. We evaluate recent open-weight end-to-end multimodal foundation models, Qwen2.5-Omni [35] and Qwen3-Omni [36], which have demonstrated strong performance in both unimodal and multimodal understanding tasks. These models adopt a Thinker–Talker architecture, where the Thinker module is responsible for text generation and reasoning, and the Talker module generates streaming speech tokens. In this study, only the Thinker module was used. From the Qwen2.5-Omni family, we selected Qwen2.5-Omni-7B, a 7B-parameter model. For Qwen3-Omni, we evaluated Qwen3-Omni-30B-A3B-Thinking (Qwen3-Omni-30B), a 30B-parameter mixture-of-experts model optimized for reasoning. The instruction-tuned variant (Qwen3-Omni-30B-A3B-Instruct) was excluded because preliminary experiments showed inferior performance compared to the Thinking model. Inference was performed in bfloat16 precision using greedy decoding. We also evaluated the closed-source multimodal model Figure 1: Screenshot of the experiment tool. 
+
+Gemini 2.5 Pro via the official API. The same task instructions and input features were provided to the local multimodal mod-els. Inference was conducted with a temperature set to 1.0. 
+
+# 6. Human Evaluation 
+
+To compare human and model performance, we conducted a human evaluation under the same task formulation described in Section 3. Participants simultaneously performed addressee detection, turn-change prediction, and next speaker prediction in an online setting, without access to future utterances. We developed a web-based interface (Figure 1) that plays videos and audio from the beginning and automatically pauses them at the end of each utterance. At each pause for utterance 
+
+ui, subjects were given the current speaker ID and the transcrip-tion, together with the corresponding audio and video clips, i.e., 
+
+(si, t i, a i, v i). They then answered two questions: Q1. Who is being addressed? and Q2. Who is likely to speak next? For-mally, they predicted the addressee label yi (Section 3.1) and a set of next speaker candidates ˆSi+1 ⊆ P (Section 3.2). After answering, playback resumed until the next utterance boundary. Subjects were instructed to respond based on their intuition. To ensure consistency in the annotation criteria, all participants engaged in a practice session before the main experiment and were provided with example responses. To reduce participant burden, each session was divided into segments of approxi-mately five minutes. Thus, participants could rely on at most about five minutes of prior conversational context when mak-ing predictions. For a fair comparison, when evaluating models on the human-evaluation subset, we used the same segmented session chunks, rather than the full sessions. Twelve non-native English speakers who regularly use English in professional set-tings participated in the experiment. Each utterance received three independent annotations. It should be noted that our ex-perimental design differs from natural conversational settings in several aspects and may underestimate human performance. We discuss these limitations in Section 9. Inter-participant agreement, measured by Krippendorff’s α,was 0.67 for addressee detection and 0.48 for next speaker pre-diction. The agreement for addressee detection indicates a mod-erate level of consistency among participants, whereas the lower agreement for next speaker prediction reflects the inherent am-biguity of anticipating future turns in MPCs. The agreement for addressee detection is slightly higher than the previously re-ported inter-annotator agreement for AMI addressee labels (ap-proximately 0.45–0.56) [37]. This may seem counterintuitive, given that the original annotations were produced by trained an-notators under stricter guidelines. One possible explanation is the difference in labeling granularity: AMI annotations were as-signed at the word level, whereas our evaluation was conducted at the coarser utterance level, which may have resulted in higher Table 5: Overall results on the full set. Input features: ai (audio segment), vi (video clip), si (speaker ID), ti (transcription), and 
+
+ci = ( s<i , t <i ) (conversational context). Acc was reported for Addressee detection (Addr.) and Turn-change prediction (Turn), and F1 for Next speaker prediction (Next). The naive base-line corresponds to predicting the majority class for addressee detection ( Group ) and turn-change prediction ( Shift ), and random selection for next speaker prediction.                                                                            
+
+> Raw Annotated Addr.
+> (Acc )
+> Turn
+> (Acc )
+> Next
+> (F1 )
+> aivisitici
+> Naive baseline 47.6 63.7 25.0
+> Supervised model
+> Naive Bayes ✓✓✓47.6 66.6 40.3 Random Forest ✓✓✓49.4 60.2 31.0 MLP ✓✓✓55.3 66.3 40.0 SVM ✓✓✓56.4 66.5 40.1
+> LLM
+> Qwen3-8B ✓✓✓51.8 64.6 50.0 Qwen3-14B ✓✓✓52.3 66.4 51.1
+> Qwen3-32B ✓✓✓47.3 65.3 49.7
+> MM-LLM
+> Qwen2.5-Omni-7B ✓✓✓✓✓50.0 61.6 37.0 Qwen3-Omni-30B ✓✓✓✓✓32.1 41.6 13.7 Gemini 2.5 Pro ✓✓✓✓✓55.7 68.3 47.7
+
+Table 6: Comparison of models and humans in the subset. †Significantly better than Human; ‡significantly worse than Human (paired bootstrap, 95% CI).                                            
+
+> Addressee Turn-change Next speaker detection prediction prediction
+> Acc F1 ma Acc F1 ma Acc PRF1
+> Naive baseline 28.4 7.4 64.6 39.3 25.0 25.0 25.0 25.0
+> Human 66.6 67.5 75.0 71.5 47.2 52.2 70.7 60.1 Qwen3-14B 51.5‡ 52.0‡ 67.4 53.8‡ 53.7 60.3 81.8 69.4 †Gemini 2.5 Pro 61.4 57.4 69.8 60.6‡ 45.3 50.7 66.8 57.7
+
+agreement. For ext speaker prediction, our agreement is sub-stantially higher than the Fleiss’ kappa of 0.17 reported in prior work [28]. This difference may stem from experimental set-tings, as the previous study relied only on textual information, whereas our participants had access to multimodal cues. 
+
+# 7. Results 
+
+7.1. Model comparison Supervised models vs. LLMs: Table 5 shows the overall per-formance of models. SVM achieved the highest accuracy in addressee detection. In turn-change prediction, it also outper-formed all LLMs except Gemini 2.5 Pro. These results indicate that task-specific supervised models can surpass general LLMs in these tasks, even without multimodal information. In con-trast, all text-based LLMs and Gemini 2.5 Pro outperformed su-pervised models in next speaker prediction. This task depends on the conversational context [28]. Unlike supervised models, which rely only on features from the immediately preceding ut-terance as context, LLMs can leverage longer conversational histories, likely contributing to their advantage in this task. 
+
+LLM model size: Among text-based LLMs, we found no monotonic correlation between model size and performance. Qwen3-14B outperformed both the smaller 8B and larger 32B Table 7: Ablation results for Qwen3-14B. Input features: ai
+
+(audio segment), vi (video clip), si (speaker ID), ti (transcrip-tion), ˜ti (ASR transcription), ci (context), and gi (FOA). ⋄:Setting without thinking mode. † Significantly better than (a); ‡ significantly worse than (a).                                              
+
+> Setting Raw Annotated Addr.
+> (Acc )
+> Turn
+> (Acc )
+> Next
+> (F1 )
+> aivisiti˜ticigi
+> (a) Primary ✓✓✓52.3 66.4 51.1 (b) + ASR ✓ˆ✓✓51.2 65.6 51.1 (c) + FOA ✓✓✓✓55.0 65.8 67.7 (d) – Context ✓✓×42.5‡ 56.2‡ 36.9‡ (e) – Think ⋄✓✓✓47.3‡ 64.9 48.1‡
+
+Table 8: Ablation results for Gemini 2.5 Pro in the subset.                                                                          
+
+> Setting Raw Annotated Addr.
+> (Acc )
+> Turn
+> (Acc )
+> Next
+> (F1 )
+> aivisiti˜ticigi
+> (a) Primary ✓✓✓✓✓61.4 69.8 57.7 (b) + ASR ✓✓✓ˆ✓✓59.9 71.3 60.9 (c) + FOA ✓✓✓✓✓✓64.1 71.3 62.6 (d) – Context ✓✓✓✓×38.3‡ 67.1 25.7‡ (e) – Text ✓✓✓××38.6‡ 66.2 31.1‡ (f) – Audio ×✓✓✓✓61.1 71.0 58.5 (g) – Video ××✓✓✓59.6 69.5 64.8
+
+variants across tasks. This suggests that the 14B model has a certain level of reasoning ability to solve these tasks, and that the additional parameters of the 32B model do not necessarily yield further gains. For example, in addressee detection, the 32B model more frequently predicted individual classes (A–D) when the correct label was the majority class Group , leading to reduced accuracy. This may reflect the tendency of the 32B model to prefer detailed predictions over simple answers. 
+
+Comparison with prior work: Text-based LLMs outper-formed the naive baseline in both addressee detection and next speaker prediction. This contrasts with the findings of Inoue et al. [27], who reported near-chance performance of GPT-4o on similar tasks in Japanese three-party conversations. The dis-crepancy may stem from differences in models, language, and domain (Japanese three-party goal-free discussions vs. English four-party meetings), and the amount of contextual input pro-vided (e.g., five utterances vs. entire conversation history). In-vestigating how task difficulty varies across languages and do-mains remains an important direction for future research. 
+
+MM-LLM: The local MM-LLMs, Qwen2.5-Omni-7B and Qwen3-Omni-30B, did not outperform the SVM or the text-based LLMs. This suggests that the audio-visual features were not effectively leveraged in these models. In contrast, Gemini 2.5 Pro obtained the highest scores among LLMs in addressee detection and turn-change prediction. We discuss the factors un-derlying this strong performance of Gemini 2.5 Pro in Section 8. In the next speaker prediction, which depends more strongly on conversational context, Gemini 2.5 Pro performed worse than the text-based LLMs. Possibly, incorporating audio-visual in-puts increased the complexity of input, making effective con-textual reasoning more difficult, as discussed in Section 8. 
+
+7.2. Humans vs. Models 
+
+Table 6 compares human performance with the best-performing LLMs in the subset. Human performance was computed by aggregating predictions across all participants. For addressee detection and turn-change prediction, humans significantly out-performed both Qwen3-14B and Gemini 2.5 Pro. Multimodal cues such as gaze direction and prosody are known to play an important role in these tasks [19, 21, 22], and human sub-jects may have been able to more effectively utilize these fea-tures, resulting in higher accuracy. In contrast, for next speaker prediction, the text-based LLM achieved higher performance, and the MM-LLM achieved performance comparable to hu-mans. Hilgert and Niehues [28] similarly reported that text-based LLMs outperformed humans in next speaker prediction under text-only conditions. Our results are consistent with their findings and further show that this advantage persists even when humans have access to multimodal information. This may be at-tributed to their stronger ability to model conversational context 
+
+ci = ( s<i , t <i ), which appears to be critical for identifying the next speaker, as discussed in Section 8. Note that both humans and LLMs were evaluated under the same constraint described in Section 6, i.e., the available preceding context was limited to that corresponding to at most about five minutes of video. Importantly, these results and moderate inter-participant agreement (reported in Section 4) indicate that all three tasks, particularly next speaker prediction, are challenging even for humans. To better understand what makes these tasks difficult, we further analyze how prediction performance varies across conversational segments in Section 8.3. 
+
+7.3. Effect of estimated transcriptions 
+
+The primary setting assumed access to ground-truth speaker ID ( si) and manual transcriptions ( ti). To evaluate model ro-bustness under more practical conditions, we replaced manual transcriptions with ASR outputs ( ˜ti). We used Whisper large-v3 4 [46] to transcribe the individual headset microphones, sim-ulating a meeting scenario in which each participant uses an individual microphone. The word error rate was 24.12 %. For Qwen3-14B (Table 7 (a) vs. (b)), replacing manual transcripts with ASR slightly decreased performance in addressee detec-tion and turn-change prediction, while next speaker prediction performance remained largely unchanged. For Gemini 2.5 Pro (Table 8 (a) vs. (b)), addressee detection performance slightly decreased, while turn-change prediction and next speaker pre-diction improved 5. Despite the relatively high WER, the overall impact was limited, and in some cases performance improved. Many ASR errors resulted from the omission of fillers and mi-nor disfluencies that were included in the ground-truth tran-scripts. While these omissions contributed to the WER, they often had little impact on the underlying meaning of the utter-ances. These results demonstrate to some extent the robustness of the LLM-based approach in practical environments. How-ever, in more general scenarios without individual headset mi-crophones, i.e., where speaker diarization and multi-talker ASR are required, these tasks may be more challenging. Evaluating performance under such conditions is part of our future work. 
+
+7.4. Effect of gaze information 
+
+We also evaluated a modular setting in which FOA labels ( gi)were provided as explicit visual cues. For both Qwen3-14B (Table 7 (a) vs. (b)) and Gemini 2.5 Pro (Table 8 (a) vs. (b)),             
+
+> 4https://huggingface.co/openai/ whisper-large-v3
+> 5Due to cost constraints, the ablation study for Gemini 2.5 Pro was conducted on the subset only. 020 40 60 80 100 120 140 160
+> Context Size
+> 40
+> 45
+> 50
+> 55
+> 60
+> 65
+> 70
+> Accuracy
+> 0
+> 1
+> 2
+> 510 20 40 80 160
+> Addressee detection (Accuracy)
+> Turn-change prediction (Accuracy)
+> Next speaker prediction (F1)
+> 35
+> 40
+> 45
+> 50
+> 55
+> F1
+
+Figure 2: Effect of context size on Qwen3-14B performance. 
+
+incorporating FOA consistently improved performance in ad-dressee detection and next speaker prediction. This finding aligns with prior research showing that gaze information is a useful signal for identifying the addressee and anticipating the next speaker [21, 47]. In contrast, the effect of FOA on turn-change prediction was mixed. Performance slightly decreased for Qwen3-14B but slightly improved for Gemini 2.5 Pro. Prior work has shown that turn-change prediction is more strongly associated with gaze transition patterns rather than the speaker ’
+
+s gaze direction at a given moment. Since FOA represents only the current gaze target at each utterance, it may not capture these dynamic transition patterns. Gemini 2.5 Pro showed improved performance when FOA was added, despite already receiving raw audio and video in-puts. These gains suggest that the model does not fully extract or utilize gaze cues from the raw video. Thus, explicitly anno-tated visual attention appears to provide complementary infor-mation even for an MM-LLM. We analyze the contribution of multimodal cues in this model in the next sections. 
+
+# 8. Analysis 
+
+8.1. Important features 
+
+Table 7 and 8 include ablation studies examining the contribu-tion of input features. Firstly, removing conversational context ((a) vs. (d) in Table 7 and 8) led to a substantial performance degradation for Qwen3-14B and Gemini 2.5 Pro, particularly in addressee detection and next speaker prediction. These re-sults indicate that conversational context is important in all three tasks. Figure 2 shows the performance of Qwen3-14B with dif-ferent context sizes, C = {0, 1, 2, 5, 10 , 20 , 40 , 80 , 160 } ut-terances. Introducing even a very short context ( C = 1 or 
+
+C = 2 ) led to large gains over the no-context setting across all tasks. For addressee detection and next speaker prediction, performance continued to increase as context expanded up to 
+
+C = 40 , after which it was largely maintained or slightly de-clined. In contrast, turn-change prediction peaked at C = 5 
+
+and did not benefit from longer context. These results sug-gest that addressee detection and next speaker prediction rely more heavily on longer conversational context, whereas turn-change prediction depends primarily on local cues. Moreover, the improvement with increasing context was most pronounced for next speaker prediction, indicating a particularly strong dependence on contextual information. 
+
+Secondly, we examined the ablation of transcriptions in the MM-LLM (Table 8 (e)), where predictions relied only on raw audio-visual signals and the current speaker ID. Compared to removing context alone (Table 8 (d)), performance for ad-dressee detection and turn-change prediction was comparable, and next speaker prediction was slightly improved. This indi-cates that textual transcription is not the sole source of informa-tion for these tasks. However, it is difficult to determine how much the model relies on raw audio-visual cues, as the speaker Table 9: Example of thought trace of Qwen3-14B with focus-of-attention in the next speaker prediction task.     
+
+> Okay, let’s see. The current speaker is D, and their transcription is ”Yes yes is it like that.” The focus of attention is the whiteboard. I need to figure out who is likely to speak next.
+> Looking at the conversation context, there’s been a discussion about drawing animals on the whiteboard. B drew an orangutan, and now D is responding to something, possibly about the drawing. The last few lines involve D saying it’s a cat and others reacting.
+> Since D just confirmed something about the drawing (maybe agreeing it’s a cat), the next speaker might be someone reacting to that. A has been leading the meeting, so maybe A would continue. B was dis-cussing the orangutan earlier, so might comment again. C hasn’t spo-ken much lately. D might not speak again immediately if they just confirmed.
+> Also, the focus is on the whiteboard, so someone might be pointing out something else on it. A might want to move the meeting forward, or B could have another comment. C might have an opinion but hasn’t been active. So possible candidates are A or B. Maybe both. I’ll go with A and B.
+
+ID may already provide a strong prior. When audio input was removed (Table 8 (f)), performance changed only marginally across tasks. Similarly, removing both audio and video (Table 8 (g)) resulted in comparable or even higher performance for next speaker prediction. These results suggest that, in the current setting, raw audio-visual signals do not consistently provide complementary information beyond text and speaker iden-tity. Overall, while multimodal inputs are available, their effective integration with textual and speaker information remains limited in the present model. 8.2. Reasoning ability of LLMs 
+
+Table 9 shows an example of the thought trace of Qwen3-14B with FOA labels for the next speaker prediction task. This ex-ample provides some insights about the predictive capabilities of LLMs. The model leverages the broader conversational con-text to infer the flow of the discussion ( text in italics ), the roles of participants, and their speaking tendencies ( text in bold ital-ics ), rather than relying only on the most recent utterance. It also explicitly incorporates the FOA labels to ground its situ-ational reasoning ( text in bold ), suggesting that visual infor-mation is actively used in the prediction. These behaviors may partly explain why LLMs sometimes outperform human sub-jects in our experiment. Humans were not given the text-based context, and they took up to twice the duration of the original video to complete the task. In contrast, the LLM had ac-cess to the long context for each utterance and could per-form step-by-step reasoning, which likely contributed to its higher accuracy. As shown in Table 7 (e), disabling the think-ing mode significantly degraded the performance, supporting this hypothesis. 
+
+8.3. Task difficulty 
+
+In this section, we examine how task difficulty varies over time and how it relates to prediction accuracy. Figure 3 visualizes the temporal changes in addressee detection and next speaker prediction accuracy for humans and Gemini 2.5 Pro using one-minute windows. There are similar trends in the tempo-ral changes of human and Gemini performance. In both sessions, there appear to be “easy” intervals where accuracy is high for both, and “difficult” intervals where performance drops. This indicates that task difficulty fluctuates considerably across conversational intervals within the dataset, and suggests promising directions for future research. Instead of aiming for uniform accuracy across an entire dialogue, we should de-0 200 400 600 800             
+
+> 0.0
+> 0.5
+> 1.0
+> IS1001a
+> Addressee
+> Human (mean)
+> Human (min-max)
+> Gemini 2.5 Pro
+> 0200 400 600 800
+> 0.0
+> 0.5
+> 1.0
+> Next Speaker
+> 0200 400 600 800
+> 0.0
+> 0.5
+> 1.0
+> IS1008a
+> 0200 400 600 800
+> 0.0
+> 0.5
+> 1.0
+> Time (s)
+
+Figure 3: Temporal variation of addressee detection and next speaker prediction accuracies across 1-minute windows. Shaded region indicates the min–max range across participants. 0 20 40 60 80 100 120       
+
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Multisimo (S02)  Addressee
+> Human (mean)
+> Human (min-max)
+> Gemini 2.5 Pro
+> 020 40 60 80 100 120
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> Next Speaker
+> Time (s)
+
+Figure 4: Temporal variation on the Multisimo subset using 15-second windows. 
+
+sign models that account for the inherent uncertainty in hu-man conversational dynamics, improving reliability in pre-dictable moments, while allowing for more fluid, stochastic behavior for ambiguous cases. 
+
+To investigate what determines task difficulty across seg-ments, we computed correlations between turn-taking charac-teristics and human performance in Table 10. We considered four turn-taking-related features:(1) Turn-change probability, i.e., the proportion of adjacent utterance pairs in which the speaker changes within a one-minute window; (2) Speaker dis-persion, i.e., the entropy of utterance counts across speakers; (3) Mean gap, i.e., the average temporal gap between consec-utive utterances; and (4) Silence ratio, i.e., the total duration of positive gaps (silences) normalized by the window duration. Turn-change probability had a weak negative correlation with both addressee detection and next speaker prediction, indicating that conversations with more frequent speaker transitions tend to be more difficult. Speaker dispersion also exhibited a weak negative correlation with performance, suggesting that conver-sations with evenly distributed participation are harder, whereas those dominated by a single speaker are relatively easier. This tendency was more pronounced for next speaker prediction. In contrast, mean gap and silence ratio showed no clear corre-lation with any task. Turn-change prediction did not exhibit meaningful correlations with any of these features. Although these observations show that the difficulty of turn-taking in MPC is related to structural factors such as speaker distri-bution and the frequency of speaker transitions, these fac-tors alone are not sufficient to fully explain performance variability. A variety of factors, such as discourse function, topic, personality, and social context, are considered to influ-ence turn-taking [48–50], and further investigation is required to clarify how these factors relate to task difficulties. 
+
+8.4. Pilot study on three-party conversation 
+
+Our experiments used only the AMI corpus, and the findings may therefore be domain-dependent. As a pilot study, we ap-plied our evaluation to the Multisimo [6], a multimodal three-party conversation corpus. We analyzed the first ∼60 utterances of the S02 session for which addressee annotations were avail-Table 10: Pearson Correlation r between turn-taking-related features (per one-minute window) and human performance. 
+
+Characteristics Addr. Turn Next 
+
+Turn-change probability -0.27 -0.08 -0.29 Speaker dispersion -0.23 0.00 -0.39 Mean gap -0.02 0.07 0.06 Silence ratio -0.14 0.04 -0.14 
+
+able. Figure 4 visualizes temporal changes for humans and Gemini 2.5 Pro performance using 15-second windows. Al-though this analysis is small-scale and limited to one session, the trends of model and human performance appear similar to those observed on AMI. Extending the evaluation to broader do-mains and languages remains future work, but this pilot result suggests that some of our findings may generalize beyond AMI. 
+
+# 9. Limitation 
+
+Our evaluation differs from natural conversational participation in several respects. First, humans and MM-LLMs performed the tasks by watching fixed-angle recorded videos, which do not reflect the first-person perspective of a meeting participant. Second, textual transcripts and explicit current speaker infor-mation were provided. Such information is rarely available in natural interactions and may have led humans to rely more on linguistic cues than on visual and audio signals. Third, some experimental parts began from the start of the meeting, while others began mid-session. As a result, the amount of accessi-ble conversational context varied across segments, potentially affecting difficulty. Finally, although all subjects use English in professional settings, they were non-native speakers. This gap between the experimental setting and real-world interaction may have led to an underestimation of human performance. In addition, our experiments were conducted solely on the AMI corpus, which consists of role-based scenario meetings with four participants. Different languages, domains, or interac-tion settings may yield different results. Evaluating turn-taking abilities under more natural participation conditions and across diverse conversational settings remains for future research. 
+
+# 10. Conclusion 
+
+We conducted a unified evaluation of turn-taking in multimodal MPCs. We compared supervised models, text-based LLMs, multimodal LLMs, and human participants on addressee detec-tion, turn-change prediction, and next speaker prediction under online constraints. Our results showed that multimodal LLMs underperformed humans in addressee detection and turn-change prediction, suggesting current limitations in effectively lever-aging raw audio and visual signals without task- or domain-specific adaptation. In contrast, text-based LLMs outperformed humans in next speaker prediction despite lacking access to multimodal information, suggesting strong contextual reason-ing over conversational history. These findings highlight both the progress and the limitations of current models in handling MPCs. Future work should investigate how multimodal LLMs can more effectively integrate audio, video, and text information to better understand MPCs. For practical deployment, it will also be necessary to develop systems that operate jointly with multi-talker automatic speech recognition and speaker diariza-tion in realistic environments. Finally, further investigation of human turn-taking behavior under comparable conditions will help inform the design and evaluation of MPC agents. 11. Generative AI Use Disclosure 
+
+This manuscript was edited and polished with the assistance of generative AI. Generative AI models were also used as compar-ison systems in the experimental evaluation. All experimental design, implementation, and analysis were conducted by the au-thors who take full responsibility for the content. 
+
+# 12. References 
+
+[1] H. Zhang, X. Li, and L. Bing, “Video-LLaMA: An instruction-tuned audio-visual language model for video understanding,” in 
+
+Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing: System Demonstrations , 2023, pp. 543–553. [2] B. Elizalde, S. Deshmukh, and H. Wang, “Natural language super-vision for general-purpose audio representations,” in Proceedings of the IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP 2024) , 2024, pp. 336–340. [3] Y. Matsuyama, I. Akiba, A. Saito, and T. Kobayashi, “A four-participant group facilitation framework for conversational robots,” in Proceedings of the SIGDIAL 2013 Conference , 2013, pp. 284–293. [4] G. Skantze, M. Johansson, and J. Beskow, “Exploring turn-taking cues in multi-party human-robot discussions about objects,” in 
+
+Proceedings of the 2015 ACM International Conference on Mul-timodal Interaction , 2015, pp. 67–74. [5] A. Janin, D. Baron, J. Edwards, D. Ellis, D. Gelbart, N. Morgan, B. Peskin, T. Pfau, E. Shriberg, A. Stolcke, and C. Wooters, “The ICSI meeting corpus,” in Proceedings of the IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP 2003) , 2003. [6] M. Koutsombogera and C. Vogel, “Modeling collaborative mul-timodal behavior in group dialogues: The MULTISIMO corpus,” in Proceedings of the Eleventh International Conference on Lan-guage Resources and Evaluation (LREC 2018) , 2018. [7] S. Watanabe, M. Mandel, J. Barker, E. Vincent, A. Arora, X. Chang, S. Khudanpur, V. Manohar, D. Povey, D. Raj, D. Sny-der, A. S. Subramanian, J. Trmal, B. B. Yair, C. Boeddeker, Z. Ni, Y. Fujita, S. Horiguchi, N. Kanda, T. Yoshioka, and N. Ryant, “CHiME-6 challenge: Tackling multispeaker speech recognition for unsegmented recordings,” in Proceedings of the 6th Interna-tional Workshop on Speech Processing in Everyday Environments (CHiME 2020) , May 2020, pp. 1–7. [8] A. Vinnikov, A. Ivry, A. Hurvitz, I. Abramovski, S. Koubi, I. Gur-vich, S. Peer, X. Xiao, B. M. Elizalde, N. Kanda, X. Wang, S. Shaer, S. Yagev, Y. Asher, S. Sivasankaran, Y. Gong, M. Tang, H. Wang, and E. Krupka, “NOTSOFAR-1 challenge: New datasets, baseline, and tasks for distant meeting transcription,” in 
+
+Proceedings of the 25th Annual Conference of the International Speech Communication Association (INTERSPEECH 2024) , Sep. 2024, pp. 5003–5007. [9] T.-B. Nguyen, K. Zmolikova, P. Ma, N. Q. Pham, C. Fue-gen, and A. Waibel, “A cocktail-party benchmark: Multi-modal dataset and comparative evaluation results,” arXiv preprint arXiv:2510.23276 , Feb. 2026. [10] D. Traum, “Issues in multiparty dialogues,” in Proceedings of the Workshop on Agent Communication Languages , 2003, pp. 201– 211. [11] M. Johansson and G. Skantze, “Opportunities and obligations to take turns in collaborative multi-party human-robot interaction,” in Proceedings of the 16th Annual Meeting of the Special Interest Group on Discourse and Dialogue , 2015, pp. 305–314. [12] G. Skantze, “Towards a general, continuous model of turn-taking in spoken dialogue using LSTM recurrent neural networks,” in 
+
+Proceedings of the 18th Annual Meeting of the Special Interest Group on Discourse and Dialogue (SIGDIAL 2017) , 2017, pp. 220–230. [13] M. Roddy, G. Skantze, and N. Harte, “Multimodal continuous turn-taking prediction using multiscale RNNs,” in Proceedings of the 20th ACM International Conference on Multimodal Interac-tion (ICMI 2018) , 2018, pp. 186–190. [14] E. Ekstedt and G. Skantze, “Voice activity projection: Self-supervised learning of turn-taking events,” in Proceedings of the 23rd Annual Conference of the International Speech Communica-tion Association (INTERSPEECH 2022) , 2022, pp. 5190–5194. [15] ——, “TurnGPT: a transformer-based language model for pre-dicting turn-taking in spoken dialog,” in Findings of the Associa-tion for Computational Linguistics: EMNLP 2020 , Stroudsburg, PA, USA, 2020, pp. 2981–2990. [16] S. Arora, Z. Lu, C.-C. Chiu, R. Pang, and S. Watanabe, “Talk-ing turns: Benchmarking audio foundation models on turn-taking dynamics,” in International Conference on Learning Representa-tions , Y. Yue, A. Garg, N. Peng, F. Sha, and R. Yu, Eds., vol. 2025, 2025, pp. 52 754–52 781. [17] G.-T. Lin, J. Lian, T. Li, Q. Wang, G. Anumanchipalli, A. H. Liu, and H.-y. Lee, “Full-duplex-bench: A benchmark to evaluate full-duplex spoken dialogue models on turn-taking capabilities,” arXiv preprint arXiv:2503.04721 , 2025. [18] G. Castillo-L´ opez, G. de Chalendar, and N. Semmar, “A survey of recent advances on turn-taking modeling in spoken dialogue systems,” in Proceedings of the 15th International Workshop on Spoken Dialogue Systems Technology , 2025, pp. 254–271. [19] N. Jovanovic and R. o. den Akker, “Towards automatic addressee identification in multi-party dialogues,” in Proceedings of the 5th SIGdial Workshop on Discourse and Dialogue at HLT-NAACL 2004 , 2004, pp. 89–92. [20] K. Laskowski, “Modeling norms of turn-taking in multi-party conversation,” in Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics , Uppsala, Sweden, 2010, pp. 999–1008. [21] R. Ishii, K. Otsuka, S. Kumano, M. Matsuda, and J. Yamato, “Predicting next speaker and timing from gaze transition patterns in multi-party meetings,” in Proceedings of the 15th ACM Inter-national Conference on Multimodal Interaction , New York, NY, USA, 2013. [22] T. Ohsuga, M. Nishida, Y. Horiuchi, and A. Ichikawa, “Investiga-tion of the relationship between turn-taking and prosodic features in spontaneous dialogue,” in Proceedings of the 6th Annual Con-ference of the International Speech Communication Association (INTERSPEECH 2005) , 2005, pp. 33–36. [23] I. de Kok and D. Heylen, “Multimodal end-of-turn prediction in multi-party meetings,” in Proceedings of the 2009 International Conference on Multimodal Interfaces (ICMI 2009) , 2009, pp. 91– 98. [24] U. Malik, M. Barange, N. Ghannad, J. Saunier, and A. Pauchet, “A generic machine learning based approach for addressee detec-tion in multiparty interaction,” in Proceedings of the 19th ACM In-ternational Conference on Intelligent Virtual Agents . New York, NY, USA: ACM, Jul. 2019. [25] S. Heo, C. Miller, C. Murdock, and M. Proulx, “Gaze-enhanced multimodal turn-taking prediction in triadic conversa-tions,” in Proceedings of the 26th Annual Conference of the In-ternational Speech Communication Association (INTERSPEECH 2025) , 2025, pp. 1068–1072. [26] M. Elmers, K. Inoue, D. Lala, and T. Kawahara, “Triadic multi-party voice activity projection for turn-taking in spoken dialogue systems,” in Proceedings of the 26th Annual Conference of the In-ternational Speech Communication Association (INTERSPEECH 2025) , 2025. [27] K. Inoue, D. Lala, M. Elmers, K. Ochi, and T. Kawahara, “An LLM benchmark for addressee recognition in multi-modal multi-party dialogue,” in Proceedings of the 15th International Work-shop on Spoken Dialogue Systems Technology , 2025, pp. 330– 334. [28] L. Hilgert and J. Niehues, “Next speaker prediction for multi-speaker dialogue with large language models,” in Proceedings of the 8th International Conference on Natural Language and Speech Processing (ICNLSP 2025) , 2025, pp. 60–71. [29] T. Mori, K. Inoue, D. Lala, K. Ochi, and T. Kawahara, “Analysing next speaker prediction in multi-party conversation using multi-modal large language models,” in Proceedings of the 16th Inter-national Workshop on Spoken Dialogue System Technology , 2026, pp. 83–94. [30] M. Van Segbroeck, A. Zaid, K. Kutsenko, C. Huerta, T. Nguyen, X. Luo, B. Hoffmeister, J. Trmal, M. Omologo, and R. Maas, “DiPCo — dinner party corpus,” in Proceedings of the 21st An-nual Conference of the International Speech Communication As-sociation (INTERSPEECH 2020) , Oct. 2020, pp. 434–436. [31] J. Wei, K. Shuster, A. Szlam, J. Weston, J. Urbanek, and M. Komeili, “Multi-party chat: Conversational agents in group settings with humans and models,” arXiv preprint arXiv:2304.13835 , Apr. 2023. [32] K. K. Chang, M. H. Cramer, A. Ho, T. T. Nguyen, Y. Yuan, and D. Bamman, “Multimodal conversation structure understanding,” 
+
+arXiv preprint arXiv:2505.17536 , 2025. [33] W. Kraaij, T. Hain, M. Lincoln, and W. Post, “The AMI meet-ing corpus,” in Proceedings of the 5th International Conference on Methods and Techniques in Behavioral Research (Measuring Behavior 2005) , 2005. [34] A. Yang, A. Li, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Gao, C. Huang, C. Lv, C. Zheng, D. Liu, F. Zhou, F. Huang, F. Hu, H. Ge, H. Wei, H. Lin, J. Tang, J. Yang, J. Tu, J. Zhang, J. Yang, J. Yang, J. Zhou, J. Zhou, J. Lin, K. Dang, K. Bao, K. Yang, L. Yu, L. Deng, M. Li, M. Xue, M. Li, P. Zhang, P. Wang, Q. Zhu, R. Men, R. Gao, S. Liu, S. Luo, T. Li, T. Tang, W. Yin, X. Ren, X. Wang, X. Zhang, X. Ren, Y. Fan, Y. Su, Y. Zhang, Y. Zhang, Y. Wan, Y. Liu, Z. Wang, Z. Cui, Z. Zhang, Z. Zhou, and Z. Qiu, “Qwen3 technical report,” arXiv preprint arXiv:2505.09388 , 2025. [35] J. Xu, Z. Guo, J. He, H. Hu, T. He, S. Bai, K. Chen, J. Wang, Y. Fan, K. Dang, B. Zhang, X. Wang, Y. Chu, and J. Lin, “Qwen2.5-omni technical report,” arXiv preprint arXiv:2503.20215 , 2025. [36] J. Xu, Z. Guo, H. Hu, Y. Chu, X. Wang, J. He, Y. Wang, X. Shi, T. He, X. Zhu, Y. Lv, Y. Wang, D. Guo, H. Wang, L. Ma, P. Zhang, X. Zhang, H. Hao, Z. Guo, B. Yang, B. Zhang, Z. Ma, X. Wei, S. Bai, K. Chen, X. Liu, P. Wang, M. Yang, D. Liu, X. Ren, B. Zheng, R. Men, F. Zhou, B. Yu, J. Yang, L. Yu, J. Zhou, and J. Lin, “Qwen3-omni technical report,” arXiv preprint arXiv:2509.17765 , 2025. [37] R. o. d. Akker and D. Traum, “A comparison of addressee detec-tion methods for multiparty conversations,” in Proc. DiaHolmia 2009 , 2009, pp. 99–106. [38] J.-P. de Ruiter, H. Mitterer, and N. J. Enfield, “Projecting the end of a speaker’s turn: A cognitive cornerstone of conversation,” Lan-guage , vol. 82, no. 3, pp. 515–535, 2006. [39] M. Casillas and M. Frank, “The development of predictive pro-cesses in children’s discourse understanding,” in Proceedings of the Annual Meeting of the Cognitive Science Society , vol. 35, no. 35, 2013. [40] I. Rish, “An empirical study of the na¨ ıve bayes classifier,” Pro-ceedings of the IJCAI 2001 Workshop on Empirical Methods in Artificial Intelligence , 2001. [41] A. Liaw and M. Wiener, “Classification and regression by ran-domforest,” R News , vol. 2, no. 3, pp. 18–22, 2002. [42] R. Kruse, S. Mostaghim, C. Borgelt, C. Braune, and M. Stein-brecher, “Multi-layer perceptrons,” in Computational Intelli-gence: A Methodological Introduction , 2022, pp. 53–124. [43] I. Steinwart and A. Christmann, Support Vector Machines , 2008. [44] O. Kramer, “Scikit-learn,” in Machine Learning for Evolution Strategies , 2016, pp. 45–53. [45] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin, “Attention is all you need,” 
+
+Advances in Neural Information Processing Systems , vol. 30, 2017. [46] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and I. Sutskever, “Robust speech recognition via large-scale weak supervision,” in International conference on machine learning ,2023, pp. 28 492–28 518. [47] N. Jovanovic, R. o. den Akker, and A. Nijholt, “Addressee iden-tification in face-to-face meetings,” in 11th Conference of the Eu-ropean Chapter of the Association for Computational Linguistics ,2006, pp. 169–176. [48] H. Sacks, E. A. Schegloff, and G. Jefferson, “A simplest system-atics for the organization of turn-taking for conversation,” Lan-guage , vol. 50, no. 4, pp. 696–735, 1974. [49] C. Cox, R. Fusaroli, Y. A. Nielsen, S. Cho, R. Rocca, A. Simon-sen, A. Knox, M. Lyons, M. Liberman, C. Cieri et al. , “Social context matters for turn-taking dynamics: A comparative study of autistic and typically developing children,” Cognitive Science ,vol. 49, no. 10, p. e70124, 2025. [50] K. Onishi, H. Ohnaka, and K. Yoshino, “Modeling turn-taking speed and speaker characteristics,” in Proceedings of the 26th An-nual Meeting of the Special Interest Group on Discourse and Di-alogue (SIGDIAL 2025) , 2025, pp. 21–31.

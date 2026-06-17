@@ -1,0 +1,2202 @@
+Title: Prompt Perturbation for Reliable LLM Evaluation over Comparison Graphs
+
+URL Source: https://arxiv.org/pdf/2606.17634v1
+
+Published Time: Wed, 17 Jun 2026 00:48:21 GMT
+
+Number of Pages: 42
+
+Markdown Content:
+# Prompt Perturbation for Reliable LLM Evaluation over Comparison Graphs 
+
+Dong Huang, Jianbo Sun, and Pengkun Yang ∗
+
+Abstract 
+
+Evaluating large language models (LLMs) is important for understanding their capabilities, comparing competing systems, and supporting the deployment of reliable models in practice. For open-ended tasks, pairwise evaluation has become a popular paradigm, in which two responses to the same prompt are compared and the resulting judgments are aggregated into an overall ranking. A central challenge of this paradigm is intransitivity: the induced comparison outcomes may fail to support any coherent global ranking. For example, one may observe cyclic preferences such as A ≻ B ≻ C ≻ A, or inconsistencies involving ties such as A ≡ B ≡ C̸ ≡ A. Such contradictions make the resulting leaderboard unstable and challenging to interpret. In this paper, we propose a prompt perturbation framework for improving the consistency of pairwise LLM evaluation. Our approach generates perturbed variants of each prompt, uses the resulting comparison graphs to identify and filter out structurally inconsistent comparison patterns, and then applies standard ranking methods to the filtered comparisons. A key feature of the proposed framework is that graph-level structural consistency is incorporated explicitly into the evaluation pipeline before ranking aggregation. This provides a simple and principled way to reduce cyclic inconsistencies and improve the reliability of LLM rankings. 
+
+Keywords— LLM-as-a-judge, prompt perturbation, ranking, intransitivity 
+
+# Contents 
+
+1 Introduction 2
+
+1.1 Related Work . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41.2 Our Contribution . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+2 Statistical Models 5
+
+2.1 Problem Formulation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 52.2 Ranking Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+3 Methods 8
+
+3.1 Prompt Perturbation and Graph Truncation . . . . . . . . . . . . . . . . . . . . . . . 83.2 Ranking . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+
+4 Experiments and Analysis 10 
+
+4.1 Experimental Setup . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10 4.2 Ranking Performance . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11 4.3 Diagnostics and Sensitivity Analyses . . . . . . . . . . . . . . . . . . . . . . . . . . . 13 
+
+> ∗
+
+D. Huang, J. Sun, and P. Yang are with the Department of Statistics and Data Science, Tsinghua University. P. Yang is supported in part by National Key R&D Program of China 2024YFA1015800, Tsinghua University Dushi Program, and High Performance Computing Center, Tsinghua University. 
+
+1
+
+> arXiv:2606.17634v1 [cs.CL] 16 Jun 2026
+
+5 Theoretical Analyses 17 
+
+5.1 Model Setup . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17 5.2 Theoretical Guarantees . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18 
+
+6 Discussion and Future Directions 21 A Experimental Details 21 
+
+A.1 Additional Experimental Setup . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 A.2 Implementation Details . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23 A.3 Baseline and Ablation Details . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 A.4 Details for Additional Analyses . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 
+
+B Proof of Theorems 26 
+
+B.1 Proof of Theorem 1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26 B.2 Proof of Theorem 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28 B.3 Proof of Theorem 3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31 
+
+C Full Prompts and Additional Results 32 
+
+C.1 Full Prompts . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32 C.2 Additional results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 35 
+
+# 1 Introduction 
+
+The rapid progress of large language models (LLMs) as general-purpose systems for complex tasks [AAA +23, TLI +23, GYZ +25] raises an important challenge: how to establish a gold standard for LLM evaluation. The standard pipeline for evaluating LLMs relies on benchmarks [HBB +20, CKB +21, SRR +23] that assess model performance across a collection of representative tasks and aggregate the results into summary scores. Although many existing benchmarks have been pro-posed for LLM evaluation, they often fail to capture the full range of model capabilities, especially in open-ended and domain-specific settings. In many practical scenarios, the goal of LLM evalua-tion is not merely to produce a universal ranking over all models, but rather to identify the most suitable model for a specific domain or application. To overcome the limitations on LLM evaluation, an increasingly common strategy is to evaluate LLMs through pairwise comparisons [ZCS +23, CZS +24, DGLH24], where two responses to the same prompt are judged relative to each other. Such judgments may be provided either by human annotators or by a strong judge model. Although human evaluation remains the most direct way to assess open-ended generation, it is costly and challenging to scale. This has led to the widespread adoption of LLM-as-a-judge methods, in which a powerful model automatically compares candidate outputs. Empirical evidence suggests that such judge models can align well with human preferences; for example, [ZCS +23] reported that GPT-4 achieves agreement with human judgments at a level comparable to human annotators themselves. In many existing pairwise evaluation pipelines, each target model is compared only against a fixed reference model [LZD +23, DGLH24], which yields an efficient but potentially unstable ranking procedure. In particular, rankings may depend heavily on the choice of the reference. As a result, more recent frameworks increasingly rely on broader pairwise comparisons among many models and then aggregate these comparison outcomes into an overall ranking. A convenient way to view modern pairwise LLM evaluation is as a four-stage pipeline, in which pairwise judgments are first collected and then aggregated through an induced 2comparison graph. Traditional pairwise LLM evaluation typically consists of the following four steps: 1. Input. A collection of evaluation inputs such as prompts. 2. LLM-as-a-judge. For each input, two candidate responses are compared by a judge model, which returns a pairwise preference or a tie. 3. Comparison graph. These pairwise outcomes are then aggregated into a comparison graph over models. 4. Ranking method. A ranking procedure is finally applied to this graph to produce an overall ordering of the models. Among these four components, the comparison graph plays a central role, since it serves as the intermediate object through which local pairwise judgments are translated into a global ranking. Recent work has shown that pairwise LLM evaluation can exhibit substantial intransitiv-ity [XRRK25, WSZ +25], so the induced comparison graph may fail to admit any coherent global ranking. In particular, the comparison outcomes may contain both cycles (A ≻ B ≻ C ≻ A) and equivalence contradictions (A ≡ B ≡ C̸ ≡ A), making the resulting leaderboard unstable. Indeed, the prevalence of cycles in the comparison graph is a key indicator of ranking reliability [KMS07], as a larger fraction of cycles suggests greater inconsistency with any global ordering. This raises a natural question: 
+
+How can we design a pairwise evaluation pipeline that improves the structural consistency of the induced comparison graph? 
+
+In this paper, we propose a prompt perturbation framework for reducing cyclic inconsistencies in pairwise LLM evaluation. Specifically, for each input prompt, we construct a collection of perturbed prompts and use them to obtain a richer set of pairwise judgments among candidate models. These judgments induce a family of comparison graphs, one for each perturbed prompt. We then evaluate the structural consistency of each graph through its cycle ratio, and retain only those graphs whose cycle ratio is below a prescribed threshold. By filtering out highly inconsistent comparison graphs prior to aggregation, the proposed procedure improves the global consistency of the resulting ranking. Finally, based on the retained comparison outcomes, we perform ranking aggregation using standard models for pairwise comparison data, such as the Bradley–Terry model [BT52] and the Davidson model [Dav70]. Specifically, for each prompt xi, we generate m perturbed variants xi, 1, · · · , x i,m . Each of the original and perturbed prompts then induces a comparison graph, denoted by Gi, G i, 1, · · · , G i,m . A key feature of our method is the explicit use of structural consistency at the comparison graph level as a criterion for filtering before ranking aggregation. This filtering step is intended to discard prompt instances that induce highly unstable local preference structures before downstream ranking aggregation. Indeed, prompt perturbation is a widely used methodology for probing and improving the robustness of LLM systems. The basic idea is to replace a given input prompt by a collection of semantically similar variants, such as paraphrases [SSW23], reordered instructions [PH24], or other meaning-preserving perturbations [QNM +24], and then examine the stability of the resulting outputs. This paradigm has been extensively adopted in recent studies on prompt robustness and evaluation, which show that LLM behavior can vary substantially under seemingly minor prompt changes, and that perturbation-based procedures provide an effective way to expose and control such instability [ZWZ +23, QNM +24]. 31.1 Related Work 
+
+LLM-as-a-judge The rapid progress of large language models (LLMs) [AAA +23] has driven remarkable advances across a wide range of applications, which in turn has motivated the develop-ment of the “LLM-as-a-judge” paradigm [WLM +23, LIX +23]. In this paradigm, LLMs are used to evaluate model outputs by assigning scores, producing rankings, or selecting preferred responses. More recently, dedicated judge models have also been developed to support this paradigm, including fine-tuned or specialized evaluators such as JudgeLM and Prometheus [ZWW23, KSL +24]. Beyond evaluation, LLM-as-a-judge has also been adopted as a scalable source of supervision in other stages of LLM development, including alignment [LPM +23], retrieval [UPT +24], and reasoning [CHZ +25]. These developments highlight the growing role of LLM judges not only as evaluation tools, but also as general-purpose components in the broader LLM pipeline. 
+
+Intransitivity in LLM Ranking. Recent work has shown that pairwise LLM evaluation may exhibit substantial intransitivity, so there may be no coherent global ranking consistent with the induced comparison graph. In particular, [XRRK25] showed that intransitive preferences in Al-pacaEval [DGLH24] make system rankings sensitive to the choice of the reference baseline, and advocated broader pairwise comparison designs with Bradley–Terry aggregation [BT52]. Further-more, [WSZ +25] identified systematic inconsistencies in LLM-as-a-judge pipelines, including cyclic preferences and contradictions involving ties. More broadly, recent work on LLM ranking has emphasized the importance of robust comparison design and aggregation for obtaining reliable leaderboards [DCF +25, GLH +25]. These findings suggest that intransitivity is a central challenge in pairwise LLM ranking and motivate methods that explicitly improve the consistency of the induced comparison graph. 
+
+Ranking Methods Classic methods for ranking from pairwise comparison graphs can be divided into three categories. The simplest approach is rank-by-wins (Copeland-style scoring) [Col66], which orders items according to the number of pairwise wins. A more principled line of work assigns latent scores to items based on pairwise outcomes. A widely used example is the Elo rating system [Elo78], which updates scores sequentially after each comparison, while the Bradley– Terry model [BT52] provides the standard probabilistic formulation for paired comparisons and the Davidson model [Dav70] further extends Bradley–Terry to allow ties. A complementary graph-based approach is Rank Centrality [NOS17], which constructs a Markov chain from the compar-ison graph and ranks items via its stationary distribution; conceptually, it is closely related to PageRank [PBMW99], and its statistical guarantees depend explicitly on graph properties such as connectivity and spectral structure. In LLM evaluation, these classical ranking methods are primarily used as aggregation tools for pairwise judgments. Recent work compared ranking algorithms such as Elo, Bradley–Terry, Glicko, and Markov-chain methods in head-to-head LLM evaluation, emphasizing their differences in tran-sitivity, stability, and sensitivity [DCF +25]. In addition, [GLH +25] decomposed automatic LLM system ranking into several pipeline components and showed that the final leaderboard depends not only on the judge model, but also on the aggregation method itself. This line of work mainly studies how to aggregate a given set of pairwise outcomes, whereas our focus is on improving the comparison graph itself before aggregation by reducing cyclic inconsistency. 
+
+Prompt Perturbation. Prompt perturbation has been widely used to study and improve the robustness of LLM systems. Recent work has shown that LLM behavior can vary substantially even under minor prompt changes, making prompt perturbation a useful tool for exposing sensitivity and 4improving robustness [QNM +24, AAHR25]. Relatedly, perturbation-based analysis has also been applied to LLM-based evaluators, showing that evaluation pipelines themselves can be sensitive to prompt variations and other input perturbations [CGBV24]. In contrast to this line of work, which mainly studies robustness at the response or evaluator level, our focus is on how prompt perturbation can be used to improve the structural consistency of the induced comparison graph in pairwise LLM evaluation. 
+
+1.2 Our Contribution 
+
+We study the problem of ranking large language models (LLMs) from pairwise evaluation data. A central challenge in this setting is that the induced comparison graph may exhibit substantial intransitivity, including both cyclic preferences and inconsistencies involving ties, which makes the resulting leaderboard unstable. To address this issue, we propose a prompt perturbation framework for improving the global consistency of pairwise LLM evaluation. Our framework enriches the evaluation process by constructing multiple perturbed variants of each input prompt and collecting pairwise comparison outcomes under these perturbed prompts. Each perturbed prompt induces a comparison graph over the candidate models. We quantify the structural consistency of these graphs through their cycle ratios, and retain only those graphs whose cycle ratios fall below a prescribed threshold. Based on the retained comparison outcomes, we then perform ranking aggregation using standard models for pairwise comparison data, such as the Bradley–Terry model and the Davidson model. The main contribution of this work is to incorporate graph-level structural consistency explicitly into the LLM evaluation pipeline before ranking aggregation; see Figure 1 for an illustration. This yields a simple and principled procedure for filtering out highly inconsistent local comparison structures and reducing cyclic inconsistencies in the induced comparison graph. More broadly, our work highlights a graph-based perspective on LLM evaluation, in which the quality of a ranking depends not only on how pairwise judgments are aggregated, but also on how the underlying comparison graph is constructed. 
+
+# 2 Statistical Models 
+
+2.1 Problem Formulation 
+
+We consider the problem of ranking a collection of large language models (LLMs) based on pair-wise comparisons. Let M = {M1, M 2, · · · , M n} denote the set of candidate models and X =
+
+{x1, x 2, · · · , x t} denote a collection of evaluation prompts. For each xi ∈ X , we compare the re-sponses produced by any two models Mj , M j′ ∈ M across all pairs 1 ≤ j < j ′ ≤ n through a judge model and record the comparison outcome. We then obtain a directed comparison graph Gi with vertex set V (Gi) and edge set E(Gi) defined as 
+
+V (Gi) = {1, 2, · · · , n } , E(Gi) = {(j, j ′) : j ≻ j′ under prompt xi 
+
+> }
+
+.
+
+Here, we write j ≻ j′ if the judge prefers the response of Mj to that of Mj′ . We also allow both 
+
+(j, j ′) and (j′, j ) to be present in E(Gi), corresponding to the case where the comparison between 
+
+Mj and Mj′ results in a tie. In this case, we write j ∼ j′. In the subsequent cycle-counting step, such ties are represented by reciprocal directed edges, so they are included in the enumeration of directed triangles and quadrilaterals; cycles formed purely by mutual ties are later subtracted from the bad-cycle count. See Section 3.1 for further details. In Section 2.2, we first consider the Bradley–Terry model, where ties are not allowed and each comparison yields a strict preference 5Traditional Method 
+
+Prompt 
+
+Comparison Graph 
+
+Ranking 
+
+Our Method 
+
+Prompt 
+
+Prompt Perturbation 
+
+Comparison Graphs 
+
+Integration 
+
+Ranking 
+
+Figure 1: Comparison between the traditional pipeline and our prompt-perturbation-based aggregation framework. 
+
+between the two models. We then introduce the Davidson model, which extends this framework by explicitly allowing ties in pairwise comparisons. In practice, ties are sometimes handled heuristically by assigning each model 0.5 win and 0.5 loss; see Section 3 for further details. Let W ∈ Rn×n, where Wij denotes the number of times that model Mi is preferred to model Mj
+
+over all pairwise comparisons, for each 1 ≤ i̸ = j ≤ n. Similarly, let T ∈ Rn×n, where Tij denotes the number of ties between models Mi and Mj . These quantities are aggregated from the collection of comparison graphs G = ( G1, G 2, · · · , G t), where each Gi corresponds to the comparison graph induced by prompt xi. We assume that there exists a latent score vector θ = ( θ1, θ 2, · · · , θ n), which determines the pairwise comparison probabilities through Pi≻j (θi, θ j ), Pi≺j (θi, θ j ), and Pi∼j (θi, θ j ).For each pair of models (Mi, M j ), the observed comparison outcomes across prompts fall into three categories: Mi ≻ Mj , Mi ≺ Mj , and Mi ∼ Mj . Accordingly, the likelihood function is defined as 
+
+L(θ; G, W, T) = ∏
+
+> 1≤i<j ≤n
+
+Nij !
+
+Wij ! Wji ! Tij ! Pi≻j (θi, θ j )Wij Pi≺j (θi, θ j )Wji Pi∼j (θi, θ j )Tij , (1) where Nij = Wij + Wji + Tij is the total number of comparisons between models Mi and Mj .In the no-tie setting, we have Tij = 0 for all 1 ≤ i, j ≤ n. The estimator ˆθ is then obtained by maximizing the log-likelihood function ℓ(θ) = log L(θ; G, W, T).
+
+2.2 Ranking Models 
+
+The most widely used probabilistic model for pairwise comparison was first proposed by [Zer29] and later rediscovered by [BT52]. This model assumes the existence of a latent score vector θ =
+
+6(θ1, θ 2, · · · , θ n), and specifies the win and loss probabilities as 
+
+Pi≻j (θi, θ j ) = eθi
+
+eθi + eθj , Pi≺j (θi, θ j ) = eθj
+
+eθi + eθj . (2) Consequently, the log-likelihood function ℓ(θ) is given, up to an additive constant, by 
+
+ℓ(θ) ∝ ∑
+
+> 1≤i<j ≤n
+> [
+
+−Wij log (1 + eθj −θi ) − Wji log (1 + eθi−θj )]
+
+.
+
+The maximum likelihood estimator is obtained by maximizing ℓ(θ) subject to an identifiability constraint, for example ∑ni=1 θi = 0 or θ1 = 0 , since only pairwise score differences are identifiable in the Bradley–Terry model. The objective function is concave in θ, so the estimation problem can be solved efficiently by standard convex optimization methods. In practice, the estimator can be computed by standard iterative methods such as Newton’s method [TF12], fixed-point itera-tion [YZQ15], or minorization–maximization algorithms [Hun04]. After obtaining the estimator ̂ θ,a global ranking of the n items is induced by ordering the estimated scores. Note that the Bradley–Terry model does not allow ties, where Pi∼j (θi, θ j ) ≡ 0 for all 1 ≤ i < j ≤ n. Therefore, it is not well suited to applications where tied outcomes may occur with non-negligible probability such as LLM evaluation. Although one common heuristic is to treat each tie as half a win and half a loss for each model (see, e.g., [CZS +24]), it is more natural to consider probabilistic models that explicitly incorporate ties. We now introduce the Davidson model [Dav70], which extends the Bradley–Terry model by incorporating an additional parameter ν to account for ties: 
+
+Pi≻j (θi, θ j ) = eθi
+
+eθi + eθj + ν√eθi eθj
+
+,
+
+Pi≺j (θi, θ j ) = eθj
+
+eθi + eθj + ν√eθi eθj
+
+,
+
+Pi∼j (θi, θ j ) = ν√eθi eθj
+
+eθi + eθj + ν√eθi eθj
+
+,
+
+where ν ≥ 0. In particular, when ν = 0 , the Davidson model reduces to the Bradley–Terry model. The parameter ν controls the relative likelihood of tied outcomes, with larger ν corresponding to a higher probability of tied outcomes. The log-likelihood function is obtained by substituting the above probabilities into (1). The maximum likelihood estimator is then defined as the solution to the resulting optimization problem under the constraint ν ≥ 0, and can be computed by standard optimization methods. However, the Bradley–Terry and Davidson models are fundamentally score-based and hence transitivity-oriented aggregation models. When a comparison graph contains many short directed cycles, the data exhibit a large cyclic component that cannot be well explained by any single global score vector. In such cases, directly fitting a Bradley–Terry or Davidson model forces incompatible local preferences into a transitive parametric form, which may lead to unstable or distorted rank-ings [STIP23]. This motivates us to adopt a truncation method on comparison graphs with large cycle counts; see Section 3.1 for further details. 73 Methods 
+
+3.1 Prompt Perturbation and Graph Truncation 
+
+Prompt perturbation is a commonly used strategy for improving the robustness of LLM evaluation, since judgments obtained from a single prompt template can be sensitive to superficial wording differences even when the underlying evaluation objective remains unchanged. Recent work has shown that single prompt evaluation can be brittle, and that more reliable conclusions can often be obtained by comparing model behavior across multiple semantically equivalent prompt formu-lations [MKM +24, MPXW +24, CGBV24]. The underlying idea is to replace one prompt template with several semantic-preserving rephrasings, thereby reducing prompt-specific noise in the final judgment. For each original comparison prompt, we generate multiple candidate perturbations, retain those that preserve the semantic meaning of the original task, and use them to obtain more stable pairwise judgments for the subsequent construction of the comparison graph. Specifically, for any original prompt xi ∈ X with 1 ≤ i ≤ t, let xi, 1, . . . , x i,m denote the perturbed prompts generated from 
+
+xi. In our implementation, the perturbations are generated by GPT-5.2 [Ope25b]; see Section 4.1 for details. Ideally, the generation prompt should request semantically equivalent rephrasings that preserve the original intent, constraints, entities, and requirements while changing only the surface form. For each 1 ≤ j ≤ m, let Gi,j be the comparison graph induced by prompt xi,j . Without loss of generality, we further define xi, 0 = xi and Gi, 0 = Gi. The resulting collection of comparison graphs contains richer information than a single graph, and we will leverage this additional information to perform a more robust ranking. We then introduce our integration methods based on the comparison graphs {Gi,j : 1 ≤ i ≤
+
+t, 0 ≤ j ≤ m}. Recent studies suggest that inconsistency is closely related to the reliability of LLM evaluation [XRRK25, WSZ +25]. A natural graph-based measure of such inconsistency is the abundance of cycles in the comparison graph. Since longer cycles are more likely to arise from accumulated noise and combinatorial effects due to graph size, we focus on small cycles, whose presence provides more direct evidence of instability in evaluation outcomes. Accordingly, our methods are based on truncation on 3-cycle counts and 4-cycle counts. For any 1 ≤ i ≤ t and 0 ≤ j ≤ m, let C3 
+
+> i,j
+
+and C4 
+
+> i,j
+
+denote the numbers of 3-cycles and 4-cycles in Gi,j , respectively. We then truncate the collection of comparison graphs {Gi,j } based on these cycle counts, retaining only graphs with relatively few cycles. Specifically, fix 1 ≤ K ≤ t(m + 1) 
+
+and λ = ( λ3, λ 4) ∈ R2, and assign each graph Gi,j the score λ3C3 
+
+> i,j
+
++ λ4C4 
+
+> i,j
+
+. We sort all comparison graphs in increasing order of this score, and retain the first K graphs. We denote the selected graphs by Gλ 
+
+> 1
+
+, . . . , G λK and the corresponding prompts by xλ 
+
+> 1
+
+, · · · , x λK . We then use these selected graphs for the subsequent ranking step. Since they contain fewer short cycles, they are expected to exhibit less local inconsistency and hence provide more stable evidence for ranking. Ties are handled directly in this cycle-counting step. A tie between two models can be rep-resented by two reciprocal directed edges. This allows us to enumerate directed triangles and quadrilaterals using a unified directed-graph representation. However, cycles formed entirely by mutual ties should not be treated as harmful preference cycles. We therefore also count the pure-tie cycles, denoted by C3,tie  
+
+> i,j
+
+and C4,tie  
+
+> i,j
+
+, using only reciprocal edges, and define the bad-cycle counts as 
+
+C3,bad  
+
+> i,j
+
+= C3 
+
+> i,j
+
+− C3,tie  
+
+> i,j
+
+, C4,bad  
+
+> i,j
+
+= C4 
+
+> i,j
+
+− C4,tie  
+
+> i,j
+
+.
+
+The truncation score is then computed from these bad-cycle counts, so that cycles caused only by mutual ties are not penalized as preference inconsistency. 8Remark 1 (Connection to rejection sampling) . Our prompt perturbation and cycle truncation procedure may be viewed as an accept–reject mechanism, conceptually related to rejection sampling. Let SK denote the K-th order statistic of {λ3C3 
+
+> i,j
+
++ λ4C4 
+
+> i,j
+
+: 1 ≤ i ≤ t, 0 ≤ j ≤ m}. Then the truncation step can be written as 
+
+δi,j = 1{λ3C3 
+
+> i,j
+
++ λ4C4 
+
+> i,j
+
+≤ SK },
+
+so that the final ranking is constructed from the retained sample {Gi,j : δi,j = 1 }. This provides an accept–reject perspective on our method: prompt perturbation generates multiple graph-valued proposals, while cycle truncation retains those that are structurally more consistent and hence po-tentially closer to the latent preference structure. 
+
+3.2 Ranking 
+
+In this section, we introduce the details of the ranking procedure. Given Gλ 
+
+> 1
+
+, . . . , G λK , we aggregate the pairwise comparison outcomes over the selected prompts and derive the matrices W and T.Specifically, for any 1 ≤ i̸ = j ≤ n, let 
+
+Wij =
+
+∣∣∣{1 ≤ k ≤ K : model i ≻ model j under prompt xλk }
+
+∣∣∣ (3) 
+
+Tij =
+
+∣∣∣{1 ≤ k ≤ K : model i ∼ model j under prompt xλk }
+
+∣∣∣ (4) By construction, we have Wij + Wji + Tij = K for all 1 ≤ i̸ = j ≤ n. The matrix W records the pairwise wins, while T records the ties, and together they summarize the comparison evidence extracted from the retained graphs. 
+
+Bradley–Terry model. Since the Bradley–Terry model in (2) does not explicitly accommodate ties, we use the modified matrix ˜W defined by ˜Wij = Wij + 12 Tij for all 1 ≤ i̸ = j ≤ n, where each tie is split equally between the two competing models. We then maximize the corresponding log-likelihood 
+
+ℓ(θ) ∝ ∑
+
+> 1≤i<j ≤n
+
+[
+
+− ˜Wij log (1 + eθj −θi ) − ˜Wji log (1 + eθi−θj )]
+
+under the identifiability constraint θ1 = 0 , since shifting all components of θ by the same constant does not change the optimal solution. The resulting estimator ˆθ = ( ˆθ1, . . . , ˆθn) provides the latent skill scores of the models, and we rank the models according to these estimated scores. 
+
+Davidson model. Recall that, in Section 2.2, we introduced the Davidson model, which explicitly incorporates ties. As a result, we can directly maximize the corresponding log-likelihood 
+
+ℓ(θ) ∝ ∑
+
+> 1≤i<j ≤n
+
+[
+
+− Wij log 
+
+( eθi
+
+eθi + eθj + ν√eθi eθj
+
+)
+
+− Wji log 
+
+( eθj
+
+eθi + eθj + ν√eθi eθj
+
+)
+
+− Tij log 
+
+( ν√eθi eθj
+
+eθi + eθj + ν√eθi eθj
+
+)]
+
+under the constraint ν ≥ 0. The resulting estimator then yields the latent scores ˆθ = ( ˆθ1, · · · , ˆθn)
+
+of the models, and we rank the models accordingly. 94 Experiments and Analysis 
+
+4.1 Experimental Setup 
+
+Unless otherwise stated, all main experimental results reported in this section are obtained with the half-tie Bradley–Terry ranker described in Section 3. We implement the Davidson model as an alternative tie-aware ranker, but use it only as a supplementary robustness check; its optimization details are given in Appendix A.2. We evaluate model responses on MT-Bench [ZCS +23], a widely used multi-turn benchmark for open-ended conversational evaluation. MT-Bench contains 80 manually curated questions, with 10 questions in each of eight categories: writing, roleplay, extraction, reasoning, math, coding, STEM, and humanities/social science. It is designed to assess both multi-turn conversational ability and instruction following [ZCS +23], and has become a standard testbed in the literature for evaluating chat-oriented LLMs [BLB +24, CZS +24, LHZN25, ZWY +25]. We conduct our experiments on a set of n = 20 target LLMs; see Table 5 in Appendix A.1 for the full list. For each question, we keep the original prompt and generate four additional semantically equivalent perturbations using GPT-5.2 [Ope25b], which gives five prompt instances per question (see the prompt template in Table 1). The generated perturbations are further filtered by a semantic-equivalence checker, whose prompt and filtering details are given in Appendix C.1. For each prompt instance, we collect pairwise judgments for all (n 
+
+> 2
+> )
+
+= 190 model pairs and construct a directed comparison graph. Since MT-Bench contains 8 categories, 10 questions per category, and 5 comparison graphs per question, each judge yields 8 × 10 × 5 = 400 comparison graphs.     
+
+> Table 1: Prompt template for semantic question perturbation.
+> Objective Template
+> Semantic question perturbation For the question [QUERIED QUESTION], provide msemantically equivalent paraphrases.
+
+Following the LLM-as-a-judge paradigm, we use two judge models in our experiments: GPT-5 [Ope25a] and a locally deployed Prometheus-family evaluator, M-Prometheus-14B (abbreviated as Prometheus below). GPT-5 is a strong proprietary frontier model with improved instruction following and performance on complex, open-ended tasks, while M-Prometheus-14B serves as an open judge model in the same evaluation pipeline. GPT-5 is queried through an API with a single pairwise-comparison prompt. Prometheus is run locally in a position-debiased hybrid mode. For each answer pair, we first run the pairwise prompt twice, once under the original answer order and once under the swapped order. If the two verdicts agree after mapping the reversed-order output back to the original answer identities, we keep that pairwise decision. Otherwise, we fall back to direct scoring under the same rubric and use the higher score as the final verdict, with equal scores recorded as ties. Appendix C.1 provides the exact prompts and decoding settings. For a graph G, truncation is based on the bad-cycle statistics introduced above: 
+
+Sμ(G) = Cbad 3 (G) + μC bad 4 (G).
+
+We set μ = 1 by default. The keep-K and μ-sensitivity analyses below vary the retained-graph budget in the usual way. For the main baseline comparison in Table 2, however, we report resampled summaries rather than single point estimates. For our method, we first retain the 25 graphs with the smallest values of Sμ(G) within each category and then repeatedly draw 20 of these graphs without replacement. The sampling-only control uses the same 25 → 20 protocol on the no-perturb 10 pool. The no-truncation baseline applies ordinary bootstrap to the full graph pool, the score-of-win baseline ranks 40-graph subsamples, and the random baseline averages 10 random 20-graph subsets from the 50-graph category pool. Unless otherwise stated, all reported means and confidence intervals are based on 100 outer resamples. After each resample, the selected graphs are aggregated into the matrices W and T defined in (3) and (4), respectively. To evaluate ranking quality, we compare each task-wise ranking with an external reference ranking derived from a fixed snapshot of the public Arena leaderboard data [CZS +24]. Our primary metric is the normalized Spearman ρ distance, 
+
+dρ(r, ˜r) = 1 − ρS (r, ˜r)2 , ρS (r, ˜r) = 1 − 6 ∑ni=1 (ri − ˜ri)2
+
+n(n2 − 1) ,
+
+which maps identical rankings to 0 and reversed rankings to 1 [Spe04]. Appendix C.2 also re-ports Kendall tau, Spearman footrule, and Chebyshev distances. We treat these distances as ranking losses in the analysis. We compare the proposed method with several baselines and abla-tions. The baselines include the single-prompt baseline (reported as Single →20 in Table 2), the no-truncation baseline ( NoTrunc boot ), the score-of-win baseline ( ScoreWin40 ), random subset av-eraging ( Random50 →20 ×10 ), and the sampling-only baseline ( Sample25 →20 ). We also report two block-wise variants, BlockTop2 and BlockTop1 . Here, a block refers to the set of comparison graphs generated from the same original prompt, including the original prompt graph and its perturbed variants. BlockTop2 and BlockTop1 retain at most two or one low-cycle graphs from each such block, respectively, and are included to test whether global top-K selection over-concentrates on a small number of original prompts. Appendix A.3 gives the exact source-pool and resampling rule for each baseline. 
+
+4.2 Ranking Performance 
+
+Relation between cycle counts and ranking accuracy. We first examine whether cycle counts are empirically related to ranking accuracy before applying truncation. For each untruncated comparison graph, we compute the bad-cycle score S1(G) = Cbad 3 (G) + Cbad 4 (G) and compare it with the normalized Spearman distance between the ranking induced by that graph and the Arena-derived reference ranking. As shown in Figure 2, graphs with larger bad-cycle scores tend to have larger ranking distances under both judges, indicating that short-cycle inconsistency is positively associated with ranking error. 4.0 4.5 5.0 5.5 6.0 6.5 7.0 7.5          
+
+> log(1 + S1)
+> 0.125
+> 0.150
+> 0.175
+> 0.200
+> 0.225
+> 0.250
+> 0.275
+> 0.300
+> Mean normalized distance
+> GPT-5 judge: binned cycle-distance trend (n=50 per group)
+> 95% bootstrap CI
+> Average in each group 4.0 4.5 5.0 5.5 6.0 6.5 7.0 7.5
+> log(1 + S1)
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> Mean normalized distance
+> Prometheus judge: binned cycle-distance trend (n=50 per group)
+> 95% bootstrap CI
+> Average in each group
+
+Figure 2: Cycle-based score versus normalized Spearman ranking distance before truncation. The binned trends show a positive association between bad-cycle counts and ranking error for both GPT-5 and Prometheus judges. 
+
+11 Our method vs. baselines. Table 2 reports the mean normalized Spearman ρ distance to-gether with its 95% confidence interval for each judge–task–method cell. This task-wise reporting reflects our task-dependent evaluation setting: each task category is treated as a separate eval-uation problem, and the macro-average summarizes performance across categories. Lower values indicate better agreement with the Arena-derived reference ranking. Boldface marks the lowest value within each task column and the lowest macro-average within each judge panel. 
+
+Table 2: Mean normalized Spearman ρ distance with 95% confidence intervals across 100 resamples. All values are reported in units of 10 −3; for example, 70 means 0.070. Lower values indicate better agreement with the Arena-derived reference ranking.                                                                                                                                                                                                                                                                                                                                                                                                                            
+
+> Normalized Spearman ρdistance ( ×10 −3)Method Coding Extraction Humanities Math Reasoning Roleplay STEM Writing Avg.
+> GPT-5
+> Trunc25 →20 70 ±149 ±261 ±124 ±154 ±144 ±147 ±1102 ±156
+> BlockTop2 73 ±0105 ±053 ±032 ±037 ±065 ±051 ±0142 ±070 BlockTop1 65 ±0114 ±059 ±029 ±044 ±043 ±083 ±0139 ±072 Sample25 →20 121 ±1128 ±2121 ±1122 ±1132 ±280 ±195 ±1168 ±1121 NoTrunc boot 75 ±299 ±444 ±228 ±151 ±257 ±146 ±1142 ±368 ScoreWin40 79 ±275 ±236 ±225 ±150 ±159 ±252 ±1141 ±265 Random50 →20 ×10 76 ±1104 ±246 ±130 ±154 ±159 ±148 ±1145 ±170 Single →20 83 ±074 ±054 ±039 ±055 ±057 ±054 ±0168 ±073
+> Prometheus
+> Trunc25 →20 52 ±155 ±490 ±120 ±156 ±153 ±272 ±2159 ±270
+> BlockTop2 53 ±094 ±086 ±020 ±054 ±092 ±053 ±0156 ±076 BlockTop1 54 ±0137 ±091 ±030 ±070 ±093 ±056 ±0159 ±086 Sample25 →20 78 ±1182 ±3126 ±199 ±1111 ±199 ±1102 ±1174 ±2122 NoTrunc boot 66 ±2118 ±10 88 ±241 ±257 ±279 ±359 ±2159 ±383 ScoreWin40 60 ±184 ±685 ±135 ±151 ±269 ±255 ±1152 ±274 Random50 →20 ×10 69 ±1132 ±390 ±143 ±162 ±180 ±160 ±1162 ±187 Single →20 83 ±0111 ±086 ±049 ±098 ±087 ±0113 ±0132 ±095
+
+Table 2 provides the main baseline comparison in a form that is easier to read quantitatively. Trunc25 →20 has the lowest macro-average under both judges: 0.056 for GPT-5 and 0.070 for Prometheus. It also achieves the lowest task-level mean on five of eight tasks under GPT-5 (Coding, Extraction, Math, Roleplay, and Writing) and on four of eight tasks under Prometheus (Coding, Extraction, Math, and Roleplay). The block-wise variants further examine whether global truncation over-selects perturbations from a small number of original prompts. BlockTop2 and BlockTop1 retain at most two or one graphs from each original-prompt block, respectively. They remain competitive in several tasks, but their macro-average distances are generally higher than Trunc25 →20, suggesting a trade-off between prompt-level diversity and retaining the strongest low-cycle comparison graphs. The comparison between Trunc25 →20 and Sample25 →20 shows the value of semantic pertur-bation with cycle-aware filtering. Sample25 →20 is worse on every task for both judges, and its macro-average is more than twice as large as that of Trunc25 →20 under GPT-5 ( 0.120 vs. 0.056 )and clearly larger under Prometheus as well ( 0.121 vs. 0.070 ). This pattern suggests that simply repeating stochastic sampling is not enough; the quality of the retained graphs matters. The comparison with NoTrunc boot isolates the contribution of cycle-aware filtering. Both methods use the perturbed-prompt pool, but only Trunc25 →20 removes graphs with high short-cycle counts before ranking. Trunc25 →20 is better than NoTrunc boot on five of eight tasks for each judge, with especially large gains on Extraction, Roleplay, and Writing for GPT-5, and on Coding, Extraction, Math, and Roleplay for Prometheus. This supports the view that filtering improves the reliability of the retained comparison evidence, rather than merely changing the sample size. 12 The advantage is not uniform across all tasks, so the result should be stated with the right level of caution. Humanities is better served by ScoreWin40 under both judges, Reasoning is slightly better for ScoreWin40 under GPT-5 and Prometheus, STEM favors NoTrunc boot for GPT-5 and ScoreWin40 for Prometheus, and Writing under Prometheus is lowest for Single →20. In other words, Trunc25 →20 is the most consistent method overall, but not the best method on every single category. Finally, ScoreWin40 remains a competitive baseline. Its macro-average is the second-best under both judges, and it wins several individual tasks. This suggests that strong aggregation can already recover useful ranking information, but the best overall results still come from combining semantic perturbation with cycle-aware filtering before the final ranking step. We report additional experiments in Appendix C.2. In particular, we evaluate the method on HumanEval and MATH, and also consider a judge-prompt perturbation setting where comparison graphs are generated by varying the judge instruction rather than the evaluated user prompt. These experiments provide complementary evidence beyond the main MT-Bench prompt-perturbation setting. 
+
+Different sources of improvement. To separate the effect of cycle-aware filtering from the effect of using a larger evaluation budget, we compare truncated and untruncated aggregation under matched source-graph budgets. For a budget of B source graphs per task, both methods use the same number of pairwise judge calls, namely B(n
+
+> 2
+
+). The only difference is whether the retained graphs are selected by the cycle score Sμ(G) or used without truncation. 10 20 30 40 50             
+
+> Source graphs per task
+> 1.9k 3.8k 5.7k 7.6k 9.5k
+> Pairwise judge calls per task (thousands)
+> 0.05
+> 0.06
+> 0.07
+> 0.08
+> 0.09
+> 0.10
+> 0.11
+> Normalized Spearman  distance
+> GPT-5
+> No truncate
+> Truncate
+> 10 20 30 40 50
+> Source graphs per task
+> 1.9k 3.8k 5.7k 7.6k 9.5k
+> Pairwise judge calls per task (thousands)
+> 0.06
+> 0.08
+> 0.10
+> 0.12
+> 0.14
+> Normalized Spearman  distance
+> Prometheus
+> No truncate
+> Truncate
+> Macro loss vs evaluation cost
+
+Figure 3: Macro-average normalized Spearman distance versus evaluation cost. Truncated and untruncated aggregation are compared under the same source-graph budget and the same number of pairwise judge calls. 
+
+Figure 3 shows that cycle-aware truncation consistently achieves lower macro-average ranking loss than no truncation under the same evaluation cost for both GPT-5 and Prometheus. This indi-cates that the improvement is not simply due to using more perturbed prompts or more judge calls. Instead, selecting graphs with lower cycle inconsistency contributes additional gain by improving the quality of the retained comparison evidence. 
+
+4.3 Diagnostics and Sensitivity Analyses 
+
+Model diagnostics. For each judge–task–selection setting, we fit the half-tie Bradley–Terry model on the selected comparison graphs and evaluate it on held-out comparison graphs. Let 
+
+˜Wij = Wij + 12 Tij denote the half-tie win count. After fitting the Bradley–Terry scores on the 13 selected data, the predicted held-out win probability is ̂ pij = exp( ̂ θi)exp( ̂ θi)+exp( ̂θj ) . The Bradley–Terry held-out loss is the average negative log-likelihood 
+
+Lheldout BT = − 1
+
+Nheldout 
+
+∑
+
+> i<j
+
+[˜W heldout  
+
+> ij
+
+log ̂ pij + ˜W heldout  
+
+> ji
+
+log(1 −̂ pij )
+
+]
+
+.
+
+As a nonparametric pairwise baseline, we also compute an empirical held-out loss using the pairwise win rate estimated from the selected data, ̂
+
+qij =
+
+˜W selected 
+
+> ij
+
+˜W selected  
+
+> ij
+
++ ˜W selected 
+
+> ji
+
+,
+
+with a small smoothing constant used when needed to avoid zero probabilities. Its held-out loss is 
+
+Lheldout emp = − 1
+
+Nheldout 
+
+∑
+
+> i<j
+
+[˜W heldout  
+
+> ij
+
+log ̂ qij + ˜W heldout  
+
+> ji
+
+log(1 −̂ qij )
+
+]
+
+.
+
+We report 
+
+∆cv = Lheldout BT − L heldout emp .
+
+Thus, a positive value of ∆cv means that the Bradley–Terry score model predicts held-out pairwise comparisons worse than the empirical pairwise baseline, which we treat as evidence of possible model misspecification. For each task, we combine this held-out diagnostic with three in-sample goodness-of-fit diagnos-tics: normalized deviance, maximum standardized residual, and a cyclic residual [JLYY11]. Each diagnostic produces a warning if it crosses its pre-specified threshold. We label a task as likely misspecified if at least two diagnostics raise warnings, as possible misspecification if exactly one diagnostic raises a warning, and as no strong warning if none of the diagnostics raises a warning. Table 3 reports the number of tasks in each category, together with the average ∆cv .
+
+Table 3: Bradley–Terry model diagnostic summary. “Likely”, “Possible”, and “No strong” count the number of tasks in each diagnostic category. A positive ∆cv indicates worse held-out prediction than an empirical pairwise baseline. Judge Selection Likely Possible No strong ∆cv 
+
+GPT-5 block top-K 0 2 6 -0.007 GPT-5 global top-K 0 3 5 -0.007 GPT-5 no truncation 2 2 4 -0.001 Prometheus block top-K 0 2 6 -0.005 Prometheus global top-K 0 4 4 -0.004 Prometheus no truncation 0 3 5 -0.003 
+
+Table 3 shows that truncation reduces Bradley–Terry misspecification warnings. For GPT-5, likely misspecified tasks drop from 2 under no truncation to 0 after truncation. For both judges, block top-K yields the most tasks with no strong warning. The negative ∆cv values further indicate that the Bradley–Terry projection is not worse than the empirical pairwise baseline on held-out comparisons. Thus, truncation makes the retained data more compatible with score-based ag-gregation. When misspecification genuinely persists after truncation, our method should not be interpreted as recovering a true globally transitive preference order. The resulting ranking is in-stead a score-based projection of the retained comparisons. We therefore recommend reporting 14 the diagnostic flags, and using richer task-dependent or graph-based aggregation models when the residual cyclic component is substantively important. We emphasize that these diagnostics address internal consistency and score-model compatibility, not systematic judge bias. A judge with stable position, verbosity, or style bias may still produce an internally consistent comparison graph. We discuss this limitation in Appendix C.1; in particular, our Prometheus evaluation uses an A/B order-swapping procedure to reduce position bias. 
+
+Effect of the keep-K budget under truncation. We next study how the final ranking changes with the keep-K budget. Figure 4 plots the normalized Spearman ρ distance as a function of K,where the truncation score is Cbad 3 + Cbad 4 . The curves exhibit a bias-variance trade-off. When K
+
+is too small, the final ranking is inferred from too little evidence, so the distance to the reference ranking is large and unstable. As K increases, the ranking loss falls sharply for both judges; the distance drops sharply before flattening from the smallest budgets to the best region. After that initial drop, the curves flatten out and the marginal gain becomes small. 6 12 18 24 30 36 42 48           
+
+> Retained graphs, K
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> Normalized Spearman  distance
+> Overall keep-Kcurves ( d;Cbad 3+Cbad 4)
+> GPT-5 Prometheus
+
+Figure 4: Effect of the keep-K budget under cycle-aware truncation. The ranking loss decreases rapidly when K grows from very small values, reaches its minimum in the middle of the range, and then plateaus or slightly rebounds as noisier graphs are added back. 
+
+The best K lies in the middle of the admissible range, around K ≈ 25 for both judges. This behavior is intuitive. If K is too small, we discard too much information and the aggregated comparison matrix is too sparse to support a stable ranking. If K is too large, we begin to re-introduce graphs with higher bad-cycle counts, which are precisely the graphs most likely to inject inconsistent local evidence. In that regime, the improvement saturates and can even slightly reverse. This pattern provides a practical justification for our default choice K = 25 : it sits near the bottom of the curve for both judges, while avoiding the unnecessary noise introduced by larger retained budgets. A second observation is that the same qualitative shape appears for both judges, despite their different absolute error levels. GPT-5 remains uniformly stronger in absolute distance, but both judges favor an intermediate truncation budget rather than either extreme. This suggests that the keep-K effect is a property of the comparison-graph construction itself, not an artifact of one particular judge. 
+
+Data-driven choice of K. The keep-K budget can also be selected by a simple data-driven rule. We use grouped cross-validation over the original prompts, so that all perturbations of the 15 same prompt are placed in the same fold. Let {1, . . . , t } = I1 ∪ · · · ∪ IB . For fold b, the training and validation graph sets are 
+
+G(b)tr = {Gi,j : i / ∈ Ib, 0 ≤ j ≤ m}, G(b)va = {Gi,j : i ∈ Ib, 0 ≤ j ≤ m}.
+
+For a candidate keep proportion α ∈ (0 , 1] , we retain the K(b)(α) = 
+
+> ⌈
+
+α|G (b)tr |
+
+> ⌉
+
+training graphs with the smallest truncation scores Sμ(G), fit the Bradley–Terry model on them, and evaluate the held-out pairwise log loss on G(b)va . Denote this validation loss by L(b)va (α). We then compute 
+
+Lcv (α) = 1
+
+B
+
+> B∑
+> b=1
+
+L(b)va (α), scv (α) =  
+
+> {
+
+1
+
+B − 1
+
+> B∑
+> b=1
+> (
+
+L(b)va (α) − Lcv (α))2
+
+> }1/2
+
+,
+
+and choose ̂
+
+α = arg min 
+
+> α
+> {
+
+Lcv (α) + scv (α)
+
+> }
+
+.
+
+The selected keep budget is then K = ⌈̂α t (m + 1) ⌉ for the corresponding category. Table 4 shows that the data-driven choices are generally in the intermediate range rather than at the extremes. For GPT-5, the selected K’s mostly lie between 20 and 30, close to the default K = 25 . For Prometheus, the selected budgets are often smaller, suggesting that a weaker or noisier judge benefits from more aggressive truncation. These results support the qualitative keep-K pattern above and indicate that the default choice is consistent with a simple cross-validation based selection rule.                                               
+
+> Table 4: Data-driven keep-budget selection by grouped cross-validation ( B= 5 ). Judge Category KJudge Category K
+> GPT-5 Coding 28 Prometheus Coding 18 GPT-5 Extraction 25 Prometheus Extraction 40 GPT-5 Humanities 10 Prometheus Humanities 13 GPT-5 Math 20 Prometheus Math 13 GPT-5 Reasoning 30 Prometheus Reasoning 18 GPT-5 Roleplay 30 Prometheus Roleplay 13 GPT-5 STEM 20 Prometheus STEM 28 GPT-5 Writing 20 Prometheus Writing 15
+
+The grouped cross-validation rule is not the only possible choice of the keep budget. Other data-driven criteria include validation against a small set of human judgments when such labels are available. We use grouped cross-validation because it requires no additional human annotation and keeps all perturbations from the same original prompt in the same fold. 
+
+Sensitivity to the relative weighting of bad 3-cycles and bad 4-cycles. To understand how much the truncation rule depends on the precise cycle weighting, we fix K = 25 and vary μ in 
+
+Sμ(G) = Cbad 3 (G) + μC bad 4 (G).
+
+Figure 5 plots the resulting normalized Spearman ρ distance against μ on a log scale. The main observation is that the curves are remarkably flat. Across two orders of magnitude of μ, the final ranking changes only slightly for either judge, and once μ enters the moderate range the differences become almost negligible. This result suggests that the effectiveness of cycle-based truncation does not hinge on a del-icate tuning of the relative weights on bad 3-cycles and bad 4-cycles. What matters most is to 16 10 1 10 0 10 1         
+
+> Cycle-weight parameter,
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> Normalized Spearman  distance
+> Overall distance vs (K= 25 , score Cbad 3+Cbad 4)
+> GPT-5 Prometheus
+
+Figure 5: Sensitivity to the relative weighting of bad 3-cycles and bad 4-cycles in the truncation score 
+
+Sμ(G) = Cbad 3 (G) + μC bad 4 (G), with K = 25 fixed. The final ranking quality changes only mildly across two orders of magnitude of μ.
+
+remove graphs with substantial short-cycle inconsistency at all; the exact trade-off between trian-gles and quadrilaterals is secondary. In particular, the near-flat GPT-5 curve and the similarly stable Prometheus curve imply that bad 3-cycles already capture most of the useful signal needed for filtering. Bad 4-cycles can still provide a mild refinement, but they do not materially change the final ranking in this setting. This observation has an important computational implication. On larger comparison graphs, enumerating 4-cycles is substantially more expensive than counting triangles. Since the ranking distance is almost insensitive to μ, one can often truncate using only Cbad 3 or a very coarse ap-proximation to the 4-cycle contribution, and still obtain nearly the same ranking quality. We nevertheless use μ = 1 in the main experiments because it is simple, stable, and performs well across both judges. 
+
+# 5 Theoretical Analyses 
+
+In this section, we provide a theoretical analysis of a random directed graph model to characterize the interplay among the number of prompt perturbations, the graph size, the success rate of the LLM judge, and the resulting ranking accuracy. Intuitively, increasing the number of prompt perturbations, reducing the graph size, and improving the success rate of the judge model all contribute to a more accurate output ranking. We provide a quantitative analysis for a simple model. 
+
+5.1 Model Setup 
+
+We begin by introducing the probabilistic model. Let G∗ denote the latent ground-truth comparison graph, with vertex set V (G∗) = {1, 2, · · · , n } and edge set E(G∗) = {(i, j ) : 1 ≤ i < j ≤ n}, where 
+
+(i, j ) denotes a directed edge from i to j. Equivalently, G∗ is the comparison graph induced by the ground-truth ranking 1 ≻ 2 ≻ · · · ≻ n. However, due to noise introduced by the prompt perturbation step and possible errors made by the judge model, an observed comparison graph may differ from G∗. Specifically, we introduce a parameter 0 < p = p(n) ≤ 12 to quantify the noise level. For each pair 1 ≤ i < j ≤ n, the edge (i, j ) in G∗ is retained with probability 12 + p and is 17 reversed to (j, i ) with probability 12 − p. Let G1, G 2, · · · , G t be the observed comparison graphs. Then, for each 1 ≤ k ≤ t, we have V (Gk) = {1, 2, · · · , n } and 
+
+P [( i, j ) ∈ E(Gk)] = 12 + p, P [( j, i ) ∈ E(Gk)] = 12 − p, ∀ 1 ≤ i < j ≤ n. 
+
+Moreover, for any 1 ≤ k < k ′ ≤ t, the graphs Gk and Gk′ are independent conditional on G∗.Note that larger values of p correspond to more reliable judgments, while p = 12 means that the judge model is consistent with the underlying ranking. Our goal is to understand how many comparison graphs are required to recover the latent ranking from observed directed graphs of size n under a given hallucination level characterized by p. Specifically, we consider t samples 
+
+G1, G 2, · · · , G t. Let ˜G be the integration graph with V ( ˜G) = {1, 2, · · · , n } and 
+
+(i, j ) ∈ E( ˜G) if |{ k : ( i, j ) ∈ E(Gk)}| > t
+
+2 , (j, i ) ∈ E( ˜G) if |{ k : ( i, j ) ∈ E(Gk)}| ≤ t
+
+2 (5) for any 1 ≤ i < j ≤ n. The graph ˜G provides a natural way to aggregate the information from the 
+
+t observed directed graphs through pairwise majority voting. We will show in Section 5.2 that if t
+
+exceeds a critical threshold, then one can recover the latent ranking from ˜G, whereas below another threshold on the other side, the graph ˜G contains a directed cycle, which implies a contradiction with the correct rank. 
+
+5.2 Theoretical Guarantees 
+
+In this subsection, we present theoretical guarantees for the random directed graph model intro-duced in Section 5.1. Specifically, the following theorem characterizes the sample size required for recovering the latent rank via the majority-vote integration graph ˜G. In addition to the positive result showing that the correct rank can be recovered using the majority vote from ˜G, we also establish a negative result under which the graph ˜G contains a directed cycle with high probability. 
+
+Theorem 1. For any constant ϵ > 0, if t ≥ (4+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+, then 
+
+P 
+
+> [
+
+˜G = G∗]
+
+= 1 − o(1) as n → ∞ .
+
+On the other hand, if t ≤ (4 −ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+∧ nϵ/ 2, then the graph ˜G contains at least one directed triangle with probability 1−o(1) as n → ∞ . Moreover, under this condition, we have E [N3] = ω(1) ,where N3 denotes the number of directed triangles in ˜G.
+
+The proof of Theorem 1 is deferred to Appendix B.1. In view of Theorem 1, we derive the sample size required for recovering the latent rank, and also provide a corresponding lower bound under which recovery becomes challenging. We note that the positive and negative results are tight up to constants when p = n−o(1) , and tight in rate when p = n−Θ(1) , where smaller values of p
+
+correspond to more severe hallucination. Indeed, our results can be extended to the inhomogeneous setting, where (i, j ) in G∗ is retained with probability 12 + pij and reversed to (j, i ) with probability 12 − pij for any 1 ≤ i < j ≤ n. This scenario corresponds to the case where the noise level varies across pairs of models. See Remark 3 in Appendix B.1 for details on the theoretical guarantees. Moreover, the Theorem 1 is not tied to the total-order assumption. The notation 1 ≻ 2 ≻ · · · ≻ n is used only as a convenient way to describe one possible latent graph. The proof is edgewise: for each unordered pair {i, j }, the observed edge agrees with the latent edge in G∗ with probability 1/2 + p and is reversed with probability 1/2 − p.18 Majority voting therefore recovers each latent edge with high probability, and a union bound over all (n
+
+> 2
+
+) pairs yields ˜G = G∗ in the stated regime. Thus the same exact-recovery argument applies to an arbitrary latent comparison graph G∗, including one that is not induced by a globally transitive ranking. We next consider the scenario where the structurally consistent observations are accessible, retaining only those with no directed triangle. Specifically, let 
+
+A ≜ {G : G contains no directed triangle }.
+
+We study the conditional law G | A . Let ¯G1, ¯G2, · · · , ¯Gt denote samples from this conditioned dis-tribution. We first characterize the distribution of ¯Gi. Let Sn denote the set of permutations from 
+
+{1, 2, · · · , n } to {1, 2, · · · , n }. Indeed, since ¯Gi contains no directed triangle, there exists a permu-tation πi such that (πi(r), π i(s)) ∈ E( ¯Gi) for all 1 ≤ r < s ≤ n (see Lemma 4 in Appendix B.2). Therefore, ¯Gi is completely determined by πi, and it remains to characterize the distribution of 
+
+πi. Moreover, by the definition of conditional probability, the probability of observing πi under the conditioned law is exactly the probability of the corresponding graph under the original model, divided by the total probability of all triangle-free graphs. More precisely, let 
+
+inv( π) = | { (r, s ) : 1 ≤ r < s ≤ n, π (r) > π (s)} | 
+
+denote the number of inversions of πi. Then 
+
+P [πi | A ] = ( 12 + p)(n
+
+> 2
+
+)−inv( πi)( 12 − p)inv( πi)
+
+∑ 
+
+> σ∈S n
+
+( 12 + p)(n
+
+> 2
+
+)−inv( σ)( 12 − p)inv( σ) = qinv( πi)
+
+∑ 
+
+> σ∈S n
+
+qinv( σ) , q = 
+
+> 12
+
+− p 
+
+> 12
+
++ p .
+
+This is precisely the Mallows distribution [Mal57], and we denote it as Mallows n(q). It follows from [Sta11, Corollary 1.3.13] that ∑ 
+
+> σ∈S n
+
+qinv( σ) = ∏nr=1 1−qr 
+
+> 1−q
+
+. Indeed, for any triangle-free graph 
+
+G under the conditioned Mallows law, the edge orientation probability between i and j depends only on j − i for any 1 ≤ i < j ≤ n; see Proposition 5 in Appendix B.2. In particular, when 
+
+j − i = 1 , the probability that (i, j ) ∈ E(G) remains 12 + p, while this probability increases with 
+
+j − i. Intuitively, this makes the majority vote ˜G based on ¯G1, ¯G2, · · · , ¯Gt more informative for recovering the ground-truth graph G∗. We now state the corresponding upper bound on the number of graphs required for exact recovery of G∗.
+
+Theorem 2. Under conditional law G | A , for any constant ϵ > 0, if t ≥ (2+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+, then 
+
+P
+
+[ ˜G = G∗]
+
+= 1 − o(1) as n → ∞ .
+
+The proof of Theorem 2 is deferred to Appendix B.2. Comparing Theorems 1 and 2, we see that, after truncating to graphs with no directed triangle, the number of graphs required to recover 
+
+G∗ from ˜G decreases from (4+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+to (2+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+. This shows that cycle-based truncation is beneficial even under a simple stylized model: by filtering out comparison graphs with local inconsistencies, one can reduce the sample complexity of exact recovery. Indeed, in order to obtain (2+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+triangle-free graphs, one may need substantially more than (4+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+original graphs before conditioning on the no-triangle event. From this perspec-tive, direct truncation may appear statistically inefficient, since a potentially large fraction of the original samples is discarded. However, in the regime of LLM evaluation, generating additional comparison graphs via prompt perturbation is relatively cheap, whereas obtaining high-quality do-main prompts is often the real bottleneck. Therefore, despite its low sample efficiency under this 19 stylized model, our truncation-based procedure can still be well suited to practical LLM evaluation. Moreover, one may consider soft truncation rather than imposing the hard constraint of excluding all graphs with directed triangles, since a small number of triangles may not substantially affect the global comparison structure. For example, one may truncate to graphs whose numbers of directed triangles are at most N . The two extreme cases recover our previous results: N = ∞ corresponds to Theorem 1, while N = 0 corresponds to Theorem 2. For intermediate values N ∈ (0 , ∞), one may expect a trade-off between structural consistency and sample efficiency, potentially interpolating between the sample complexities (2+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+and (4+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+. A precise characterization of this trade-off is an interesting open problem, which we leave for future work. It is also important to distinguish the roles of the two theoretical settings. Theorem 1 is an edgewise recovery result and can be interpreted for a general latent comparison graph. By contrast, Theorem 2 conditions on the retained graph having no directed triangle. Under this condition, the support is restricted to transitive tournaments, equivalently the n! possible total orders. Therefore, if the latent preference structure is genuinely non-transitive, the truncated model should not be interpreted as exactly recovering that cyclic structure. Instead, an additional irreducible approx-imation term may remain, and the resulting ranking should be viewed as the closest transitive approximation to the latent comparison relation under the chosen loss or likelihood. We finally discuss the maximum likelihood estimator (MLE) under the two models. Under the untruncated model in Theorem 1, the parameter is the latent graph G∗. Conditional on G∗,the observed graphs G1, . . . , G t are independent, and for each pair 1 ≤ i < j ≤ n, the observed orientation agrees with that in G∗ with probability 12 + p and is reversed with probability 12 − p.Therefore, the likelihood of G∗ is 
+
+L(G∗) = ∏
+
+> 1≤i<j ≤n
+
+( 12 + p
+
+)Nij (G∗)( 12 − p
+
+) t−Nij (G∗)
+
+,
+
+where Nij (G∗) denotes the number of observed graphs whose orientation on the pair {i, j } agrees with that in G∗. Since the likelihood factorizes over pairs, the MLE is obtained by maximizing each pairwise contribution separately. Equivalently, if 
+
+Nij ≜ ∣∣{1 ≤ k ≤ t : ( i, j ) ∈ E(Gk)}∣∣, (6) then the MLE chooses (i, j ) ∈ E(G∗) when Nij > t/ 2, and chooses (j, i ) ∈ E(G∗) when Nij < t/ 2,with arbitrary tie-breaking when Nij = t/ 2. Therefore, the integration graph ˜G defined by majority vote is exactly an MLE in this model. Under the truncated model in Theorem 2, the distribution is characterized by the latent per-mutation π ∼ Mallows n(q). Recall that πi denote the corresponding permutation induced by ¯Gi
+
+and P [πi | π∗, q ] = qinv( πi,π ∗)
+
+∑  
+
+> σ∈S nqinv( σ)
+
+, where inv( πi, π ∗) denotes the inversion number between πi and 
+
+π∗. Consequently, the likelihood is given by 
+
+L(π∗ | π1, · · · , π t) = 
+
+> t
+
+∏
+
+> i=1
+
+qinv( πi,π ∗)
+
+∑ 
+
+> σ∈S n
+
+qinv( σ) ∝ q
+
+∑ti=1 inv( πi,π ∗).
+
+Thus the MLE is given by 
+
+ˆπMLE = argmin 
+
+> π∈S n
+> t
+
+∑
+
+> i=1
+
+inv( πi, π ).
+
+Specifically, we have the following theorem. 20 Theorem 3. Under conditional law G | A , for any constant ϵ > 0, if t ≤ (2 −ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+∧ nϵ/ 2, then 
+
+P [ˆ πMLE ̸ = π∗] = 1 − o(1) .
+
+The proof of Theorem 3 is deferred to Appendix B.3. In view of Theorems 2 and 3, we see that, when p = n−o(1) , the estimator ˜G achieves the same exact recovery threshold as the MLE under the truncated model, up to the sharp constant. In this sense, ˜G is statistically competitive with 
+
+ˆπMLE . On the other hand, ˜G can be computed by pairwise majority vote in time O(tn 2), whereas a naive exhaustive search for ˆπMLE over all n! permutations is computationally prohibitive. This suggests that ˜G provides a simple and computationally efficient alternative while retaining the same recovery threshold in this regime. 
+
+# 6 Discussion and Future Directions 
+
+In this paper, we propose a new framework for LLM evaluation based on prompt perturbation and cycle truncation. The main idea is to improve the robustness of pairwise evaluation by incorporating perturbations at the prompt level and by controlling local inconsistencies through graph-based cycle truncation. On the theoretical side, we establish guarantees under a random directed graph model, which help explain how the number of perturbations, the graph size, and the reliability of the judge model jointly affect the accuracy of the final ranking. On the empirical side, experiments on real LLM evaluation tasks demonstrate that our method performs favorably and produces more stable and reliable ranking results. We note that lower cycle counts do not universally imply higher evaluation accuracy. Cycle filtering improves graph-level structural consistency, which is an internal reliability criterion rather than a validity guarantee. When the score-based ranking model is misspecified, or when the judge has strong systematic bias, the retained graph may be internally consistent but still misaligned with the desired target. Moreover, if the latent preferences contain stable task-dependent heterogeneity, an irreducible inconsistent component may remain; in this case, the final ranking should be viewed as a score-based projection of the retained comparisons rather than as a true global preference order. There are several directions for future research. 
+
+• Richer integration methods. It would be interesting to go beyond the current majority-vote integration rule and develop more refined aggregation procedures that better exploit the structure of pairwise comparison graphs. 
+
+• Broader empirical validation. It would also be valuable to test the proposed method on a wider range of LLM evaluation tasks, judge models, and benchmark settings to better understand its practical behavior. 
+
+• More realistic theoretical models. Our current analysis is based on a simple random directed graph model. An important direction is to establish theoretical guarantees under more real-istic models that capture heterogeneous prompts, judge bias, and dependence across compar-isons. 
+
+# A Experimental Details 
+
+A.1 Additional Experimental Setup 
+
+We list the target LLMs used in our experiments in Table 5, grouped by model family. 21 Table 5: Target LLMs used in the experiments.           
+
+> Model family Models
+> Gemma Gemma 1.1 2B IT; Gemma 2 2B IT; Gemma 2 27B IT GPT GPT-4.1 nano (2025-04-14 snapshot) Granite Granite-3.0-2B-Instruct; Granite-3.0-8B-Instruct; Granite-3.1-2B-Instruct Ministral Mistral-Small-24B-Instruct-2501 Mistral Mistral-7B-Instruct-v0.1; Mistral-7B-Instruct-v0.2 OLMo OLMo-7B-Instruct; OLMo-2-0325-32B-Instruct Phi Phi-3 Mini 4K Instruct; Phi-3 Small 8K Instruct; Phi-3 Medium 4K Instruct; Phi-4 Qwen Qwen1.5-7B-Chat; Qwen1.5-14B-Chat Others Zephyr-7B-beta; Starling-LM-7B-beta
+
+We describe the fixed public Arena snapshot used in the experiments and provide the mapping from MT-Bench categories to public Arena categories in Table 6. For categories without an exact counterpart, we use the closest available public category as a proxy.                    
+
+> Table 6: Mapping from MT-Bench categories to external reference leaderboards. “Exact” means a direct semantic match; “Proxy” indicates the closest available public LMArena category. MT-Bench category LM Arena category Type Coding Coding Exact Extraction Instruction Following Proxy Humanities Writing, Literature & Language Proxy Math Math Exact Reasoning Hard Prompts (English) Proxy Roleplay Multi-Turn Proxy STEM Life, Physical & Social Science Proxy Writing Creative Writing Exact
+
+In the released analysis bundle, the external reference ranking is frozen before resampling and ranker comparisons. All main-table, robustness, and sensitivity runs therefore use the same task-wise reference order rather than re-querying a changing online leaderboard. This is also why the open-code analysis defaults to an embedded reference ranking. Prompt perturbation is implemented in two stages. The perturbation script first asks the configured API model to over-generate candidate paraphrases in JSON format, with generation temperature 0.7 and a maximum of 12,000 output tokens. Exact duplicates, empty strings, and candidates that normalize to the original prompt are removed. A second deterministic equivalence-checking call then returns a JSON array of YES /NO labels, with temperature 0 and a maximum of 600 output tokens. Only candidates marked YES are retained. In the reported runs, the configured generator/checker is the GPT-5.2 system mentioned in Section 4.1. The released pipeline therefore separates candidate generation from semantic filtering. The reported MT-Bench analysis uses the fixed five-graph-per-question pool stated in the main text, so each category contains 50 comparison graphs. 22 A.2 Implementation Details 
+
+When an item is stored as a multi-turn conversation, we evaluate only its first-turn instruction so that all pairwise judgments are based on the same prompt content. Target-model inference is implemented through two backends. For locally deployed models, we use a Hugging Face/Accelerate pipeline with automatic device placement, bfloat16 precision by default, a limit of 2048 newly generated tokens, and deterministic decoding. For API-based models, we likewise use deterministic decoding, with temperature 0, top-p = 1 , and a maximum output length of 2048 tokens. In addition, the local pipeline applies a light post-processing step to remove common reasoning tags and stop markers from model outputs before saving them. Each per-prompt comparison graph is stored as a complete directed graph in which a strict preference Mi ≻ Mj is encoded by a single directed edge i → j, while a tie is encoded by the pair of reciprocal edges i ↔ j. For a graph G, the implementation exhaustively enumerates all unordered triples and quadruples of vertices and counts every directed orientation that forms a 3-cycle or 4-cycle. Let A(G) be the adjacency matrix and let B(G) = A(G) ◦ A(G)⊤ denote the bidirectional-edge matrix. The pure-tie cycle counts Ctie 3 (G) and Ctie 4 (G) are obtained by applying the same enumeration routine to B(G). The bad-cycle counts are then 
+
+Cbad  
+
+> ℓ
+
+(G) = Cℓ(G) − Ctie  
+
+> ℓ
+
+(G), ℓ ∈ { 3, 4},
+
+and the default truncation score is S1(G) = Cbad 3 (G) + Cbad 4 (G). For deterministic tie-breaking, graphs are sorted by the pair (S1(G), source_order ). Global truncation keeps the first K graphs in that order. Block-wise truncation first groups graphs by original question id, sorts graphs inside each block by the same score, and then keeps the lowest one or two graphs per block. This is the implementation used for BlockTop1 and BlockTop2 .We report two rankers that differ only in how ties are handled. The first is a half-tie Bradley– Terry ranker. After aggregating the retained graphs into W and T, we form ˜W = W + 12 T and minimize the Bradley–Terry negative log-likelihood in an (n − 1) -dimensional reduced parameteri-zation, fixing the last latent score to zero for identifiability and mean-centering the recovered score vector afterwards. Multiple initializations are tried, and we retain the best converged solution over Newton’s method [TF12], fixed-point iteration [YZQ15], minorization–maximization (MM) updates [Hun04], and quasi-Newton routines (BFGS and L-BFGS-B). For derivative-based runs, the default stopping rule uses maxiter =2000 and gtol =10 −8.The second is an explicit-tie Davidson ranker. It maximizes the Davidson log-likelihood over 
+
+n − 1 free log-skill parameters and one free log ν parameter, again fixing the last log-skill to zero. Multiple initializations are again tried, and we retain the highest-likelihood converged solution over constrained solvers implemented either in log-parameter space, where ν ≥ 10 −12 becomes the box constraint log ν ≥ log 10 −12 and is handled by L-BFGS-B or a damped Newton scheme with feasibility safeguarding, or in the original positive parameterization, where fixed-point and MM updates preserve λi > 0 and ν > 0 by construction. The reported Davidson scores are finally rescaled so that the geometric mean of the λi’s equals one. In the ranker-robustness analysis, the same selected graph list is passed unchanged to all five aggregators. The resampling analysis uses 100 outer resamples with bootstrap seed 20260324. For Ran-dom50 , each outer resample averages 10 independently drawn 20-graph subsets from the 50-graph category pool. The released local-generation configuration is written for an eight-GPU node and tar-gets 8 × RTX 6000 Ada 48GB for Hugging Face/Accelerate inference. The local Prometheus judge launches one worker per visible free GPU and polls GPU memory/utilization before dispatching category-level jobs. The same seed is also used as the default seed in the keep-K, μ-sensitivity, ranker-robustness, and diagnostic scripts unless a script-specific override is supplied. 23 A.3 Baseline and Ablation Details 
+
+We provide the details for the main baselines and ablations in our experiments in this section. Because Table 2 reports resampled summaries rather than single point estimates, each method is defined by both a source pool and a resampling rule: 
+
+• The single-prompt baseline keeps only the original prompt graph for each question. We first choose the best global keep-K on this reduced pool using the same judge-specific ranker as in the main pipeline. Since each category then contains at most ten graphs, the nominal 20-graph subsample usually coincides with the whole selected pool, so the resulting resampling distribution is nearly degenerate. 
+
+• The no-truncation baseline skips cycle filtering and applies ordinary bootstrap to the full graph pool in each category. If a category contains n graphs, each resample draws n graphs with replacement and reruns the same likelihood-based ranker. 
+
+• The score-of-win baseline draws 40 graphs without replacement, constructs a majority graph from the strict wins within that subset, and ranks models by Copeland-style scores. Exact majorities are encoded as bidirectional edges. Residual score ties are resolved by the same deterministic tie-breaking rule as in the released code. 
+
+• The random baseline removes cycle-based selection but keeps the same final subset size as the main method. In each outer resample, we average the ranking loss over 10 independently drawn 20-graph subsets from the 50-graph category pool. This keeps the evaluation budget comparable to the main method while removing the low-cycle selection step. 
+
+• The sampling-only baseline replaces semantic perturbation by stochastic replication under the original prompt. We generate five stochastic responses per question (temperature 1.0, top-p = 1 .0, maximum length 2048), construct the resulting comparison graphs, keep the 25 graphs with the smallest cycle score, and then draw 20 of them without replacement in each resample. 
+
+• The block-wise variants operate on prompt families rather than on the full category pool. A block is the set of graphs generated from one original question, including the original graph and its accepted perturbation graphs. BlockTop2 keeps the two lowest-cycle graphs from each block. Since MT-Bench has 10 questions per category, this yields 20 graphs and can therefore be evaluated directly without an additional 20-out-of-25 resampling step. BlockTop1 keeps only the lowest-cycle graph from each block. This yields 10 graphs per category. Its reported values are therefore fixed point estimates for the selected set, which is why the corresponding confidence intervals in Table 2 collapse to zero. 
+
+A.4 Details for Additional Analyses 
+
+All supplementary analyses reuse the same comparison graphs, the same bad-cycle score Sμ(G) = 
+
+Cbad 3 (G) + μC bad 4 (G), and the same frozen reference ranking as the main pipeline unless stated otherwise. What changes from one analysis to another is only the unit of evaluation and the graph-selection rule. In particular, Figure 2 is a graph-level diagnostic rather than a resampled leaderboard result: for each raw graph, the code fits the same judge-specific report ranker to that graph alone, computes its normalized Spearman distance to the fixed reference ranking, and records the resulting pair (S1(G), d ρ). The plotted trend is then drawn from these single-graph records after applying the log(1 + ·) transform to the cycle score and binning on that log scale, so it should be 24 read as a descriptive summary of how cycle burden and ranking error move together, not as another 
+
+25 → 20 estimate. The cost-matched curve is built from the same perturbation outputs by restricting the available graph ids before any selection is done. Keeping graph ids 1, . . . , k yields 10 k source graphs per category, so the five reported budgets are 10 , 20 , 30 , 40 , 50 ; the 10 -graph budget is exactly the 
+
+graph_id = 1 slice. The truncation arm then applies the same selection rule at a matched ratio: it first keeps about one half of the inspected pool by the cycle score and then samples about 80% of that retained pool without replacement, which gives the sequence 5 → 4, 10 → 8, 15 → 12 , 20 → 16 ,and 25 → 20 . The no-truncation arm uses the same inspected pool but bootstraps the whole pool with replacement. Thus, at each budget, the two arms differ only in whether low-cycle graphs are selected before aggregation; the number of inspected graphs, and therefore the number of pairwise judge calls, is the same. The robustness and diagnostic runs are organized in the same way. Whenever the goal is to compare ranking methods rather than graph-selection rules, the code first fixes one selected graph list for each judge–category–baseline–repeat cell and then feeds that identical list to Bradley–Terry, Davidson, Copeland, Rank Centrality, and HodgeRank. The Bradley–Terry diagnostic script uses the same selected graph families and evaluates them from four angles: saturated-model deviance, standardized pairwise residuals, Hodge residual energy, and grouped held-out prediction. In that script, global top-K means the category-level keep-25 rule, block top-K means keeping the two lowest-cycle graphs from each original-prompt family, and no truncation means using the whole category pool. The grouped cross-validation split is done by original question id, so all perturbations from one prompt stay in the same fold. In the released runs the held-out comparison uses five folds and compares the Bradley–Terry held-out log loss with an empirical pairwise baseline estimated from the training folds with smoothing constant 0.5. The warning thresholds are exactly those used in the code: deviance p < 0.05 together with deviance per degree of freedom at least 1.5,maximum standardized residual at least 3 or more than 10% of pairs with |Z| > 2, Hodge residual-energy ratio at least 0.20 , and a held-out log-loss gap of at least 0.02 . The final labels likely ,
+
+possible , and no strong correspond to two or more, exactly one, and zero warnings. The keep-K
+
+and μ sweeps are direct reruns of the same truncation pipeline under the report ranker chosen for the main experiments; only K or μ is changed, with the default grids K = 3 , . . . , 50 and 
+
+μ ∈ { 0.1, 0.2, 0.5, 1, 2, 5, 10 }.The data-driven choice of K follows the same grouped split by original prompt family, but the search is carried out over keep proportions α rather than over integer budgets directly. For each candidate α, the code keeps the lowest-cycle ⌈α|G (b)tr |⌉ training graphs in each fold, fits the ranker, and scores held-out pairwise log loss on the validation prompt families. After averaging over folds, it applies a one-standard-error rule in the conservative form used by the script: it finds the minimum mean validation loss, adds one standard error computed at that minimum, and then chooses the smallest α whose mean loss stays below the resulting threshold. The released run adds one further screen that is easy to miss from the main text: for each candidate α, the full selected set is also checked by bootstrap rank stability, using 30 bootstrap repeats and threshold τ = 0 .10 
+
+on the mean pairwise rank distance; candidates that fail this screen are discarded before the final smallest-α choice is made. The reported K is then the category-wise integer budget obtained from that selected α.The additional HumanEval and MATH experiments reuse the same analysis code, but there are two different perturbation units. For task-prompt perturbation, the benchmark prompt is rewritten by the same generate–check–select pipeline used for MT-Bench. For judge-prompt perturbation, the target-model responses are kept fixed and only the Prometheus judging instruction is perturbed. 25 The released Prometheus script stores ten candidate judge-prompt rewrites, treats five of them as semantically equivalent, and by default runs only those five equivalent variants; the remaining variants are kept only for diagnostics and are not included in the reported semantic-equivalent results. Variant 0 is the original deployed wording, while the semantic-equivalent perturbation pool is formed by the accepted rewritten variants. Each response-prompt id and judge-prompt variant id is encoded into a single graph_id , so the downstream selection and ranking code can treat task-prompt perturbation and judge-prompt perturbation through the same graph interface. Overall, these supplementary analyses do not introduce a new reference ranking or a new selection score: they keep the main pipeline fixed and change only the evaluation unit, the budget rule, or the aggregation family. 
+
+# B Proof of Theorems 
+
+B.1 Proof of Theorem 1 
+
+Recall the definition of ˜G in (5). Note that | { k : ( i, j ) ∈ E(Gk)} | ∼ Bin( t, 12 + p), where Bin denote the binomial distribution. For any 1 ≤ i < j ≤ n, we have that 
+
+P
+
+> [
+
+(i, j ) ∈ E( ˜G)
+
+> ]
+
+= P
+
+> [
+
+Bin 
+
+> (
+
+t, 12 + p
+
+> )
+
+> t
+
+2
+
+> ]
+
+= 1 − P
+
+> [
+
+Bin 
+
+> (
+
+t, 12 + p
+
+> )
+
+≤ t
+
+2
+
+> ]
+
+.
+
+On the one hand, it follows from [Che52] that 
+
+P
+
+> [
+
+Bin 
+
+> (
+
+t, 12 + p
+
+> )
+
+≤ t
+
+2
+
+> ]
+
+≤ exp 
+
+> (
+
+−tD KL  
+
+> (
+
+12 ∥ 12 + p
+
+> ))
+
+= exp 
+
+> (
+
+− t
+
+2 log  
+
+> (
+
+11 − 4p2
+
+> ))
+
+,
+
+where DKL (x∥y) ≜ x log xy + (1 − x) log 1−x 
+
+> 1−y
+
+denotes the Kullback–Leibler (KL) divergence. Let Eij 
+
+denote the event that (i, j ) ∈ E( ˜G). Consequently, if t ≥ (4+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+, by a union bound, 
+
+P 
+
+> ⋃
+> 1≤i<j ≤n
+
+Ecij  
+
+> 
+
+≤
+
+> (
+
+n
+
+2
+
+> )
+
+P
+
+> [
+
+Ecij 
+
+> ]
+
+=
+
+> (
+
+n
+
+2
+
+> )
+
+P
+
+> [
+
+(i, j ) /∈ E( ˜G)
+
+> ]
+
+≤ exp 
+
+> (
+
+2 log n − t
+
+2 log  
+
+> (
+
+11 − 4p2
+
+> ))
+
+≤ exp 
+
+> (
+
+− ϵ
+
+2 log n
+
+> )
+
+. (7) Then, we have (i, j ) ∈ E( ˜G) for all 1 ≤ i < j ≤ n with probability at least 1 − n−ϵ/ 2. In this case, the correct rank can be recovered by a simple rank-by-wins algorithm, which orders the vertices according to the numbers of outgoing edges in ˜G.On the other hand, it follows from [Ash92, Lemma 4.7.1] that 
+
+P
+
+> [
+
+Bin 
+
+> (
+
+t, 12 + p
+
+> )
+
+≤ t
+
+2
+
+> ]
+
+≥ 1
+
+√2t exp 
+
+> (
+
+−tD KL  
+
+> (
+
+12 ∥ 12 + p
+
+> ))
+
+= 1
+
+√2t exp 
+
+> (
+
+− t
+
+2 log  
+
+> (
+
+11 − 4p2
+
+> ))
+
+.
+
+If t ≤ (4 −ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+∧ nϵ/ 2, for any 1 ≤ i < j ≤ n, we have 
+
+n2
+
+9 P
+
+> [
+
+Ecij 
+
+> ]
+
+≥ n2
+
+91
+
+√2t exp 
+
+> (
+
+− t
+
+2 log  
+
+> (
+
+11 − 4p2
+
+> ))
+
+= 19√2 exp 
+
+> (
+
+2 log n − log t
+
+2 − t
+
+2 log  
+
+> (
+
+11 − 4p2
+
+> ))
+
+≥ 19√2 exp 
+
+> (
+
+2 log n − ϵ log n
+
+4 − (2 − ϵ
+
+2 ) log n
+
+> )
+
+= nϵ/ 4
+
+9√2 . (8) 26 We then obtain 
+
+P
+
+⋃
+
+> 1≤i≤n/ 32n/ 3≤j≤n
+
+Ecij 
+
+ = 1 − P
+
+⋂
+
+> 1≤i≤n/ 32n/ 3≤j≤n
+
+Eij 
+
+
+
+> (a)
+
+= 1 − (1 − P
+
+[
+
+Ecij 
+
+]
+
+)n2/9 (b) 
+
+= 1 − o(1) , (9) where (a) follows from Eij are independent for all 1 ≤ i < j ≤ n; (b) is because n2 
+
+> 9
+
+P
+
+[
+
+Ecij 
+
+]
+
+= ω(1) .For any given 1 ≤ i ≤ n 
+
+> 3
+
+and 2n 
+
+> 3
+
+≤ j ≤ n, since Eik and Ekj are independent, we have 
+
+P [Eik ∩ E kj ] = P [Eik ] P [Ekj ] ≥ 12 · 12 = 14 .
+
+Consequently, 
+
+P [∃ i < k < j : Eik ∩ E kj ] ≥ 1 −
+
+(
+
+1 − 14
+
+)n/ 3
+
+= 1 − o(1) .
+
+Combining this with (9), we conclude that with probability there exists a directed cycle ( i → k →
+
+j → i) if t ≤ (4 −ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+∧ nϵ/ 2.Indeed, the expected number of directed triangles in ˜G already diverges under the condition 
+
+t ≤ (4 −ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+∧ nϵ/ 2. Let ˜p = P
+
+[
+
+Bin( t, 12 + p) ≤ t
+
+> 2
+
+]
+
+. For any 1 ≤ i < j < k ≤ n, there are two possible directed triangles: 
+
+i → k → j → i and i → j → k → i. 
+
+These occurs with probabilities of ˜p2(1 − ˜p) and ˜p(1 − ˜p)2, respectively. Let N3 denote the number of directed triangles in ˜G. Consequently, 
+
+E [N3] = 
+
+(n
+
+3
+
+)
+
+˜p2(1 − ˜p) + 
+
+(n
+
+3
+
+)
+
+˜p(1 − ˜p)2 =
+
+(n
+
+3
+
+)
+
+˜p(1 − ˜p).
+
+It follows from (8) that ˜p ≥ n−2−ϵ/ 4/√2 when t ≤ (4 −ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+∧ nϵ/ 2 and thus E [N3] = ω(1) .
+
+Remark 2. A direct first-moment calculation for the number of directed triangles suggests a larger threshold. Indeed, since E [N3] = (n
+
+> 3
+
+)˜p(1 − ˜p), and ˜p → 0 in the regime of interest, we have 
+
+E [N3] ≍ n3 ˜p. Using the exponential estimate ˜p ≈ exp 
+
+(
+
+− t 
+
+> 2
+
+log 11−4p2
+
+)
+
+, one is naturally led to the heuristic threshold t ≈ 6 log n 
+
+> log(1 /(1 −4p2))
+
+. Therefore, the condition t ≤ (4 −ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+is strictly stronger than what is needed for the first moment of triangles to diverge. The reason is that in the ordered tournament structure, a single reversed edge can typically generate many directed triangles through intermediate vertices, so the actual existence threshold for directed triangles may occur earlier than the first-moment threshold. 
+
+Remark 3 (Extension to inhomogeneous settings) . Under the inhomogeneous settings, the edge 
+
+(i, j ) in G∗ is retained with probability 12 + pij and reversed to (j, i ) with probability 12 − pij for any 1 ≤ i < j ≤ n. Following a similar argument as (7) and (8) , the recovery of the rank by ˜G
+
+is possible with probability 1 − o(1) if ∑ 
+
+> 1≤i<j ≤n
+
+exp( − t 
+
+> 2
+
+log( 11−4p2
+
+> ij
+
+)) = o(1) , while there exists a directed triangle with probability 1 − o(1) if ∑ 
+
+> 1≤i≤n/ 3,2n/ 3<j ≤n
+
+exp( − 12 log t − t 
+
+> 2
+
+log( 11−4p2
+
+> ij
+
+)) = ω(1) .
+
+27 B.2 Proof of Theorem 2 
+
+We first show the following lemma, which shows that no directed triangle implies that G is transitive. 
+
+Lemma 4. For a directed graph G in which every pair of distinct vertices is connected by exactly one directed edge, the following are equivalent: 1. G contains no directed triangle; 2. G contains no directed cycle; 3. G is transitive, i.e., there exists a permutation π ∈ Sn such that 
+
+(π(r), π (s)) ∈ E(G) for all 1 ≤ r < s ≤ n. 
+
+Proof. The implication 3 = ⇒ 1 is immediate. We prove 1 = ⇒ 2. Suppose G contains a directed cycle. Choose one of minimum length 
+
+v1 → v2 → · · · → vm → v1.
+
+Since G has no directed triangle, necessarily m ≥ 4. Now consider the edge between v1 and v3. If 
+
+v1 → v3, then 
+
+v1 → v3 → v4 → · · · → vm → v1
+
+is a shorter directed cycle, contradicting minimality. If v3 → v1, then 
+
+v1 → v2 → v3 → v1
+
+is a directed triangle, again a contradiction. Hence no directed cycle can exist. Finally, we prove 2 =⇒ 3. Assume that G contains no directed cycle. We construct the ordering recursively. Choose π(1) to be a vertex with maximum out-degree. We claim that π(1) 
+
+dominates every other vertex. Otherwise, if some u satisfies u → π(1) , then maximality of the out-degree of π(1) implies that there exists a vertex w such that π(1) → w but u ↛ w. Since exactly one directed edge is present between each pair of distinct vertices, we must have w → u,and thus 
+
+u → π(1) → w → u
+
+is a directed cycle, a contradiction. Therefore, π(1) → v for all v̸ = π(1) . Removing π(1) and repeating the same argument on the remaining graph, we obtain a permutation π such that π(r) →
+
+π(s) for all 1 ≤ r < s ≤ n. Hence G is transitive. We then show the following proposition on the edge connecting probability condition on A.Recall that q = 1−2p 
+
+> 1+2 p
+
+.
+
+Proposition 5. For any 1 ≤ i < j ≤ n, let d ≜ j − i. Under the condition law G | A , we have 
+
+αd ≜ P [( i, j ) ∈ E(G) | A ] = 1 − (d + 1) qd + dq d+1 
+
+(1 − qd)(1 − qd+1 ) .
+
+Moreover, we have α1 = 11+ q = 12 + p and αd+1 > α d for all d ≥ 1.
+
+28 Proof. We first claim that, under the conditioned law, the standardized restriction of π to any consecutive block again follows a Mallows distribution with the same parameter q. For a block 
+
+B = {i, i + 1 , . . . , j }, let π|B denote the restriction of π to the elements in B, and let st( π|B ) ∈ S d+1 
+
+denote its standardization, namely, the permutation obtained from π|B by relabeling the smallest element of B as 1, the second smallest as 2, and so on. We claim that st( π|B ) has the Mallows distribution on Sd+1 with parameter q. Denote L = {1, . . . , i − 1} and R = {j + 1 , . . . , n }.For any permutation π ∈ S n satisfying st( π|B ) = τ , let 
+
+σL ≜ st( π|L) ∈ S i−1, σR ≜ st( π|R) ∈ S n−j .
+
+Moreover, let w(π) = ( w1, · · · , w n) ∈ { L, B, R }n denote the interleaving pattern of the three blocks 
+
+L, B, R in π, namely, wa = L if the a-th entry of π belongs to L, and similarly for B and R. For any such interleaving pattern w, define 
+
+XLB (w(π)) ≜ {(a, b ) : 1 ≤ a < b ≤ n, w a = B, w b = L},XLR (w(π)) ≜ {(a, b ) : 1 ≤ a < b ≤ n, w a = R, w b = L},XBR (w(π)) ≜ {(a, b ) : 1 ≤ a < b ≤ n, w a = R, w b = B}.
+
+These three sets correspond to the three possible types of cross-block inversions, since every element of L is smaller than every element of B, and every element of B is smaller than every element of 
+
+R. Therefore, for every π ∈ S n with st( π|B ) = τ , we have 
+
+inv( π) = inv( τ ) + inv( σL) + inv( σR) + |XLB (w(π)) | + |XLR (w(π)) | + |XBR (w(π)) |.
+
+Consequently, 
+
+∑ 
+
+> π: st( π|B)= τ
+
+qinv( π) = qinv( τ )
+
+ ∑
+
+> σL∈S i−1
+
+qinv( σL)
+
+ ∑
+
+> σR∈S n−j
+
+qinv( σR)
+
+
+
+·
+
+(∑
+
+> w
+
+q|XLB (w(π)) |+|XLR (w(π)) |+|XBR (w(π)) |
+
+)
+
+,
+
+where w ranges over all possible interleavings of the three blocks L, B, R . Here the first factor depends on τ , while the other three factors are independent of τ . Hence 
+
+∑ 
+
+> π: st( π|B)= τ
+
+qinv( π) = C q inv( τ )
+
+for some constant C independent of τ . After normalization over all τ ∈ S d+1 , it follows that st( π|B )
+
+again has the Mallows distribution on Sd+1 with parameter q. Consequently, 
+
+αd = P [( i, j ) ∈ E(G) | A ] = PMallows d+1 (q) [1 appears before d + 1] .
+
+Recall that the Mallows distribution is given by P [π | A ] = qinv( π)
+
+∑  
+
+> σ∈S nqinv( σ)
+
+. Let Zn(q) ≜ ∑ 
+
+> σ∈S n
+
+qinv( σ).Then Zn(q) = ∏nr=1 1−qr 
+
+> 1−q
+
+. Let Pd+1 denote the position of d + 1 from the left in a Mallows dis-tribution on Sd+1 . If Pd+1 = pd+1 , then the largest element d + 1 creates d + 1 − pd+1 inversions, and the remaining d labels can be arranged arbitrarily. Therefore, the weight with Pd+1 = pd+1 is 
+
+qd+1 −pd+1 Zd(q). Consequently, 
+
+P [Pd+1 = pd+1 ] = qd+1 −pd+1 Zd(q)
+
+Zd+1 (q) = (1 − q)qd+1 −pd+1 
+
+1 − qd+1 , 1 ≤ pd+1 ≤ d + 1 .
+
+29 Let P1 denote the position of 1 from the left in a Mallows permutation on Sd. If P1 = p1, then the smallest label 1 has exactly p1 − 1 larger labels to its left, so the total weight of such permutations is qp1−1Zd−1(q). Consequently, 
+
+P [P1 = p1] = qp1−1Zd−1(q)
+
+Zd(q) = (1 − q)qp1−1
+
+1 − qd , 1 ≤ p1 ≤ d. 
+
+Then, we have 
+
+P [1 appears before d + 1 | Pd+1 = pd+1 ] = P [P1 ≤ pd+1 − 1 | Pd+1 = pd+1 ]=
+
+> pd+1 −1
+
+∑
+
+> p1=1
+
+(1 − q)qp1−1
+
+1 − qd = 1 − qpd+1 −1
+
+1 − qd .
+
+Consequently, we obtain 
+
+αd = P [1 appears before d + 1] =
+
+> d+1
+
+∑
+
+> pd+1 =1
+
+P [Pd+1 = pd+1 ] P [1 appears before d + 1 | Pd+1 = pd+1 ]=
+
+> d+1
+
+∑
+
+> pd+1 =1
+
+(1 − q)qd+1 −pd+1 
+
+1 − qd+1 · 1 − qpd+1 −1
+
+1 − qd = 1 − (d + 1) qd + dq d+1 
+
+(1 − qd)(1 − qd+1 ) .
+
+For d = 1 , we have α1 = 11+ q = 12 + p. For any d ≥ 1, we have 
+
+αd+1 − αd = qd(1 − q)(1 − qd)(1 − qd+1 )(1 − qd+2 )
+
+(
+
+d(1 − q)(1 + qd+1 ) − 2q(1 − qd)
+
+)
+
+.
+
+Since qr + qd+1 −r ≤ 1 + qd+1 for any 1 ≤ r ≤ d, summing over 1 ≤ r ≤ d yields 2 ∑dr=1 qr ≤
+
+d(1 + qd+1 ). Then d(1 − q)(1 + qd+1 ) ≥ 2q(1 − qd) and thus αd+1 ≥ αd for any d ≥ 1. Since 
+
+0 < q < 1, we have αd+1 > α d for any d ≥ 1.
+
+Proof of Theorem 2. Recall the integration graph ˜G defined in 5. For any 1 ≤ i < j ≤ n with 
+
+d = j − i, note that |{ k : ( i, j ) ∈ E( ¯Gk)}| ∼ Bin( t, α d). Consequently, it follows from [Che52] that 
+
+P
+
+[
+
+(i, j ) /∈ ˜G
+
+]
+
+≤ P [Bin( t, α d) ≤ t/ 2] ≤ exp ( −tD KL (1 /2∥αd)) = e−tI d ,
+
+where Id ≜ DKL (1 /2∥αd) = 12 log 14αd(1 −αd) . We note that there are n − d pairs (i, j ) with j − i = d.Consequently, we conclude that 
+
+P
+
+[ ˜G̸ = G∗]
+
+≤ ∑
+
+> 1≤i<j ≤n
+
+P
+
+[
+
+(i, j ) /∈ E( ˜G)
+
+]
+
+≤
+
+> n−1
+
+∑
+
+> d=1
+
+(n − d)e−tI d ≤ ne −tI 1 + n2e−tI 2 , (10) where the last inequality follows from the fact that 12 < α 1 < α 2 < α d < 1 implies Id > I 2 for all 
+
+d ≥ 3. Note that 
+
+(4 α1(1 − α1)) 2 − 4α2(1 − α2) = 4q2(1 − q)2(2 q2 + 3 q + 2) (1 + q)4(1 + q + q2)2 ≥ 0.
+
+Hence, we have I2 = 12 log( 14α2(1 −α2) ) ≥ log( 14α1(1 −α1) ) = 2 I1. Combining this with (10), we obtain 
+
+P
+
+[ ˜G̸ = G∗]
+
+≤ ne −tI 1 + n2e−2tI 1 ≤ n−ϵ + n−ϵ/ 2 = o(1) ,
+
+where the last inequality follows from t ≥ (2+ ϵ) log n 
+
+> log(1 /(1 −4p2))
+
+= (2+ ϵ) log n 
+
+> 2I1
+
+.30 B.3 Proof of Theorem 3 
+
+For any 1 ≤ i ≤ n − 1, denote πi,i +1 ∈ S n as the permutation such that 
+
+πi,i +1 (i) = i + 1 , πi,i +1 (i + 1) = i, πi,i +1 (j) = j, ∀j̸ = i, i + 1 .
+
+We show that with probability 1 − o(1) there exists i ∈ { 1, 3, 5, · · · , ⌊n/ 2⌋} such that 
+
+> t
+
+∑
+
+> k=1
+
+inv( πk, π i,i +1 ) ≤
+
+> t
+
+∑
+
+> k=1
+
+inv( πk, π ∗)
+
+. Recall Ni,j defined in (6). We note that 
+
+> t
+
+∑
+
+> k=1
+
+inv( πk, π i,i +1 ) −
+
+> t
+
+∑
+
+> k=1
+
+inv( πk, π ∗) = Ni+1 ,i − Ni,i +1 = t − 2Ni,i +1 .
+
+Note that N12 , N 34 , . . . are independent. This is because, for each πk, the relative orders on the disjoint pairs (1 , 2) , (3 , 4) , . . . depend on disjoint consecutive blocks, whose standardized restric-tions are independent under the Mallows distribution by the same factorization argument as in Proposition 5. Since π1, . . . , π t are i.i.d., the corresponding counts N12 , N 34 , . . . are independent. By Proposition 5, Ni,i +1 ∼ Bin( t, 12 + p). It follows from [Ash92, Lemma 4.7.1] that 
+
+P
+
+[ t∑
+
+> k=1
+
+inv( πk, π i,i +1 ) ≤
+
+> t
+
+∑
+
+> k=1
+
+inv( πk, π ∗)
+
+]
+
+= P
+
+[
+
+Bin( t, 12 + p) ≤ t
+
+2
+
+]
+
+≥ 1
+
+√2t exp 
+
+(
+
+− t
+
+2 log 
+
+( 11 − 4p2
+
+)) 
+
+.
+
+Then we have 
+
+⌊n/ 2⌋P
+
+[ t∑
+
+> k=1
+
+inv( πk, π i,i +1 ) ≤
+
+> t
+
+∑
+
+> k=1
+
+inv( πk, π ∗)
+
+]
+
+≥ ⌊n/ 2⌋√2t exp 
+
+(
+
+− t
+
+2 log 
+
+( 11 − 4p2
+
+)) 
+
+≥ 13 exp 
+
+(
+
+log n − 12 log t − t
+
+2 log 
+
+( 11 − 4p2
+
+)) 
+
+≥ 13 exp 
+
+(
+
+log n − ϵ
+
+4 log n −
+
+(
+
+1 − ϵ
+
+2
+
+)
+
+log n
+
+)
+
+= nϵ/ 4
+
+3 .
+
+Therefore, 
+
+P [ˆ πMLE = π∗] ≤ P
+
+
+
+> ⌊n/ 2⌋
+
+⋂
+
+> i=1
+
+{ t∑
+
+> k=1
+
+inv( πk, π i,i +1 ) >
+
+> t
+
+∑
+
+> k=1
+
+inv( πk, π ∗)
+
+}
+
+≤
+
+(
+
+1 − P
+
+[
+
+Bin( t, 12 + p) > t
+
+2
+
+]) ⌊n/ 2⌋
+
+= o(1) ,
+
+which implies P [ˆ πMLE ̸ = π∗] = 1 − o(1) .31 C Full Prompts and Additional Results 
+
+C.1 Full Prompts 
+
+This appendix records the exact prompt templates used in the evaluation pipeline and clarifies how the final judge decision is produced. Placeholders such as <instruction> , <answer_A> , and 
+
+<ORIGINAL> denote task-specific content inserted at runtime. We keep the wording close to the deployed implementation, since even small prompt changes can materially affect judge behavior. 
+
+Paraphrase generation and semantic-equivalence filtering. To construct semantic per-turbations, we ask the generator to return exactly k meaning-preserving rewrites of the original instruction in JSON format. 
+
+Paraphrase generation prompt 
+
+> You are a strict paraphrase generator. Generate exactly <k> paraphrases that are semantically equivalent to the ORIGINAL text. Rules: - Preserve meaning exactly (same intent, constraints, numbers, entities, and requirements). - Keep the SAME language as the ORIGINAL. - Do NOT answer the question/instruction; only rewrite it. - Each paraphrase should be meaning-preserving but phrased differently. - Output MUST be a JSON array of exactly <k> strings. No extra text. ORIGINAL: <<ORIGINAL_START>> <ORIGINAL> <<ORIGINAL_END>>
+
+Raw paraphrase generation can occasionally introduce mild semantic drift. We therefore apply a second-stage filter and retain only candidates marked YES by a strict equivalence checker. 
+
+Semantic equivalence checking prompt 
+
+> You are a strict semantic equivalence judge. For each CANDIDATE, decide if it is semantically equivalent to the ORIGINAL. Equivalent means: same intent + same constraints + no added/removed requirements + same meaning. Return format: - Output MUST be a JSON array of strings of length <num_candidates>. - Each element must be exactly "YES" or "NO". - No extra text. ORIGINAL: <<ORIGINAL_START>> <ORIGINAL> <<ORIGINAL_END>> CANDIDATES: 1) <candidate_1> 2) <candidate_2> ... <num_candidates>) <candidate_num_candidates>
+
+Judge prompt. GPT-5 is invoked with a single pairwise-comparison prompt and no additional task-specific system instruction in the released code path. The model is required to produce a short comparison followed by a final verdict in square brackets. 32 GPT-5 pairwise judge prompt 
+
+Instruction: Below is a question and a candidate response from a user. Please act as an impartial judge and evaluate the quality of the responses provided by two AI assistants to the user question displayed below. You should choose the assistant that follows the user 'sinstructions and answers the user 's question better. Your evaluation should consider factors such as the helpfulness, relevance, accuracy, depth, creativity, and level of detail of their responses. Begin your evaluation by comparing the two responses and provide a short explanation(NO MORE THAN 512 TOKENS). Avoid any position biases and ensure that the order in ↪→
+
+which the responses were presented does not influence your decision. Do not allow the length of the responses to influence your evaluation. Do not favor certain names of the assistants. Be as objective as possible. After providing your brief explanation, you *must* output the final verdict by strictly following this format: "[A]" if assistant A is better, "[B]" if assistant B is better, and "[C]" for a tie. Provide a result exclusively in **square brackets** (e.g., Verdict: [A]). Question: <instruction> Answer A: <answer_A> Answer B: <answer_B> Judgement: 
+
+Because local deployment is relatively inexpensive, and prior studies have shown that positional bias can influence LLM-as-a-judge decisions [SML +25], our Prometheus evaluator (M-Prometheus-14B) adopts a position-debiased hybrid protocol. For each answer pair, we first run the pairwise prompt twice: once in the original order (A, B ) and once after swapping the two answers (B, A ).If the two verdicts agree after mapping the reversed-order output back to the original answer identities, we keep that pairwise decision. Otherwise, we fall back to direct scoring, grade the two answers independently on a 1–5 scale, and select the higher-scoring answer; equal scores are recorded as ties. In the implementation, each answer is truncated to at most 12,000 characters before judging, and generation is deterministic by default (temperature 0, top-p = 1 , maximum 512 new tokens). 
+
+Prometheus pairwise system prompt 
+
+You are a fair judge assistant assigned to deliver insightful feedback that compares individual performances, highlighting how each stands relative to others within the same cohort. ↪→
+
+Prometheus pairwise user prompt 
+
+###Task Description: An instruction (might include an Input inside it), two responses to evaluate, and a score rubric representing a evaluation criteria are given. ↪→
+
+1. Write a detailed feedback that assess the quality of two responses strictly based on the given score rubric, not evaluating in general. ↪→
+
+2. After writing a feedback, choose a better response between Response A and Response B. You should refer to the score rubric. ↪→
+
+3. The output format should look as follows: "Feedback: (write a feedback for criteria) [RESULT] (A or B)" 4. Please do not generate any other opening, closing, and explanations. ###Instruction: <instruction> ###Response A: <answer_A> ###Response B: <answer_B> ###Score Rubric: <pairwise_rubric> ###Feedback: 
+
+Unless a task-specific rubric is already provided in the source data, we use the following default 33 pairwise rubric. 
+
+Default pairwise rubric used by Prometheus 
+
+[Instruction Following, Helpfulness, Relevance, Accuracy, Depth, Clarity, Safety] Choose the better response by comparing how well it follows the user 's instruction, how accurate and relevant it is, how helpful and sufficiently detailed it is, how clear and coherent it is, and whether it avoids unsafe or misleading content. Do not prefer a response merely because it is longer. 
+
+> ↪→
+> ↪→
+
+Prometheus direct-scoring system prompt 
+
+You are a fair judge assistant tasked with providing clear, objective feedback based on specific criteria, ensuring each assessment reflects the absolute standards set for performance. ↪→
+
+Prometheus direct-scoring user prompt 
+
+###Task Description: An instruction (might include an Input inside it), a response to evaluate, a reference answer that gets a score of 5, and a score rubric representing a evaluation criteria are given. ↪→
+
+1. Write a detailed feedback that assess the quality of the response strictly based on the given score rubric, not evaluating in general. ↪→
+
+2. After writing a feedback, write a score that is an integer between 1 and 5. You should refer to the score rubric. ↪→
+
+3. The output format should look as follows: "Feedback: (write a feedback for criteria) [RESULT] (an integer number between 1 and 5)" 4. Please do not generate any other opening, closing, and explanations. ###The instruction to evaluate: <instruction> ###Response to evaluate: <answer> ###Score Rubrics: <direct_rubric> ###Feedback: 
+
+Default direct-scoring rubric used by Prometheus 
+
+[Instruction Following, Helpfulness, Relevance, Accuracy, Depth, Clarity, Safety] Score 1: The response fails to address the user 's request, is largely incorrect, irrelevant, incoherent, or unsafe. ↪→
+
+Score 2: The response addresses the request only partially and contains major omissions, errors, weak reasoning, poor clarity, or notable safety issues. ↪→
+
+Score 3: The response is acceptable and mostly relevant, but it misses useful details, has minor factual or reasoning issues, or is only moderately clear/helpful. ↪→
+
+Score 4: The response follows the instruction well and is clear, relevant, and mostly accurate, with only small deficiencies in completeness, precision, or clarity. ↪→
+
+Score 5: The response fully satisfies the request and is highly accurate, relevant, coherent, appropriately detailed, and safe. ↪→
+
+The hybrid evaluator above can be summarized as follows. 1. Run the pairwise prompt on (A, B ) and parse the last valid tag of the form [RESULT] A or 
+
+[RESULT] B .2. Swap the order, run the same pairwise prompt on (B, A ), and map the reversed verdict back to the original identities. 3. If the two pairwise verdicts agree, output that verdict. 4. Otherwise, score A and B independently using the direct-scoring prompt. 5. Output A if score (A) is greater than score (B), output B if score (B) is greater than score (A),and output a tie otherwise. 34 This description is more faithful to the deployed evaluator than a one-shot pairwise prompt alone: the released Prometheus judge is a two-pass, order-checked pairwise evaluator with a direct-scoring fallback. 
+
+C.2 Additional results 
+
+Structural diagnostics of the comparison graphs. Figure 6 reports four descriptive statistics of the comparison graphs: the mean numbers of bad 3-cycles and bad 4-cycles, the mean draw rate, and the mean size of the largest strongly connected component (SCC), all broken down by MT-Bench category and judge. Coding    
+
+> Extraction
+> Humanities
+> Math
+> Reasoning
+> Roleplay
+> STEM
+> Writing
+> Category
+> 25
+> 50
+> 75
+> 100
+> 125
+> C bad 3
+> Mean Cbad 3by category
+> GPT-5
+> + perturbation
+> Prometheus
+> + perturbation
+> GPT-5
+> + sampling
+> Prometheus
+> + sampling
+
+(a) Mean bad 3-cycles. Coding     
+
+> Extraction
+> Humanities
+> Math
+> Reasoning
+> Roleplay
+> STEM
+> Writing
+> Category
+> 0
+> 200
+> 400
+> 600
+> 800
+> 1000
+> C bad 4
+> Mean Cbad 4by category
+> GPT-5
+> + perturbation
+> Prometheus
+> + perturbation
+> GPT-5
+> + sampling
+> Prometheus
+> + sampling
+
+(b) Mean bad 4-cycles. Coding 
+
+> Extraction
+> Humanities
+> Math
+> Reasoning
+> Roleplay
+> STEM
+> Writing
+> Category
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> Draw rate
+> Mean draw rate by category
+> GPT-5
+> + perturbation
+> Prometheus
+> + perturbation
+> GPT-5
+> + sampling
+> Prometheus
+> + sampling
+
+(c) Mean draw rate. Coding  
+
+> Extraction
+> Humanities
+> Math
+> Reasoning
+> Roleplay
+> STEM
+> Writing
+> Category
+> 10
+> 12
+> 14
+> 16
+> Largest SCC size
+> Mean largest SCC size by category
+> GPT-5
+> + perturbation
+> Prometheus
+> + perturbation
+> GPT-5
+> + sampling
+> Prometheus
+> + sampling
+
+(d) Mean largest SCC size. Figure 6: Descriptive statistics of the comparison graphs by category. Prompt perturbation usually increases short-cycle activity, draw rate, and the size of the largest SCC, indicating that it surfaces more of the latent ambiguity among closely matched models. Despite this increase in raw graph inconsistency, the perturbed-and-truncated pipeline yields better final rankings, so lower bad-cycle counts alone should not be interpreted as better ranking evidence. 
+
+Two patterns stand out. First, the difficulty profile is judge-dependent. Under GPT-5, Math and Extraction exhibit the largest short-cycle burden, whereas under Prometheus the heaviest inconsistency appears in Extraction and Writing. Humanities is the cleanest category for both judges, with visibly fewer short cycles and smaller SCCs. This suggests that graph inconsistency is not determined by the task alone; it also depends on how a given judge reacts to that task. Second, prompt perturbation often increases bad 3-cycles, bad 4-cycles, draw rate, and, in several categories, the size of the largest SCC. This does not contradict the stronger downstream rankings reported in the main text. A more plausible interpretation is that semantic perturbation exposes close contests that are genuinely ambiguous, thereby revealing more of the uncertainty already present among similarly strong models. By contrast, the no-perturb setting can look artificially clean because stochastic response variation sometimes turns a close comparison into a decisive win or loss. In that regime, the graph contains fewer local contradictions, but it is not necessarily closer to the underlying ranking. The draw-rate panels support this interpretation: 35 in several GPT-5 no-perturb categories, draws nearly disappear, which is more consistent with suppressed ambiguity than with cleaner preference information. At the same time, the largest SCC remains substantial across conditions, so the graphs stay globally connected enough for downstream aggregation to propagate local evidence across models. 
+
+Robustness across ranking distances. In the main text, we use the normalized Spearman ρ
+
+distance as the primary ranking loss. To verify that the conclusions do not depend on this single choice, we also report the normalized Kendall tau distance, the normalized Spearman footrule distance, and the normalized Chebyshev distance. Let r = ( r1, . . . , r n) be the estimated ranking and let r⋆ = ( r⋆
+
+> 1
+
+, . . . , r ⋆n) be the reference ranking on the same set of n models. We define 
+
+dτ (r, r ⋆) = 2
+
+n(n − 1) 
+
+∑
+
+> 1≤i<j ≤n
+
+1
+
+{
+
+(ri − rj )( r⋆i − r⋆j ) < 0
+
+}
+
+,dF (r, r ⋆) = 
+
+∑ni=1 |ri − r⋆i |⌊n2/2⌋ , d∞(r, r ⋆) = max 1≤i≤n |ri − r⋆i |
+
+n − 1 .
+
+Lower values indicate rankings closer to the reference order. Figure 7 shows that the same qualitative pattern holds under all four distances and for both judges. Each curve drops quickly when K grows from very small values, reaches its best region at an intermediate budget, and then flattens or slightly rebounds as additional graphs are retained. The absolute scales differ, as expected. The Chebyshev distance is the noisiest because it depends only on the single worst-displaced model, whereas Kendall tau and Spearman footrule average disagreement more globally. Even so, the preferred operating region is essentially unchanged: the best performance is consistently achieved at an intermediate keep-K budget close to the value used in the main text. Prometheus remains somewhat higher and noisier in absolute error than GPT-5, but the location and shape of the optimum are similar across judges. This reinforces the conclusion that the benefit of cycle-based truncation is robust to the choice of ranking distance. 6 12 18 24 30 36 42 48                                
+
+> Retained graphs, K
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> Normalized distance to the reference ranking  GPT-5 keep-Kcurves ( Cbad 3+Cbad 4)
+> d(Kendall)
+> dF(Footrule)
+> d(Spearman )
+> d(Chebyshev) 612 18 24 30 36 42 48
+> Retained graphs, K
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> Normalized distance to the reference ranking  Prometheus keep-Kcurves ( Cbad 3+Cbad 4)
+> d(Kendall)
+> dF(Footrule)
+> d(Spearman )
+> d(Chebyshev)
+
+Figure 7: Keep-K curves under four normalized ranking distances. Left: GPT-5 judge. Right: Prometheus judge. The favorable mid-range truncation regime is consistent across Kendall tau, Spearman footrule, Spearman ρ, and Chebyshev distances. 
+
+Semantic perturbation versus sampling-only control. Figure 8 compares semantic prompt perturbation with a sampling-only control under the same cycle-aware truncation score Cbad 3 +Cbad 4 ,measured by the normalized Spearman ρ distance. The pattern is the same for both judges. 36 Under GPT-5, the perturbation curve starts around 0.11 and drops to about 0.05 –0.07 once K
+
+reaches a moderate size, while the sampling-only baseline stays close to 0.11 –0.13 throughout. Under Prometheus, the perturbation curve falls from about 0.15 to roughly 0.06 –0.08 , whereas the sampling-only baseline remains near 0.11 –0.13 with little change. The gain from perturbation is therefore not tied to a narrow budget range; it holds across the full keep-K sweep. 6 12 18 24 30 36 42 48                          
+
+> Retained graphs, K
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> Normalized Spearman  distance
+> GPT-5: perturbation vs sampling ( d;Cbad 3+Cbad 4)
+> GPT-5 GPT-5 (sampling only) 612 18 24 30 36 42 48
+> Retained graphs, K
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> Normalized Spearman  distance
+> Prometheus: perturbation vs sampling ( d;Cbad 3+Cbad 4)
+> Prometheus Prometheus (sampling only)
+
+Figure 8: Semantic prompt perturbation versus a sampling-only control under cycle-aware truncation. Lower normalized Spearman distance indicates better agreement with the reference ranking. For both GPT-5 and Prometheus, perturbation stays well below the sampling-only baseline over the full range of retained budgets 
+
+K.
+
+This comparison makes the role of perturbation clear. The improvement does not come from simply generating more graph instances from the same prompt. If repeated sampling were enough, the sampling-only baseline should also improve as more graphs are retained. That is not what the figure shows: for both judges, the sampling-only curves are almost flat. By contrast, the perturbation curves fall quickly at small and moderate K and then level off at a much lower value. The main gain therefore comes from perturbation itself, not from sample count alone. The shape of the curves also helps explain why perturbation works well with cycle-aware trun-cation. Most of the improvement appears early, before K becomes large, and the marginal gain becomes small after that. In other words, once the retained set already contains enough informative perturbed graphs, keeping more graphs adds little. The sampling-only control does not show the same pattern, which suggests that its additional graphs contribute little beyond decoding noise. 
+
+Additional HumanEval and MATH experiments. We further evaluate the proposed cycle-aware filtering pipeline beyond the main MT-Bench setting. For task-prompt perturbation, we apply the same prompt-perturbation and truncation procedure to HumanEval and MATH. We also consider a judge-prompt perturbation setting with Prometheus, where the model responses are fixed and the comparison graphs are generated by perturbing the judge instruction instead of the task prompt. In both cases, the same graph-level selection and ranking pipeline is used. Over-all, the proposed truncation method performs best in both settings. For task-prompt perturba-tion, Trunc50 →40 achieves the lowest distance on both HumanEval and MATH. For judge-prompt perturbation, Trunc25 →20 also gives the best results on both coding and math. These results provide additional evidence that cycle-aware filtering remains useful beyond the main MT-Bench task-prompt perturbation experiment. 37 Table 7: Additional HumanEval and MATH experiments. Values are normalized Spearman distances re-ported in units of 10 −3.Method HumanEval MATH 
+
+Task-prompt perturbation 
+
+Trunc50 →40 82 ± 1 13 ± 1
+
+Block top-2 95 ± 0 23 ± 0
+
+Block top-1 100 ± 0 31 ± 0
+
+NoTrunc boot 92 ± 2 21 ± 2
+
+ScoreWin80 93 ± 1 20 ± 1
+
+Random50 →40 ×10 92 ± 1 24 ± 1
+
+SingleGraph1 96 ± 0 18 ± 0
+
+Judge-prompt perturbation with Prometheus 
+
+Trunc25 →20 57 ± 2 31 ± 1
+
+Block top-2 74 ± 0 32 ± 0
+
+Block top-1 70 ± 0 38 ± 0
+
+NoTrunc boot 66 ± 2 43 ± 2
+
+ScoreWin40 65 ± 2 37 ± 1
+
+Random50 →20 ×10 66 ± 1 44 ± 1
+
+SingleGraph1/all10 60 ± 0 44 ± 0
+
+# References 
+
+[AAA +23] Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Flo-rencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, et al. GPT-4 technical report. arXiv preprint arXiv:2303.08774 , 2023. [AAHR25] Aryan Agrawal, Lisa Alazraki, Shahin Honarvar, and Marek Rei. Enhancing LLM robustness to perturbed instructions: An empirical study. arXiv preprint arXiv:2504.02733 , 2025. [Ash92] Robert B. Ash. Information Theory . Dover Publications, New York, NY, 1992. [BLB +24] Ge Bai, Jie Liu, Xingyuan Bu, Yancheng He, Jiaheng Liu, Zhanhui Zhou, Zhuoran Lin, Wenbo Su, Tiezheng Ge, Bo Zheng, et al. Mt-Bench-101: A fine-grained bench-mark for evaluating large language models in multi-turn dialogues. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics , pages 7421–7454, 2024. [BT52] Ralph Allan Bradley and Milton E Terry. Rank analysis of incomplete block designs: the method of paired comparisons. Biometrika , 39(3-4):324–345, 1952. [CGBV24] Manav Chaudhary, Harshit Gupta, Savita Bhat, and Vasudeva Varma. Towards un-derstanding the robustness of llm-based evaluations under perturbations. In Proceed-ings of the 21st International Conference on Natural Language Processing (ICON) ,pages 197–205, 2024. [Che52] Herman Chernoff. A measure of asymptotic efficiency for tests of a hypothesis based on the sum of observations. The Annals of Mathematical Statistics , pages 493–507, 1952. 38 [CHZ +25] Nuo Chen, Zhiyuan Hu, Qingyun Zou, Jiaying Wu, Qian Wang, Bryan Hooi, and Bingsheng He. Judgelrm: Large reasoning models as a judge. arXiv preprint arXiv:2504.00050 , 2025. [CKB +21] Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, et al. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168 , 2021. [Col66] James S Coleman. The possibility of a social welfare function. The American Eco-nomic Review , 56(5):1105–1122, 1966. [CZS +24] Wei-Lin Chiang, Lianmin Zheng, Ying Sheng, Anastasios Nikolas Angelopoulos, Tianle Li, Dacheng Li, Banghua Zhu, Hao Zhang, Michael Jordan, Joseph E Gonzalez, et al. Chatbot arena: An open platform for evaluating LLMs by human preference. In Forty-first International Conference on Machine Learning , 2024. [Dav70] Roger R Davidson. On extending the Bradley-Terry model to accommodate ties in paired comparison experiments. Journal of the American Statistical Association ,65(329):317–328, 1970. [DCF +25] Roland Daynauth, Christopher Clarke, Krisztian Flautner, Lingjia Tang, and Jason Mars. Ranking unraveled: Recipes for LLM rankings in head-to-head ai combat. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics , pages 26078–26091, 2025. [DGLH24] Yann Dubois, Balázs Galambosi, Percy Liang, and Tatsunori B Hashimoto. Length-controlled alpacaeval: A simple way to debias automatic evaluators. arXiv preprint arXiv:2404.04475 , 2024. [Elo78] Arpad E Elo. The rating of chessplayers, past and present. 1978. [GLH +25] Mingqi Gao, Yixin Liu, Xinyu Hu, Xiaojun Wan, Jonathan Bragg, and Arman Cohan. Re-evaluating automatic LLM system ranking for alignment with human preference. In Findings of the Association for Computational Linguistics: NAACL 2025 , pages 4605–4629, 2025. [GYZ +25] Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu Zhang, Shirong Ma, Xiao Bi, et al. Deepseek-R1: Incen-tivizing reasoning capability in LLMs via reinforcement learning. arXiv preprint arXiv:2501.12948 , 2025. [HBB +20] Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. Measuring massive multitask language understanding. 
+
+arXiv preprint arXiv:2009.03300 , 2020. [Hun04] David R Hunter. Mm algorithms for generalized Bradley-Terry models. The Annals of Statistics , 32(1):384–406, 2004. [JLYY11] Xiaoye Jiang, Lek-Heng Lim, Yuan Yao, and Yinyu Ye. Statistical ranking and combinatorial hodge theory. Mathematical Programming , 127(1):203–244, 2011. 39 [KMS07] Claire Kenyon-Mathieu and Warren Schudy. How to rank with few errors. In Pro-ceedings of the Thirty-ninth Annual ACM Symposium on Theory of Computing , pages 95–103, 2007. [KSL +24] Seungone Kim, Juyoung Suk, Shayne Longpre, Bill Yuchen Lin, Jamin Shin, Sean Welleck, Graham Neubig, Moontae Lee, Kyungjae Lee, and Minjoon Seo. Prometheus 2: An open source language model specialized in evaluating other language models. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , pages 4334–4353, 2024. [LHZN25] Philippe Laban, Hiroaki Hayashi, Yingbo Zhou, and Jennifer Neville. LLMs get lost in multi-turn conversation. arXiv preprint arXiv:2505.06120 , 2025. [LIX +23] Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. G-Eval: NLG evaluation using GPT-4 with better human alignment. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , pages 2511–2522, 2023. [LPM +23] Harrison Lee, Samrat Phatale, Hassan Mansoor, Thomas Mesnard, Johan Ferret, Kellie Lu, Colton Bishop, Ethan Hall, Victor Carbune, Abhinav Rastogi, et al. RLAIF vs. RLHF: Scaling reinforcement learning from human feedback with ai feedback. 
+
+arXiv preprint arXiv:2309.00267 , 2023. [LZD +23] Xuechen Li, Tianyi Zhang, Yann Dubois, Rohan Taori, Ishaan Gulrajani, Carlos Guestrin, Percy Liang, and Tatsunori B Hashimoto. Alpacaeval: An automatic eval-uator of instruction-following models, 2023. [Mal57] Colin L Mallows. Non-null ranking models. i. Biometrika , 44(1/2):114–130, 1957. [MKM +24] Moran Mizrahi, Guy Kaplan, Dan Malkin, Rotem Dror, Dafna Shahaf, and Gabriel Stanovsky. State of what art? a call for multi-prompt llm evaluation. Transactions of the Association for Computational Linguistics , 12:933–949, 2024. [MPXW +24] Felipe Maia Polo, Ronald Xu, Lucas Weber, Mírian Silva, Onkar Bhardwaj, Leshem Choshen, Allysson de Oliveira, Yuekai Sun, and Mikhail Yurochkin. Efficient multi-prompt evaluation of LLMs. Advances in Neural Information Processing Systems ,37:22483–22512, 2024. [NOS17] Sahand Negahban, Sewoong Oh, and Devavrat Shah. Rank centrality: Ranking from pairwise comparisons. Operations Research , 65(1):266–287, 2017. [Ope25a] OpenAI. Introducing GPT-5, 2025. August 7, 2025. [Ope25b] OpenAI. Introducing GPT-5.2, 2025. December 11, 2025. [PBMW99] Lawrence Page, Sergey Brin, Rajeev Motwani, and Terry Winograd. The pagerank citation ranking: Bringing order to the web. Technical report, Stanford infolab, 1999. [PH24] Pouya Pezeshkpour and Estevam Hruschka. Large language models sensitivity to the order of options in multiple-choice questions. In Findings of the Association for Computational Linguistics: NAACL 2024 , pages 2006–2017, 2024. 40 [QNM +24] Yao Qiang, Subhrangshu Nandi, Ninareh Mehrabi, Greg Ver Steeg, Anoop Kumar, Anna Rumshisky, and Aram Galstyan. Prompt perturbation consistency learning for robust language models. In Findings of the Association for Computational Linguis-tics: EACL 2024 , pages 1357–1370, 2024. [SML +25] Lin Shi, Chiyu Ma, Wenhua Liang, Xingjian Diao, Weicheng Ma, and Soroush Vosoughi. Judging the judges: A systematic study of position bias in llm-as-a-judge. In Proceedings of the 14th International Joint Conference on Natural Language Pro-cessing and the 4th Conference of the Asia-Pacific Chapter of the Association for Computational Linguistics , pages 292–314, 2025. [Spe04] Charles Spearman. The proof and measurement of association between two things. 
+
+The American Journal of Psychology , 15(1):72–101, 1904. [SRR +23] Aarohi Srivastava, Abhinav Rastogi, Abhishek Rao, Abu Awal Md Shoeb, Abubakar Abid, Adam Fisch, Adam R Brown, Adam Santoro, Aditya Gupta, Adrià Garriga-Alonso, et al. Beyond the imitation game: Quantifying and extrapolating the capa-bilities of language models. Transactions on Machine Learning Research , 2023. [SSW23] Jiuding Sun, Chantal Shaib, and Byron C Wallace. Evaluating the zero-shot robust-ness of instruction-tuned language models. arXiv preprint arXiv:2306.11270 , 2023. [Sta11] Richard P Stanley. Enumerative combinatorics volume 1 second edition. Cambridge Studies in Advanced Mathematics , 2011. [STIP23] Jess Spearing, Jonathan Tawn, David Irons, and Tim Paulden. Modeling intransi-tivity in pairwise comparisons with application to baseball data. Journal of Compu-tational and Graphical Statistics , 32(4):1383–1392, 2023. [TF12] Heather Turner and David Firth. Bradley-Terry models in R: the BradleyTerry2 package. Journal of Statistical Software , 48:1–21, 2012. [TLI +23] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al. Llama: Open and efficient foundation language models. arXiv preprint arXiv:2302.13971 , 2023. [UPT +24] Shivani Upadhyay, Ronak Pradeep, Nandan Thakur, Daniel Campos, Nick Craswell, Ian Soboroff, Hoa Trang Dang, and Jimmy Lin. A large-scale study of rele-vance assessments with large language models: An initial look. arXiv preprint arXiv:2411.08275 , 2024. [WLM +23] Jiaan Wang, Yunlong Liang, Fandong Meng, Zengkui Sun, Haoxiang Shi, Zhixu Li, Jinan Xu, Jianfeng Qu, and Jie Zhou. Is ChatGPT a good NLG evaluator? a prelim-inary study. In Proceedings of the 4th New Frontiers in Summarization Workshop ,pages 1–11, 2023. [WSZ +25] Yidong Wang, Yunze Song, Tingyuan Zhu, Xuanwang Zhang, Zhuohao Yu, Hao Chen, Chiyu Song, Qiufeng Wang, Cunxiang Wang, Zhen Wu, et al. Trust-judge: Inconsistencies of LLM-as-a-judge and how to alleviate them. arXiv preprint arXiv:2509.21117 , 2025. 41 [XRRK25] Yi Xu, Laura Ruis, Tim Rocktäschel, and Robert Kirk. Investigating non-transitivity in LLM-as-a-judge. arXiv preprint arXiv:2502.14074 , 2025. [YZQ15] Ting Yan, Yunpeng Zhao, and Hong Qin. Asymptotic normality in the maximum entropy models on graphs with an increasing number of parameters. Journal of Multivariate Analysis , 133:61–76, 2015. [ZCS +23] Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yong-hao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric Xing, et al. Judging LLM-as-a-judge with MT-Bench and chatbot arena. Advances in Neural Information Processing Systems , 36:46595–46623, 2023. [Zer29] Ernst Zermelo. Die berechnung der turnier-ergebnisse als ein maximumproblem der wahrscheinlichkeitsrechnung. Mathematische Zeitschrift , 29(1):436–460, 1929. [ZWW23] Lianghui Zhu, Xinggang Wang, and Xinlong Wang. Judgelm: Fine-tuned large lan-guage models are scalable judges. arXiv preprint arXiv:2310.17631 , 2023. [ZWY +25] Qiyuan Zhang, Yufei Wang, Tiezheng Yu, Yuxin Jiang, Chuhan Wu, Liangyou Li, Yasheng Wang, Xin Jiang, Lifeng Shang, Ruiming Tang, Fuyuan Lyu, and Chen Ma. RevisEval: Improving LLM-as-a-judge via response-adapted references. In The Thirteenth International Conference on Learning Representations , 2025. [ZWZ +23] Kaijie Zhu, Jindong Wang, Jiaheng Zhou, Zichen Wang, Hao Chen, Yidong Wang, Linyi Yang, Wei Ye, Yue Zhang, Neil Gong, et al. Promptrobust: Towards evaluating the robustness of large language models on adversarial prompts. In Proceedings of the 1st ACM Workshop on Large AI Systems and Models with Privacy and Safety Analysis , pages 57–68, 2023. 42
