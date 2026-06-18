@@ -6,64 +6,62 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-17
-- 运行时间：2026-06-17 22:04:27 UTC
+- 最新运行日期：2026-06-18
+- 运行时间：2026-06-18 22:31:53 UTC
 - 运行状态：成功
 - 本次总论文数：14
-- 精读区：5
-- 速读区：9
+- 精读区：8
+- 速读区：6
 
 ### 今日简报（AI）
-今日推荐14篇论文，精读两篇高分研究聚焦多语言纠错与Transformer表达能力分析。  
-最值得关注：用表示性检索优化多语言语法纠错的上下文示例，以及通过有界深度文法揭示深层Transformer分层建模的表达力。  
-建议普通读者优先精读这两篇9分论文，速读可留意多模态LLM的对抗鲁棒性与孟加拉语小模型效率突破。
-- 详情：[/202606/17/README](/202606/17/README)
+今日精读聚焦LLM代词忠实性与Transformer语法树遍历顺序两项高分研究，速读覆盖土耳其语形态分词、跨语言习语对齐及多模态游戏评估。最值得关注的是代词机制解释如何提升模型一致性，以及树遍历顺序对语法建模的关键影响。下一步可深入探究代词忠实性实验的因果扰动设计，并关注多模态模型在非马尔可夫环境中的评估框架。
+- 详情：[/202606/18/README](/202606/18/README)
 
 ### 精读区论文标签
-1. [Encode Errors: Representational Retrieval of In-Context Demonstrations for Multilingual Grammatical Error Correction](/202606/17/2606.15416v1-encode-errors-representational-retrieval-of-in-context-demonstrations-for-multilingual-grammatical-error-correction)  
+1. [A Mechanistic Understanding of Pronoun Fidelity in LLMs](/202606/18/2606.16407v1-a-mechanistic-understanding-of-pronoun-fidelity-in-llms)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：从LLM内部状态提取语法错误表示作为语言编码
-2. [An expressivity analysis of hierarchical modelling in deep transformers via bounded-depth grammars](/202606/17/2606.17522v1-an-expressivity-analysis-of-hierarchical-modelling-in-deep-transformers-via-bounded-depth-grammars)  
+   evidence：对LLM中代词保真度的机制性理解
+2. [Does Traversal Order Matter? A Systematic Study of Tree Traversal Methods in Transformer Grammars](/202606/18/2606.16836v1-does-traversal-order-matter-a-systematic-study-of-tree-traversal-methods-in-transformer-grammars)  
+   标签：评分：9.0/10、query:llm-ling
+   evidence：研究Transformer语法中的遍历顺序，直接涉及LLM如何处理句法
+3. [From Sparse Features to Trustworthy Proxies: Certifying SAE-Based Interpretability](/202606/18/2606.18383v1-from-sparse-features-to-trustworthy-proxies-certifying-sae-based-interpretability)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：transformer层次表示的理论分析
-3. [Prompt Perturbation for Reliable LLM Evaluation over Comparison Graphs](/202606/17/2606.17634v1-prompt-perturbation-for-reliable-llm-evaluation-over-comparison-graphs)  
+   evidence：认证基于稀疏自编码器的语言模型可解释性
+4. [As Easy as Rocket Science: Assessing the Ability of Large Language Models to Interpret Negation in Figurative Language](/202606/18/2606.18922v1-as-easy-as-rocket-science-assessing-the-ability-of-large-language-models-to-interpret-negation-in-figurative-language)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：提出提示扰动解决LLM成对评估中的非传递性问题
-4. [Simplifying the Modeling of Arbitrary Conditionals in Natural Language](/202606/17/2606.14943v1-simplifying-the-modeling-of-arbitrary-conditionals-in-natural-language)  
+   evidence：评估LLM在否定和比喻语言上的理解能力
+5. [IndicContextEval: A Benchmark for Evaluating Context Utilisation in Audio Large Language Models Across 8 Indic Languages](/202606/18/2606.19157v1-indiccontexteval-a-benchmark-for-evaluating-context-utilisation-in-audio-large-language-models-across-8-indic-languages)  
+   标签：评分：9.0/10、query:llm-eval
+   evidence：评估音频LLM上下文利用能力的基准
+6. [PragReST: Self-Reinforcing Counterfactual Reasoning for Pragmatic Language Understanding](/202606/18/2606.18624v1-pragrest-self-reinforcing-counterfactual-reasoning-for-pragmatic-language-understanding)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：建模语言中的任意条件，揭示LLM如何表示语言结构
-5. [Evaluating Large Language Models Abilities for Addressee, Turn-change, and Next Speaker Prediction in Meetings](/202606/17/2606.17542v1-evaluating-large-language-models-abilities-for-addressee-turn-change-and-next-speaker-prediction-in-meetings)  
+   evidence：LLM中的语用推理
+7. [Quantifying and Auditing LLM Evaluation via Positive--Unlabeled Learning](/202606/18/2606.19057v1-quantifying-and-auditing-llm-evaluation-via-positive--unlabeled-learning)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：评估LLM在会议中能力的框架
+   evidence：LLM评估审计，偏见检测
+8. [Dango: A Strictly L1-Only Large Language Model for Studying Second Language Acquisition](/202606/18/2606.19170v1-dango-a-strictly-l1-only-large-language-model-for-studying-second-language-acquisition)  
+   标签：评分：8.0/10、query:llm-ling
+   evidence：专为二语习得研究设计的LLM，连接语言学和LLM
 
 ### 速读区论文标签
-1. [AdaMame: A Training Recipe for Adaptive Multilingual Reasoning](/202606/17/2606.15080v1-adamame-a-training-recipe-for-adaptive-multilingual-reasoning)  
+1. [Morpheus: A Morphology-Aware Neural Tokenizer and Word Embedder for Turkish](/202606/18/2606.18717v1-morpheus-a-morphology-aware-neural-tokenizer-and-word-embedder-for-turkish)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：多语言LLM中推理语言自适应对齐到查询语言
-2. [On the Adversarial Robustness of Multimodal LLM Judges](/202606/17/2606.15608v1-on-the-adversarial-robustness-of-multimodal-llm-judges)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：提出多模态LLM裁判的对抗鲁棒性评估框架
-3. [Surpassing Scale by Efficiency: A Compact 135M Parameter Foundational LLM Natively Adapted for the Bangla Language](/202606/17/2606.16383v1-surpassing-scale-by-efficiency-a-compact-135m-parameter-foundational-llm-natively-adapted-for-the-bangla-language)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：紧凑型LLM在孟加拉语多任务基准上评估
-4. [EComAgentBench: Benchmarking Shopping Agents on Long-Horizon Tasks with Distributed Hidden Intent](/202606/17/2606.17698v1-ecomagentbench-benchmarking-shopping-agents-on-long-horizon-tasks-with-distributed-hidden-intent)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：购物代理评估基准
-5. [AI-based Cognitive-linguistic Features for Dementia Assessment in Picture Description](/202606/17/2606.18054v1-ai-based-cognitive-linguistic-features-for-dementia-assessment-in-picture-description)  
+   evidence：形态感知的分词器和词嵌入器
+2. [G-IdiomAlign: A Gloss-Pivoted Benchmark for Cross-Lingual Idiom Alignment](/202606/18/2606.18989v1-g-idiomalign-a-gloss-pivoted-benchmark-for-cross-lingual-idiom-alignment)  
    标签：评分：7.0/10、query:llm-ling
-   evidence：用LLM评估图片描述中的认知语言学构念
-6. [Measuring language complexity from hierarchical reuse of recurring patterns](/202606/17/2606.11531v1-measuring-language-complexity-from-hierarchical-reuse-of-recurring-patterns)  
-   标签：评分：6.0/10、query:llm-ling
-   evidence：提出从层次模式复用角度度量语言复杂度的ladderpath指数
-7. [UR-BERT: Scaling Text Encoders for Massively Multilingual TTS Through Universal Romanization and Speech Token Prediction](/202606/17/2606.11681v1-ur-bert-scaling-text-encoders-for-massively-multilingual-tts-through-universal-romanization-and-speech-token-prediction)  
+   evidence：LLM处理习语，跨语言语义
+3. [Beyond the Current Observation: Evaluating Multimodal Large Language Models in Controllable Non-Markov Games](/202606/18/2606.19338v1-beyond-the-current-observation-evaluating-multimodal-large-language-models-in-controllable-non-markov-games)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：多模态LLM在可控非马尔可夫游戏中的评测基准
+4. [UR-BERT: Scaling Text Encoders for Massively Multilingual TTS Through Universal Romanization and Speech Token Prediction](/202606/18/2606.11681v2-ur-bert-scaling-text-encoders-for-massively-multilingual-tts-through-universal-romanization-and-speech-token-prediction)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：多语言文本编码器学习语言表示
-8. [Knowledge Graph Enhanced Memory-Augmented Retrieval for Long Context Modeling](/202606/17/2606.14047v1-knowledge-graph-enhanced-memory-augmented-retrieval-for-long-context-modeling)  
+   evidence：UR-BERT编码器学习语音感知的语音表示，与语言编码机制相关
+5. [How Far Can Machine Translation Quality Take You? Extrinsic Discourse Evaluation in Goal-Oriented Setups](/202606/18/2606.16596v1-how-far-can-machine-translation-quality-take-you-extrinsic-discourse-evaluation-in-goal-oriented-setups)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：机器翻译的外部语篇评估，与LLM评估方法相关
+6. [Structured Inference with Large Language Gibbs](/202606/18/2606.19264v1-structured-inference-with-large-language-gibbs)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：知识图谱增强的检索方法利用语义相似性和实体关系进行长上下文建模
-9. [Deep Residual Injection for Full-Spectrum Forensic Signal Perception in Multimodal Large Language Models](/202606/17/2606.15880v1-deep-residual-injection-for-full-spectrum-forensic-signal-perception-in-multimodal-large-language-models)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：多模态大语言模型中语义表示的逐层分析
+   evidence：利用LLM条件分布进行结构化推理，揭示LLM表示变量的方式
 
 
 <div class="dpr-home-promo-card">

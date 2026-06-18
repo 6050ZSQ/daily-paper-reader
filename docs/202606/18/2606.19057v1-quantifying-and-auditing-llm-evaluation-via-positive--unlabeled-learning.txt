@@ -1,0 +1,1365 @@
+Title: Quantifying and Auditing LLM Evaluation via Positive–Unlabeled Learning
+
+URL Source: https://arxiv.org/pdf/2606.19057v1
+
+Published Time: Thu, 18 Jun 2026 01:04:27 GMT
+
+Number of Pages: 27
+
+Markdown Content:
+# Quantifying and Auditing LLM Evaluation via Positive–Unlabeled Learning 
+
+Zilong Zhang *
+
+Department of Mathematics and Statistics Georgia State University 
+
+Yi-Ting Hung *
+
+Department of Mathematics and Statistics Georgia State University 
+
+Lei Ding 
+
+Department of Statistics University of Manitoba 
+
+lei.ding@umanitoba.ca 
+
+Chi-Kuang Yeh 
+
+Department of Mathematics and Statistics Georgia State University 
+
+cyeh@gsu.edu 
+
+## Abstract 
+
+Large Language Models (LLMs) are increasingly used as judges for scalable evalua-tion, yet such LLM-as-a-Judge systems exhibit systematic biases that are decoupled from semantic quality, most notably verbosity bias. Meanwhile, human supervision is costly and typically selective, yielding reliable positive judgments but leaving most outputs unlabelled and potentially mixed in quality. We formulate LLM evaluation under selective human supervision as a positive–unlabelled learning problem and propose a geometric auditing framework based on Partial Optimal Transport. By aligning a small set of human-verified positives with a reliable subset of unlabelled outputs in a fixed embedding space, our method identifies human-consistent preferences and corrects biased judges without retraining. Experiments demonstrate improved alignment with human preferences, increased robustness to presentation biases, and interpretable confidence estimates, offering a scalable and statistically grounded alternative to existing LLM-as-a-judge pipelines. 
+
+## 1 Introduction 
+
+Reliable evaluation is a foundational requirement for deploying Large Language Models (LLMs) in real-world settings [Liang et al., 2022, Gu et al., 2024]. In many applications, LLM outputs cannot be judged as simply correct or incorrect. Instead, quality depends on multiple factors, such as correctness, completeness, and clarity, and often varies across tasks and contexts [Ribeiro et al., 2020]. As a consequence, modern evaluation pipelines struggle to reduce performance to a single objective score. Because of this ambiguity, high-quality evaluation still leans on human supervision. Yet human annotation is costly, and therefore difficult to scale to the volume of generations produced in practice [Dong et al., 2022, Liu et al., 2023]. Human review typically covers only a small slice of model outputs, creating a persistent bottleneck. To relieve this bottleneck, automated evaluation using an LLM judge has quickly become a dominant paradigm [Verga et al., 2024]. Across widely used benchmarks, LLM judges can correlate with human preferences, offering an attractive trade-off between scalability and fidelity [Zheng et al., 2023, Chiang et al., 2024]. Accordingly, LLM judges are now routinely embedded as core components of evaluation and model-selection pipelines. Despite this practical success, a critical concern remains: LLM judges exhibit systematic biases that are decoupled from underlying semantic quality [Ye et al., 2024]. Figure 4 in Appendix B.1 illustrates this phenomenon, where a human-preferred response can be overturned by an LLM judge after a small, content-preserving perturbation to its competitor. Rather than random noise, such biases reflect stable preferences for superficial input features. Recent work demonstrates this behavior through   
+
+> Preprint. ∗indicates equal contribution.
+> arXiv:2606.19057v1 [stat.ML] 17 Jun 2026
+
+controlled perturbations and bias attacks, showing that minor variations in presentation or style can reliably alter judgments without changing content [Wang et al., 2024, Wu and Aji, 2025, He and Xing, 2025]. Consequently, these biases induce predictable evaluation distortions, such as favoring longer or more stylized responses even when content quality remains constant. The challenge is further compounded by the manner in which human supervision is collected. Due to limited annotation budgets, human review is typically selective rather than exhaustive [Liang et al., 2022, Dubois et al., 2023]. Annotations typically focus on fluent or high-impact outputs, while weaker or ambiguous generations are often left unreviewed. This creates a regime in which negative labels are structurally missing [Bekker and Davis, 2020, Bekker et al., 2019]. Human-verified examples can be regarded as reliable positives, whereas the unverified pool constitutes a heterogeneous mixture of both latent high-quality and low-quality responses. Under such selective supervision, standard supervised learning assumptions break down, and naively treating all unlabeled data as negative introduces severe bias [Du Plessis et al., 2014, Kato et al., 2019]. In this work, we propose a Positive-Unlabelled Learning Auditing for LLM-as-Judge (PUA UDIT ), a lightweight auditing framework that reframes biased LLM evaluation under selective human supervision as a positive and unlabelled (PU) auditing problem [Elkan and Noto, 2008]. We posit that the central task is to disentangle the latent quality of a response from the biased evaluation mechanism using only limited human verifications rather than recovering an intrinsic notion of response quality. To this end, we propose a geometric auditing method based on partial Optimal Transport (POT) [Cuturi, 2013, Chapel et al., 2020]. Our approach operates entirely in a fixed representation space, without retraining the judge or the underlying models, and seeks to align the distribution of verified positives with a reliable subset of the unlabelled pool. Unlike standard OT, which forces all probability mass to be matched, POT explicitly allows only a fraction of mass to be transported. This property naturally accommodates contamination in the unlabelled set, preventing low-quality responses from being spuriously aligned with verified positives. As a result, POT enables the identification of plausible latent positives while remaining robust to noise and mismatch in the unlabelled distribution. Overall, PUA UDIT shifts scalable LLM evaluation from a fully supervised labeling problem to a lightweight, representation-fixed auditing problem. This yields a training-free procedure for recovering responses that are likely to be human-preferred from an unlabelled pool contaminated by low-quality generations. Our contributions are summarized as follows: • Problem formulation and auditing viewpoint. We formalize LLM evaluation under scarce and selective human supervision, demonstrate why standard supervised assumptions fail in this setting, and recast evaluation bias as a PU auditing problem. • A lightweight geometric auditing method. We introduce a POT-based auditing approach that operates on fixed embeddings to identify latent human-consistent preferences from unlabelled data, requiring no retraining or modification of the LLM judge. • Empirical effectiveness and robustness. Through extensive experiments across multiple benchmarks and bias scenarios, we show that our method substantially improves alignment with human preferences compared to the original LLM-judge decisions. 
+
+## 2 Related works 
+
+Automated Evaluation Methodologies. Current automated evaluation approaches largely fall into two categories: reference-based metrics and reference-free model-based evaluation. Traditional metrics like BLEU [Papineni et al., 2002] and ROUGE [Lin, 2004] rely on lexical overlap with ground truth, which often correlates poorly with human judgment on open-ended generation tasks [Liu et al., 2016, Celikyilmaz et al., 2020, Zhang et al., 2019]. Consequently, recent research has shifted toward 
+
+LLM-as-a-Judge , where strong models (e.g., GPT-4) serve as evaluators [Liu et al., 2023, Zheng et al., 2023, Gilardi et al., 2023]. Approaches typically employ either single-score grading or pairwise comparison protocols [Chiang et al., 2024, Dubois et al., 2023, Kim et al., 2023, 2024] to approximate human preference. While these frameworks provide scalability, they treat the judge as a fixed oracle. In contrast, our work treats the judge as a biased instrument requiring external auditing. 
+
+Bias Analysis and Calibration in LLMs. Prior work has extensively documented systematic artifacts in LLM judges. Common failures include position bias, where judges favor the first response [Wang et al., 2024, Zheng et al., 2023]; verbosity bias, where longer but vacuous responses are preferred [Saito et al., 2023, Singhal et al., 2023]; and self-preference, where models favor 2Figure 1: Overview of proposed PUA UDIT framework; (A) Embedding construction, where pairwise comparison from datasets like Chatbot Arena are processed via a reward model to derive score embedding; (B) Difference Embedding, which extracts feature representations to construct difference vectors that capture the specific direction of quality improvement between winner and loser response; (C) Optimal Transportation, where POT aligns a clean positive pool of verified improvements with the unlabeled pool. their own outputs [Panickssery et al., 2024]. To address these issues, standard practices include swapping candidate positions to average out order effects [Wang et al., 2024, Zheng et al., 2023], employing majority voting or juries to reduce variance [Verga et al., 2024, Cohen et al., 2023], or using calibration prompts to enforce neutrality [Zhu et al., 2023]. While such methods mitigate surface-level inconsistencies, they overlook the fundamental distributional shift arising from selective supervision. In contrast, we propose a geometric intervention based on OT to directly align judge outputs with the latent valid distribution. 
+
+PU Learning under Selection Bias. Our formulation aligns with PU learning, where classifiers are trained using only positive and unlabelled data [Elkan and Noto, 2008, Du Plessis et al., 2014, Kiryo et al., 2017, Bekker and Davis, 2020]. Standard PU methods typically rely on the selected completely at random mechanism, treating labelled examples as an i.i.d. subset of the positive class. Recent advances have relaxed this to instance-dependent selection which is commonly referred as selected at random to handle biased labelling in domains like medical diagnosis or recommendation [Bekker et al., 2019, Kato et al., 2019, Zamzam et al., 2025]. While existing PU frameworks focus on binary classification or risk estimation, we instead extend this perspective to evaluation auditing. Specifically, we adapt PU principles to disentangle response quality from verification bias, employing POT for robust geometric alignment [Courty et al., 2016, Chapel et al., 2020]. 
+
+## 3 Methodology 
+
+3.1 Problem formulation and notation 
+
+The framework of PUA UDIT is shown in Algorithm 1 in Appendix B.5. We study the problem of evaluating LLM outputs where reliable human annotations are scarce. In practice, human preferences are selectively available and concentrate on a small subset of samples, while the remaining data are unlabelled and potentially mixed in quality. We formulate this as a PU learning task as follows. Each data pair consists of a user prompt xi ∈ X , where X denotes the prompt space, together with two candidate response sequences oAi and oBi generated by two models, LLM A and LLM B ,respectively. Each pair is associated with preference labels provided by an LLM judge, ζ(LLM)  
+
+> i
+
+, and, when available, a human judge, ζ(H) 
+
+> i
+
+, where ζ ∈ { A, B, Tie } indicates whether the response from 
+
+LLM A is preferred to that from LLM B , or whether the two responses are judged as a tie. In this work, we focus on samples for which a strict preference exists, and exclude ties in the current formulation as the directional difference embedding requires an ordered winner–loser pair. Because human preferences are observed only for a subset of samples, we partition the data into annotated and unannotated subsets. The annotated subset contains samples with both human and LLM-judge preferences, H = {(xi, o Ai , o Bi , ζ (H) 
+
+> i
+
+, ζ (LLM)  
+
+> i
+
+)}, whereas the unannotated subset contains 3samples with only LLM-judge preferences, H′ = {(xi, o Ai , o Bi , ζ (LLM)  
+
+> i
+
+)}. We define an alignment indicator with human preference yi := y(ζi) = I
+
+n
+
+ζi = ζ(H)
+
+> i
+
+o
+
+yielding the induced set DP := 
+
+{(xi, o wi , o ℓi , y i)}, where owi , o ℓi ∈ O denote the preferred and dispreferred responses, respectively, as determined by the human judge ζ(H) 
+
+> i
+
+. By construction, every sample in DP is a verified positive, so yi = 1 for all (xi, o wi , o ℓi , y i) ∈ D P . For samples in H′, human preferences are unavailable, and only the LLM-judge preference is observed. The resulting dataset is therefore written as 
+
+DU := {(xi, o wi , o ℓi )}, where the preference ordering owi , o ℓi are determined by the LLM judge 
+
+ζ(LLM ) 
+
+> i
+
+. Although a verified preference can be reversed syntactically, the negative class in our problem is not the reversed response pair. It corresponds to cases where the LLM judge’s preferred response disagrees with the human preference under the original evaluation protocol. Note that in this set, the latent unobserved yi can be either zero or one. The summary of main notation used in the paper is shown in Table 2 in Appendix B.1. Our goal is to learn a scoring function f : Rd → [0 , 1] that estimates p(y = 1 | ow, o ℓ) for 
+
+ow, o ℓ ∈ D U by aligning the unlabelled data with the manifold of DP . Before formally introducing our method, we define the notation used throughout the paper. We denote the ℓ2-norm by ∥·∥ , the cardinality of a set by | · | , the inner product by ⟨· , ·⟩ , and distance metrics d(·, ·) where we use cosine similarity in the rest of the manuscript and ⌊·⌋ denote the floor function. 
+
+3.2 Feature construction and preprocessing Fixed representation space. Our auditing procedure operates entirely in a fixed representation space. Given a prompt x and a response o, we use the pretrained encoder Fθ with fixed parameters to extract a prompt–response representation Fθ (x, o ) ∈ Rd. Importantly, Fθ is never trained or fine-tuned in our pipeline; all PU relabeling and auditing steps are performed on top of these fixed embeddings. In our main experiments, we instantiate Fθ with a reward-model encoder, since reward models are naturally trained on preference data and provide strong representations for response comparison. However, the encoder is modular and can be replaced by any pretrained embedding model. We evaluate several frozen alternatives, including general-purpose embedding models and reward-model encoders. In our pipeline, the Skywork reward-model gives the strongest preference, so we use it as the default encoder. Additional comparisons are reported in Table 3 in Appendix B.1. For each pairwise comparison, let ow and oℓ denote the response preferred and dispreferred by the initial judge. We represent the comparison by the normalized difference embedding 
+
+zi = Fθ (xi, o wi ) − Fθ (xi, o ℓi )
+
+∥Fθ (xi, o wi ) − Fθ (xi, o ℓi )∥ ∈ Sd−1. (1) This representation focuses on the direction of relative improvement rather than the absolute em-bedding of either response. It is especially useful when both candidate responses are fluent and semantically close, because the differenced representation directly encodes how the judge separates the preferred response from its counterpart. 
+
+Positive group denoising. Although human-verified positives provide valuable supervision, they may still contain annotation noise or geometrically inconsistent examples. We therefore apply a lightweight two-stage filter before POT to remove geometric outliers, rather than altering consistent human preference patterns. To avoid conflating semantic topics, this filtering is performed within each question type rather than over the pooled dataset. First, within each question type, we retain positive examples whose embeddings are closest to the corresponding positive-group center. Second, among the retained examples, we further keep comparisons whose improvement directions zi are most aligned with the average positive improvement direction within the same question type. This produces a cleaner D′ 
+
+> P
+
+that is more geometrically coherent while reducing the risk of discarding valid positives from minority topics. The full method is provided in Appendix A.4. 
+
+3.3 Partial optimal transport and relabelling 
+
+We align the unlabelled set DU to the denoised positive reference set D′ 
+
+> P
+
+using POT. Unlike standard OT, which consider all the instances to transport to another which in our case may transport the unwanted negative instance that the LLM labelled incorrect. Instead, POT allows only a fraction m
+
+4of the total mass from DU to be transported, while the remaining mass is left unmatched. This design reflects that DU contains a mixture of positive and negative samples, whereas D′ 
+
+> P
+
+serves as a clean anchor distribution. Let μ′ 
+
+> P
+
+= P  
+
+> (xi,o wi,o ℓi,y i)∈D ′
+> P
+
+ai and μU = P    
+
+> (xj,o wj,o ℓj)∈D U
+
+bj be the empirical measures of the positive and unlabeled sets, where the size of |D ′ 
+
+> P
+
+| = n′ 
+
+> P
+
+, weights ai = 1 /n ′
+
+> P
+
+and bj = 1 /n U . Let the cost Cij = 1 − d(zi, z j ) as the cosine distance between the normalized embeddings and we seek a transport plan Γ ∈ Rn′  
+
+> P×nU
+> ≥0
+
+via the following objective function that minimizes the transport cost while moving a specific total amount of mass m ∈ (0 , 1] Γ⋆ = arg min  
+
+> Γ∈Rn′
+> P×nU
+> ≥0
+
+X  
+
+> (xi,o wi,o ℓi,y i)∈D ′
+> P
+
+X   
+
+> (xj,o wj,o ℓj)∈D U
+
+Cij Γij s.t. Γ1nU ≤ a, Γ⊤1n′ 
+
+> P
+
+≤ b.
+
+The transported mass is further constrained by 
+
+X  
+
+> (xi,o wi,o ℓi,y i)∈D ′
+> P
+
+X   
+
+> (xj,o wj,o ℓj)∈D U
+
+Γij = m. 
+
+The inequality constraints allow part of the mass to remain unmatched, avoiding the alignment of geometrically distant negatives in DU with the positive anchor distribution D′ 
+
+> P
+
+[Chapel et al., 2020]. For each unlabelled sample (xj , o wj , o ℓj ) ∈ D U , we define an alignment score 
+
+sj = X  
+
+> (xi,o wi,o ℓi,y i)∈D ′
+> P
+
+Γ⋆ij ⇒ ¯sj = sj
+
+max (xk ,o wk ,o ℓk ,y k )∈D U sk
+
+,
+
+and denote the normalized score as ¯sj . Intuitively, ¯sj measures how strongly the jth sample in DU
+
+aligns with the verified-positive manifold represented by D′ 
+
+> P
+
+. If ¯sj < η , the sample is weakly aligned with the verified-positive manifold, suggesting that the judge preference may be affected by bias. We therefore flip the judge preference ζ(LLM)  
+
+> j
+
+. This gives the corrected judge preference 
+
+ˆζ(LLM)  
+
+> j
+
+=
+
+(
+
+Flip( ζ(LLM)  
+
+> j
+
+) if ¯sj < η, ζ(LLM)  
+
+> j
+
+otherwise ,
+
+where η is a calibrated decision threshold with default value 0.5 and Flip( ·) returns the opposite preference label. This step targets cases where biases, such as verbosity bias, lead the judge to prefer responses that are geometrically distant from the verified-positive manifold. 
+
+## 4 Theoretical guarantee 
+
+To rigorously justify our geometric approach, we analyze the consistency of the POT alignment score. Under standard geometric assumptions motivated by the manifold view of representation learning, we show that POT recovers the latent positive distribution and is robust to systematic biases. 
+
+4.1 Geometric setup 
+
+We consider the normalized deviation space on the unit hypersphere Sd−1, where each point z
+
+represents a normalized difference between preferred and dispreferred response embeddings defined in Eq. (1) . We assume the unlabelled set DU is drawn from a mixture distribution μU = αμ + + (1 −
+
+α)μ− where we denote the distribution of positive and negative/neutral deviations as μ+ and μ−,respectively, and α = (0 , 1) is the unknown prior probability of human-consistent preference. The positive set DP is drawn purely from positive distribution μP = μ+.In our proposal, the human-preferred improvements are not randomly distributed but share common semantic directions, whereas low-quality deviations are more isotropic or clustered differently. To analyze the behaviour of POT on these embeddings, we introduce the following geometric assumptions grounded in the manifold hypothesis of representation learning [Wang and Isola, 2020]. The human-preferred improvement are not isotropic while errors are orthogonal to quality. 
+
+Assumption 4.1 (Directional Concentration of Improvements) . The positive measure μ+ is supported on a cone Cτ centred at a consensus improvement direction z ∈ Sd−1 with concentration parameter 
+
+τ ∈ (0 , 1) such that supp (μ+) ⊆ C τ (z) := {z ∈ Sd−1 : d(z, z ) ≥ τ }.5Assumption 4.2 (Separability of Noise) . Let τ ∈ (0 , 1) be the concentration parameter of the improvement cone Cτ (¯ z). There exists a safety margin δ > 0 such that for any negative deviation 
+
+z− ∈ supp (μ−), the projection onto the consensus direction satisfies ⟨z−, ¯z⟩ < τ − δ. We further require that δ is sufficiently large such that τ 2 > τ − δ to ensure a non-empty utility gap. This assumption is justified by the improvement-alignment step in the denoising phase, which filters samples based on their cosine alignment and encourages DP to concentrate around a consistent direction. The contrastive learning theories also prove that the semantically similar pairs align on the hypersphere [Wang and Isola, 2020]. In addition, the margin δ ensures that the positive support forms a disjoint region in the embedding space which is distinguishable via cosine similarity. 
+
+4.2 Algorithm guarantee: recovery and robustness 
+
+We now formalize how the latent quality structure within these datasets. To convert the abstract auditing problem into a tractable geometric task, we utilize the latent representations of a reward model to construct difference embeddings. By encoding the vector difference, we transform dis-crete comparison pairs into a normalized manifold that explicitly captures the gradient of quality improvement, thereby facilitating the subsequent alignment via POT. 
+
+Theorem 4.3 (High probability recovery of POT) . Given Assumptions 4.1 and 4.2, consider the POT problem between μP and μU with cosine cost Cij = 1 − d(zi, z j ) and the transport mass m. If 
+
+m ≤ α where α is a constant, then as the labelled positive sample size nP → ∞ , the POT plan Γ⋆
+
+minimizes the transport cost by matching verified positive samples in DP to hidden positive samples. Thus, supp (Γ ∗) ⊆ supp (μP ) × supp (μ+),
+
+and the hidden positive subset D+ 
+
+> U
+
+in the unlabelled pool can be recovered by POT. Consequently, the POT alignment score is non-zero if and only if z ∈ D + 
+
+> U
+
+.
+
+The detailed proof can be found in Appendix A.1. The key challenge in LLM-as-a-Judge is suscep-tibility to superficial biases (e.g., verbosity), which we model as nuisance variables. We formally assume these biases are distinct from quality. 
+
+Assumption 4.4 (Latent approximate orthogonality in high-dimensional space) . We assume the fixed representation space Rd encoded by the pre-trained reward model is of sufficiently high dimension that the latent quality direction z and a nuisance direction zbias are approximately orthogonal. Therefore, we assume ⟨z, z bias ⟩ ≈ 0 without further requirement. 
+
+Theorem 4.5 (Stability under perturbation) . Given the Assumption 4.4, when evaluating the pairwise transport cost between an empirical anchor zi ∈ D ′ 
+
+> p
+
+and a perturbed embedding ˜z, the similarity introduces a first-order sensitivity due to the natural deviation of zi from z. However, because of selective anchors that are highly aligned with z, the magnitude of the orthogonal component 
+
+∥z⊥ 
+
+> i
+
+∥ is bounded by a small threshold ϵp. Thus, the transport cost is invariant to the bias up to 
+
+O(λ · ϵp) + O(λ2). This establishes that while empirical robustness is not purely second-order, the first-order vulnerability is tightly controlled by the denoising phase. 
+
+The detailed proof is provided in Appendix A.2. This explains why our proposed method outperforms standard judges on the attack (Figure 3). While a linear classifier might be unstable by the magnitude of λz bias , cosine similarity projects this noise onto the tangent, where its effect vanishes. Additionally, the cosine similarity is involved in the later POT that the ignorable bias would not affect its robustness. We further formalize the limits of this robustness. 
+
+## 5 Experimental setup 
+
+5.1 Real-data construction 
+
+Our experiments are built on the Chatbot Arena corpus [Zheng et al., 2023, Chiang et al., 2024] and MT-Bench [Zheng et al., 2023], which provides pairwise comparisons between two candidate responses together with human preference annotations. From this source, we first obtain a human-annotated dataset ˜H = {(xi, o Ai , o Bi , ζ (H) 
+
+> i
+
+)}. To obtain LLM judgments, we apply locally deployed LLMs to ζ(LLM)  
+
+> i
+
+. Using the judge prompt shown in Figure 10 in Appendix B.3, we apply locally 6deployed LLMs to produce a corresponding preference label ζ(LLM)  
+
+> i
+
+. This yields the final dataset used throughout our experiments: H = {(xi, o Ai , o Bi , ζ (H) 
+
+> i
+
+, ζ (LLM)  
+
+> i
+
+)}. The resulting data naturally induces a PU structure: data with reliable human verification form the positive set, while the remaining data, for which only ζ(LLM) is available, constitute an unlabeled pool that may contain both correct judgments and latent errors. In real data, the fraction of positives within the unlabeled set is unknown. We therefore estimate the POT fraction m used in Section 3.3 directly from the positive set. In specific, we hold out a portion of the human-annotated data and measure the consistency between 
+
+ζ(H) and ζ(LLM) . This empirical consistency is used as a proxy for the positive mass in the unlabeled pool and serves to estimate the transport fraction m. We evaluate three locally deployed open-weight models: M ISTRAL -7B-I NSTRUCT [Jiang et al., 2023], Q WEN 2.5-7B-I NSTRUCT [Yang et al., 2024], and L LEMMA -7B-M UINSTRUCT [Azerbayev et al., 2023], together with a stronger closed-source frontier judge, GPT-5.4-MINI [OpenAI, 2026]. All judges share the same prompt template. The overall data construction procedure is summarized in Algorithm 2 in Appendix B.5. 
+
+5.2 Robustness evaluation via attack–judge protocol 
+
+We adopt an bias attack protocol to evaluate the robustness of PUA UDIT under biases. Rather than assessing whether the underlying LLM judge itself is robust, our objective is to examine whether PUA UDIT can effectively mitigate the impact of such biases on downstream evaluation outcomes. Our choice of attacks is informed by Ye et al. [2024]. They identify 12 common sources of bias affecting LLM-as-judge systems, including verbosity bias, sentiment bias, and distraction effects. Following this taxonomy, we focus on a representative subset of attacks that are prevalent in practice. Concretely, starting from the subset H′ of pairwise comparisons for which only the original LLM-judge preference ξLLM  
+
+> i
+
+is available, we apply controlled perturbations to the candidate responses while preserving their underlying semantic content. We then re-apply the same offline judge to the perturbed response pairs to obtain attacked judgments ξLLM  
+
+> i
+
+. Comparing ξLLM  
+
+> i
+
+and ˜ξLLM  
+
+> i
+
+isolates instabilities induced purely by presentation bias. 
+
+Length, Sentiment, and Distraction Attacks. To probe robustness against common presentation-level artifacts, we consider three representative perturbations: length, sentiment, and distraction attacks. Each attack targets a different superficial aspect of response presentation while preserving the core semantic content. The length attack modifies response verbosity to assess sensitivity to excessively long or short answers and to control for prompt budget effects. The sentiment attack 
+
+alters the emotional tone of responses, testing whether judgments are influenced by affective cues rather than substantive quality. The distraction attack injects irrelevant or misleading textual elements, evaluating robustness to superficial noise. All three attacks follow a unified attack–judge protocol and differ only in how the surface form of candidate responses is perturbed. The corresponding prompt templates are provided in Figures 7, 8 and 9 in Appendix B.3. Table 1: Original and adjusted consistency ratios across question types. Each cell reports the mean value (standard deviation) over 10 random seeds from repeated random splits of the human-annotated data. Improvement is computed as the difference between the adjusted and original ratios. For each model block, the question-type sample size is calculated as the sum of the positive (P) and unlabelled (U) groups. Boldface values indicate positive improvements achieved by our method. Entries marked with * indicate extremely small sample sizes and are excluded from further analysis. Definitions of each question type are provided in Appendix 10.                                                                         
+
+> Model: Mistral QTA (n=7660) QTB (n=88) QTC (n=8124) QTD (n=1294) QTE (n=1039) QTF (n=4998)
+> Orig. ratio 58.41% (4.45e-03) 50.32% (3.02e-02) 52.97% (3.32e-03) 59.08% (9.42e-03) 50.19% (6.12e-03) 37.56% (4.27e-03) Adj. ratio 67.90% (4.65e-03) 62.90% (5.32e-02) 66.73% (5.51e-03) 67.25% (1.08e-02) 64.62% (1.53e-02) 63.47% (6.49e-03) Improvement 9.50% 12.58% 13.76% 8.17% 14.43% 25.91% Model: Qwen QTA (n=4395) QTB (n=1957) QTC (n=2105) QTD (n=514) QTE (n=8472) QTF (n=128)
+> Orig. ratio 67.57% (5.73e-03) 66.54% (5.54e-03) 68.64% (6.68e-03) 68.49% (1.62e-02) 63.53% (5.63e-03) 56.37% (3.26e-02) Adj. ratio 70.01% (3.51e-03) 70.91% (7.60e-03) 70.18% (1.04e-02) 67.79% (2.24e-02) 63.42% (4.88e-03) 63.29% (3.91e-02) Improvement 2.44% 4.37% 1.54% -0.70% -0.12% 6.92% Model: Llemma QTA (n=525) QTB (n=172) QTC (n=843) QTD (n=10)* QTE (n=2)* QTF (n=3)*
+> Orig. ratio 51.47% (1.85e-02) 64.16% (2.07e-02) 55.94% (7.49e-03) ---Adj. ratio 54.67% (2.67e-02) 52.27% (7.68e-02) 58.45% (1.23e-02) ---Improvement 3.20% -11.88% 2.51% ---
+
+7Figure 2: Diagnostic visualization of the POT-based alignment score on the MT-Bench run. Panels (a) and (b) compare score distributions by ground-truth consistency label yi and final group assignment 
+
+gi, respectively. Panel (c) sorts examples by the diagnostic score si = 0 .6(1 − ri) + 0 .4(1 − di),with reference thresholds for the default rule, final groups, and ground truth. Panel (d) shows a two-dimensional projection of the reward-model embeddings colored by negative tendency 1 − si.The summary box reports original accuracy, adjusted accuracy, and the number of flipped examples. 
+
+## 6 Empirical evaluation 
+
+We evaluate PUA UDIT via ( Cons orig , Cons adj ) defined in Appendix A.5 from two complementary perspectives: (i) whether the PUA UDIT improves alignment with limited human judgments and (ii) whether such improvements persist under systematic presentation biases. Across all experiments, we report consistency ratios across question types, with detailed breakdowns by model and attack. 
+
+6.1 Main result: alignment and robustness 
+
+We begin with the no-attack setting, which serves as a baseline for assessing whether PUA UDIT 
+
+improves agreement with human preferences. Table 1 reports the original consistency ratio ( Cons orig )and the adjusted consistency ratio ( Cons adj ) across six question types (QTA–QTF) for two judges, Mistral and Qwen; the full results are provided in Tables 4 and 5 in Appendix B.4. Overall, PUA UDIT yields systematic improvements across question types and LLM judges. For Mistral, Cons adj exceeds Cons orig for all six question types, with QTF (Other) being less stable due to its limited sample size. For Qwen, the gains are more modest but remain broadly consistent: four of the six question types improve, while Advise (QTD) and Writing (QTE) drop by less than one percentage point, suggesting that PUA UDIT largely preserves already well-aligned judge behavior. Figure 2 illustrates how PUA UDIT modifies decisions on MT-Bench using the final positive-tendency score, i.e., the refined responsibility that the original LLM-judge decision is human-consistent. The top panels show density estimates of this score, the bottom-left panel sorts examples by score with the final assignment thresholds, and the bottom-right panel projects fixed reward-model embeddings into two dimensions and colors points by the final score. The isolated blue point in the upper-right of the sorted-score panel is a high-score example assigned to the final positive group. We further examine the behavior of the method across different attack settings and question types. We evaluate robustness under three presentation bias attacks: Length , Distraction , and Sentiment , which alter surface features while retaining semantic content. As shown in Figure 3, all attacks greatly 8Figure 3: Comparison of original and adjusted consistency ratios across question types and models. The blue region indicates the original consistency ratio, while the orange region indicates the adjusted consistency ratio. Improvements after adjustment are reflected by the adjusted region extending beyond the original one. reduce Cons orig . PUA UDIT consistently recovers enormous lost alignment, with Cons adj remaining markedly higher than Cons orig under all attacks. The radar plots further reveal a qualitative change in evaluation behavior. Before adjustment, consistency varies sharply across question types and judges, producing anisotropic profiles. After the PU alignment, the profiles become heavily more uniform, with radar shapes closer to circular, indicating reduced sensitivity to question type and judge-specific biases. Notably, these gains are gained without access to attacked examples during adjustment. Aligned with Theorem 4.5, the results confirm that PUA UDIT provides an attack-agnostic robustness rather than overfitting to specific perturbations. According to Figure 3, the magnitude of improvement varies across question types. Programming (QTA) and Math (QTB) show relatively smaller gains, as these tasks are dominated by objective correctness, where LLM judges are already more stable and less sensitive to superficial cues. In contrast, larger improvements are observed for Advice (QTE) and Writing (QTD), which involve open-ended reasoning and subjective quality judgments and are therefore more vulnerable to presentation biases such as verbosity and framing. This suggests that PUA UDIT primarily mitigates non-semantic biases rather than interfering with judgments driven by objective correctness. Overall, PUA UDIT 
+
+provides the greatest benefit in regimes where LLM-based evaluation is most fragile. 
+
+6.2 Sensitivity analysis 
+
+Finally, we provide a diagnostic sensitivity analysis for two main hyperparameters: the fraction of verified positive examples used during auditing, denoted by pratio ∈ (0 , 1] , and the transported unlabeled mass fraction, denoted by m ∈ (0 , 1] . The detailed results are reported in Tables 6 and 7 in Appendix B.4. The results show that performance is not highly sensitive to moderate changes in either parameter. As pratio increases, Cons adj quickly reaches a plateau, suggesting that a small clean positive set is often sufficient to estimate the main direction of human-consistent refinement. The transport fraction m also affects performance smoothly, with stronger results when it is large enough to cover most latent positives. These trends support the use of PUA UDIT in limited verification settings, while the full numerical comparisons are deferred to the appendix. 
+
+## 7 Discussion and future work 
+
+This work introduces a PU learning framework that leverages POT and geometric alignment to audit LLM evaluation under scarce and biased human supervision. Several extensions remain for future study. A primary direction is to remove the current reliance on a specific reward model. Replacing it with general-purpose contrastive or self-supervised encoders would decouple the framework from particular architectures and improve robustness and transferability across domains. In addition, our formulation assumes a single direction of quality improvement, whereas response quality is inherently multi-dimensional. Extending the method to support multiple improvement directions or multi-manifold structures would better capture heterogeneous notions of quality and naturally connects to multi-PU or multi-class settings, such as those involving multiple LLM or human judges. Finally, future work may explore alternative distance metrics and alignment objectives beyond 9cosine similarity and POT, as well as more principled inference of the latent positive proportion in the unlabelled set. 
+
+## References 
+
+Skywork AI. Skywork-reward-llama-3.1-8b-v0.2. https://huggingface.co/Skywork/ Skywork-Reward-Llama-3.1-8B-v0.2 , 2024. Zhangir Azerbayev, Hailey Schoelkopf, Keiran Paster, Marco Dos Santos, Stephen McAleer, Albert Q Jiang, Jia Deng, Stella Biderman, and Sean Welleck. Llemma: An open language model for mathematics. arXiv preprint arXiv:2310.10631 , 2023. Jessa Bekker and Jesse Davis. Learning from positive and unlabeled data: A survey. Machine learning , 109:719–760, 2020. Jessa Bekker, Pieter Robberechts, and Jesse Davis. Beyond the selected completely at random assumption for learning from positive and unlabeled data. In Joint European conference on Machine Learning and Knowledge Discovery in Databases , pages 71–85. Springer, 2019. Asli Celikyilmaz, Elizabeth Clark, and Jianfeng Gao. Evaluation of text generation: A survey. arXiv preprint arXiv:2006.14799 , 2020. Laetitia Chapel, Mokhtar Z Alaya, and Gilles Gasso. Partial optimal tranport with applications on positive-unlabeled learning. In Advances in Neural Information Processing Systems , volume 33, pages 2903–2913, 2020. Jianlv Chen, Shitao Xiao, Peitian Zhang, Kun Luo, Defu Lian, and Zheng Liu. M3-embedding: Multi-linguality, multi-functionality, multi-granularity text embeddings through self-knowledge distillation. arXiv preprint arXiv:2402.03216 , 2024. Wei-Lin Chiang, Lianmin Zheng, Ying Sheng, Anastasios Nikolas Angelopoulos, Tianle Li, Dacheng Li, Banghua Zhu, Hao Zhang, Michael Jordan, Joseph E Gonzalez, et al. Chatbot arena: An open platform for evaluating llms by human preference. In International Conference on Machine Learning , 2024. Roi Cohen, May Hamri, Mor Geva, and Amir Globerson. LM vs LM: Detecting factual errors via cross examination. arXiv preprint arXiv:2305.13281 , 2023. Nicolas Courty, Rémi Flamary, Devis Tuia, and Alain Rakotomamonjy. Optimal transport for domain adaptation. IEEE transactions on Pattern Analysis and Machine Intelligence , 39:1853–1865, 2016. Marco Cuturi. Sinkhorn distances: Lightspeed computation of optimal transport. In Advances in Neural Information Processing Systems , volume 26, 2013. Chenhe Dong, Yinghui Li, Haifan Gong, Miaoxin Chen, Junxin Li, Ying Shen, and Min Yang. A survey of natural language generation. Computing Surveys , 55:1–38, 2022. Marthinus C Du Plessis, Gang Niu, and Masashi Sugiyama. Analysis of learning from positive and unlabeled data. In Advances in Neural Information Processing Systems , volume 27, 2014. Yann Dubois, Chen Xuechen Li, Rohan Taori, Tianyi Zhang, Ishaan Gulrajani, Jimmy Ba, Carlos Guestrin, Percy S Liang, and Tatsunori B Hashimoto. Alpacafarm: A simulation framework for methods that learn from human feedback. In Advances in Neural Information Processing Systems ,volume 36, pages 30039–30069, 2023. Charles Elkan and Keith Noto. Learning classifiers from only positive and unlabeled data. In ACM SIGKDD International Conference on Knowledge Discovery and Data Mining , pages 213–220, 2008. Fabrizio Gilardi, Meysam Alizadeh, and Maël Kubli. Chatgpt outperforms crowd workers for text-annotation tasks. Proceedings of the National Academy of Sciences , 120:e2305016120, 2023. 10 Jiawei Gu, Xuhui Jiang, Zhichao Shi, Hexiang Tan, Xuehao Zhai, Chengjin Xu, Wei Li, Yinghan Shen, Shengjie Ma, Honghao Liu, et al. A survey on llm-as-a-judge. arXiv preprint arXiv:2411.15594 ,2024. Weiyi He and Yue Xing. Impact of positional encoding: Clean and adversarial rademacher complexity for transformers under in-context regression. arXiv preprint arXiv:2512.09275 , 2025. Albert Q. Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford, Devendra Singh Chaplot, Diego de las Casas, Florian Bressand, Gianna Lengyel, Guillaume Lample, Lucile Saulnier, Lélio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril, Thomas Wang, Timothée Lacroix, and William El Sayed. Mistral 7b. arXiv preprint arXiv:2310.06825 ,2023. Introduces the Mistral 7B architecture and includes an instruction-tuned variant. Masahiro Kato, Takeshi Teshima, and Junya Honda. Learning from positive and unlabeled data with a selection bias. In International Conference on Learning Representations , 2019. Seungone Kim, Jamin Shin, Yejin Cho, Joel Jang, Shayne Longpre, Hwaran Lee, Sangdoo Yun, Seongjin Shin, Sungdong Kim, James Thorne, et al. Prometheus: Inducing fine-grained evaluation capability in language models. In International Conference on Learning Representations , 2023. Seungone Kim, Juyoung Suk, Shayne Longpre, Bill Yuchen Lin, Jamin Shin, Sean Welleck, Graham Neubig, Moontae Lee, Kyungjae Lee, and Minjoon Seo. Prometheus 2: An open source language model specialized in evaluating other language models. arXiv preprint arXiv:2405.01535 , 2024. Ryuichi Kiryo, Gang Niu, Marthinus C Du Plessis, and Masashi Sugiyama. Positive-unlabeled learning with non-negative risk estimator. In Advances in Neural Information Processing Systems ,volume 30, 2017. Percy Liang, Rishi Bommasani, Tony Lee, Dimitris Tsipras, Dilara Soylu, Michihiro Yasunaga, Yian Zhang, Deepak Narayanan, Yuhuai Wu, Ananya Kumar, et al. Holistic evaluation of language models. arXiv preprint arXiv:2211.09110 , 2022. Chin-Yew Lin. Rouge: A package for automatic evaluation of summaries. In Proceedings of the Workshop on Text Summarization Branches Out , pages 74–81, 2004. Chia-Wei Liu, Ryan Lowe, Iulian Vlad Serban, Mike Noseworthy, Laurent Charlin, and Joelle Pineau. How not to evaluate your dialogue system: An empirical study of unsupervised evaluation metrics for dialogue response generation. In Conference on Empirical Methods in Natural Language Processing , pages 2122–2132, 2016. Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. G-eval: Nlg evaluation using gpt-4 with better human alignment. arXiv preprint arXiv:2303.16634 , 2023. OpenAI. Introducing gpt-5.4. https://openai.com/index/introducing-gpt-5-4/ ,2026. Arjun Panickssery, Samuel Bowman, and Shi Feng. LLM evaluators recognize and favor their own generations. In Advances in Neural Information Processing Systems , volume 37, pages 68772–68802, 2024. Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. Bleu: a method for automatic evaluation of machine translation. In Proceedings of ACL , pages 311–318, 2002. Marco Tulio Ribeiro, Tongshuang Wu, Carlos Guestrin, and Sameer Singh. Beyond accuracy: Behavioral testing of nlp models with checklist. arXiv preprint arXiv:2005.04118 , 2020. Keita Saito, Akifumi Wachi, Koki Wataoka, and Youhei Akimoto. Verbosity bias in preference labeling by large language models. arXiv preprint arXiv:2310.10076 , 2023. Prasann Singhal, Tanya Goyal, Jiacheng Xu, and Greg Durrett. A long way to go: Investigating length correlations in rlhf. arXiv preprint arXiv:2310.03716 , 2023. Hugo S. Vera et al. Embeddinggemma: Powerful and lightweight text representations. arXiv preprint arXiv:2509.20354 , 2025. 11 Pat Verga, Sebastian Hofstatter, Sophia Althammer, Yixuan Su, Aleksandra Piktus, Arkady Arkhang-orodsky, Minjie Xu, Naomi White, and Patrick Lewis. Replacing judges with juries: Evaluating llm generations with a panel of diverse models. arXiv preprint arXiv:2404.18796 , 2024. Peiyi Wang, Lei Li, Liang Chen, Zefan Cai, Dawei Zhu, Binghuai Lin, Yunbo Cao, Lingpeng Kong, Qi Liu, Tianyu Liu, et al. Large language models are not fair evaluators. In Annual Meeting of the Association for Computational Linguistics , pages 9440–9450, 2024. Tongzhou Wang and Phillip Isola. Understanding contrastive representation learning through align-ment and uniformity on the hypersphere. In International Conference on Machine Learning , pages 9929–9939. PMLR, 2020. Minghao Wu and Alham Fikri Aji. Style over substance: Evaluation biases for large language models. In International Conference on Computational Linguistics , pages 297–312, 2025. Chen Yang, Zhen Sun, Da Yu, Haoran Li, Jiahui Li, Jun Xu, Xiang Zheng, Zhi Liu, Shaohan Chen, Yu Zeng, et al. Qwen2.5: A comprehensive series of large language models. arXiv preprint arXiv:2412.15115 , 2024. Technical report introducing the Qwen2.5 model family. Jiayi Ye, Yanbo Wang, Yue Huang, Dongping Chen, Qihui Zhang, Nuno Moniz, Tian Gao, Werner Geyer, Chao Huang, Pin-Yu Chen, et al. Justice or prejudice? quantifying biases in LLM-as-a-judge. 
+
+URL https://arxiv. org/abs/2410.02736 , 2024. Omar Zamzam, Haleh Akrami, Mahdi Soltanolkotabi, and Richard Leahy. Learning from PU data using disentangled representations. In IEEE International Conference on Image Processing , pages 1624–1629, 2025. Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q Weinberger, and Yoav Artzi. Bertscore: Evaluating text generation with bert. arXiv preprint arXiv:1904.09675 , 2019. Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin Zhang, Huan Lin, Baosong Yang, Pengjun Xie, An Yang, Dayiheng Liu, Junyang Lin, Fei Huang, and Jingren Zhou. Qwen3 embedding: Advanc-ing text embedding and reranking through foundation models. arXiv preprint arXiv:2506.05176 ,2025. Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric Xing, et al. Judging LLM-as-a-judge with MT-Bench and Chatbot Arena. In Advances in Neural Information Processing Systems , volume 36, pages 46595–46623, 2023. Lianghui Zhu, Xinggang Wang, and Xinlong Wang. Judgelm: Fine-tuned large language models are scalable judges. arXiv preprint arXiv:2310.17631 , 2023. 12 Appendix 
+
+A Proof 14 
+
+A.1 Proof of theorem 4.3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14 A.2 Proof of theorem 4.5 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15 A.3 Proof of insensitivity to the number of verified positives . . . . . . . . . . . . . . . 16 A.4 Feature extraction and P-group denoising . . . . . . . . . . . . . . . . . . . . . . 16 A.5 Evaluation metrics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17 
+
+B Additional plot and table 17 
+
+B.1 Notation and setup . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17 B.2 Attack . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 B.3 Data generation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23 B.4 Main results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 B.5 Algorithm . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26 13 A Proof 
+
+A.1 Proof of theorem 4.3 
+
+The goal of POT algorithms is to pair the limited set of verified positive samples with candidates from the unlabelled pool to maximize the total similarity. The unlabelled pool contains latent true positives and latent true negatives. 
+
+Primal Formulation. The POT problem minimizes the total cost C as L(Γ) 
+
+L(Γ) = X  
+
+> (xi,o wi,o ℓi,y i)∈D ′
+> P
+
+X   
+
+> (xj,o wj,o ℓj)∈D U
+
+Cij Γij ,
+
+subject to Γ1nU ≤ a, Γ⊤1n′ 
+
+> P
+
+≤ b, X  
+
+> (xi,o wi,o ℓi,y i)∈D ′
+> P
+
+X   
+
+> (xj,o wj,o ℓj)∈D U
+
+Γij = m. 
+
+Since Cij = 1 − d(zi, z j ), the objective is equivalent to maximizing 
+
+J (Γ) = X  
+
+> (xi,o wi,o ℓi,y i)∈D ′
+> P
+
+X   
+
+> (xj,o wj,o ℓj)∈D U
+
+d(zi, z j )Γ ij 
+
+with the same constraints. 
+
+Partitioning and Utility Bounds. Let U = U+ ∪ U−, where U+ = U ∩ supp (μ+) are the latent true positives, and U− = U ∩ supp (μ−) are latent true negatives. Let zi ∈ D ′ 
+
+> P
+
+be an empirical anchor. We decompose any candidate vector z ∈ D U into a parallel and an orthogonal component relative to the consensus direction z: z = τz z + ϵz z⊥ where τz = ⟨z, z ⟩, z ⊥ is a unit vector orthogonal to z and ϵz = p1 − τ 2 
+
+> z
+
+.• (U+ → P ): Consider a sample zj ∈ U+. By Assumption 4.1, both zi, z j lies within the improvement cone Cτ and τi, τ j > τ . Thus, the inner product of these two vectors is 
+
+⟨zi, z j ⟩ = τiτj + ϵiϵj ⟨z⊥ 
+
+> i
+
+, z ⊥ 
+
+> j
+
+⟩ ≥ τ 2 − (1 − τ 2) max 
+
+> j∈U+
+
+|⟨ z⊥ 
+
+> i
+
+, z ⊥ 
+
+> j
+
+⟩| = τ 2 − (1 − τ 2)t
+
+.• (U− remains): Consider a target zk ∈ U−. By Assumption 4.2, the negative sample is separated from the consensus direction by a margin δ, meaning τk ≤ τ − δ where the inner product is bounded by 
+
+⟨zi, z k⟩ ≤ (τ − δ) + max 
+
+> k∈U−
+
+|⟨ z⊥ 
+
+> i
+
+, z ⊥ 
+
+> k
+
+⟩| = ( τ − δ) + t. 
+
+Establishing the utility gap between a true positive versus negative that 
+
+∆ = min ⟨zi, z j ⟩ − max ⟨zi, z k⟩ ≥ (τ 2 − τ + δ) − 2 max  
+
+> x∈U
+
+|⟨ z⊥ 
+
+> i
+
+, x ⊥⟩| ≥ (τ 2 − τ + δ) − 2t
+
+Let the base theoretical gap be defined as ∆base = τ 2 − τ + δ. By Assumption 4.2, we require 
+
+δ > τ (1 −τ ) to ensure ∆base > 0. To guarantee ∆ > 0 we require 2t < ∆base . Setting t = ∆ base /4,we substitute this into the probabilistic bound established in Lemma A.1 
+
+P (∆ > 0) ≥ 1 − 2NU exp 
+
+
+
+− (d − 1)∆ 2
+
+> base
+
+32 
+
+
+
+As the representation dimension d → ∞ , the probability that the utility gap remains strictly positive approaches 1. Therefore, POT will route the transport mass to U+ to minimize the global cose. 
+
+■
+
+14 Lemma A.1. Let z be the unit consensus direction where we define it as the centre of the positive cone Cτ (z) as in Assumption 4.1 and let z⊥ 
+
+> i
+
+, x ⊥ be unit vectors (d − 1) -dimensional orthogonal complement subspace (Figure 5). Assuming the unlabeled samples’ orthogonal components X ⊥ =
+
+{x⊥ 
+
+> 1
+
+, . . . , x ⊥ 
+
+> NU
+
+} are distributed approximately uniformly on the unit sphere of the subspace, the maximum correlation for a fixed anchor z⊥ 
+
+> i
+
+is bounded by t with high probability: 
+
+P
+
+
+
+max  
+
+> x⊥∈X ⊥
+
+|⟨ z⊥ 
+
+> i
+
+, x ⊥⟩| > t 
+
+
+
+≤ NU exp 
+
+
+
+− (d − 1) t2
+
+2
+
+
+
+. (2) 
+
+Proof. For any single random unit vector x⊥ ∼ Uniform( Sd−2), its projection onto a fixed unit vector z⊥ 
+
+> i
+
+is a sub-Gaussian random variable. By the concentration of measure on the high-dimensional sphere, the tail probability is bounded by 
+
+P (|⟨ z⊥ 
+
+> i
+
+, x ⊥⟩| > t ) ≤ 2 exp 
+
+
+
+− (d − 1) t2
+
+2
+
+
+
+.
+
+Since the POT algorithm searches over the entire unlabeled pool of size NU , we must bound the worst case maximum inner product to prevent the algorithm from spuriously matching orthogonal noise. Applying the union bound over all NU samples: 
+
+P ( max  
+
+> x⊥∈X ⊥
+
+|⟨ z⊥ 
+
+> i
+
+, x ⊥⟩| > t ) ≤ X 
+
+> x⊥∈X ⊥
+
+P (|⟨ z⊥ 
+
+> i
+
+, x ⊥⟩| > t ) ≤ 2NU exp 
+
+
+
+− (d − 1) t2
+
+2
+
+
+
+This establishes that in high-dimensional space, the maximum orthogonal correlation is strictly bounded, mitigating the risk of POT exploiting spurious correlations. 
+
+A.2 Proof of theorem 4.5 
+
+We imagine an “Attacker" trying to trick the judge by taking a response z and injecting a bias vector 
+
+zbias with magnitude λ.
+
+The Attack. The attacker constructs a perturbed embedding ˜z by adding orthogonal nuisance with magnitude λ to z. The perturbed target is ˜z:
+
+˜z = z + λz bias 
+
+√1 + λ2 .
+
+The Defence. We examine how the similarity between ˜z and z changes with the perturbation parameter λ. The cosine similarity between zi and ˜z is 
+
+d(z, ˜z) = 
+
+
+
+zi, z + λz bias 
+
+√1 + λ2
+
+
+
+= ⟨τiz + ϵiz⊥ 
+
+> i
+
+, z + λz bias ⟩√1 + λ2
+
+= τi + λϵ i⟨z⊥ 
+
+> i
+
+, z bias ⟩√1 + λ2
+
+= τi + λϵ i⟨z⊥ 
+
+> i
+
+, z bias ⟩ − 12 τiλ2.
+
+The change in the alignment score caused by attack is λϵ i⟨z⊥ 
+
+> i
+
+, z bias ⟩− 12 τiλ2. The derivation reveals a first-order sensitivity term. However, the PUA UDIT is designed with a specific geometric intervention to mitigate this, the P-group denoising stage. By selectively retaining the anchors that exhibit high cosine alignment with the empirical center, the denoising procedure enforces τi → 1. Consequently, the magnitude of ϵi = √1 − τi is bounded by a small tolerance threshold ϵp ≪ 1.Since |⟨ z⊥ 
+
+> i
+
+, z bias ⟩ ≤ 1, the first-order sensitivity is bounded by O(ϵp · λ). Thus, while the robustness is not purely second-order O(λ2) as it would be with the theoretical z, the first-order disturbance is heavily attenuated by ϵp, formalizing the robustness observed against presentation attacks. 
+
+■
+
+15 A.3 Proof of insensitivity to the number of verified positives 
+
+We provide a theoretical explanation for the statement in Section 6.2. The central intuition is that PUA UDIT utilizes the denoised positive set D′ 
+
+> P
+
+primarily to estimate a stable reference direction (the “quality vector”) in the difference-embedding space. Once D′ 
+
+> P
+
+reaches a certain cardinality, it provides sufficient information to characterize this direction, rendering additional positive samples redundant. 
+
+Assumption A.2 (Directional concentration of D′ 
+
+> P
+
+). There exists a latent unit vector z (representing the gold-standard preference direction) such that for all (xi, o wi , o ℓi , y i) ∈ D ′ 
+
+> P
+
+, the corresponding normalized difference embedding zi satisfies ⟨zi, z ⟩ ≥ 1 − λ for some λ ∈ (0 , 1) Furthermore, we assume that the latent distribution of these positives is symmetric around z within this spherical cap. 
+
+Theorem A.3 (Informational Sufficiency of the Positive Set) . Under Assumption A.2, for any ε > 0,there exists a finite threshold n⋆(ε, λ ) such that whenever |D ′ 
+
+> P
+
+| ≥ n⋆, the empirical reference direction estimated by PUA UDIT is ε-aligned with z with high probability. 
+
+The P-group denoising procedure in Section 3.2 enforces Appendix A.2by retaining only co-directional anchors, ensuring that all vectors in D′ 
+
+> P
+
+lie within a narrow spherical cap around z.According to the standard concentration of vector averages on the unit sphere, the empirical mean direction converges to the population mean z at a rate of O(|D ′ 
+
+> P
+
+|−1/2).In our framework, pratio determines the effective size of D′ 
+
+> P
+
+. Once |D ′ 
+
+> P
+
+| ≥ n⋆, the estimated reference direction becomes stable, and further increasing pratio yields only marginal gains in variance reduction without providing new structural information. Consequently, the reference anchor for POT remains fixed, leading to the observed plateau in OT-based scores and adjusted consistency 
+
+Cons adj . This demonstrates that PUA UDIT is robust to the quantity of positive data, provided the minimum threshold for representational sufficiency is met. 
+
+A.4 Feature extraction and P-group denoising Feature extraction. We use a frozen encoder Fθ to construct the representation space. In our main experiments, Fθ is instantiated with a reward-model encoder, but the method itself does not require a specific encoder architecture. For a prompt x and response o, we format the input as input = "<|user|>" ⊕ x ⊕ "<|assistant|>" ⊕ o, 
+
+and use the last-token hidden representation as the prompt–response embedding Fθ (x, o ) ∈ Rd.For a pairwise comparison, let ow and oℓ be the response preferred and dispreferred by the initial judge. We define the comparison representation as 
+
+zi = ∆i
+
+∥∆i∥ , ∆i = Fθ (xi, o wi ) − Fθ (xi, o ℓi ). (3) Thus, each comparison is represented by a unit vector on Sd−1 indicating the direction from the dispreferred response to the preferred response. Compared with absolute response embeddings, this differenced representation directly captures relative preference information and reduces sensitivity to scale variations across examples. 
+
+P-core filtering. Although human annotations provide valuable supervision, they may still contain noise. We therefore first remove positive examples whose preferred-response embeddings are far from the positive-group center. For each positive example, let 
+
+ei = Fθ (xi, o wi ).
+
+We compute the empirical positive center 
+
+¯e = 1
+
+|D P |
+
+X  
+
+> (xi,o wi,o ℓi,y i)∈D P
+
+ei,
+
+and score each example by cosine similarity 
+
+s(e) 
+
+> i
+
+= ⟨ei, ¯e⟩∥ei∥ ∥ ¯e∥ .
+
+16 We retain the top-α1 fraction of examples according to s(e) 
+
+> i
+
+, yielding 
+
+D(1)  
+
+> P
+
+= Top ⌊α1|D P |⌋ 
+
+
+
+DP ; s(e)
+
+> i
+
+
+
+,
+
+where α1 ∈ (0 , 1] is a retention ratio. 
+
+Improvement-alignment filtering. Next, we filter examples according to whether their improve-ment directions are aligned with the dominant positive direction. We compute 
+
+¯z = 1
+
+|D (1)  
+
+> P
+
+|
+
+X  
+
+> (xi,o wi,o ℓi,y i)∈D (1)
+> P
+
+zi,
+
+and assign each retained example an alignment score 
+
+s(z) 
+
+> i
+
+= ⟨zi, ¯z⟩∥zi∥ ∥ ¯z∥ .
+
+The final cleaned positive set is obtained by retaining the top-α2 fraction: 
+
+D′ 
+
+> P
+
+= Top ⌊α2|D (1)  
+
+> P|⌋
+
+
+
+D(1)  
+
+> P
+
+; s(z)
+
+> i
+
+
+
+,
+
+where α2 ∈ (0 , 1] controls the strength of improvement-direction filtering. In our experiments, we set α1 = α2 = 0 .7. This choice removes geometrically inconsistent positive examples while preserving enough positive mass for the subsequent POT step. 
+
+A.5 Evaluation metrics 
+
+We evaluate the stability of LLM-as-judge decisions under controlled presentation attacks using a single metric: consistency. For a fixed judge model and a fixed attack type, let ζ(H)  
+
+> i
+
+denote the judge’s preference of human and ζ(LLM)  
+
+> i
+
+denote the preference of LLM. We define 
+
+Cons = 1
+
+|I| 
+
+X
+
+> i∈I
+
+I
+
+n
+
+ζ(LLM)  
+
+> i
+
+= ζ(H) 
+
+> i
+
+o
+
+,
+
+where I denotes the set of test samples for which both human annotations and LLM judge prediction are available. We report consistency before and after applying PUA UDIT . Concretely, Cons orig is computed using the raw judge outputs (ζ(LLM)  
+
+> i
+
+, ζ (H)  
+
+> i
+
+), while Cons adj is computed using the adjusted preferences 
+
+(˜ζ(LLM)  
+
+> i
+
+, ζ (H)  
+
+> i
+
+). Higher consistency indicates better alignment between the LLM judge and human judgments, reflecting more stable and human-like evaluation behaviour under presentation-induced perturbations. 
+
+## B Additional plot and table 
+
+B.1 Notation and setup 
+
+17 Table 2: Main notation used in the paper. Additional symbols are defined locally when introduced. 
+
+Symbol Meaning 
+
+Data and Preference 
+
+D collection of pairwise comparisons 
+
+xi prompt (question) 
+
+oAi , o Bi two candidate responses 
+
+ζ(LLM)  
+
+> i
+
+preference given by the LLM judge 
+
+ζ(H)  
+
+> i
+
+human preference (when available) 
+
+owi , o ℓi winner and loser induced by the judge 
+
+yi consistency indicator, 1{ζ(LLM)  
+
+> i
+
+= ζ(H)  
+
+> i
+
+}DP verified positive set (human-consistent) 
+
+DU unlabeled set (mixture of latent positives and negatives) 
+
+Representation 
+
+Fθ frozen encoder (reward model or embedding model) 
+
+zi normalized difference embedding 
+
+μP , μ U empirical distributions of DP and DU
+
+μ+, μ − latent positive and negative distributions 
+
+α latent positive proportion in DU
+
+POT and Alignment 
+
+Cij cosine transport cost between embeddings 
+
+Γ⋆ optimal partial transport plan 
+
+m transported mass (transport fraction) 
+
+sj transport-based alignment score 
+
+¯sj normalized alignment score 
+
+η decision threshold for preference correction 
+
+Analysis Variables 
+
+pratio fraction of verified positives used in auditing 
+
+λ magnitude of bias perturbation 
+
+zbias nuisance (bias) direction 
+
+Table 3: Effect of frozen encoder choice on the MT-Bench pipeline. BGE-M3 denotes BGE-M3 [Chen et al., 2024]; Gemma-300M denotes E MBEDDING GEMMA -300M [Vera et al., 2025]; Qwen3-0.6B denotes Q WEN 3-E MBEDDING -0.6B [Zhang et al., 2025]; Skywork-RM denotes SKYWORK -R EWARD -L LAMA -3.1-8B-V0.2 [AI, 2024]. Results are averaged over three local judge models and GPT-5.4-mini. Time and memory are reported in seconds and GB, respectively. 
+
+Encoder Orig. ↑ Adj. ↑ Gain ↑ Flip Time ↓ Mem. ↓
+
+BGE-M3 0.694 0.708 +0.014 0.094 5.87 0.846 Gemma-300M 0.694 0.306 -0.387 1.000 5.40 0.816 Qwen3-0.6B 0.694 0.613 -0.081 0.306 5.63 0.832 Skywork-RM 0.694 0.739 +0.045 0.098 6.12 1.150 
+
+18 Figure 4: Given a question prompt, two LLMs each generate a response, with one designated as human-preferred. We first present the response pair to an LLM judge to obtain an initial preference. We then apply a bias attack, illustrated here as a length-based perturbation, to the response labelled as the loser by the judge, while leaving the other response unchanged. Finally, we resubmit the perturbed pair to the same judge and record whether the preference decision flips. 
+
+Figure 5: The vector decomposition for Lemma A.1: We denote θ as the angle between any normalized embedding zτ and the consensus direction z, and proj z (zτ ) as the projected amount of zτ onto z.19 Figure 6: Geometric orthogonality demonstrates the robustness of our proposed method against nuisance under the sphere space. 20 Distraction 
+
+Distraction Attack: 
+
+No LLM generation is used. A fluent but semantically irrelevant paragraph is directly appended to the losing response, without modifying its original content. The injected text is intentionally unrelated to the user question and serves as a controlled distraction: Assistant {A/B} loves eating pasta, especially pasta with homemade tomato sauce. He also likes trying desserts from different countries, such as French macarons and Japanese matcha ice cream. 
+
+Figure 7: Non-generative attacks used to evaluate surface-level biases in LLM-based judges. The distraction attack introduces irrelevant but fluent text. 
+
+Length Expansion Attack Prompt 
+
+System Prompt: 
+
+Expand the length of the answer provided below by adding sentences and phrases that are relevant to the topic but semantically redundant. Do not introduce new information or alter the style of the original expression. The expanded answer should focus solely on the initial topic without answering any additional queries or explaining the expansion process. 
+
+User Prompt: 
+
+Original Answer: {original_answer} Instructions: 
+
+• Keep the factual content and expression style consistent with the original answer. 
+
+• Add relevant but redundant phrases and sentences to elongate the answer. 
+
+• Do not address or include information beyond the scope of the original answer. 
+
+Figure 8: Prompt template for the length expansion attack. The attack increases response length through semantically redundant additions while preserving factual content and writing style. 
+
+B.2 Attack 
+
+21 Sentiment Style Attack Prompt 
+
+System Prompt: 
+
+Modify the following answer to have a {emotion} tone without changing the original content. Only output the revised answer without any explanations. 
+
+User Prompt: 
+
+Here is the original answer for reference: {original_answer} Modification Request: 
+
+• Keep the length consistent with the original answer. 
+
+• Ensure that the conclusion of the answer remains unchanged. 
+
+• Adjust the writing style to express a {emotion} tone. 
+
+Figure 9: Prompt template for the sentiment style attack. The attack modifies the emotional tone of the response while preserving content, length, and conclusion. 22 Offline LLM-as-Judge Prompt 
+
+Instruction: Please act as an impartial judge and evaluate the quality of the responses provided by two AI assistants to the user question displayed below. You should choose the assistant that follows the user’s instructions and answers the user’s question better. Your evaluation should consider factors such as the helpfulness, relevance, accuracy, depth, creativity, and level of detail of their responses. Begin your evaluation by comparing the two responses and provide a short explanation. Avoid any position biases and ensure the order in which the responses were presented does not influence your decision. Do not allow the length of the responses to influence your evaluation. Do not favor certain names of the assistants. Be as objective as possible. After providing your explanation, output your final verdict by strictly following this format: [[A]] if assistant A is better, [[B]] if assistant Bis better, and [[C]] for a tie. 
+
+Task: Question Type Classification (Zero-Shot) 
+
+Given the USER QUESTION , classify it into exactly one of the following categories. 
+
+Categories: 
+
+• A: Programming (coding, debugging, devops, software engineering) 
+
+• B: Math or logical reasoning 
+
+• C: Factual or knowledge-based question 
+
+• D: Writing, translation, summarization, or creative generation 
+
+• E: Advice, recommendation, or planning 
+
+• F: Other, meta-level, or unclear questions 
+
+Rules: 
+
+• Choose exactly one category. 
+
+• Do not provide any explanation for the classification. 
+
+• The output must strictly follow the required format. 
+
+Input Format: 
+
+[User Question] {question} [Assistant A] {response_A} [Assistant B] {response_B} 
+
+Output Format (Strict): 
+
+The last two non-empty lines of the output must be: [[A]], [[B]], or [[C]] (preference verdict) [[TYPE:X]], where X ∈ {A,B,C,D,E,F} (question type) 
+
+Figure 10: Prompt template used by the offline LLM-as-judge to generate preference judgments and question-type labels. The strict output constraints enable robust automatic parsing. 
+
+B.3 Data generation 
+
+23 B.4 Main results 
+
+Table 4: Original and adjusted consistency ratios across question types with Chatbot Arena data. Each cell reports as mean value(standard deviation). Improvement is computed as the difference between the adjusted and original ratios. For each model block, the question-type sample size is calculated as the sum of the positive (P) and unlabeled (U) groups. Entries marked with * indicate extremely small sample sizes and are excluded from further analysis. Boldface values indicate positive improvements achieved by our method. 
+
+None attack Model: Qwen QTA (n=4395) QTB (n=1957) QTC (n=2105) QTD (n=514) QTE (n=8472) QTF (n=128) 
+
+Orig. ratio 67.57% (5.73e-03) 66.54% (5.54e-03) 68.64% (6.68e-03) 68.49% (1.62e-02) 63.53% (5.63e-03) 56.37% (3.26e-02) Adj. ratio 70.01% (3.51e-03) 70.91% (7.60e-03) 70.18% (1.04e-02) 67.79% (2.24e-02) 63.42% (4.88e-03) 63.29% (3.91e-02) Improvement 2.44% 4.37% 1.54% -0.70% -0.12% 6.92% Model: Mistral QTA (n=7660) QTB (n=88) QTC (n=8124) QTD (n=1294) QTE (n=1039) QTF (n=4998) 
+
+Orig. ratio 58.41% (4.45e-03) 50.32% (3.02e-02) 52.97% (3.32e-03) 59.08% (9.42e-03) 50.19% (6.12e-03) 37.56% (4.27e-03) Adj. ratio 67.90% (4.65e-03) 62.90% (5.32e-02) 66.73% (5.51e-03) 67.25% (1.08e-02) 64.62% (1.53e-02) 63.47% (6.49e-03) Improvement 9.50% 12.58% 13.76% 8.17% 14.43% 25.91% Model: Llemma QTA (n=1210) QTB (n=328) QTC (n=1400) QTD (n=8)* QTE (n=3)* QTF (n=7)* 
+
+Orig. ratio 52.57% (1.02e-02) 62.77% (1.96e-02) 57.11% (6.33e-03) 27.00% (9.99e-02) 100.00% (0.00e+00) 63.33% (1.85e-01) Adj. ratio 63.22% (1.37e-02) 63.65% (3.00e-02) 66.13% (1.16e-02) 44.33% (1.32e-01) 100.00% (0.00e+00) 60.00% (2.85e-01) Improvement 10.66% 0.88% 9.01% 17.33% 0.00% -3.33% 
+
+Length attack Model: Qwen QTA (n=3878) QTB (n=1854) QTC (n=2073) QTD (n=480) QTE (n=6312) QTF (n=108) 
+
+Orig. ratio 64.90% (4.01e-03) 59.81% (7.61e-03) 65.94% (5.80e-03) 62.91% (1.68e-02) 61.76% (7.67e-03) 49.51% (4.80e-02) Adj. ratio 65.71% (5.78e-03) 66.80% (1.04e-02) 69.95% (7.88e-03) 60.34% (2.38e-02) 61.40% (5.42e-03) 66.98% (7.69e-02) Improvement 0.81% 6.99% 4.01% -2.57% -0.35% 17.47% Model: Mistral QTA (n=8015) QTB (n=87) QTC (n=7834) QTD (n=1265) QTE (n=1117) QTF (n=4854) 
+
+Orig. ratio 56.64% (1.95e-03) 51.64% (2.70e-02) 51.05% (2.31e-03) 58.24% (1.14e-02) 48.56% (1.41e-02) 39.86% (6.45e-03) Adj. ratio 62.58% (3.69e-03) 49.34% (5.15e-02) 63.02% (6.42e-03) 61.61% (1.37e-02) 61.27% (2.05e-02) 59.29% (1.09e-02) Improvement 5.94% -2.30% 11.97% 3.37% 12.71% 19.43% Model: Llemma QTA (n=513) QTB (n=125) QTC (n=620) QTD (n=3)* QTE (n=0)* QTF (n=10)* 
+
+Orig. ratio 50.62% (1.02e-02) 55.40% (2.75e-02) 60.43% (1.48e-02) 55.00% (1.58e-01) - 17.52% (1.36e-01) Adj. ratio 56.40% (2.17e-02) 57.46% (9.33e-02) 62.51% (2.37e-02) 50.00% (0.00e+00) - 44.71% (1.30e-01) Improvement 5.78% 2.06% 2.08% -5.00% - 27.19% Distraction attack Model: Qwen QTA (n=4353) QTB (n=2138) QTC (n=2087) QTD (n=299) QTE (n=6198) QTF (n=121) 
+
+Orig. ratio 63.51% (4.30e-03) 58.19% (6.24e-03) 66.12% (7.56e-03) 60.98% (1.63e-02) 61.63% (4.14e-03) 71.01% (5.10e-02) Adj. ratio 65.59% (4.72e-03) 71.72% (6.93e-03) 66.21% (6.86e-03) 60.46% (2.90e-02) 59.17% (4.77e-03) 71.99% (6.24e-02) Improvement 2.08% 13.53% 0.09% -0.52% -2.46% 0.98% Model: Mistral QTA (n=10068) QTB (n=54) QTC (n=7417) QTD (n=1082) QTE (n=903) QTF (n=3678) 
+
+Orig. ratio 54.77% (2.41e-03) 53.16% (5.08e-02) 55.24% (3.12e-03) 57.29% (9.93e-03) 53.55% (1.24e-02) 33.84% (3.60e-03) Adj. ratio 62.76% (5.26e-03) 57.89% (1.56e-01) 60.77% (5.92e-03) 59.30% (1.40e-02) 56.75% (3.07e-02) 50.96% (5.64e-03) Improvement 7.99% 4.74% 5.53% 2.01% 3.20% 17.12% Model: Llemma QTA (n=525) QTB (n=172) QTC (n=843) QTD (n=10)* QTE (n=2)* QTF (n=3)* 
+
+Orig. ratio 51.47% (1.85e-02) 64.16% (2.07e-02) 55.94% (7.49e-03) 33.57% (1.77e-01) 60.00% (3.94e-01) 100.00% (0.00e+00) Adj. ratio 54.67% (2.67e-02) 52.27% (7.68e-02) 58.45% (1.23e-02) 37.86% (1.85e-01) 40.00% (5.16e-01) 100.00% (0.00e+00) Improvement 3.20% -11.89% 2.51% 4.29% -20.00% 0.00% 
+
+Sentiment attack Model: Qwen QTA (n=3603) QTB (n=1861) QTC (n=1915) QTD (n=432) QTE (n=6525) QTF (n=117) 
+
+Orig. ratio 66.38% (5.82e-03) 60.16% (8.11e-03) 67.76% (1.00e-02) 61.94% (2.31e-02) 61.07% (2.46e-03) 69.45% (4.25e-02) Adj. ratio 65.50% (8.22e-03) 68.54% (5.79e-03) 69.77% (1.69e-02) 61.00% (2.47e-02) 61.19% (5.06e-03) 74.40% (6.28e-02) Improvement -0.88% 8.37% 2.01% -0.94% 0.12% 4.95% Model: Mistral QTA (n=7873) QTB (n=63) QTC (n=9584) QTD (n=982) QTE (n=898) QTF (n=3790) 
+
+Orig. ratio 55.29% (3.38e-03) 63.64% (3.55e-02) 53.25% (2.58e-03) 54.95% (9.55e-03) 50.27% (1.39e-02) 37.52% (5.77e-03) Adj. ratio 61.64% (4.64e-03) 62.05% (6.07e-02) 59.90% (3.09e-03) 64.57% (1.90e-02) 61.61% (2.70e-02) 54.52% (1.88e-02) Improvement 6.35% -1.59% 6.64% 9.62% 11.34% 17.00% Model: Llemma QTA (n=778) QTB (n=156) QTC (n=858) QTD (n=3)* QTE (n=3)* QTF (n=2)* 
+
+Orig. ratio 55.61% (1.60e-02) 57.08% (3.14e-02) 57.99% (1.01e-02) 100.00% (0.00e+00) 60.00% (2.11e-01) 100.00% (0.00e+00) Adj. ratio 59.24% (2.89e-02) 55.74% (4.04e-02) 59.16% (1.01e-02) 80.00% (1.72e-01) 50.00% (0.00e+00) 100.00% (0.00e+00) Improvement 3.62% -1.35% 1.17% -20.00% -10.00% 0.00% 24 Table 5: Results on MT-Bench-style real-data evaluation without attack. Open-weight models are evaluated on a mixture of Chatbot Arena and MT-Bench subsets grouped by question type. The closed-source model is evaluated on a smaller MT-Bench subset using mixture sampling without question-type stratification due to computational constraints. 
+
+MT-Bench Model Coding Math Factual Model: Qwen (n=8884) (n=9145) (n=9333) 
+
+Orig. ratio 53.88% (2.17e-03) 55.14% (4.52e-03) 56.26% (2.32e-03) Adj. ratio 55.24% (2.16e-03) 56.85% (2.03e-03) 57.75% (1.25e-03) Improvement 1.36% 1.71% 1.49% Model: Mistral (n=8240) (n=8361) (n=8260) 
+
+Orig. ratio 50.13% (4.19e-03) 50.48% (5.75e-03) 51.01% (2.96e-03) Adj. ratio 52.13% (5.14e-03) 54.16% (2.12e-03) 54.21% (7.39e-03) Improvement 2.00% 3.67% 3.20% Model: GPT-5.4-mini Mixture Sampling (n=2569) - -
+
+Orig. ratio 77.99% (4.03e-03) - -Adj. ratio 80.03% (1.02e-02) - -Improvement 2.04% - -Table 6: Sensitivity to the fraction of verified positives pratio on MT-Bench (QTA). Performance improves rapidly at small ratios and remains stable over a broad range, indicating low sensitivity to the amount of human supervision.                                                             
+
+> pratio Orig. Adj. Improvement Flip Time (s) Mem (GB)
+> 0.01 0.781 0.744 -0.037 0.099 9.96 1.064 0.02 0.781 0.814 +0.032 0.100 5.23 1.065 0.05 0.781 0.815 +0.034 0.100 5.29 1.065 0.10 0.781 0.816 +0.035 0.100 5.53 1.065 0.20 0.781 0.816 +0.035 0.100 5.27 1.065 0.40 0.781 0.816 +0.035 0.100 5.31 1.079 0.60 0.781 0.815 +0.034 0.100 5.37 1.120 0.80 0.781 0.801 +0.019 0.101 5.46 1.166 0.99 0.781 0.762 -0.019 0.090 5.85 1.235
+
+Table 7: Sensitivity to the transport fraction m on MT-Bench (QTA). Performance is maximized when m is close to the true positive proportion in the unlabeled set.                                                       
+
+> mOrig. Adj. Improvement Flip Time (s) Mem (GB)
+> 0.01 0.781 0.228 -0.553 0.990 11.87 1.210 0.05 0.781 0.261 -0.520 0.948 6.00 1.210 0.10 0.781 0.305 -0.476 0.897 6.01 1.210 0.30 0.781 0.470 -0.311 0.685 5.89 1.210 0.50 0.781 0.618 -0.163 0.480 5.87 1.211 0.70 0.781 0.749 -0.032 0.287 5.99 1.211 0.90 0.781 0.812 +0.031 0.097 5.99 1.210 0.99 0.781 0.788 +0.007 0.010 5.90 1.210
+
+25 Algorithm 1 PUA UDIT Pipeline 
+
+Require: reward encoder Fθ , transport fraction m ∈ (0 , 1] , threshold τ ∈ [0 , 1] , and pairwise dataset 
+
+D = {(xi, o Ai , o Bi , ζ (H) 
+
+> i
+
+, ζ (LLM ) 
+
+> i
+
+)}Ni=1 . 
+
+> 1:
+
+Recall from Algorithm 2 that we have the PU partition (DP , DU ) and the chosen side ci. 
+
+> 2:
+
+for each pair i ∈ D P ∪ D U do  
+
+> 3:
+
+eAi ← Fθ (xi, o Ai ), eBi ← Fθ (xi, o Bi ); 
+
+> 4:
+
+compute the difference embedding zi ← ϕ(eAi , eBi ). 
+
+> 5:
+
+end for  
+
+> 6:
+
+Denoise the positive group: D′ 
+
+> P
+
+← Pclean (DP ). 
+
+> 7:
+
+Construct empirical measures (μ′ 
+
+> P
+
+, μ U ) using the embeddings {zi}. 
+
+> 8:
+
+Compute the OT coupling Γ⋆ with transport fraction m. 
+
+> 9:
+
+for each j ∈ D U do  
+
+> 10:
+
+compute the normalized score ¯sj ← Score(Γ ⋆, j ). 
+
+> 11:
+
+end for  
+
+> 12:
+
+for each j ∈ D U do  
+
+> 13:
+
+if ¯sj < η then  
+
+> 14:
+
+˜ζ(LLM ) 
+
+> j
+
+← Flip( ζ(LLM ) 
+
+> j
+
+). 
+
+> 15:
+
+else  
+
+> 16:
+
+˜ζ(LLM ) 
+
+> j
+
+← ζ(LLM ) 
+
+> j
+
+. 
+
+> 17:
+
+end if  
+
+> 18:
+
+end for  
+
+> 19:
+
+Output: corrected labels {˜ζ(LLM ) 
+
+> j
+
+}j∈D U and scores {¯sj }j∈D U .
+
+B.5 Algorithm 
+
+26 Algorithm 2 PU data generation and bias attack 
+
+Require: Pairwise comparison dataset D = {(xi, o Ai , o Bi , ζ (H) 
+
+> i
+
+)}Ni=1 ; offline judge ALLM ; optional attacker Aa and attack type atk ∈ { Length , Sentiment , Distraction }. 
+
+> 1:
+
+Phase 1: Judge and form the PU pool.  
+
+> 2:
+
+for each comparison i = 1 , . . . , N do  
+
+> 3:
+
+Run the offline judge ALLM to obtain the predicted preference ˆζ(LLM)  
+
+> i
+
+and question type ˆoqt i :
+
+(ˆζ(LLM)  
+
+> i
+
+, ˆoqt i ) ← A LLM (xi, o Ai , o Bi ), ˆζ(LLM)  
+
+> i
+
+∈ { A, B, C }. 
+
+> 4:
+
+end for  
+
+> 5:
+
+Define the human-verified positive set and the unlabelled set: 
+
+DP := { i : ζ(H) 
+
+> i
+
+is observed }, DU := { i : ζ(H) 
+
+> i
+
+is missing }. 
+
+> 6:
+
+For each i ∈ D P , set the chosen side ci ← ζ(H) 
+
+> i
+
+; for each i ∈ D U , set ci ← ˆζ(LLM)  
+
+> i
+
+. 
+
+> 7:
+
+Optional Phase 2: Presentation-bias attack and re-judging.  
+
+> 8:
+
+if atk is enabled then  
+
+> 9:
+
+for each i ∈ D U with non-tie judge outcome ci ∈ { A, B } do  
+
+> 10:
+
+Identify the losing side ℓi ∈ { A, B } \ { ci}. 
+
+> 11:
+
+Apply the attack operator Aa to the losing response: 
+
+˜oℓi 
+
+> i
+
+← A a(oℓi 
+
+> i
+
+; atk ). 
+
+> 12:
+
+Re-judge the attacked pair: 
+
+˜ζ(LLM)  
+
+> i
+
+← A LLM 
+
+ xi, o Ai , o Bi
+
+ with oℓi 
+
+> i
+
+← ˜oℓi 
+
+> i
+
+. 
+
+> 13:
+
+end for  
+
+> 14:
+
+end if  
+
+> 15:
+
+Output: PU partition (DP , DU ), LLM judge labels {ˆζ(LLM)  
+
+> i
+
+}, chosen-side labels {ci}, and, when the attack is enabled, attacked judge labels {˜ζ(LLM)  
+
+> i
+
+} for robustness evaluation. 27
