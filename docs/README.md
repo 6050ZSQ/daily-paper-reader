@@ -6,62 +6,61 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-18
-- 运行时间：2026-06-18 22:31:53 UTC
+- 最新运行日期：2026-06-19
+- 运行时间：2026-06-19 21:41:16 UTC
 - 运行状态：成功
-- 本次总论文数：14
+- 本次总论文数：13
 - 精读区：8
-- 速读区：6
+- 速读区：5
 
 ### 今日简报（AI）
-今日精读聚焦LLM代词忠实性与Transformer语法树遍历顺序两项高分研究，速读覆盖土耳其语形态分词、跨语言习语对齐及多模态游戏评估。最值得关注的是代词机制解释如何提升模型一致性，以及树遍历顺序对语法建模的关键影响。下一步可深入探究代词忠实性实验的因果扰动设计，并关注多模态模型在非马尔可夫环境中的评估框架。
-- 详情：[/202606/18/README](/202606/18/README)
+今日共处理13篇论文，精读8篇、速读5篇，重点推荐《Dango》和《Diffusion Language Models》两篇高分研究。  
+值得关注的方向：严格L1-only语言模型（二语习得应用）与扩散语言模型的实验分析。  
+建议优先阅读两篇精读论文，深入理解L1-only训练与扩散架构在语言生成中的潜力。
+- 详情：[/202606/19/README](/202606/19/README)
 
 ### 精读区论文标签
-1. [A Mechanistic Understanding of Pronoun Fidelity in LLMs](/202606/18/2606.16407v1-a-mechanistic-understanding-of-pronoun-fidelity-in-llms)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：对LLM中代词保真度的机制性理解
-2. [Does Traversal Order Matter? A Systematic Study of Tree Traversal Methods in Transformer Grammars](/202606/18/2606.16836v1-does-traversal-order-matter-a-systematic-study-of-tree-traversal-methods-in-transformer-grammars)  
+1. [Dango: A Strictly L1-Only Large Language Model for Studying Second Language Acquisition](/202606/19/2606.19170v1-dango-a-strictly-l1-only-large-language-model-for-studying-second-language-acquisition)  
    标签：评分：9.0/10、query:llm-ling
-   evidence：研究Transformer语法中的遍历顺序，直接涉及LLM如何处理句法
-3. [From Sparse Features to Trustworthy Proxies: Certifying SAE-Based Interpretability](/202606/18/2606.18383v1-from-sparse-features-to-trustworthy-proxies-certifying-sae-based-interpretability)  
+   evidence：用于第二语言习得研究的LLM
+2. [Diffusion Language Models: An Experimental Analysis](/202606/19/2606.19475v1-diffusion-language-models-an-experimental-analysis)  
+   标签：评分：9.0/10、query:llm-eval
+   evidence：对八种扩散语言模型进行系统性基准评测
+3. [Tracking Representation Dynamics in Large Language Models with Persistent Homology](/202606/19/2606.19542v1-tracking-representation-dynamics-in-large-language-models-with-persistent-homology)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：认证基于稀疏自编码器的语言模型可解释性
-4. [As Easy as Rocket Science: Assessing the Ability of Large Language Models to Interpret Negation in Figurative Language](/202606/18/2606.18922v1-as-easy-as-rocket-science-assessing-the-ability-of-large-language-models-to-interpret-negation-in-figurative-language)  
+   evidence：使用持续同调分析LLM表示拓扑动态，直接研究语言表示演化
+4. [Code-Switching Reveals Language Anchoring in Multilingual LLMs](/202606/19/2606.19668v1-code-switching-reveals-language-anchoring-in-multilingual-llms)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：研究多语言大模型中语言身份的表征方式
+5. [CombEval: A Framework for Evaluating Combinatorial Counting in Large Language Models](/202606/19/2606.19788v1-combeval-a-framework-for-evaluating-combinatorial-counting-in-large-language-models)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：评估LLM在否定和比喻语言上的理解能力
-5. [IndicContextEval: A Benchmark for Evaluating Context Utilisation in Audio Large Language Models Across 8 Indic Languages](/202606/18/2606.19157v1-indiccontexteval-a-benchmark-for-evaluating-context-utilisation-in-audio-large-language-models-across-8-indic-languages)  
-   标签：评分：9.0/10、query:llm-eval
-   evidence：评估音频LLM上下文利用能力的基准
-6. [PragReST: Self-Reinforcing Counterfactual Reasoning for Pragmatic Language Understanding](/202606/18/2606.18624v1-pragrest-self-reinforcing-counterfactual-reasoning-for-pragmatic-language-understanding)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：LLM中的语用推理
-7. [Quantifying and Auditing LLM Evaluation via Positive--Unlabeled Learning](/202606/18/2606.19057v1-quantifying-and-auditing-llm-evaluation-via-positive--unlabeled-learning)  
+   evidence：评估LLM组合计数能力的基准
+6. [Large Language Models Do Not Always Need Readable Language](/202606/19/2606.19857v1-large-language-models-do-not-always-need-readable-language)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：研究在非可读文本表示中编码语义信息
+7. [SciText2Eq: Assessing LLMs for Explainable Equation Generation for Scientific Creativity](/202606/19/2606.16003v1-scitext2eq-assessing-llms-for-explainable-equation-generation-for-scientific-creativity)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：LLM评估审计，偏见检测
-8. [Dango: A Strictly L1-Only Large Language Model for Studying Second Language Acquisition](/202606/18/2606.19170v1-dango-a-strictly-l1-only-large-language-model-for-studying-second-language-acquisition)  
-   标签：评分：8.0/10、query:llm-ling
-   evidence：专为二语习得研究设计的LLM，连接语言学和LLM
+   evidence：评估大模型在科学方程生成任务上的表现
+8. [QMFOL: Benchmarking Large Language Model Reasoning via Quantifiable Monadic First-Order Logic Test Case Generation](/202606/19/2606.20227v1-qmfol-benchmarking-large-language-model-reasoning-via-quantifiable-monadic-first-order-logic-test-case-generation)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：提出用于大语言模型推理的可控复杂度基准
 
 ### 速读区论文标签
-1. [Morpheus: A Morphology-Aware Neural Tokenizer and Word Embedder for Turkish](/202606/18/2606.18717v1-morpheus-a-morphology-aware-neural-tokenizer-and-word-embedder-for-turkish)  
-   标签：评分：7.0/10、query:llm-lang-rep
-   evidence：形态感知的分词器和词嵌入器
-2. [G-IdiomAlign: A Gloss-Pivoted Benchmark for Cross-Lingual Idiom Alignment](/202606/18/2606.18989v1-g-idiomalign-a-gloss-pivoted-benchmark-for-cross-lingual-idiom-alignment)  
-   标签：评分：7.0/10、query:llm-ling
-   evidence：LLM处理习语，跨语言语义
-3. [Beyond the Current Observation: Evaluating Multimodal Large Language Models in Controllable Non-Markov Games](/202606/18/2606.19338v1-beyond-the-current-observation-evaluating-multimodal-large-language-models-in-controllable-non-markov-games)  
+1. [Dual Dimensionality for Local and Global Attention](/202606/19/2606.18587v1-dual-dimensionality-for-local-and-global-attention)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：提出距离自适应表示，直接研究LLM中语言编码机制和表示维度
+2. [Are you speaking my languages? On spoken language adherence in multimodal LLMs](/202606/19/2606.17281v1-are-you-speaking-my-languages-on-spoken-language-adherence-in-multimodal-llms)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：多模态LLM在可控非马尔可夫游戏中的评测基准
-4. [UR-BERT: Scaling Text Encoders for Massively Multilingual TTS Through Universal Romanization and Speech Token Prediction](/202606/18/2606.11681v2-ur-bert-scaling-text-encoders-for-massively-multilingual-tts-through-universal-romanization-and-speech-token-prediction)  
+   evidence：量化多模态LLM中口语语言遵循违规的指标
+3. [Clusters are All You Need: Pre-Training the Tsetlin Machine with Semantic Clusters from Language Models for Interpretability](/202606/19/2606.19815v1-clusters-are-all-you-need-pre-training-the-tsetlin-machine-with-semantic-clusters-from-language-models-for-interpretability)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：利用LLM语义聚类提升可解释性
+4. [BIM-Edit: Benchmarking Large Language Models for IFC-Based Building Information Modeling](/202606/19/2606.20146v1-bim-edit-benchmarking-large-language-models-for-ifc-based-building-information-modeling)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：大语言模型编辑评测基准
+5. [Formalizing and Mitigating Structural Distortion in LLM Attention for Graph Reasoning](/202606/19/2606.15633v2-formalizing-and-mitigating-structural-distortion-in-llm-attention-for-graph-reasoning)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：UR-BERT编码器学习语音感知的语音表示，与语言编码机制相关
-5. [How Far Can Machine Translation Quality Take You? Extrinsic Discourse Evaluation in Goal-Oriented Setups](/202606/18/2606.16596v1-how-far-can-machine-translation-quality-take-you-extrinsic-discourse-evaluation-in-goal-oriented-setups)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：机器翻译的外部语篇评估，与LLM评估方法相关
-6. [Structured Inference with Large Language Gibbs](/202606/18/2606.19264v1-structured-inference-with-large-language-gibbs)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：利用LLM条件分布进行结构化推理，揭示LLM表示变量的方式
+   evidence：LLM在图推理中的注意力结构失真
 
 
 <div class="dpr-home-promo-card">
