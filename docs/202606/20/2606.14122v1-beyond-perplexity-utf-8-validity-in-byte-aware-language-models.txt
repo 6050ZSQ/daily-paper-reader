@@ -1,0 +1,727 @@
+Title: Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models
+
+URL Source: https://arxiv.org/pdf/2606.14122v1
+
+Published Time: Mon, 15 Jun 2026 00:33:42 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+Sangwhan Moon 1 Daisuke Oba 2 Youmi Ma 2 Tatsuya Hiraoka 3 Naoaki Okazaki 2
+
+## Abstract 
+
+Byte-level tokenization enables language mod-els to handle any Unicode input, but models can generate invalid UTF-8 sequences when encoun-tering rare or unseen characters. We investigate the relationship between training scale and UTF-8 generation reliability with a 355M parameter model trained on 80B tokens from a balanced multilingual corpus of English, Japanese, Korean, and Chinese. We introduce multiple evaluation protocols that isolate UTF-8 structural validity from language modeling. UTF-8 validity conver-gence lags perplexity by roughly a factor of two: perplexity stabilizes after 2.1B tokens, but UTF-8 validity requires 4.2B tokens. In context-free generation, common characters achieve higher structural validity than rare characters, with byte-length exposure emerging as an additional axis of difficulty alongside frequency. Our experiments show that reliable UTF-8 generation is a distinct capability requiring evaluation beyond perplexity. github.com/cynthia/bytecanary 
+
+## 1. Introduction 
+
+Multilingual NLP systems inevitably face unknown char-acters: limited vocabulary budgets prevent full Unicode coverage, causing tokenizers to fail on characters outside their vocabulary. This problem often occurs when han-dling languages that use non-Latin alphabets, such as CJK languages. To mitigate this, most popular large language models (LLMs) utilize byte-fallbacks that includes tokens corresponding to all bytes so that the tokenizer can encode texts with unknown characters. Beyond the byte-fallback, some researchers have attempted to develop models with byte-level tokenization, which al-lows tokens to be separated by byte boundaries rather than    
+
+> 1Google LLC / Mountain View, CA, USA 2Institute of Science Tokyo / Tokyo, Japan 3Mohamed bin Zayed University of Artificial Intelligence / Abu Dhabi, United Arab Emirates. Correspondence to: Sangwhan Moon <sangwhan@iki.fi >.
+> Preprint. June 15, 2026.
+
+character boundaries (Gillick et al., 2016). Notable exam-ples include ByT5 (Xue et al., 2022), which demonstrated competitive performance operating directly on UTF-8 bytes, and the Byte Latent Transformer (BLT) (Pagnoni et al., 2024), which achieved comparable results to Llama 3 while using fewer inference FLOPs. The advantage of byte-level tokenization is that we can flexibly tokenize multi-byte char-acters into meaningful minimal units. For example, we can extract a primary radical from a single hanzi/kanji char-acter or a single jamo character into pronunciation units. This flexibility enables accurate multi-byte character under-standing, effective token embedding learning, and improved downstream task performance (Xue et al., 2022). Despite these advantages, byte-level tokenization also has a problem in its decoding phase. Since the vocabulary in byte-level tokenization allows tokens that begin or end with a byte in the middle of characters, an NLP system sometimes generates an invalid Unicode sequence, where some tokens cannot connect with each other appropriately. This damages performance in NLP tasks that require models to generate texts, such as machine translation (Wang et al., 2020). Prior work in the LLM field has not thoroughly discussed this problem, likely because byte-level tokenization has been deployed primarily in sufficiently large systems capable of learning valid Unicode sequences. However, considering the difficulty of learning valid Unicode sequences, we as-sume that byte-level tokenization requires significantly more training data or trainable parameters so that the model can sufficiently learn to generate valid sequences. We investigate this by training a 355M parameter GPT-2 architecture on 80B tokens of multilingual data comprising English (10%) and Japanese, Korean, and Chinese (30% each), evaluating UTF-8 validity across 420 training check-points. UTF-8 validity convergence lags perplexity conver-gence by a factor of two: perplexity stabilizes after 2.1B tokens, but UTF-8 validity requires 4.2B tokens. Common characters achieve higher structural validity than rare ones (96.21% vs. 95.26%); a control experiment further shows that byte-length exposure is a major axis of difficulty along-side character frequency. Structural validity also exceeds semantic correctness—Term Match Rate reaches 60.30% de-spite high validity—suggesting that generating a valid char-acter is easier than generating the correct one. These results have practical implications: models that appear well-trained 1    
+
+> arXiv:2606.14122v1 [cs.CL] 12 Jun 2026 Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models Prefix xE xB
+> Valid xBC → 囼
+> xBD → 国
+> Invalid xE →
+> Figure 1. An example of valid vs. invalid byte sequences. The invalid case cannot be decoded by a UTF-8 codec.
+
+by perplexity may still produce invalid UTF-8 sequences in context-sparse generation. 
+
+## 2. Problem Statement 
+
+Modern large language models face a fundamental chal-lenge in generating valid Unicode byte sequences, particu-larly when encountering rare or unseen characters. While byte-level tokenization offers theoretical advantages over character-based approaches—including the ability to flexi-bly tokenize multi-byte characters and handle any possible input—it introduces a critical failure mode: models can generate invalid UTF-8 sequences that violate Unicode en-coding constraints (Figure 1). To understand this problem, consider how UTF-8 encoding works. Each Unicode character is encoded as a sequence of one to four bytes following strict patterns. ASCII charac-ters (U+0000 to U+007F) use a single byte with the pattern 
+
+0xxxxxxx . Characters from U+0080 to U+07FF require two bytes following 110xxxxx 10xxxxxx , while characters from U+0800 to U+FFFF need three bytes as 1110xxxx 10xxxxxx 10xxxxxx . Finally, characters from U+10000 to U+10FFFF are encoded with four bytes following 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx . Each continuation byte must begin with 10 , and the leading byte determines how many continuation bytes follow. When a model trained with byte-level tokenization generates text, it must implic-itly learn these encoding rules to produce valid sequences. However, this learning depends critically on exposure to diverse byte patterns during training. The problem becomes particularly acute in the context of the long-tail character distribution prevalent in natural language. Consider a rare character like U+2B740 (CJK ideograph) encoded as 0xF0 0xAB 0x9D 0x80 . If this character appears with probability p(c) < 1 
+
+> N
+
+(where N is the total number of tokens in training data), the model may never observe this specific byte sequence. When prompted to generate text following a prefix containing 0xF0 0xAB , the model must correctly predict that the next byte must match the pattern 10xxxxxx as a continuation byte, i.e., 0x9D would be valid while 0xF0 would not, and that after 0x9D , another continuation byte is required. Without sufficient exposure to similar patterns, the model might generate 0xF0 0xAB 0xF0 —starting a new 4-byte sequence instead of continuing the current one. This creates an invalid UTF-8 sequence that cannot be decoded, causing downstream applications to fail with decoding errors or produce replacement characters. The severity of this problem extends beyond simple decod-ing failures. When models generate invalid sequences, they can enter unstable states where subsequent generation be-comes increasingly incoherent. We hypothesize that these failure modes can be triggered adversarially by crafting in-puts with rare byte sequences, potentially causing models to generate streams of invalid bytes that appear as corrupted text, fall into repetitive patterns trying to “escape” invalid states, produce outputs that bypass safety filters due to to-kenization confusion, or exhibit degraded performance on downstream tasks when rare characters appear. The core research questions we address are: • What is the empirical relationship between training scale and UTF-8 generation reliability? • How does UTF-8 validity convergence relate to per-plexity convergence during training? • Do rare and common characters exhibit different valid-ity learning patterns? • Does semantic context affect UTF-8 validity learning? 
+
+## 3. Evaluation Framework 
+
+Byte-fallback tokenization allows language models to rep-resent arbitrary Unicode strings, but generation can still fail by emitting byte sequences that are not valid UTF-8. Crucially, such failures are only weakly coupled to stan-dard language modeling metrics: a model can assign high probability mass to structurally invalid continuations, and perplexity can stabilize while UTF-8 validity continues to improve. We thus propose to evaluate UTF-8 generation reliability as a distinct capability along three dimensions. Given a prompt C and a generated token sequence x1: T ,let Bytes (x1: T ) denote the corresponding byte stream after detokenizing (including bytes produced by byte-fallback tokens). We measure: 
+
+(G1) Structural validity. Whether Bytes (x1: T ) forms a valid UTF-8 string (and at which step it fails if not). 
+
+(G2) Semantic correctness (when a target is defined). 
+
+Whether the model outputs the correct byte sequence for a particular OOV character, not merely some valid UTF-8. 
+
+(G3) Probabilistic preference. When greedy sampling fails to output the correct bytes, determine whether the model assigns higher likelihood to the correct completion. We evaluate these axes with two complementary settings, Level 0 and Level 1, and a metric suite covering structural, semantic, and probabilistic behavior. 2Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models       
+
+> S0
+> S1
+> S2S2,1
+> S3S3,1S3,2
+> Serr
+> 00-7F
+> C2-DF
+> 80-BF
+> E0-EF 80-BF*
+> 80-BF
+> F0-F4 80-BF* 80-BF
+> 80-BF
+> other
+> 80-BF,F5+
+
+Figure 2. Simplified UTF-8 DFA with dashed red error transitions. 
+
+Table 1. Metric roles in our framework. † Indirect: perplexity reflects average predictive fit, not pairwise preference between gold and generated completions. Structural Semantic Diagnostic Metric G1 (§ 3.2.1) G2 (§ 3.2.2) G3 (§ 3.2.3) 
+
+Vpartial (Eq. 1) ✓
+
+Term Match (Eq. 4) ✓
+
+∆LL (Eq. 5) ✓
+
+Perplexity / NLL ✓†
+
+3.1. Evaluation Tasks Level 0: Context-Free Structural Validity. Level 0 iso-lates UTF-8 structural reliability from language understand-ing. We prompt the model with prefixes that contain rare or unseen characters (under byte-fallback), generate con-tinuations, and score the produced byte streams by UTF-8 validity. To probe generalization, we stratify targets by character frequency tiers (e.g., common or uncommon). 
+
+Level 1: Context-Guided Byte Retrieval. Level 1 tests whether semantic and syntactic context can guide the model to retrieve and complete an OOV character’s byte sequence. Given a sentence S containing a target character c, we form a prefix that includes the context preceding c and a partial byte prefix of c. The model must generate the remaining bytes of c as the immediate continuation. This task explicitly couples semantics to byte-level output while keeping the evaluation local to a short completion window. 
+
+3.2. Metrics 
+
+Our evaluation targets three distinct objectives: (G1) struc-tural UTF-8 validity of the generated byte stream, (G2) 
+
+semantic correctness when a gold target character is defined (Level 1), and (G3) diagnosis of whether errors arise from missing knowledge or from decoding/calibration. No single metric captures all three of them, so we report a comple-mentary suite (Table 1). 3.2.1. S TRUCTURAL VALIDITY VIA UTF-8 DFA UTF-8 validity is a property of the detokenized byte stream . Let x1: T be the generated token sequence and 
+
+B = Bytes (x1: T ) the corresponding bytes (including byte-fallback tokens). Since UTF-8 defines a regular language over bytes, structural validity can be checked exactly by a deterministic finite automaton (DFA; Figure 2): state S0 rep-resents a character boundary, intermediate states represent partially emitted multi-byte characters awaiting continua-tion bytes, and Serr denotes an invalid transition. We enforce standard UTF-8 constraints, rejecting overlong encodings, surrogate halves, and codepoints above U+10FFFF; see Ap-pendix E for full transition details. 
+
+Partial credit validity. Binary validity is brittle when gen-eration stops mid-character (structurally consistent but in-complete). To separate incomplete from invalid outputs, we compute a DFA-based partial-credit score. Let bc be the number of bytes belonging to complete valid characters; let bi be the number of bytes in the trailing (possibly in-complete) character; and let p ∈ [0 , 1] denote the fractional progress within that trailing character according to the DFA. We define: 
+
+Vpartial (B) = bc + p · bi
+
+|B| . (1) 
+
+Aggregation across generation steps. Per-step structural scores fluctuate during multi-byte emission (e.g., 0.33 →
+
+0.67 → 1.0 under Vpartial for a 3-byte character). For stable monitoring across checkpoints and lengths, we aggregate prefix-wise scores computed on Bt = Bytes (x1: t). We report the running mean: 
+
+Vcumulative (t) = 1
+
+t
+
+> t
+
+X
+
+> i=1
+
+Vpartial (Bi), (2) and, when emphasizing recent behavior, an exponential moving average: 
+
+Vema (t) = αV partial (Bt) + (1 − α)Vema (t − 1) . (3) 3.2.2. S EMANTIC CORRECTNESS VIA TERM MATCH 
+
+UTF-8 validity (§ 3.2.1) does not imply the model produced the intended character. In Level 1, we define a gold byte completion for a target character. Let the target bytes be 
+
+Bc = ( Bp, B r ), where Bp is the provided byte prefix and 
+
+Br is the remaining suffix to be generated. We report a binary Term Match indicator that is satisfied only if the model emits exactly Br as the immediate continuation and 
+
+returns to a UTF-8 boundary after consuming it: 
+
+M = Ithe next bytes complete Br
+
+and the DFA state returns to S0
+
+. (4) This excludes cases that are UTF-8 valid but correspond to a different character. 3Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+3.2.3. D IAGNOSIS VIA LIKELIHOOD COMPARISON 
+
+To distinguish missing knowledge from decod-ing/calibration failures, we compare teacher-forced log-likelihoods of the gold completion versus the generated completion under the same context C. For gold token sequence Xgold and generated sequence Xgen , we compute: 
+
+∆LL =
+
+> |Xgold |
+
+X
+
+> t=1
+
+log Pθ (xgold t | C, x gold <t )
+
+−
+
+> |Xgen |
+
+X
+
+> t=1
+
+log Pθ (xgen t | C, x gen <t ) (5) 
+
+∆LL > 0 indicates the model prefers the correct comple-tion even when the decoder fails to emit it (suggesting de-coding/calibration issues); ∆LL < 0 indicates the model confidently prefers an incorrect continuation. 
+
+3.3. Evaluation Protocols 
+
+We evaluate each saved checkpoint on fixed trial sets of 
+
+M = 256 samples per language for both Level 0 and Level 1, enabling learning curves with minimal evaluation variance. Unless otherwise noted, we use the same decoding configuration across checkpoints and compute structural, se-mantic, and preference metrics as defined in Sec. 3.2. Full construction details are provided in Appendix I and J. 
+
+Level 0: frequency-tiered OOV characters. We con-struct a trial set Dtrial of OOV characters stratified into four frequency tiers ( Common/Uncommon/Rare/Unseen )to control difficulty. We define the set of seen characters as K = V ∪ S, where V is the set of Unicode characters covered by tokenizer vocabulary tokens and S is the set of OOV characters observed in the training corpus under byte-fallback. The Unseen tier is sampled from U \ K for a predefined Unicode universe U (details in Appendix I). To enable direct comparability between context-free and context-guided settings, the Common tier is chosen to over-lap with the Level 1 target pool. We use script-aware strati-fication to avoid mono-script tiers (Appendix I). 
+
+Level 1: context-guided byte completion. We extract OOV target characters by scanning the pre-tokenized train-ing stream for contiguous byte-fallback sequences and de-coding them to UTF-8. Level 1 evaluation focuses on Com-mon tier characters; synthetic context generation for Rare 
+
+and Unseen characters proved unreliable because target usage in natural-sounding sentences was difficult to vali-date automatically. To construct controlled contexts with-out reusing pre-training text, we generate single-sentence prompts using Gemini 3 Pro and filter them for language correctness and uniqueness (Appendix J). Given a sentence containing target character c, we apply the Sentence Prompt 
+
+constraint by providing the preceding context Cctx and a short byte prefix Bp of the target bytes Bc; the model is evaluated on whether it emits the remaining suffix Br as the immediate continuation (Sec. 3.2.2). 
+
+## 4. Experimental Setup 
+
+4.1. Model and Tokenizer 
+
+We train a 355M-parameter decoder-only Transformer based on a GPT-2-style architecture. Implementation details of the model are explained in Appendix B. We use an 8,000-token BPE vocabulary with byte-fallback for out-of-vocabulary characters. When a character is not covered by the vo-cabulary, it is encoded as its UTF-8 byte sequence using dedicated byte tokens (e.g., <0xE4><0xB8><0xAD> for 中). This preserves information for arbitrary Unicode input at the cost of sequence length. 
+
+4.2. Training Data 
+
+We construct a multilingual corpus from FineWeb (Penedo et al., 2024) for English and FineWeb2 subsets for Japanese, Korean, and Simplified Chinese. The target token ratio is 10% English and 30% each for Japanese/Korean/Chinese. To match this ratio without truncating text, we employ Weighted Dynamic sampling, which preserves natural docu-ment boundaries while converging to the target distribution. The method uses an adaptive weight adjustment with expo-nential correction based on distribution deviation: 
+
+wt+1  
+
+> l
+
+= wtl · f (δl) (6) 
+
+f (δl) = 
+
+(1 + α · (e|δl|· β − 1) if δl < 0  
+
+> 11+ α·(e|δl|· β−1)
+
+if δl > 0 (7) 
+
+δl = actual l − target l
+
+target l
+
+(8) where wtl is the weight for language l, δl is the relative deviation, and α, β are hyperparameters controlling adjust-ment aggressiveness. Alternative sampling methods were evaluated and rejected; see Appendix C for details. 
+
+4.3. Optimization and Compute 
+
+We train with AdamW ( β1 = 0 .9, β2 = 0 .95 , weight decay 0.1) and a cosine learning-rate schedule with peak learning rate 3×10 −4 and 2,000 warmup steps. The global batch pro-cesses 5.64M tokens per step across 8 GPUs. Training runs for 14,189 steps (80B tokens; one epoch over the sampled stream), and we save checkpoints every 20 steps (112.8M tokens). For tractable checkpoint-wise evaluation we sub-sample the saved checkpoints, yielding the 420 evaluated checkpoints reported in the results. Compute budget details are in Appendix B. 4Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14  
+
+> 69
+> 72
+> 75
+> 78
+> 81
+> 84
+> 87
+> 90
+> 93
+> 96
+> 99
+> Training Step (K)
+> Partial Score (%)
+> Figure 3. Per-tier plots for partial-credit validity. Common (blue), Uncommon (green), Rare (orange), Unseen (red).
+
+## 5. Results 
+
+Two evaluation protocols isolate UTF-8 generation capa-bility from general language modeling. Level 0 tests com-pletion of valid UTF-8 byte sequences without contextual cues; Level 1 tests retrieval of correct byte sequences when semantic context constrains the target character. Results span 420 training checkpoints from step 20 to step 14,189. 
+
+5.1. Level 0: Context-Free Evaluation 
+
+Level 0 evaluation tests the model’s ability to generate valid UTF-8 continuations given only a partial byte sequence prefix, without any linguistic context to guide its predic-tions. While this setting is relatively rare in naturalistic text generation—rare characters seldom appear at the absolute beginning of a sequence without any preceding context—it isolates whether the model has internalized UTF-8 structural constraints independent of semantic knowledge. We evaluated the model using 2-byte prefixes, which we found to be more diagnostic than single-byte prefixes. Single-byte prefixes provide insufficient constraint, as the model can satisfy UTF-8 validity requirements through mul-tiple valid continuation patterns. With 2-byte prefixes, the model must correctly identify whether the sequence re-quires additional continuation bytes and, if so, generate bytes matching the required 10xxxxxx pattern. 5.1.1. F REQUENCY AND VALIDITY 
+
+Character frequency and structural validity exhibit a clear re-lationship in Figure 3. At the final checkpoint (step 14,189, corresponding to 80B tokens), the model achieved its high-est partial-credit validity rates on the Common tier (96.21%), followed by the Uncommon tier (95.57%), with the Rare 
+
+tier close behind at 95.26%. The Unseen tier, containing characters never observed during training, achieved 86.97% partial-credit validity. We use Vpartial as a learning-dynamics diagnostic throughout the main results; strict validity, which most deployed applications require, remains substantially lower (cf. Table 3).          
+
+> Table 2. Partial-credit validity (%) on unseen 4-byte vs. 3-byte characters across prefix lengths; prefix=3 crossover is structural. Prefix=1 Prefix=2 Prefix=3 Unseen 4-byte 0.0 39.5 60.5 Unseen 3-byte (control) 48.2 51.1 19.4
+
+This pattern aligns with the intuition that more frequent exposure during training leads to better internalization of byte-level structure. Characters in the Common tier appear more often across diverse contexts, providing the model with more opportunities to learn the correspondence between se-mantic content and UTF-8 byte patterns. The monotonic decrease in validity from Common to Unseen tiers suggests that byte-sequence generation capability is fundamentally tied to training frequency, even when the characters them-selves are out-of-vocabulary for the subword tokenizer. The Unseen tier’s 86.97% partial-credit validity rate, accom-panied by the highest perplexity among all tiers, demon-strates meaningful zero-shot generalization to novel code-points. The Unseen tier consists entirely of 4-byte UTF-8 characters (CJK Unified Ideographs Extension B and beyond, codepoints above U+10000), whereas the Com-mon, Uncommon, and Rare tiers contain 3-byte characters from the Basic Multilingual Plane. This means the Unseen tier tests generalization to a different byte-pattern family: sequences beginning with 11110xxx (4-byte) rather than 
+
+1110xxxx (3-byte). The 86.97% partial-credit validity rate thus reflects the model’s ability to generalize UTF-8 struc-tural rules across byte-length boundaries, despite never hav-ing encountered these specific characters during training. Analysis of generated tokens indicates that the model of-ten correctly identifies the need for a 4-byte sequence but struggles to select valid continuation bytes for start-byte combinations it has never encountered. This partial gener-alization suggests that UTF-8 structural learning involves both pattern-specific memorization from training exposure and limited abstract rule induction. 5.1.2. B YTE -L ENGTH VS . F REQUENCY 
+
+The Unseen tier in the main Level 0 set is dominated by 4-byte CJK Extension B characters, which confounds two factors: novelty (the model has never seen the character) and byte-length class (the model has seen few 4-byte sequences overall). To separate them, we constructed a control set of 139 unseen 3-byte CJK ideographs (exhaustive over the unseen 3-byte BMP characters in U \ K) and evaluated 299 checkpoints under the same protocol. Table 2 reports partial-credit validity at prefix lengths 1–3 for the 4-byte Unseen characters and the 3-byte control. At prefix=1 the gap is 48.2 pp: the model continues 3-byte sequences from the familiar 1110xxxx lead byte at 5Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 0 2000 4000 6000 8000 10000 12000 14000 
+
+> 64
+> 68
+> 72
+> 76
+> 80
+> 84
+> 88
+> 92
+> 96
+> 100
+> Training Step
+> Partial Score (%)
+
+(a) L0: Partial-Credit Validity 0 2000 4000 6000 8000 10000 12000 14000 93.0  
+
+> 93.6
+> 94.2
+> 94.8
+> 95.4
+> 96.0
+> 96.6
+> 97.2
+> 97.8
+> 98.4
+> 99.0
+> 99.6
+> 100.2
+> Training Step
+> Partial Score (%)
+
+(b) L1: Partial-Credit Validity 0 2000 4000 6000 8000 10000 12000 14000 
+
+> 10
+> 100
+> 1000
+> Training Step
+> Perplexity
+
+(c) L0: Perplexity 0 2000 4000 6000 8000 10000 12000 14000  
+
+> 10
+> 100
+> 1000
+> Training Step
+> Perplexity
+
+(d) L1: Perplexity 
+
+Figure 4. Side-by-side comparison of learning dynamics. The left column shows the baseline (L0) and the right column shows the context-guided setting (L1). Results of Chinese, Japanese, and Korean are plotted in green, red, and blue, respectively. Note how the partial credit validity (top row) stabilize significantly faster in the L1 setting. 
+
+48.2% validity, but produces 0% valid UTF-8 from the novel 
+
+11110xxx lead. Inspecting outputs at prefix=1 for 4-byte targets, all 43 samples emit the identical bytes F0 9F 92 95 
+
+(U+1F495), the sole 4-byte character the model encountered during training. The model has learned the 4-byte lead struc-ture from this single example but collapses to one template; it never falls back to a 3-byte lead. Within the 3-byte class, frequency has little effect; final-checkpoint partial-credit validity ranges only from 0.878 to 0.894 across Common, Uncommon, Rare, and Unseen-3B groups. The clear outlier is 4-byte Unseen (0.840). This indicates that byte-length dominates failures at this scale. 5.1.3. R ELATIONSHIP WITH LANGUAGE MODELING 
+
+Figure 4 compares the evolution of partial-credit validity during training against that of perplexity and log-likelihood differences. We observe that while perplexity quickly con-verges to a low level, partial-credit validity converges more slowly: For partial-credit validity, convergence is observed after 740 training steps, while that for perplexity is observed as early as 380 training steps. For log-likelihood differences, the tendency is similar to that of the perplexity. We thus con-clude that partial-credit validity does not correlate directly with either perplexity or log-likelihood relative to the gold standard. This suggests that our proposed metric captures a distinct aspect of a language model’s ability to generate correct byte sequences, making it a useful and important complement to existing measures. 
+
+5.2. Level 1: Context-Guided Evaluation 
+
+Level 1 evaluation mirrors typical language model usage, where the model generates text within semantic and syntac-tic context. Preceding words and phrases constrain plausible continuations, enabling the model to retrieve correct byte sequences by leveraging learned associations between con-cepts and their byte-level representations. Most practical generation scenarios provide such contextual cues. 5.2.1. S TRUCTURAL AND SEMANTIC EVALUATION 
+
+Structural validity and semantic correctness diverge. As in Figure 4, the model achieves high partial-credit validity in the context-guided setting, but Term Match Rate, i.e., whether it generates the specific correct character, reached 60.30% (Figure 5). The model has mastered UTF-8 en-coding mechanics (generating valid byte sequences) but struggles with semantics (mapping context to the correct character). The model often generates structurally valid characters that are semantically or phonetically related to the target but not exact matches. When prompted with context suggesting a particular kanji, the model may produce a different kanji 6Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14  
+
+> 0
+> 6
+> 12
+> 18
+> 24
+> 30
+> 36
+> 42
+> 48
+> 54
+> 60
+> 66
+> 72
+> Training Step (K)
+> Term Match Rate (%)
+> Figure 5. Term match rate. Results of Chinese, Japanese, and Korean are plotted in green, red, and blue, respectively.
+
+with similar radical structure or meaning. Byte-level syntax and byte-level semantics are distinct capabilities, with the latter requiring more training. The diagnostic ∆LL (Eq. 5) splits the semantic failures fur-ther. Among Level 1 failures where ∆LL > 0 at the final checkpoint (51 cases), the model assigns higher teacher-forced likelihood to the gold continuation but greedy de-coding emits a different byte. In 100% of these cases the emitted byte is a UTF-8 continuation byte in 0x80 –
+
+0xBF , and for each lead byte the emission is a single mode: 
+
+0xE3 → 0x80 (CJK Symbols), 0xEC → 0x97 (Common Hangul), 0xF0 → 0x9F (Emoji range). The failure is mode collapse in P (byte 2 | byte 1): the model has learned the marginal argmax for each lead byte but does not condition on the target character. Because ∆LL > 0, beam search or temperature sampling may recover these cases without retraining; verifying this empirically requires a decoding ablation we leave to future work. Appendix L reports the full distractor distribution. 5.2.2. C ONTEXT HELPS STRUCTURAL LEARNING 
+
+Comparing Level 1 with Level 0 on the Common tier shows faster partial-credit validity convergence in the context-guided setting (Figure 4). The model achieves reliable UTF-8 generation earlier when semantic context is provided, suggesting contextual associations facilitate byte sequence retrieval before the model has fully internalized UTF-8 struc-tural rules in isolation. Cross-language patterns in Level 1 parallel Level 0: Japanese characters achieve high validity earlier than Ko-rean and Chinese. The gap between languages is narrower in Level 1, indicating that context partially compensates for sparser byte-pattern exposure in larger character inventories. 5.2.3. R ELATIONSHIP WITH LANGUAGE MODELING 
+
+Figure 4 compares the evolution of partial-credit validity during training against that of perplexity and log-likelihood differences. The model generates a single token given a 2-byte prefix. Unlike Level 0 evaluation, we observe that in Level 1, partial-credit validity converges faster than per-plexity and log-likelihood differences. This suggests that generating byte sequences with contextual guidance (Level 1) is easier than context-free generation (Level 0). Never-theless, the observation that partial-credit validity converges faster than perplexity further underscores the need for a metric beyond perplexity to evaluate a model’s ability to generate valid byte sequences, highlighting the importance of our proposed metrics. The finding that partial-credit validity converges faster than perplexity in Level 1, while the opposite holds in Level 0, further underscores that these metrics capture fundamentally different aspects of model capability. Perplexity measures the model’s uncertainty over the full continuation distribu-tion, whereas UTF-8 validity measures only whether the generated sequence satisfies structural encoding constraints. The divergent convergence patterns across evaluation levels demonstrate that neither metric subsumes the other, validat-ing the need for dedicated partial-credit validity evaluation in byte-level language models. 
+
+## 6. Related Work 
+
+Byte-level tokenization eliminates vocabulary bottlenecks and handles the full diversity of Unicode characters, partic-ularly for morphologically rich and logographic languages where subword tokenization faces inherent limitations. Xue et al. (2022) introduced ByT5, demonstrating that byte-level models could match the performance of token-based mod-els while offering improved noise robustness. Their work showed that operating directly on UTF-8 bytes eliminates the need for language-specific preprocessing and handles any Unicode input without information loss. More recently, Pagnoni et al. (2024) presented the Byte Latent Transformer (BLT), achieving comparable performance to Llama 3 while using 50% fewer inference FLOPs, suggesting byte-level architectures may offer computational advantages at scale. The challenges of Unicode processing in LLMs have been documented across multiple dimensions. Rust et al. (2021) demonstrated that morphologically rich languages require significantly more tokens than English for equivalent se-mantic content, creating systematic biases in multilingual models. The long-tail distribution of characters exacerbates this problem. For example, (Singh et al., 2024) found that low-resource languages suffer from poor tokenization effi-ciency, leading to degraded performance that discourages their use in training data, creating a vicious cycle. Recent security research has revealed how tokenization vul-nerabilities can be exploited. Geh et al. (2025) discovered that LLMs retain semantic understanding of non-canonical tokenizations despite never encountering them during train-7Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+ing, enabling attackers to bypass safety filters through alter-native word segmentations. The “glitch token” phenomenon, analyzed by Li et al. (2024) and further investigated by Land & Bartolo (2024), identified tokens like “SolidGold-Magikarp” that cause unpredictable model behavior. These tokens cluster in the embedding space and result from insuf-ficient training. Prior art addresses invalid byte generation at decode time rather than at training time. Constrained decoding masks tokens whose continuations would violate a grammar or automaton, guaranteeing that the emitted sequence stays in a target language (Willard & Louf, 2023; Koo et al., 2024). Cognetta & Okazaki (2025) formalize BPE and WordPiece as finite-state transducers, enabling subword-aware pattern promotion that is consistent with the tokenizer. Encoding UTF-8 validity in the same framework removes structural failures by construction, since UTF-8 is a regular language over bytes (§ 3.2.1). Our work is complementary: we mea-sure when byte-level models acquire UTF-8 competence during training and separate the structural failure mode ad-dressed by constrained decoding from the semantic failure mode (Term Match, Sec. 3.2.2) that it leaves unchanged. While Kaplan et al. (2020) and Hoffmann et al. (2022) es-tablished power-law relationships between model scale and performance, subsequent work has shown these relation-ships break down for multilingual and Unicode-sensitive tasks. Pokharel et al. (2025) demonstrated that in zero-shot multilingual scenarios, model scale has minimal effect on performance. This suggests that scaling alone cannot over-come the fundamental vocabulary bottleneck created by tokenization, motivating our investigation into the minimum scale required for reliable UTF-8 sequence generation. Our findings through the UTF-8 expression can be applied to systems using its alternatives proposed in recent years (Lim-isiewicz et al., 2024; Land & Arnett, 2025). 
+
+## 7. Discussion 
+
+Languages vary in UTF-8 validity learning rates. Japanese reaches reliable validity earlier than Korean and Chinese, but two evaluation-set properties contribute beyond character inventory size. The Japanese OOV set contains 36 characters (mostly Kana, since most Kana are vocabulary-covered) compared with 256 for Korean and 256 for Chinese, which biases the language-level average upward. Kana also occupy a narrow Unicode range (U+3040–U+30FF) with regular 
+
+E3 8x xx byte patterns, whereas Hangul (lead bytes EA –
+
+ED ) and CJK ideographs ( E4 –E9 ) span a much larger byte-pattern space. The faster Japanese convergence reflects these structural and sampling properties, not a language-specific capability. The Unseen tier’s 86.97% validity on 4-byte characters never encountered during training reflects generalization across byte-length boundaries, with the byte-                                                                  
+
+> Table 3. Cross-model evaluation at Level 0/1. Vp: partial-credit validity, Vs: strict validity, M: term match rate. All values (%) at generation step 5, averaged across languages and prefix lengths.
+> Family Size VpVsGap L1 M
+> Baseline 0.4B 93.5 39.8 53.6 47.8 Gemma-3 1B 33.6 0.9 32.6 0.3 Gemma-3 4B 100 35.7 64.3 0.0 Llama-3.2 1B 96.9 38.4 58.5 0.8 Llama-3.2 3B 97.8 49.0 48.8 1.0 Llama-2 7B 98.4 33.9 64.5 33.1 Mistral 7B 96.0 49.9 46.1 23.3 OLMo-2 1B 93.0 33.5 59.5 7.0 OLMo-2 7B 93.5 28.0 65.4 14.3 Qwen-3.5 4B 99.2 87.0 12.2 2.4 Qwen-3.5 9B 99.7 89.8 9.9 0.5
+
+length dimension identified as the dominant axis in our control experiment (Sec. 5.1.2). Our findings are not an argument against smaller models, which remain essential for edge devices, real-time systems, and resource-constrained environments. Smaller models serve as research tools, distillation targets, and domain-specific solutions. The findings instead clarify training re-quirements for byte-level tokenization and metrics to moni-tor for reliable UTF-8 generation. 
+
+7.1. Cross-Model Validation 
+
+To test whether the structural-semantic gap generalizes be-yond our 355M baseline, we evaluated 10 open-weight mod-els from 5 families (1B–9B parameters) using the same Level 0 and Level 1 protocol and evaluation data. Results are summarized in Table 3; checkpoint sources, tokenizer handling, and decoding settings are reported in Appendix K. The Vp–Vs gap persists across all models and scales tested (9.9–65.4 pp). Gap magnitude is stable within families, where OLMo-2 shows 60–65 pp gaps at both 1B and 7B; Qwen-3.5 shows 10–12 pp at both 4B and 9B, but varies sub-stantially across families. Vs generally improves with scale (Llama-3.2: +10.6 pp from 1B to 3B; Qwen-3.5: +2.8 pp from 4B to 9B), but Level 1 term match does not improve consistently. This confirms that structural validity and se-mantic correctness are distinct: larger models produce more valid byte sequences, but often not the correct character. We cannot measure convergence rates on the open models without checkpoint-level sweeps, but cross-model evidence is consistent with the convergence-lag hypothesis from our baseline. If Vs caught up to Vp given enough training, we would expect smaller gaps in larger models that have seen more tokens, and the data does not show this trend. 8Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+Tokenizer design is a stronger predictor of semantic byte completion than model size. SentencePiece byte-fallback models (baseline at 47.8%, Llama-2 at 33.1%, Mistral at 23.3%) achieve higher term match than GPT-2-style BPE models with larger vocabularies (Qwen-3.5 9B at 0.5%, Gemma-3 4B at 0.0%). Small vocabularies force frequent byte-fallback during training, giving the model more prac-tice at byte-level generation. 
+
+7.2. Limitations and Future Work 
+
+Our training dynamics analysis (the convergence gap be-tween perplexity and validity) is conducted at a single 355M-parameter training run; “scale-dependent” here refers to training-token scale under this setup rather than a scaling law. The cross-model evaluation confirms that the structural-semantic gap exists at larger scales, but we do not have checkpoint-level sweeps for open models to measure conver-gence rates at those scales. We also emphasize that Vpartial 
+
+is a diagnostic; deployed applications typically require fully decodable strings, for which Vstrict is the operational metric. Our Level 1 contexts are generated by Gemini 3 Pro and filtered with formal criteria (language identification, unique-ness, length); we do not apply human semantic validation. Context naturalness, target-character appropriateness, and synthetic-generator bias can therefore affect Term Match measurements, and the synthetic distribution may differ from naturally occurring text. Our experiments focus on East Asian languages (Chinese, Japanese, Korean) plus English. These languages were chosen for their diverse character sets and multi-byte en-coding requirements, but findings may not replicate to other languages. The evaluation framework itself is language-agnostic and applicable to any script encoded in UTF-8. Constrained decoding methods (Koo et al., 2024; Willard & Louf, 2023; Cognetta & Okazaki, 2025) can guaran-tee Vstrict = 1 .0 by masking structurally invalid tokens at each generation step. However, our distractor analysis (Ap-pendix L) shows that in 100% of ∆LL > 0 failure cases, the model already produces structurally valid continuations: the failures are semantic, not structural. Constrained decoding addresses structural failures, but not semantic ones. Since 
+
+∆LL > 0 implies the model assigns higher probability to the gold completion under teacher forcing, beam search or temperature sampling may recover the corresponding cases without retraining, though we leave a controlled decoding ablation to future work. The constrained-decoding inter-vention rate may serve as a training diagnostic, warranting further study. A related question is whether the validity lag is specific to byte-level generation or a special case of slower learning on rare tokens. The two-fold lag we report compares byte-level validity against overall perplexity, which is dominated by common tokens, so part of the gap is the standard long-tail versus common-case gap. Two observations argue for distinct dynamics. First, the failure mode is concentrated mode collapse rather than distributed uncertainty: in 100% of ∆LL > 0 cases, each lead byte maps to a single continu-ation byte (Appendix L). Generic rare-token failures show a spread of plausible alternatives. Second, tokenizer setup overrides scale in the cross-model evaluation: Sentence-Piece byte-fallback models with small vocabularies outper-form much larger models with large vocabularies on term match. Cleanly separating byte-level dynamics from rare-subword dynamics would require two ablations we leave for future work: tracking per-cohort cross-entropy on subword tokens versus byte-fallback sequences sampled at matched training frequencies, and training two otherwise-identical models that differ only in CJK vocabulary coverage. Architectural changes such as explicit byte-position encod-ings or hierarchical representations may accelerate UTF-8 learning. Context-rich generation achieves reliable UTF-8 output at lower training scales than context-sparse genera-tion, though structural validity does not guarantee semantic correctness, and the tradeoff needs further investigation. 
+
+## 8. Conclusion 
+
+UTF-8 validity is a distinct capability that emerges at differ-ent rates than standard language modeling metrics. In exper-iments with a 355M parameter model evaluated across 420 checkpoints, UTF-8 validity convergence lagged perplex-ity convergence, perplexity stabilizes after approximately 2.1B training tokens, while UTF-8 validity requires roughly 4.2B tokens, a two-fold difference. Practitioners deploying byte-level models should note that a model appearing well-trained by perplexity standards may still produce invalid UTF-8 sequences. Character frequency correlates with structural validity (Com-mon: 96.21%, Uncommon: 95.57%, Rare: 95.26%), but a control experiment indicates that byte-length exposure is the dominant axis of failure at this scale, with frequency contributing only modestly within a fixed byte-length class (Sec. 5.1.2). The gap between structural validity and se-mantic correctness remains stark: despite moderate validity rates, Term Match Rate reached 60.30%. Languages with larger character inventories (e.g., Korean and Chinese) need more training exposure than Japanese to reach comparable validity. Context-guided evaluation shows that semantic context ac-celerates structural validity convergence, though semantic correctness remains low even with context. Training data exposure should exceed perplexity convergence thresholds, and UTF-8 validity should be monitored as a distinct metric. 9Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+## Acknowledgements 
+
+This work was supported by JSPS KAKENHI Grant Num-ber 25H01137, the “R&D Hub Aimed at Ensuring Trans-parency and Reliability of Generative AI Models” project of the Ministry of Education, Culture, Sports, Science and Technology, and JST K Program Japan Grant Number JP-MJKP24C3. 
+
+## Impact Statement 
+
+This paper presents work whose goal is to advance the field of Machine Learning. There are many potential societal consequences of our work, none which we feel must be specifically highlighted here. 
+
+## References 
+
+Ainslie, J., Lee-Thorp, J., Jong, M. d., Zemlyanskiy, Y., Lebr ´on, F., and Sanghai, S. GQA: Training General-ized Multi-Query Transformer Models from Multi-Head Checkpoints, December 2023. URL http://arxiv. org/abs/2305.13245 . arXiv:2305.13245 [cs]. Cognetta, M. and Okazaki, N. Tokenization as finite-state transduction. Computational Linguistics , 51(4):1119– 1149, December 2025. doi: 10.1162/coli.a.23. URL 
+
+https://aclanthology.org/2025.cl-4.2/ .Geh, R. L., Shao, Z., and Broeck, G. V. d. Adversarial Tokenization, June 2025. URL http://arxiv.org/abs/ 2503.02174 . arXiv:2503.02174 [cs]. Gillick, D., Brunk, C., Vinyals, O., and Subramanya, A. Multilingual language processing from bytes. In Knight, K., Nenkova, A., and Rambow, O. (eds.), Proceedings of the 2016 Conference of the North American Chap-ter of the Association for Computational Linguistics: Human Language Technologies , pp. 1296–1306, San Diego, California, June 2016. Association for Compu-tational Linguistics. doi: 10.18653/v1/N16-1155. URL 
+
+https://aclanthology.org/N16-1155/ .Hoffmann, J., Borgeaud, S., Mensch, A., Buchatskaya, E., Cai, T., Rutherford, E., Casas, D. d. L., Hendricks, L. A., Welbl, J., Clark, A., Hennigan, T., Noland, E., Millican, K., Driessche, G. v. d., Damoc, B., Guy, A., Osindero, S., Simonyan, K., Elsen, E., Rae, J. W., Vinyals, O., and Sifre, L. Training Compute-Optimal Large Language Models, March 2022. URL http://arxiv.org/abs/ 2203.15556 . arXiv:2203.15556 [cs]. Kaplan, J., McCandlish, S., Henighan, T., Brown, T. B., Chess, B., Child, R., Gray, S., Radford, A., Wu, J., and Amodei, D. Scaling Laws for Neural Language Mod-els, January 2020. URL http://arxiv.org/abs/2001. 08361 . arXiv:2001.08361 [cs]. Koo, T., Liu, F., and He, L. Automata-based constraints for language model decoding. In Conference on Language Modeling (COLM) , 2024. URL https://openreview. net/forum?id=BDBdblmyzY . arXiv:2407.08103. Land, S. and Arnett, C. BPE stays on SCRIPT: Struc-tured encoding for robust multilingual pretokeniza-tion. In ICML 2025 Workshop on Tokenization (Tok-Shop) , 2025. URL https://openreview.net/forum? id=AO78CqwaUO .Land, S. and Bartolo, M. Fishing for magikarp: Auto-matically detecting under-trained tokens in large lan-guage models. In Al-Onaizan, Y., Bansal, M., and Chen, Y.-N. (eds.), Proceedings of the 2024 Conference on Empirical Methods in Natural Language Process-ing , pp. 11631–11646, Miami, Florida, USA, Novem-ber 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.emnlp-main.649. URL https: //aclanthology.org/2024.emnlp-main.649/ .Li, Y., Liu, Y., Deng, G., Zhang, Y., Song, W., Shi, L., Wang, K., Li, Y., Liu, Y., and Wang, H. Glitch Tokens in Large Language Models: Categorization Taxonomy and Effective Detection, April 2024. URL http://arxiv. org/abs/2404.09894 . arXiv:2404.09894 [cs]. Limisiewicz, T., Blevins, T., Gonen, H., Ahia, O., and Zettlemoyer, L. MYTE: Morphology-driven byte en-coding for better and fairer multilingual language mod-eling. In Ku, L.-W., Martins, A., and Srikumar, V. (eds.), Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pp. 15059–15076, Bangkok, Thailand, August 2024. Association for Computational Linguis-tics. doi: 10.18653/v1/2024.acl-long.804. URL https: //aclanthology.org/2024.acl-long.804/ .Pagnoni, A., Pasunuru, R., Rodriguez, P., Nguyen, J., Muller, B., Li, M., Zhou, C., Yu, L., Weston, J., Zettle-moyer, L., Ghosh, G., Lewis, M., Holtzman, A., and Iyer, S. Byte Latent Transformer: Patches Scale Better Than Tokens, December 2024. URL http://arxiv.org/abs/ 2412.09871 . arXiv:2412.09871 [cs]. Penedo, G., Kydl ´ı ˇcek, H., allal, L. B., Lozhkov, A., Mitchell, M., Raffel, C., Von Werra, L., and Wolf, T. The fineweb datasets: Decanting the web for the finest text data at scale. In Globerson, A., Mackey, L., Belgrave, D., Fan, A., Paquet, U., Tom-czak, J., and Zhang, C. (eds.), Advances in Neural Information Processing Systems , volume 37, pp. 30811–30849. Curran Associates, Inc., 2024. doi: 10.52202/079017-0970. URL https://proceedings. neurips.cc/paper files/paper/2024/file/ 370df50ccfdf8bde18f8f9c2d9151bda-Paper-Datasets and Benchmarks Track.pdf .10 Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+Pokharel, R., Nezhad, S. B., Agrawal, A., and Singh, S. The Impact of Model Scaling on Seen and Unseen Language Performance, January 2025. URL http://arxiv.org/ abs/2501.05629 . arXiv:2501.05629 [cs]. Rust, P., Pfeiffer, J., Vuli ´c, I., Ruder, S., and Gurevych, I. How good is your tokenizer? on the monolin-gual performance of multilingual language models. In Zong, C., Xia, F., Li, W., and Navigli, R. (eds.), Pro-ceedings of the 59th Annual Meeting of the Associa-tion for Computational Linguistics and the 11th Inter-national Joint Conference on Natural Language Pro-cessing (Volume 1: Long Papers) , pp. 3118–3135, On-line, August 2021. Association for Computational Lin-guistics. doi: 10.18653/v1/2021.acl-long.243. URL 
+
+https://aclanthology.org/2021.acl-long.243/ .Shazeer, N. GLU Variants Improve Transformer, Febru-ary 2020. URL http://arxiv.org/abs/2002.05202 .arXiv:2002.05202 [cs]. Singh, S., Vargus, F., D’souza, D., Karlsson, B., Mahendi-ran, A., Ko, W.-Y., Shandilya, H., Patel, J., Mataciunas, D., O’Mahony, L., Zhang, M., Hettiarachchi, R., Wil-son, J., Machado, M., Moura, L., Krzemi ´nski, D., Fadaei, H., Ergun, I., Okoh, I., Alaagib, A., Mudannayake, O., Alyafeai, Z., Chien, V., Ruder, S., Guthikonda, S., Al-ghamdi, E., Gehrmann, S., Muennighoff, N., Bartolo, M., Kreutzer, J., ¨Ust ¨un, A., Fadaee, M., and Hooker, S. Aya dataset: An open-access collection for multi-lingual instruction tuning. In Ku, L.-W., Martins, A., and Srikumar, V. (eds.), Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pp. 11521–11567, Bangkok, Thailand, August 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.acl-long.620. URL 
+
+https://aclanthology.org/2024.acl-long.620/ .Su, J., Ahmed, M., Lu, Y., Pan, S., Bo, W., and Liu, Y. Roformer: Enhanced transformer with rotary position embedding. Neurocomputing , 568:127063, 2024. doi: 10.1016/j.neucom.2023.127063. URL https://arxiv. org/abs/2104.09864 .Team, G., Riviere, M., Pathak, S., Sessa, P. G., Hardin, C., Bhupatiraju, S., Hussenot, L., Mesnard, T., Shahriari, B., Ram ´e, A., Ferret, J., Liu, P., Tafti, P., Friesen, A., Casbon, M., Ramos, S., Kumar, R., Lan, C. L., Jerome, S., Tsit-sulin, A., Vieillard, N., Stanczyk, P., Girgin, S., Momchev, N., Hoffman, M., Thakoor, S., Grill, J.-B., Neyshabur, B., Bachem, O., Walton, A., Severyn, A., Parrish, A., Ahmad, A., Hutchison, A., Abdagic, A., Carl, A., Shen, A., Brock, A., Coenen, A., Laforge, A., Paterson, A., Bastian, B., Piot, B., Wu, B., Royal, B., Chen, C., Kumar, C., Perry, C., Welty, C., Choquette-Choo, C. A., Sinopalnikov, D., Weinberger, D., Vijaykumar, D., Rogozi ´nska, D., Her-bison, D., Bandy, E., Wang, E., Noland, E., Moreira, E., Senter, E., Eltyshev, E., Visin, F., Rasskin, G., Wei, G., Cameron, G., Martins, G., Hashemi, H., Klimczak-Pluci ´nska, H., Batra, H., Dhand, H., Nardini, I., Mein, J., Zhou, J., Svensson, J., Stanway, J., Chan, J., Zhou, J. P., Carrasqueira, J., Iljazi, J., Becker, J., Fernandez, J., Amersfoort, J. v., Gordon, J., Lipschultz, J., Newlan, J., Ji, J.-y., Mohamed, K., Badola, K., Black, K., Millican, K., McDonell, K., Nguyen, K., Sodhia, K., Greene, K., Sjoesund, L. L., Usui, L., Sifre, L., Heuermann, L., Lago, L., McNealus, L., Soares, L. B., Kilpatrick, L., Dixon, L., Martins, L., Reid, M., Singh, M., Iverson, M., G ¨orner, M., Velloso, M., Wirth, M., Davidow, M., Miller, M., Rahtz, M., Watson, M., Risdal, M., Kazemi, M., Moyni-han, M., Zhang, M., Kahng, M., Park, M., Rahman, M., Khatwani, M., Dao, N., Bardoliwalla, N., Devanathan, N., Dumai, N., Chauhan, N., Wahltinez, O., Botarda, P., Barnes, P., Barham, P., Michel, P., Jin, P., Georgiev, P., Culliton, P., Kuppala, P., Comanescu, R., Merhej, R., Jana, R., Rokni, R. A., Agarwal, R., Mullins, R., Saadat, S., Carthy, S. M., Cogan, S., Perrin, S., Arnold, S. M. R., Krause, S., Dai, S., Garg, S., Sheth, S., Ronstrom, S., Chan, S., Jordan, T., Yu, T., Eccles, T., Hennigan, T., Kocisky, T., Doshi, T., Jain, V., Yadav, V., Meshram, V., Dharmadhikari, V., Barkley, W., Wei, W., Ye, W., Han, W., Kwon, W., Xu, X., Shen, Z., Gong, Z., Wei, Z., Cotruta, V., Kirk, P., Rao, A., Giang, M., Peran, L., Warkentin, T., Collins, E., Barral, J., Ghahramani, Z., Hadsell, R., Sculley, D., Banks, J., Dragan, A., Petrov, S., Vinyals, O., Dean, J., Hassabis, D., Kavukcuoglu, K., Farabet, C., Buchatskaya, E., Borgeaud, S., Fiedel, N., Joulin, A., Kenealy, K., Dadashi, R., and Andreev, A. Gemma 2: Improving Open Language Models at a Practical Size, Oc-tober 2024. URL http://arxiv.org/abs/2408.00118 .arXiv:2408.00118 [cs]. Wang, C., Cho, K., and Gu, J. Neural machine translation with byte-level subwords. In Proceedings of the AAAI conference on artificial intelligence , volume 34, pp. 9154– 9160, 2020. Willard, B. T. and Louf, R. Efficient guided generation for large language models. arXiv preprint arXiv:2307.09702 ,2023. Xue, L., Barua, A., Constant, N., Al-Rfou, R., Narang, S., Kale, M., Roberts, A., and Raffel, C. ByT5: Towards a token-free future with pre-trained byte-to-byte models. 
+
+Transactions of the Association for Computational Lin-guistics , 10:291–306, 2022. doi: 10.1162/tacl a 00461. URL https://aclanthology.org/2022.tacl-1.17/ .Zhang, B. and Sennrich, R. Root Mean Square Layer Nor-malization, October 2019. URL http://arxiv.org/ abs/1910.07467 . arXiv:1910.07467 [cs]. 11 Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 0 1000 2000 3000 4000 5000 6000 7000 8000                         
+
+> 9.8
+> 9.9
+> 10.0
+> 10.1
+> 10.2
+> Token Percentage
+> English
+> 01000 2000 3000 4000 5000 6000 7000 8000
+> 29.8
+> 30.0
+> 30.2
+> Japanese
+> 01000 2000 3000 4000 5000 6000 7000 8000
+> Data Batch
+> 29.8
+> 30.0
+> 30.2
+> Token Percentage
+> Korean
+> 01000 2000 3000 4000 5000 6000 7000 8000
+> Data Batch
+> 29.8
+> 30.0
+> 30.2
+> Chinese
+
+Figure 6. Token distribution convergence during training data construction. The adaptive weight adjustment algorithm dynamically modifies language sampling probabilities to achieve the target distribution while preserving natural sentence boundaries. 
+
+## A. Ethical Considerations 
+
+This research investigates potential vulnerabilities in language model tokenization that could be exploited for adversarial purposes. However, we believe the benefits of understanding these limitations outweigh the risks. Our work aims to characterize vulnerabilities so they can be addressed in future model architectures, ultimately improving the robustness of deployed systems. We do not introduce new attack methodologies but rather study the scaling properties of known tokenization issues. All adversarial sequences tested are synthetically generated rather than optimized for maximum harm. Our research provides concrete guidance on training requirements for reliable byte-level generation, helping practitioners make informed decisions about when byte-level tokenization is viable for their applications. We have deliberately avoided testing our methods on production models or developing tools that could facilitate malicious use. All experiments are conducted on models we train ourselves, ensuring no impact on deployed systems. We find no significant ethical risks associated with this work beyond the general considerations of academic research. 
+
+## B. Model Architecture and Compute Budget 
+
+The GPT-2 variant model used for our work employs several standard modernization choices for training stability and efficiency. We replace LayerNorm with RMSNorm (Zhang & Sennrich, 2019), use Rotary Position Embeddings (RoPE) (Su et al., 2024), and adopt Grouped-Query Attention (GQA) (Ainslie et al., 2023) with a reduced number of key/value heads to lower memory usage (similar in spirit to recent implementations such as Gemma 2 (Team et al., 2024)). The feed-forward blocks use a gated MLP (GeGLU variant) (Shazeer, 2020). We further apply query scaling by d−0.5 
+
+> head
+
+and embedding scaling by √dhidden .Training was conducted on a single node with 8 Nvidia B200 GPUs for one epoch over 76 hours. Evaluation used various single-accelerator setups across A6000s, RTX PRO 6000s, and an M4 Pro Mac Mini. 
+
+## C. Training Corpus Sampling Method Ablations 
+
+The main paper describes Weighted Dynamic sampling as the chosen method for training corpus construction. This appendix documents the alternative methods that were evaluated and rejected. Weighted Dynamic sampling was chosen because alternative methods either truncate sentences mid-thought (Strict Quota) or produce unnatural cross-lingual mixing within batches (Buffer-Balanced). 12 Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+C.1. Strict Quota 
+
+The Strict Quota method enforces exact token distribution by maintaining running quotas for each language, defined as follows: 
+
+Qt+1  
+
+> l
+
+= max(0 , Q tl − | dl|) (9) 
+
+P (l|Q) = 
+
+(
+
+1 if Ql > 0 and Ql = max k Qk
+
+0 otherwise (10) where Qtl is the remaining quota for language l at time t, and |dl| is the token count of document d from language l.This method was rejected because it frequently truncates sentences mid-thought when quotas are exhausted, producing training examples that do not reflect natural language boundaries and potentially teaching the model to generate incomplete utterances. 
+
+C.2. Buffer-Balanced 
+
+The Buffer-Balanced method maintains separate token buffers for each language and extracts proportionally from each buffer, defined as follows: 
+
+Bt+1  
+
+> l
+
+= Btl ∪ tokens (dl) − Etl (11) 
+
+Etl = extract (Btl , n l) (12) 
+
+nl = ⌊pl · S⌋ (13) where Btl is the buffer for language l, Etl is the extracted tokens, pl is the target proportion, and S is the block size. 
+
+C.3. Qualitative Comparison 
+
+Table 4 shows detokenized text from 256-token training batches for each method. 
+
+C.4. Quantitative Results 
+
+The analysis reveals a fundamental trade-off between distribution precision and text quality. Strict Quota achieves near-perfect distribution (0.44% MAE) with varying byte-fallback rates per language. Buffer-Balanced shows moderate distribution accuracy (1.36% MAE) with intermediate byte-fallback rates. Weighted Dynamic, despite higher distribution error (2.70% MAE), maintains the lowest byte-fallback rates across all languages, particularly for CJK languages. 
+
+## D. Language-Specific Accuracy and Byte-Fallback Statistics 
+
+This appendix reports two per-language measurements taken on the training corpus. The first quantifies how closely each sampling method matches the target language proportions in the assembled corpus, complementing the aggregate MAE/RMSE numbers in Appendix C. The second quantifies how much of the resulting training signal arrives through byte-fallback tokens rather than full subword tokens; this is the quantity most directly relevant to byte-level learning dynamics studied in the main paper. Table 6 reports the realized per-language token share across 20 trials of each sampling method. Strict Quota achieves the lowest deviation (as expected, since it enforces quotas by construction), at the cost of mid-sentence truncations documented in Appendix C. Buffer-Balanced and Weighted Dynamic both keep deviations within a few percentage points of target; we adopt Weighted Dynamic for the main training run because it preserves sentence boundaries while still tracking the target distribution. Table 7 reports the byte-fallback rate per language, i.e., the fraction of training tokens emitted as raw byte tokens rather than subword tokens within each language partition. Chinese drives most of the byte-fallback load: at 30% of the corpus 13 Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+Table 4. Example 256-token training batches from each sampling method. Strict Quota enforces exact distribution but truncates mid-sentence. Buffer-Balanced mixes languages unnaturally within blocks. Weighted Dynamic preserves sentence boundaries at the cost of distribution precision. 
+
+Method Example Batch Content 
+
+Strict Quota [EN: 26 tok] The quick brown fox jumps over the lazy dog while. . . 
+
+[KO: 77 tok] 오늘ᄋ ᅳᆫ 날씨ᄀ ᅡ ᄆ ᅢᄋ ᅮ 좋아ᄉ ᅥ 공원에 산책을 나갔습니ᄃ ᅡ. 봄ᄁ ᅩᆾᄃ ᅳᆯ이 활짝 피ᄋ ᅥ있고새들이 ᄂ ᅩᄅ ᅢ를 부ᄅ ᅳᄀ ᅩ 있ᄋ ᅥᆻ어ᄋ ᅭ. 많은 사람들이 ᄀ ᅡ족과 ᄒ ᅡᆷ께 즐거운 시간을
+
+[JA: 77 tok] 今日は天気がとても 良かったので 、公園に散歩に行きました 。春の花が満開
+
+で、鳥たちが 歌っていました 。多くの 人々が家族と一緒に楽しい 時間を過ごしていました 。
+
+でも 急に雨が降り始めて 、みんな 慌てて 
+
+[ZH: 76 tok] 今天天 气非常好，所以我去公园散步了。春天的花朵盛开着，鸟儿在唱歌。许多
+
+人和家人一 起度过愉快的时光。但是突然开始下雨了，大家都慌慌 张张 地跑回家。我也赶紧找
+
+了个 地方避雨，等雨停了才
+
+Text cuts off mid-sentence when quota is reached. 
+
+Buffer-Balanced The implementation follows a simple 프ᄅ ᅩᄀ ᅳᄅ ᅢ밍 패턴을 사용하ᄋ ᅧ pattern where each コンポ ーネント は独立して component operates 独立运行并且可以 independently and can be easily replaced. 
+
+이ᄅ ᅥ한 방식은 유ᄌ ᅵᄇ ᅩᄉ ᅮ를 쉽게 만들고 メンテナンス が簡単になり 、 系统的灵活性也大大 提
+
+高了。
+
+Unnatural language mixing within single training blocks. 
+
+Weighted Dy-namic 
+
+[EN: 19 tok] Machine learning has revolutionized how we process data. 
+
+[KO: 82 tok] 기ᄀ ᅨ 학습ᄋ ᅳᆫ 우ᄅ ᅵᄀ ᅡ ᄃ ᅦᄋ ᅵᄐ ᅥ를 처ᄅ ᅵᄒ ᅡ는 방식에 혁ᄆ ᅧᆼ을 일으켰습니ᄃ ᅡ. 특히 딥러닝
+
+기술의 ᄇ ᅡᆯ전으ᄅ ᅩ ᄋ ᅵᄆ ᅵᄌ ᅵ 인식, 자연어 ᄎ ᅥᄅ ᅵ, 음성 인식 등 다양ᄒ ᅡᆫ 분야ᄋ ᅦᄉ ᅥ 놀라운 성과를 거ᄃ ᅮ고 있습니ᄃ ᅡ.
+
+[JA: 71 tok] 機械学 習は私たちの データ処理方法 に革命をもたらしました 。特にディ ープラーニング 技術の発展により 、画像認識、自然言語 処理、音声認識など 様々な分野で驚くべ き成果を上げています 。
+
+[ZH: 84 tok] 机器学习彻底改变了我们处理数据的方式。特别是深度学习技术的发展，在图像
+
+识别、自然语言处理、语音识别等各个领域都取得了令人 惊叹的成果。这些技术正在改变我们
+
+的日常生活。
+
+Natural sentence boundaries preserved; distribution less precise. Table 5. Performance metrics across 20 trials (100 blocks each) 
+
+Method MAE (%) RMSE (%) Time (ms) Strict Quota 0.44 0.52 85.5 Buffer-Balanced 1.36 1.60 96.6 Weighted Dynamic 2.70 3.12 76.0 with a 56.1% byte-fallback rate, it contributes roughly 0.30 × 0.561 / 0.227 ≈ 74% of all byte-fallback tokens seen during training. English is effectively absent from the byte-fallback signal, and Japanese/Korean contribute moderately. These per-language rates explain why the model has markedly more exposure to 3-byte CJK ideograph patterns than to other multi-byte structures and provide quantitative grounding for the byte-length effects analyzed in Section 5.1.2. 
+
+## E. UTF-8 DFA Transition Details 
+
+The UTF-8 validation DFA (Figure 2 in the main text) implements the full UTF-8 specification with explicit rejection of malformed sequences. The automaton has eight states: S0 (initial/accepting), S1 (awaiting 2-byte continuation), S2 and S2,1
+
+(3-byte sequence states), S3, S3,1, and S3,2 (4-byte sequence states), and Serr (error sink). Transitions from S0 are determined by the lead byte: • 00-7F : ASCII, self-loop to S0
+
+• C2-DF : 2-byte lead, transition to S1
+
+• E0-EF : 3-byte lead, transition to S2
+
+• F0-F4 : 4-byte lead, transition to S3
+
+• 80-BF, C0-C1, F5-FF : invalid lead bytes, transition to Serr 
+
+14 Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models    
+
+> Table 6. Language-specific distribution accuracy. Values are the realized percentage of training tokens in each language (mean ±s.d. across 20 trials of 100 blocks each).
+
+Language Target Strict Quota Buffer-Balanced Weighted Dynamic EN 10.0 10.01 ± 0.36 10.51 ± 2.68 10.57 ± 4.65 KO 30.0 29.69 ± 0.57 29.37 ± 1.50 28.80 ± 2.55 JA 30.0 30.18 ± 0.57 30.26 ± 1.29 29.98 ± 2.80 ZH 30.0 30.11 ± 0.56 29.85 ± 0.89 30.65 ± 3.26  
+
+> Table 7. Per-language byte-fallback rates measured on the trained corpus under the Weighted Dynamic sampling configuration. The byte-fallback rate is the fraction of training tokens emitted as byte-fallback tokens within each language partition. Total tokens 45.47B; byte-fallback tokens 10.30B; non-byte tokens 35.16B.
+
+Language Corpus share Byte-fallback rate English 10% 0.2% Japanese 30% 11.1% Korean 30% 8.3% Chinese 30% 56.1% Overall 100% 22.7% The 80-BF* transitions in 3-byte and 4-byte paths indicate context-dependent continuation byte ranges that reject overlong encodings (e.g., E0 requires A0-BF as the first continuation) and surrogate halves ( ED requires 80-9F ). Similarly, F0 requires 
+
+90-BF and F4 requires 80-8F to reject codepoints above U+10FFFF. 
+
+## F. Level 0 Trial Set Construction 
+
+The Level 0 trial set evaluates context-free UTF-8 generation by prompting the model with isolated OOV characters under byte-fallback. We reuse the frequency-tiered dataset described in Section I, stratifying by Common , Uncommon , Rare , and 
+
+Unseen tiers. For each character c in the trial set, we construct the prompt by tokenizing c (which produces byte-fallback tokens) and providing the first k bytes as context. The model must generate the remaining bytes to complete a valid UTF-8 character. We sweep k ∈ { 1, 2} for 3-byte characters and k ∈ { 1, 2, 3} for 4-byte characters to evaluate partial-completion difficulty. 
+
+## G. Level 1 Prompt Construction 
+
+Level 1 evaluates context-guided byte retrieval by embedding OOV characters in natural language sentences. Target characters are sourced from the pre-tokenized training corpus by identifying contiguous byte-fallback sequences (e.g., 
+
+<0xE4><0xB8><0xAD> ) and decoding them to UTF-8. For each target character c with byte sequence Bc = ( Bp, B r ), where Bp is the provided prefix and Br is the suffix to generate, we construct a prompt P = Cctx ∥Bp where Cctx is the preceding sentence context. The model is evaluated on whether it emits exactly Br as the immediate continuation. We use a fixed split of 256 prompts per language (Japanese, Korean, Chinese) for checkpoint-wise monitoring, with prompts stratified by character frequency to ensure coverage across difficulty levels. 
+
+## H. Other Evaluation Metrics 
+
+At the final checkpoint (step 14,189, corresponding to 80B tokens), binary strict validity—which requires the entire generated sequence to be valid UTF-8—was highest on the Common tier (50.47%), followed by Unseen (33.33%), 
+
+Uncommon (32.48%), and Rare (30.24%). The binary soft metric, which credits complete characters without penalizing trailing incomplete bytes, showed higher scores across all tiers: Common (92.37%), Uncommon (90.18%), Rare (89.67%), and Unseen (79.62%). 15 Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 0 2000 4000 6000 8000 10000 12000 14000 
+
+> 0
+> 9
+> 18
+> 27
+> 36
+> 45
+> 54
+> 63
+> 72
+> 81
+> 90
+> 99
+> Training Step
+> Binary Strict Score (%)
+
+(a) L0: Binary 0 2000 4000 6000 8000 10000 12000 14000  
+
+> 0
+> 8
+> 16
+> 24
+> 32
+> 40
+> 48
+> 56
+> 64
+> 72
+> 80
+> 88
+> Training Step
+> Binary Strict Score (%)
+
+(b) L1: Binary 0 2000 4000 6000 8000 10000 12000 14000 
+
+> 60
+> 64
+> 68
+> 72
+> 76
+> 80
+> 84
+> 88
+> 92
+> 96
+> 100
+> Training Step
+> Binary Soft Score (%)
+
+(c) L0: Binary Soft 0 2000 4000 6000 8000 10000 12000 14000  
+
+> 92.4
+> 93.1
+> 93.8
+> 94.5
+> 95.2
+> 95.9
+> 96.6
+> 97.3
+> 98.0
+> 98.7
+> 99.4
+> 100.1
+> Training Step
+> Binary Soft Score (%)
+
+(d) L1: Binary Soft 
+
+Figure 7. Side-by-side comparison of other validity metrics evaluated. The left column shows the baseline (L0) and the right column 
+
+shows the context-guided setting (L1). Results of Chinese, Japanese, and Korean are plotted in green, red, and blue, respectively. Note how L0 in general is very unstable, while L1 is relatively more stable. 
+
+H.1. Binary Score 
+
+The binary score awards credit only for completely valid sequences: 
+
+Vbinary (B) = 
+
+(
+
+1 if DFA ends in S0 with no errors 
+
+0 otherwise (14) This score is appropriate for final evaluation where partial progress is insufficient. 
+
+H.2. Binary Soft Score 
+
+A third variant credits only complete characters without penalizing trailing incomplete bytes: 
+
+Vbinary-soft (B) = bc
+
+|B| (15) This score distinguishes between invalid sequences (which reduce bc) and merely incomplete ones (which do not). 
+
+## I. Level 0 and 1: Building the Evaluation Character Set 
+
+To evaluate the model’s zero-shot generalization on out-of-vocabulary (OOV) characters, we constructed a stratified dataset 
+
+Dtrial of 4,000 characters representing four frequency tiers within the training corpus: Common , Uncommon , Rare , and 
+
+Unseen .We defined the universe of known characters K as the union K = V ∪ S, where V is the set of unique Unicode characters in the model’s Byte-Pair Encoding (BPE) vocabulary tokens, and S is the set of unique OOV characters in the training corpus as recorded in frequency snapshot F . This definition excludes any character the model encountered during training, either as a token or byte-fallback sequence. We obtained |K| = 50 ,708 .The dataset Dtrial comprises four disjoint subsets of N = 1000 samples each. We applied a balanced sampling strategy to 16 Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+ensure linguistic diversity, targeting equal distribution of Han (CJK Ideographs), Hangul (Korean), and Kana (Japanese) scripts, plus other symbols. The natural distribution of OOV characters constrained this balance. 
+
+I.1. Common Tier 
+
+The Common Tier ( Tcommon ) was selected from the OOV characters used in the Level 1 (Context-Guided) evaluation, enabling direct comparability between Level 0 and Level 1 performance on high-frequency characters. We prioritized the 244 characters from the Level 1 Trial set and filled the remainder with script-balanced selection from the Level 1 source data. 
+
+I.2. Uncommon and Rare Tiers 
+
+For the Uncommon Tier ( Tuncommon ) and Rare Tier ( Trare ), we employed script-aware sampling rather than global frequency thresholds to ensure linguistic diversity. The global distribution of OOV character frequencies is skewed, with CJK Ideographs dominating the long tail. To prevent mono-script tiers, we stratified selection by script type. For the Rare Tier, we selected the 300 lowest-frequency characters for each of Han and Hangul, and 100 for Other. For Kana, we included all 28 OOV characters from the corpus snapshot, as most Kana are vocabulary-covered. For the Uncommon Tier, we selected the next-lowest 300 characters for Han and Hangul from the remaining pool. This ensures evaluation of the rarest Hangul even though Hangul characters generally appear more frequently than rare Han characters. 
+
+I.3. Unseen Tier 
+
+The Unseen Tier ( Tunseen ) tests zero-shot generalization. We defined candidate universe U comprising all Unicode codepoints in the CJK Unified Ideographs (including Extensions A and B) and Hangul Syllables blocks. The pool of candidate unseen characters was Punseen = U \ K, yielding 42,871 candidates never observed in training. Due to high coverage of Basic Multilingual Plane (BMP) characters in training, this pool consists predominantly of CJK Extension B characters (codepoints above U+10000), which require 4-byte UTF-8 encoding rather than the 3-byte encoding used by BMP characters in the other tiers. This means the Unseen tier tests generalization to a different UTF-8 byte-pattern family (11110xxx start bytes) in addition to novel character identity. The final sample contains 988 Han characters and 12 Hangul characters. 
+
+I.4. Dataset Interleaving 
+
+The final dataset Dtrial was constructed using deterministic interleaving across the four tiers. The sequence follows the repeating pattern [Tcommon , T uncommon , T rare , T unseen , . . . ]. The interleaved structure guarantees balanced coverage across frequency tiers for each language. 
+
+Note on computational limitations. Due to computational resource constraints, the experiments reported in the main text use a subset of M = 256 samples per language group (64 per frequency tier). A full sweep over the complete 4,000-character dataset is left for future work. 
+
+## J. Level 1: Synthetic Data Generation 
+
+To avoid data leakage from re-using pre-training text, we generate synthetic sentence contexts using Gemini 3 Pro. For each target OOV character c and language L, we prompt the model: 
+
+Write a single grammatically correct sentence in [L] that naturally incorporates the character “[c]”. The sentence should be 10–20 words and provide clear semantic context for the character. 
+
+Generated sentences are filtered for: (1) presence of the target character, (2) correct language identification via langdetect, (3) uniqueness (no duplicate sentences across the dataset), and (4) length constraints (10–30 tokens after BPE tokenization). Approximately 15% of generated sentences are rejected by these filters. 17 Beyond Perplexity: UTF-8 Validity in Byte-aware Language Models 
+
+## K. Cross-Model Evaluation Details 
+
+The cross-model results in Section 3 use publicly released instruction-tuned checkpoints retrieved from the Hugging Face Hub. We use the default tokenizer shipped with each checkpoint and rely on the model’s native byte handling: SentencePiece-based models (Llama-2, Llama-3.2, Mistral, our baseline) expose explicit byte-fallback tokens, whereas GPT-2-style BPE models (Gemma-3, OLMo-2, Qwen-3.5) represent arbitrary bytes through their pre-tokenizer without dedicated byte-fallback tokens. For every model we feed the same UTF-8 byte prefixes derived from the Level 0 and Level 1 trial sets; the model is then asked to continue from the corresponding tokenization of that prefix. We use greedy decoding throughout, generate up to 5 tokens per trial, and average all reported values across languages and prefix lengths. All 100 trial samples per language are reused unchanged from the baseline protocol (Appendices F and G). Decoded byte streams are scored by the same UTF-8 DFA used for the baseline; partial-credit validity, strict validity, and Term Match are computed identically. 
+
+## L. Distractor Token Distribution at ∆LL > 0
+
+At the final checkpoint, Level 1 has 51 cases where ∆LL > 0 (the model assigns higher teacher-forced likelihood to the gold continuation) but greedy decoding emits a different byte. All 51 emitted tokens are byte tokens in the range 0x80 –0xBF ; no subword token and no lead byte appears. Table 8 groups the emissions by lead byte, and Table 9 reports the full distribution of emitted bytes.                                        
+
+> Table 8. For three lead bytes the model emits a single continuation byte across all ∆LL >0failures. Mode collapse is exact within each lead byte. Lead byte Emitted (count) Produces
+> 0xE3 (JA) 0x80 (8/8) CJK Symbols U+3000
+> 0xEC (KO) 0x97 (4/4) Common Hangul
+> 0xF0 (4B) 0x9F (3/3) Emoji range
+> Table 9. Full distribution of emitted bytes for the 51 ∆LL >0failures at the final checkpoint. All values lie in 0x80 –0xBF (UTF-8 continuation byte range), so the structural-validity DFA accepts every emission. The semantic failure is a mode collapse in
+> P(byte 2|byte 1).Emitted byte Count
+> 0x80 12
+> 0xB7 5
+> 0x97 4
+> 0x8B 4
+> 0x8C 3
+> 0x9F 3
+> 0xB9 2Other (18 singletons) 18 Total 51
+
+18

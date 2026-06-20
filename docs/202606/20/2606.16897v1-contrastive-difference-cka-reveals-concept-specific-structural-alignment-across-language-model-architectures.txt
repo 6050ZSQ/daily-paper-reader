@@ -1,0 +1,528 @@
+Title: Contrastive-Difference CKA Reveals Concept-Specific Structural Alignment Across Language Model Architectures
+
+URL Source: https://arxiv.org/pdf/2606.16897v1
+
+Published Time: Tue, 16 Jun 2026 02:31:40 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+> Proceedings of Machine Learning Research 2026
+
+# Contrastive-Difference CKA Reveals Concept-Specific Structural Alignment Across Language Model Architectures 
+
+Xueping Gao hellogxp@gmail.com 
+
+Alibaba Cloud 
+
+Abstract 
+
+Do different LLM architectures encode high-level concepts in structurally compatible ways? We systematically characterize a geometric-functional universality dissociation : across mul-tiple concept domains and architectural families, moderate geometric convergence coexists with near-perfect functional transfer. Using contrastive-difference CKA ( CKA ∆), a training-free diagnostic that computes kernel alignment on per-sample contrastive differences, we isolate concept-specific convergence from generic similarity—achieving significant discrimina-tion where standard CKA cannot. The dissociation replicates across all six concept domains we test (five with p ≤ 0.017 geometric discrimination and safety as a converging-functional trend, p = 0 .08), including two non-instruction concepts (code-vs-NL, reasoning-vs-recall) validated without system prompts; a single 70B–70B pair provides an observational note 
+
+that universality may strengthen with scale, requiring replication with additional ≥70B models. We position CKA ∆ as a practical regime classifier and architectural outlier detector 
+
+(Gemma: d = 1 .08, AUC = 0 .79) rather than an absolute transfer-accuracy predictor, providing a training-free diagnostic for cross-architecture concept monitoring. 
+
+Keywords: Cross-architecture representation similarity; contrastive-difference CKA; per-sona vectors; concept transfer; mechanistic interpretability 
+
+1. Introduction 
+
+Consider a safety filter trained on Llama-3.1 to detect harmful outputs. Can it transfer to Qwen-2.5 without retraining? If different architectures encode safety concepts in structurally compatible ways, such zero-shot transfer becomes possible—enabling scalable alignment monitoring across heterogeneous model portfolios. As organizations deploy multiple LLM families—Llama, Qwen, Gemma, Mistral, and others—understanding whether concept monitoring tools generalize across architectures is critical for scalable alignment. A persona detector trained on one model should ideally transfer to others without retraining; alignment interventions should be portable across model families. But do different architectures actually encode high-level concepts in structurally compatible ways? Recent work in mechanistic interpretability has established that LLMs develop linear representations for high-level concepts including truthfulness (Marks and Tegmark, 2024), sentiment (Tigges et al., 2023), and factual knowledge (Nanda et al., 2023). The linear representation hypothesis (Park et al., 2023) suggests that semantically meaningful directions exist in transformer residual streams. If persona dimensions are linearly encoded, the critical question becomes: do different architectures converge on similar representational strategies? 
+
+This question connects directly to language modeling: concept representations modulate the next-token prediction distribution—an extraverted persona shifts probability mass toward enthusiastic completions, a safety-aligned model suppresses harmful continuations,  
+
+> ©2026 X. Gao.
+> arXiv:2606.16897v1 [cs.CL] 15 Jun 2026 Gao
+
+and a formal register selects academic vocabulary. If different architectures converge on structurally compatible concept representations, this reveals a fundamental property of how language models learn to condition generation on high-level concepts, and enables portable alignment tools—a persona monitor trained on Llama could detect sycophancy in Qwen without retraining. Understanding whether this convergence is concept-specific or merely reflects generic representational similarity thus contributes to language-modeling theory and has direct practical implications for scalable deployment. A key methodological insight is that raw activation similarity is insufficient for measuring concept-specific convergence . We show that standard CKA on positive-pole activations cannot distinguish same-trait from cross-trait comparisons ( p = 0 .052), capturing generic similarity rather than concept-specific convergence. By computing CKA on contrastive difference vectors , we isolate concept-specific signal ( p = 0 .002, Cohen’s d = 0 .60). We frame our findings through two levels of universality . At the geometric level, CKA ∆ reveals moderate persona-specific convergence ( d = 0 .60). At the functional level, affine-aligned classifiers achieve 99.9% cross-model accuracy—demonstrating that persona information is perfectly recoverable via learned transformations, analogous to two maps of the same city in different coordinate systems. Our contributions are: (1) systematic characterization of a geometric-functional universality dissociation —moderate geometric convergence coexisting with near-perfect functional transfer ( ≥94.0%) across six concept domains including four instruction-level and two non-instruction (code-vs-NL, reasoning-vs-recall; no system prompts ), nine models and five architectural families, established via five complementary controls; (2) 
+
+contrastive-difference CKA ( CKA ∆), a training-free diagnostic that enables concept-specific convergence measurement where standard CKA ( p= 0.052), SVCCA, and cosine-based metrics all fail, with provably improved signal-to-noise ratio (Section 3.2); (3) an 
+
+observational scale note based on a single Llama-70B ↔Qwen-72B pair ( CKA ∆ = 0 .830 vs. 7–9B mean 0 .733): universality may strengthen with scale, but this finding requires replication with additional ≥70B models to disentangle scale from training-data overlap; and (4) we position CKA ∆ as a regime classifier and architectural outlier detector —it rank-orders direct-transfer difficulty within instruction-level concepts (Spearman ρ=−1.0, 
+
+n= 4, one-sided p≈1/24 ≈0.042; two-sided p≈2/24 ≈0.083 as the strongest available value at n= 4, treated as a suggestive ordering) and reliably flags architectural outliers (Gemma: 
+
+d = 1 .08, AUC = 0 .79, p = 0 .003 across six domains)—rather than an absolute transfer-accuracy predictor (LOO R2 = −0.14 across concepts), establishing a practical training-free diagnostic for cross-architecture concept monitoring. 
+
+2. Related Work 
+
+Linear representations and cross-model universality. Representation similarity analysis dates back to neuroscience (Kriegeskorte et al., 2008), with deep-learning adaptations including SVCCA (Raghu et al., 2017), CKA (Kornblith et al., 2019), and generalised shape metrics (Williams et al., 2021). The linear representation hypothesis (Park et al., 2023; Elhage et al., 2022) posits that neural networks encode concepts as linear directions. Evidence spans factual knowledge (Burns et al., 2023), sentiment (Tigges et al., 2023), and truthfulness (Marks and Tegmark, 2024). At the cross-architecture level, Wang et al. (2025) show 
+
+> 2
+
+Concept-Specific Structural Alignment 
+
+Table 1: Comparison of cross-architecture alignment methods.                                    
+
+> Method Training Compute Concept Output Diagnostic Required Cost Specificity Type vs. Constructive
+> CKA ∆(Ours) No 10 min/pair ✓Metric Diagnostic USAEs (Thasarathan et al., 2025) Yes (SAE) Hours Implicit Features Constructive SAE Stitching (Stolfo et al., 2025) Yes (SAE) Hours Implicit Features Constructive Affine Alignment (Oozeer et al., 2025) Yes (map) Minutes Untested Map Constructive Steering Transfer (Huang et al., 2025) Yes (vector) Minutes Untested Vector Constructive
+
+circuit-level universality across Transformers and Mamba (ICLR 2025), while Stolfo et al. (2025) demonstrate affine feature transfer via SAEs (NeurIPS 2025). Thasarathan et al. (2025) present Universal Sparse Autoencoders (USAEs) that jointly learn a shared concept space (ICML 2025). We complement these approaches: while USAEs and SAE stitching operate on learned feature dictionaries, CKA ∆ provides a lightweight diagnostic metric 
+
+operating directly on activation distributions without SAE training, and crucially tests whether alignment is concept-specific or merely generic. 
+
+Cross-model activation transfer. Huang et al. (2025) transfer steering vectors from Qwen2 to Llama2 via linear maps, achieving 96% success on safety concepts. Oozeer et al. (2025) show safety interventions transfer across Llama, Qwen, and Gemma using affine maps (ICML 2025). Cristofano (2026) identify universal refusal circuits via trajectory replay across 8 model pairs. However, none test whether transfer succeeds due to concept-specific alignment or generic representational preservation—a distinction our CKA ∆ directly addresses. 
+
+Persona representations in LLMs. Ju et al. (2025) probe personality across 11 LLMs and edit traits via targeted interventions (COLM 2025). Chen et al. (2025) extract persona vectors for monitoring sycophancy and deception. Gupta et al. (2025) construct role vectors with activation addition (EMNLP 2025). Hoppe et al. (2026) introduce personality sliders enabling cross-model behavioral control. Critically, all prior work studies personality within 
+
+individual models or transfers single vectors. We address the orthogonal question: is the representational structure shared across architectures? 
+
+Our unique contributions. Compared to prior work: (1) Concept-specificity testing —we are the first to systematically test whether cross-architecture convergence is concept-specific rather than generic similarity. Prior work shows transfer success but does not test whether it arises from concept alignment or generic representational preservation. (2) 
+
+Training-free diagnostic —CKA ∆ operates directly on activation distributions without SAE training (vs. USAEs, SAE stitching) or iterative optimization (vs. affine alignment). (3) Geometric-functional dissociation —we systematically characterize how moderate geometric convergence coexists with near-perfect functional transfer, revealing two indepen-dent levels of universality. (4) Practical diagnostic capability — CKA ∆ enables zero-label architecture screening, outlier detection, and encoding-depth diagnosis—capabilities not addressed by prior work. Table 1 summarizes the key distinctions. Prior methods are constructive : they build shared representations (USAEs, SAE stitching) or transfer mechanisms (affine maps, steering vectors). CKA ∆ is diagnostic : it measures whether concept-specific alignment exists before investing in construction. This enables zero-label architecture screening—determining whether alignment investment is worthwhile—which constructive methods cannot provide. 
+
+3Gao 
+
+3. Method 
+
+Note on CKA ∆ interpretation. The absolute value of CKA ∆ is question-set-dependent (see Supplementary §?? ; 99 .7% of variation is content-driven). The paper’s central finding is the relative same-vs-cross discrimination, which is preserved across question sets. We there-fore recommend CKA ∆ for relative comparisons, outlier detection, and regime classification, with standardized prompt suites ( ≥30 topical domains, ≥200 pairs). 
+
+3.1. Contrastive Activation Extraction 
+
+For each personality dimension t ∈ T (|T | = 8: Big Five plus helpfulness, sycophancy, confidence), we construct contrastive prompt pairs ( p+ 
+
+> t
+
+, p − 
+
+> t
+
+) sharing the same neutral question but with opposing system-level persona instructions. Given model M with L layers and hidden dimension d, we collect residual stream activations at the last token position for 
+
+N = 500 prompt pairs per trait, obtaining A+ 
+
+> t
+
+, A− 
+
+> t
+
+∈ RN ×d at each layer ℓ. The persona direction vector is vℓt = 1
+
+> N
+
+PNi=1 (a+,ℓ t,i − a−,ℓ t,i ). We select the layer ℓ∗ maximizing ∥vℓt ∥2.
+
+3.2. Contrastive-Difference CKA 
+
+To compare persona representations across models MA and MB , we compute CKA on the 
+
+per-sample contrastive differences ∆At = A+ 
+
+> t
+
+− A− 
+
+> t
+
+rather than raw activations: CKA ∆(MA, MB , t ) = CKA (∆ At,A , ∆At,B ) (1) This isolates the persona-specific component by canceling shared variance from question content, model capacity, and instruction formatting. The procedure is: (1) Extract 
+
+activations at the optimal layer ℓ∗ under both positive and negative system prompts for N
+
+prompt pairs per model; (2) Contrast by computing per-sample differences ∆ At = A+ 
+
+> t
+
+−A− 
+
+> t
+
+,eliminating shared question-dependent variance; (3) Reduce by projecting onto k= 50 principal components (capturing 83–90% of contrastive variance); (4) Compare via debiased linear CKA between the two models’ projected contrastive-difference matrices. The entire pipeline requires no learned components beyond PCA, takes ∼10 minutes per model pair on a single GPU, and is agnostic to model architecture and vocabulary. 
+
+Formal analysis. We model activations as a+ = s + p + ϵ and a− = s − p + ϵ′, where 
+
+s ∈ Rd is shared (question-dependent) variance, p ∈ Rd is concept-specific signal, and ϵ, ϵ′
+
+are i.i.d. noise with E[ϵ] = 0, Cov( ϵ) = σ2I.
+
+Proposition 1 (Variance reduction, linear-kernel SNR) Under the above decompo-sition with s ⊥ p ⊥ ϵ, let σ2 
+
+> s
+
+= tr (Cov (s)) , σ2 
+
+> p
+
+= tr (Cov (p)) . Under a linear kernel, the concept signal-to-noise ratios satisfy R∆ ≥ Rraw :
+
+Rraw = σ2
+
+> p
+
+σ2 
+
+> s
+
++ σ2 
+
+> p
+
++ σ2 , R∆ = 4σ2
+
+> p
+
+4σ2 
+
+> p
+
++ 2 σ2 (2) 
+
+with equality iff σ2 
+
+> s
+
+= 0 , and gain R∆/R raw ≈ σ2 
+
+> s
+
+/σ 2 
+
+> p
+
+when shared variance dominates. 
+
+RBF-kernel extension (informal). For the RBF kernel k(x, y ) = exp (−∥ x − y∥2/(2 γ2)) with median-bandwidth heuristic ( γ2 ∝ median ∥xi−xj ∥2), a 1st-order Taylor expansion in 1/γ 2
+
+> 4Concept-Specific Structural Alignment
+
+gives k(x, y ) ≈ 1 − ∥ x−y∥2/(2 γ2), so the resulting Gram matrix differences inherit the same linear-covariance structure up to leading order. Consequently, the linear-kernel SNR bound 
+
+R∆ ≥ Rraw continues to hold under RBF kernels in this regime, and the empirical Table 2 contrast ( d=0.67 RBF vs. d=0.60 linear) is consistent with this analysis. We state Prop 1 for the linear kernel and treat the RBF case as a 1st-order corollary rather than a separate formal result. 
+
+Proof Independence gives Cov (a+) = Cov (s) + Cov (p) + σ2I. The contrastive difference ∆a = 2 p + ( ϵ − ϵ′) eliminates s exactly, giving Cov (∆ a) = 4 Cov (p) + 2 σ2I. Under linear kernels, CKA depends only on covariance (Kornblith et al., 2019), so the SNR expressions follow directly. The inequality R∆ ≥ Rraw reduces to 4 σ2 
+
+> p
+
+σ2 
+
+> s
+
+≥ 0, strict whenever σ2 
+
+> s
+
+> 0. The debiased HSIC estimator (Gretton et al., 2005; Song et al., 2012) is √n-consistent. 
+
+Proposition 2 (Concept discriminability, with orthogonality slack) For concepts 
+
+t1, t 2 with concept components having maximal off-diagonal cosine slack 
+
+η := max  
+
+> t1̸=t2
+
+|⟨ pt1 , pt2 ⟩| ∥pt1 ∥ ∥ pt2 ∥ ,
+
+let δ = CKA same − CKA cross denote same-vs-cross discrimination. Then 
+
+δ∆
+
+δ+
+
+≥ 4( σ2 
+
+> s
+
++ σ2 
+
+> p
+
++ σ2)4σ2 
+
+> p
+
+(1 + η) + 2 σ2 > 1 whenever σ2 
+
+> s
+
+> 0, η < 1.
+
+Proof For CKA +, both same- and cross-concept pairs share the σ2 
+
+> s
+
+contribution in the numerator; their difference is δ+ ∝ σ2 
+
+> p
+
+/(σ2 
+
+> s
+
++ σ2 
+
+> p
+
++ σ2). For CKA ∆, the shared component is eliminated: the same-concept numerator is ∝ 4σ2 
+
+> p
+
+, while the cross-concept numerator under approximate orthogonality is ∝ 4σ2 
+
+> p
+
+η, giving δ∆ ∝ 4σ2 
+
+> p
+
+(1 − η)/(4 σ2 
+
+> p
+
+(1 + η) + 2 σ2). The ratio strictly exceeds 1 whenever σ2 
+
+> s
+
+> 0 and η < 1. Our empirical η = 0 .62 (sycophancy– agreeableness, App. ?? ) easily satisfies η < 1, and the predicted-vs-observed gain match (2 .06 × vs 2 .22 ×, within 8%) validates that the slack does not invalidate the bound. 
+
+Remark 3 (Independence assumption) The independence assumption s ⊥ p ⊥ ϵ is approximate; certain topics may differentially elicit concept effects, but the 45-domain prompt design dilutes this and empirical predictions match within 8% (2.06 × predicted vs. 2.22 ×
+
+observed). Both a 1D closed-form and a d=32 k= 4-subspace simulation confirm Var (∆ a)
+
+and the same-vs-cross discrimination gap are ρ-invariant up to ρ=0.7 (Appendix ?? ). See Limitations ( L7 ). 
+
+Empirical orthogonality. The orthogonality assumption is verified empirically: mean off-diagonal cosine between trait directions is 0 .054 across the four primary models (range 0.038–0 .079); see Appendix ?? for full statistics. Empirically, the persona-to-total variance ratio ranges from 38.9% (Mistral) to 68.0% (Gemma), cross-model mean 48.5%, yielding a ∼2× SNR gain—consistent with the observed improvement from d = 0 .27 to d = 0 .60. Proposition 2 predicts a discriminability gain of 
+
+∼2.06 × from these ratios; the empirical δ∆/δ + = 2 .22 × confirms the theoretical prediction. Concept-to-total variance ratios are lower for truthfulness (13.6%) and formality (19.7%), predicting even larger SNR gains (5 −11 ×) that compensate for the reduced concept signal— explaining why CKA ∆ remains effective despite lower absolute values for these domains. 
+
+> 5Gao
+
+3.3. Cross-Model Classification Transfer 
+
+To test functional universality beyond geometric similarity, we train ridge-regularized logistic classifiers on persona polarity in each model’s PCA-50 space (50 principal components of the contrastive-difference vectors, capturing 83–90% of variance), then evaluate cross-model transfer. We consider three protocols: (1) direct transfer —apply source-model classifier to target-model embeddings without alignment; (2) affine-aligned transfer —learn a ridge-regularized affine map ( W ∈ R50 ×50 , b ∈ R50 ; ∼2,550 parameters) from target to source space, then apply the source classifier; (3) contrastive-aligned transfer —align using only contrastive mean directions. Controls include random-label (shuffled target labels), cross-trait (align on one trait, test on another), and random concept (semantically incoherent contrastive pairs). All evaluations use 5-fold cross-validation with non-overlapping train/test splits for the alignment map. 
+
+4. Experimental Setup 
+
+Models. Nine models spanning five architectural families (full configurations in Ap-pendix ?? ): Llama-3.1-8B-Instruct (Grattafiori et al., 2024), Qwen-2.5-7B-Instruct (Yang et al., 2024), Gemma-2-9B-IT (Gemma Team, 2024), Mistral-7B-Instruct-v0.3 (Jiang et al., 2023), Phi-3.5-mini-instruct, Yi-1.5-6B-Chat, Llama-3.1-8B (base), and for cross-scale anal-ysis, Llama-3.1-70B-Instruct and Qwen-2.5-72B-Instruct. The primary analysis uses the first four 7–9B instruct models (32L/ d=4096 for Llama and Mistral; 28L/ d=3584 for Qwen; 42L/ d=3584 for Gemma); extended analysis includes all nine. 
+
+Personality dimensions. Eight dimensions: Big Five (Extraversion, Agreeableness, Conscientiousness, Neuroticism, Openness) plus three alignment-relevant traits (Helpfulness, Sycophancy, Confidence). We initially considered verbosity as a ninth dimension but excluded it after pilot experiments showed zero behavioral discriminability across the 4 primary models (Supp. §?? ). For each, 500 contrastive prompt pairs combine system-level persona instructions with diverse neutral questions (50 hand-crafted seeds + 450 template-generated across 45 topical domains). Safety experiments use refusal-aligned vs. direct-answering contrastive prompts across six models. 
+
+Statistical methodology. All hypothesis tests use two-sided Welch’s t-test with both Bon-ferroni (conservative) and Benjamini–Hochberg FDR corrections reported in App. ?? ; effect sizes report Cohen’s d. Permutation testing ( n = 200 shuffles, sufficient for single-hypothesis null calibration; SAE multi-test analysis uses n = 1 ,000 per App. ?? ) validates CKA ∆
+
+significance. Bootstrap 95% CIs (10 ,000 resamples) confirm robustness; nonparametric confirmation via Mann–Whitney U and Wilcoxon signed-rank tests. We use the debiased HSIC estimator (Song et al., 2012) to remove the O(1 /N ) bias that would otherwise inflate CKA ∆ at smaller N (relevant for N = 200 non-instruction experiments); the choice has no material effect at N =500. 
+
+Infrastructure and precision. All experiments ran on 8 × NVIDIA V100-SXM2 16GB GPUs. Dtype: float16 for Llama, Gemma, Mistral, Phi, Yi, and Llama-base; bfloat16 
+
+for Qwen-7B and 70B/72B. Large models use device map="auto" tensor parallelism (HF 
+
+> 6Concept-Specific Structural Alignment
+
+Table 2: Same-trait vs. cross-trait CKA comparison ( N =500, 4 primary models). Cells use the optimal layer ℓ∗ per (model, trait) ( §3.2); the same quantity at the final layer is 0 .733 and the permutation test in the text uses that final-layer value 0 .727. Supp. Table ?? shows same-trait CKA ∆ stays at 0 .804 across early/mid/late layers and drops to 0 .733 at the final layer, while the same-vs-cross gap grows with depth (0 .014 → 0.040 → 0.048 → 0.048). CKA ∆ achieves significant discrimination; raw CKA + does not ( p=0 .052).                                    
+
+> Metric Same Cross tpd
+> CKA +(raw) .802 ±.085 .780 ±.083 1.64 .052 0.27
+> CKA ∆(linear) .804 ±.080 .760 ±.066 2.89 .002 0.60
+> CKA ∆(RBF) .868 ±.052 .836 ±.044 3.26 <. 001 0.67
+
+Accelerate), batch size 8, and per-layer hook release. Total: ∼480 GPU-hours ( ∼10 min per model-pair ×concept). Seeds: torch=numpy=42 .
+
+5. Results 
+
+5.1. CKA ∆ Isolates Concept-Specific Signal 
+
+Table 2 presents our core finding. Standard CKA on raw positive-pole activations (CKA +)yields high same-trait similarity (0 .802) but cannot distinguish it from cross-trait mismatch (0 .780; p = 0 .052). CKA ∆ achieves significant discrimination under both linear ( d = 0 .60, 95% CI [0 .29 , 0.91], p = 0 .002) and RBF ( d = 0 .67, 95% CI [0 .36 , 0.98], p < 0.001) kernels. Permutation testing ( n= 200) validates: real CKA ∆ = 0 .727 vs. null = 0 .689 ± 0.005 (p < 0.005; permutation z = 7 .4). The Mann-Whitney U test confirms nonparametrically (U = 5144, p = 0 .002). A random concept control (Appendix ?? ) with semantically incoherent contrastive pairs yields d = 0 .04 ( p = 0 .85)—a 13 .6× contrast confirming concept-specificity. Trait universality varies 1 .9× (helpfulness 0 .829 vs. neuroticism 0 .553); Gemma-involving pairs show lower similarity (0 .696 vs. 0 .757; p < 0.05). Full per-trait, per-pair, and baseline (raw CKA / SVCCA / Procrustes: |d| ≤ 0.03) results are in Apps. ?? , ?? , ?? .Figure 1 shows the trait × pair landscape (Gemma–Mistral is most divergent, 0 .659). 
+
+5.2. Near-Perfect Cross-Model Classification Transfer 
+
+Table 3 shows that affine-aligned persona classifiers achieve 99.9% cross-model accuracy across all 96 transfer conditions (8 traits × 12 directed model pairs), versus 51.3% for direct transfer. The affine map has 50 × 51 = 2 ,550 parameters fit on N =500 contrastive-difference vectors per direction (with 50-dim outputs, 25 ,000 scalar constraints vs. 2 ,550 parameters: ∼10 × over-determined). Three controls confirm non-triviality: random-label 
+
+(50 .4% ± 0.9%, n = 480), cross-trait (70 .7% ± 18 .8%; Welch’s t = 10 .71, p < 10 −6), and 
+
+PCA dimension robustness (96.2% at d=10, 100% at d=100; Appendix ?? ). Figure 2 reveals a striking geometric-functional dissociation: neuroticism has the lowest CKA ∆ (0 .553) yet achieves 99 .4% affine transfer. Table 4 quantifies this across all eight traits—the Pearson correlation between CKA ∆ and affine accuracy is r = 0 .82 ( n = 96 trait ×directed-pair cells, Fisher-z 95% CI [0 .74 , 0.88]), but ceiling effects at ∼100% (5/8 
+
+> 7
+
+Gao Lla-Qwe                                                
+
+> Lla-Gem
+> Lla-Mis
+> Qwe-Gem
+> Qwe-Mis
+> Gem-Mis
+> Help.
+> Cons.
+> Extr.
+> Syco.
+> Conf.
+> Agre.
+> Open.
+> Neur.
+> 0.91 0.77 0.90 0.78 0.87 0.74
+> 0.82 0.78 0.75 0.80 0.80 0.78
+> 0.83 0.73 0.71 0.79 0.84 0.67
+> 0.87 0.73 0.74 0.75 0.73 0.62
+> 0.78 0.68 0.78 0.68 0.79 0.62
+> 0.71 0.73 0.75 0.68 0.75 0.68
+> 0.77 0.74 0.73 0.67 0.70 0.64
+> 0.48 0.70 0.58 0.43 0.60 0.52
+> Contrastive-Difference CKA by Trait and Model Pair
+> 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+> Mean CKA ± std
+> Help.
+> Cons.
+> Extr.
+> Syco.
+> Conf.
+> Agre.
+> Open.
+> Neur.
+> Trait Universality
+> Cross-trait baseline
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> CKA
+
+Figure 1: Left: CKA ∆ heatmap across 8 traits and 6 model pairs. Right: Per-trait univer-sality (mean ± std); dashed line = cross-trait baseline. Trait universality ranges 1.9× (helpfulness 0 .829 vs. neuroticism 0 .553). Table 3: Cross-model persona classification transfer. Affine-aligned transfer achieves near-perfect accuracy; controls confirm persona-specific structure. 
+
+Method Accuracy n
+
+Within-model (5-fold CV) 0.996 ± 0.014 32 Direct transfer 0.513 ± 0.392 96 
+
+Affine-aligned transfer 0.999 ± 0.003 96 Contrastive-aligned transfer 0.736 ± 0.195 96 
+
+Controls: 
+
+Random-label affine transfer 0.504 ± 0.009 480 Cross-trait alignment 0.707 ± 0.188 336 
+
+trait-level means at exactly 1 .000) mask the functional equivalence; the rank-based Spearman 
+
+ρ = 0 .87 ( n= 8 trait means, p= 0.005) confirms the monotone relation. Persona-specific structure occupies a small fraction of total variance but is perfectly preserved up to affine transformation. The cross-trait control decomposes universality: ∼40% reflects generic alignment while ∼60% is trait-specific structure accessible only when alignment is trained on the matching dimension. SVD analysis of alignment maps (Appendix ?? ) reveals moderate-rank structure (effective rank ∼27 of 50 dimensions), explaining why lightweight maps (∼2,550 parameters) suffice. 
+
+5.3. Scale, Architecture, and Training Dependence 
+
+We extend the analysis to nine models (Table 5). CKA ∆ decreases with model diversity: the four primary 7–9B models show the strongest convergence (0 .733); smaller models show reduced similarity (0 .34–0 .47). Despite this, affine transfer remains >94% across all 42 directed model pairs, confirming functional universality at lower scale. Crucially, the base Llama-3.1-8B ( no instruction tuning ) retains separable persona representations (within-
+
+8Concept-Specific Structural Alignment 
+
+Table 4: Per-trait affine classification transfer (mean across 12 directed pairs). Geometric similarity (CKA ∆) does not predict functional transfer difficulty. 
+
+Trait CKA ∆ Affine Direct Within 
+
+Helpfulness 0.829 1.000 0.445 1.000 Conscientiousness 0.789 1.000 0.962 1.000 Extraversion 0.761 1.000 0.500 1.000 Sycophancy 0.737 1.000 0.337 1.000 Confidence 0.722 1.000 0.394 0.999 Agreeableness 0.717 1.000 0.417 0.999 Openness 0.707 0.999 0.428 0.993 Neuroticism 0.553 0.994 0.619 0.981 0.5 0.6 0.7 0.8 0.9 
+
+> Geometric universality (CKA )
+> 99.2
+> 99.4
+> 99.6
+> 99.8
+> 100.0
+> 100.2
+> Functional universality
+> (Affine transfer accuracy %)
+> Neuroticism
+> Openness
+> Agreeableness
+> Confidence
+> Sycophancy
+> Extraversion
+> Conscientiousness
+> Helpfulness
+> min threshold
+
+Figure 2: Geometric-functional dissociation: all traits achieve ≥99 .4% affine transfer re-gardless of CKA ∆. Neuroticism (lowest CKA ∆=0.553) transfers nearly as well as helpfulness (highest CKA ∆=0 .829). model 98 .0%, affine transfer 98 .5% to instruction-tuned models), demonstrating instruction tuning amplifies rather than creates persona structure—this rules out the hypothesis that CKA ∆ merely measures instruction-following similarity. We further report an observational note based on a single 70B/72B pair (Llama-70B ↔Qwen-72B; Table 5): the cross-family CKA ∆ = 0 .830 exceeds the 7–9B baseline (0 .733), same-family cross-scale pairs show striking similarity (Llama-70B ↔Llama-8B: 0 .905; Qwen-72B ↔Qwen-7B: 0 .819), and affine transfer remains ≥99 .7% across all cross-scale conditions—a pattern consistent with the Platonic Representation Hypothesis (Huh et al., 2024). We emphasize this is a single-pair observation: with n= 1 at the cross-family 70B+ level, no inferential statistic is computable, and the observation cannot fully disentangle scale from training-data overlap. Establishing a scale effect requires replication with at least three ≥70B models; we present this finding as a hypothesis-generating observation rather than confirmed evidence. Depth-resolved analysis (Appendix ?? ) shows the same-vs-cross gap increases 3 .4× from early to final layers, confirming persona-discriminative structure 
+
+9Gao 
+
+Table 5: Extended model analysis across 9 models. CKA ∆ decreases with diversity but 
+
+increases at 70B scale; affine transfer remains >94% universally. Column n counts directed pairs; reported std is across the 8 traits (so the 70B/72B group with 1 unique pair still has ntrait =8 for the std).                                        
+
+> Model group CKA ∆(same) Affine transfer n
+> Orig-4 instruct (7–9B) .733 ±.096 .999 ±.001 12 70B/72B .830 ±.053 1.000 ±.000 270B ↔7–9B .784 ±.055 1.000 ±.001 16 Smaller models (3.8–6B) .342– .468 .947– .991 18 Base ↔instruct .507 ±.089 .985 ±.018 12
+
+emerges progressively. Pair-level tests across all 21 model pairs yield a larger effect ( d = 0 .78, 
+
+p = 0 .002, Wilcoxon p < 0.001; Appendix ?? ). 
+
+5.4. Generalization to Safety, Truthfulness, and Formality 
+
+To test whether CKA ∆ generalizes beyond personality, we apply it to three qualitatively different concept domains: refusal alignment (safety-conscious vs. direct-answering behavior, six models), truthfulness (honest vs. evasive responses, four models), and formality (academic register vs. casual tone, four models). 
+
+Safety. We extend the analysis to refusal alignment (safety-conscious vs. direct-answering behavior) across six models (Llama, Qwen, Gemma, Mistral, Phi-3.5, Yi-1.5), forming 
+
+15 directed pairs . Same-concept CKA ∆ (0 .513 ± 0.146, bootstrap 95% CI [0 .398 , 0.628]) trends higher than cross-concept comparisons ( d = 0 .43, p = 0 .08— suggestive but not statistically significant at α = 0 .05). While geometric discrimination does not reach significance at this sample size ( n= 15 pairs), four independent lines of evidence converge on concept-specific structure: (1) affine-aligned classification achieves ≥99.9% across all 30 directed pairs (random-label 59 .4%); we caution this 40-point gap is suggestive but not by itself concept-specific evidence, since random-concept controls also reach ∼
+
+100% affine transfer (App. ?? )—it must be read jointly with the geometric and SAE results; (2) safety alignment maps show the same moderate-rank SVD structure as persona maps (effective rank ∼26 vs. ∼27; Appendix ?? ); (3) independent SAE analysis identifies 2,053 universal and 2,084 architecture-specific features (Appendix ?? ); (4) the 6-model subset shows consistent results ( CKA ∆ = 0 .534 ± 0.15). This converging-evidence pattern— moderate geometric convergence but near-perfect functional transfer ( ≥99.9%)—exemplifies the geometric-functional dissociation that is the paper’s central finding. 
+
+Truthfulness and formality. Table 6 summarizes. Both new concepts replicate the geometric-functional dissociation: truthfulness achieves 97 .9% affine transfer despite moder-ate CKA ∆ (0 .418); formality shows the sharpest dissociation—the lowest geometric conver-gence ( CKA ∆ = 0 .342) yet near-perfect functional transfer (99 .9%). Random-label controls confirm non-triviality (50 .1% and 49 .5% respectively). The Gemma anomaly replicates: Gemma-involving pairs show systematically lower CKA ∆ across all four instruction-level concept domains, consistent with its architectural distinctiveness (sliding-window attention, 
+
+> 10 Concept-Specific Structural Alignment
+
+deeper network). Non-Gemma pairs achieve CKA ∆ = 0 .629 for truthfulness and 0 .456 for formality. 
+
+Encoding depth and transfer difficulty. Direct transfer accuracy varies substantially across concept types (Table 6): truthfulness (88 .0%) and formality (91 .3%) far exceed per-sonality (51 .3%), suggesting these concepts produce more token-level-consistent contrastive patterns across architectures, while personality modulations are subtler and require explicit alignment. Even for concepts with high direct transfer, affine alignment still improves accuracy (formality: 91 .3% → 99 .9%), confirming that CKA ∆ captures structure beyond what direct transfer exploits. Within instruction-level concepts, CKA ∆ rank-orders direct transfer difficulty (Spearman 
+
+ρ = −1.0, n= 4, one-sided p≈1/24 ≈0.042; two-sided p≈2/24 ≈0.083 as the strongest available value at n=4, treated as a suggestive ordering rather than a tightly estimated correlation): concepts with higher CKA ∆ (deeper encoding) require explicit alignment, while surface-encoded concepts transfer directly. The two non-instruction concepts reveal a qualitatively different regime: despite having the lowest CKA ∆ values (0 .281–0 .300), they also show low direct transfer (46–47%), breaking the instruction-level negative correlation. This is expected: non-instruction concepts lack system-prompt-induced surface lexical markers entirely, so the “surface channel” that enables high direct transfer for formality (91 .3%) and truthfulness (88 .0%) is absent regardless of CKA ∆ magnitude. The result reveals two distinct encoding regimes—instruction-level concepts trade off between surface- and deep-encoding ( ρ=−1.0), while non-instruction concepts are uniformly deep-encoded—establishing CKA ∆ as a diagnostic for concept encoding depth within each regime (Appendix ?? ). The replication of the geometric-functional dissociation across all six concept domains—five with significant geometric discrimination ( p ≤ 0.017) and safety as a converging-functional trend (p = 0 .08, see App. ?? )—provides strong evidence that CKA ∆ captures a general property of cross-architecture concept encoding. 
+
+Non-instruction concepts. To test whether CKA ∆ generalizes beyond instruction-level concepts, we apply it to two concepts that arise from pretraining with no system prompt manipulation : (1) code vs. natural language —matched topic pairs differing only in whether the question requests code or a verbal explanation; (2) reasoning vs. recall —matched pairs differing in whether the question requires logical deduction or factual retrieval. These experiments use N =200 prompts per concept (50 hand-crafted + 150 template-generated), reduced from the N = 500 used for personality due to the higher construction difficulty for non-instruction contrastive pairs, which must differ in cognitive demand (code vs. explanation, reasoning vs. recall) while controlling for topic and complexity. Subsample analysis confirms that N = 200 provides stable CKA ∆ estimates (bootstrap std <0.08; Appendix ?? ). Table 6 (bottom rows) shows that the geometric-functional dissociation fully replicates: code-NL achieves 99 .5% affine transfer despite CKA ∆ = 0 .300; reasoning-recall achieves 94 .0% with CKA ∆ = 0 .281 (mean across 12 directed pairs; per-pair details in Appendix ?? , Table ?? ). Same-vs-cross concept discrimination is stronger than for instruction-level concepts ( d = 1 .8and 3 .0, p ≤ 0.017), and random-label controls confirm non-triviality (48 .0%, 49 .3%); per-pair results appear in Appendix ?? .The stronger discrimination arises because instruction-level concepts share system-prompt scaffolding, producing residual cross-concept CKA ∆ (0 .760); non-instruction concepts 
+
+> 11 Gao
+
+Table 6: Concept generalization across six domains. The geometric-functional dissociation replicates for five concepts with significant geometric discrimination; safety reaches the same functional pattern ( ≥99 .9% affine) but with a non-significant geometric trend ( p = 0 .08, see App. ?? ). Bottom two rows are non-instruction concepts (N =200 : 50 hand-crafted + 150 template-generated pairs). †No system prompt used.                                                  
+
+> Concept CKA ∆(all) CKA ∆(non-Gemma) Affine Direct Random
+> Personality (8 traits) 0.727 ±0.10 0.757 99 .9% 51 .3% 50 .4% Safety (refusal, 15 pairs) 0.513 ±0.15 0.585 99 .9% 55 .4% 59 .4% Truthfulness 0.418 ±0.21 0.629 97 .9% 88 .0% 50 .1% Formality 0.342 ±0.13 0.456 99 .9% 91 .3% 49 .5% Code vs. NL †0.300 ±0.18 0.428 99 .5% 46 .3% 48 .0% Reasoning vs. recall †0.281 ±0.08 0.331 94 .0% 47 .1% 49 .3%
+
+share no such scaffolding, so cross-concept CKA ∆ approaches zero (0 .004–0 .020), naturally amplifying the same-vs-cross contrast (Table ?? ). This methodological insight confirms that CKA ∆ captures genuine concept structure, not shared formatting artifacts. Notably, the per-pair transfer patterns are concept-dependent : while instruction-level concepts show a “Gemma anomaly” (Gemma-involving pairs transfer worst), code-NL shows a “Mistral anomaly” where Mistral-involving pairs have the lowest direct transfer (2–17% vs. 98–99% for Llama ↔Qwen; Appendix ?? ). A mech-interp investigation of this concept-by-architecture interaction is left to future work. This concept-dependent architectural sensitivity—different architectures encode different concepts with varying fidelity—further validates that CKA ∆ captures concept-specific structure rather than a single generic factor. 
+
+6. Discussion and Conclusion 
+
+Two levels of universality. The moderate geometric universality ( d = 0 .60–0 .78) com-bined with near-perfect functional universality ( ≥94 .0%) reveals that concept-specific struc-ture is well-preserved but occupies a small fraction of total representational variance, analogous to two maps of the same city in different coordinate systems. Our results are consistent with a weak version of the Platonic Representation Hypothesis (Huh et al., 2024): different architectures show partial convergence in concept representations rather than complete convergence. The strong version predicts full cross-architecture convergence; we observe moderate geometric convergence ( CKA ∆ = 0 .727) with near-perfect functional equivalence ( ≥94% affine transfer). This geometric-functional separation means concept representations are universally recoverable (via affine transformation) but not universally 
+
+identical (requiring learned alignment). Preliminary analysis of a single 70B/72B pair (CKA ∆ = 0 .830, Llama-70B ↔Qwen-72B) suggests universality may strengthen with scale, though this finding requires replication with additional large-scale models to disentangle scale effects from training-data overlap. Since concept-specific structure modulates the next-token prediction distribution (e.g., an extraverted persona shifts probability mass to-ward enthusiastic completions), the functional universality implies architectures converge on similar concept-conditioned prediction strategies . CKA ∆ complements USAEs (Thasarathan 
+
+> 12 Concept-Specific Structural Alignment
+
+et al., 2025) and SAE stitching (Stolfo et al., 2025): those methods construct shared fea-ture vocabularies (what features are shared), while CKA ∆ diagnoses concept-specificity (whether features carry concept-level alignment). Our cross-trait control (70 .7%) quantifies this—roughly 40% of transfer success is generic alignment while 60% is concept-specific. 
+
+Methodological validity. A natural concern is that contrastive differencing with identical persona instructions merely measures instruction-following convergence. Five controls refute this: (1) the base Llama-3.1-8B ( no instruction tuning ) retains separable persona representa-tions (98 .0% within-model, 98 .5% affine transfer); (2) cross-trait alignment (70 .7%) confirms trait-specificity; (3) random-label control (50 .4%) rules out memorization; (4) random con-cept control ( d = 0 .04, p = 0 .85; Appendix ?? ) shows zero discrimination for semantically incoherent pairs; (5) cross-model LLM-as-judge validation (Appendix ?? ) confirms persona effects with large effect sizes ( d = 3 .93). We further note BFI-44 forced-choice administration produced zero mean Likert drift (Supp. §?? ); this null indicates CKA ∆ tracks structure ex-pressed in open-ended generation, not in constrained self-reports—a representation–behavior dissociation (L11), not evidence against persona representations (since cross-model judges 
+
+do detect the structure in open text). 
+
+Concept-dependent transfer characteristics. Variance decomposition reveals that concept-specific structure occupies varying fractions of total representational variance: personality (48 .5%), code-NL (54 .0%), reasoning-recall (46 .3%), formality (19 .7%), truthful-ness (13 .6%)—yet these within-model variance fractions do not predict cross-model CKA ∆
+
+(code-NL occupies 54 .0% of variance but CKA ∆ = 0 .300 vs. personality’s 48 .5% with CKA ∆ = 0 .727), confirming that within-model variance and cross-model alignment measure distinct properties (Appendix ?? ). The safety random-label control (59 .4%) exceeds the 
+
+∼50% baseline seen for other domains, likely reflecting the sharp binary nature of safety refusal; the 59 .4% nonetheless remains far below 99 .9% correct-label accuracy. 
+
+CKA ∆ as a distributional diagnostic. CKA ∆ operates on the distributional level— the full N × d contrastive-difference matrix—rather than on mean directions, capturing higher-order structure (covariance patterns) invisible to direction-level methods (Huang et al., 2025; Oozeer et al., 2025). The mean-difference cosine baseline ( d = 0 .007, p = 0 .98) and SVCCA (0 .874 mean, no same-vs-cross discrimination) confirm this unique capability. Following Venkatesh and Kurapath (2026)’s caution on steering-vector identifiability, we note the learned affine map ( W, b) ∈ R50 ×51 is identifiable up to the null space of the PCA-50 inputs; since PCA-50 captures 83–90% of contrastive variance (App. ?? ), residual null-space contribution to cross-model transfer is bounded by 10–17%. The reported 99 .9% affine accuracy thus reflects the identifiable component and cannot be inflated by the unidentifiable residual. Practically, the diagnostic requires ∼10 minutes per model pair on a single GPU, with no SAE training, feature matching, or iterative optimization. A natural question is: since affine transfer achieves ≥94% across all conditions, why is CKA ∆ needed? The answer is that CKA ∆ provides information before investing in labeled-data alignment: it identifies which architecture pairs are outliers (Gemma-involving pairs show systematically lower CKA ∆ across all six concept domains, d = 1 .08, AUC = 0 .79; Appendix ?? ) and diagnoses concept encoding depth—information that determines whether the ∼200 labeled pairs and alignment-map training required for affine transfer can be skipped entirely. For instruction-level concepts, low CKA ∆ reliably signals that direct transfer suffices (formality: 
+
+> 13 Gao
+
+CKA ∆ = 0 .342, direct 91 .3%), whereas high CKA ∆ signals the need for alignment investment (personality: CKA ∆ = 0 .727, direct 51 .3%). 
+
+Practical implications for deployment. The geometric-functional dissociation yields three actionable insights for organizations managing heterogeneous model portfolios: (1) Transfer triage —compute CKA ∆ on unlabeled contrastive prompts ( ∼10 min/pair); high CKA ∆ + instruction-level concept signals invest in affine alignment ( ∼2,550 params, ∼200 labeled pairs); low CKA ∆ + above-threshold direct accuracy lets us skip alignment. Use 
+
+≥ 30 topical domains, ≥ 200 pairs, focus on relative discrimination. (2) Alignment auditing —a drop in same-concept CKA ∆ between pre/post fine-tuning signals concept-encoding distortion. (3) Architecture selection — CKA ∆ identifies the architecture pair with least alignment overhead per concept (Gemma is the personality outlier; Mistral is the code-NL outlier). 
+
+Limitations and future work. We enumerate the principal limitations in compressed form here; full discussion (with cross-references to relevant supplementary sections) is in Supplementary §A. (L1) Concept coverage : six domains (four instruction-level, two non-instruction); extending to syntactic/world-knowledge features further tests generality. 
+
+(L2) Question-set sensitivity : absolute CKA ∆ varies with topical coverage (0 .727 → 0.366 on a narrower set; 99 .7% content-driven). Sensitivity is in absolute values, not in same-vs-cross discrimination—we therefore recommend CKA ∆ for relative comparisons / outlier detection / regime classification, with ≥ 30 domains, ≥ 200 pairs. The discrimination 
+
+strength (Cohen’s d) may also vary with prompt suite breadth, so per-suite d values should be reported alongside the absolute CKA ∆ (controlled-comparison analysis: App. ?? ). (L3) Scale evidence is observational ( n= 1): the 70B finding rests on a single Llama-70B ↔Qwen-72B pair; replication with ≥ 3 models at ≥ 70B is required. (L4) Safety geometric discrimination not significant : d = 0 .43, p = 0 .08, n = 15. Concept-specificity for safety rests on converging functional (99 .9% affine), SVD ( ∼ 26 effective rank), and SAE (2,053 universal features) evidence. Post-hoc power analysis confirms this is an underpowered design rather than evidence of no effect (achieved power 0 .312; required nsame =54 at 4 :1 ratio for 80% power; projected p≈0.044 at nsame =28; App. ?? ). (L5–L7) : cross-lingual gradient (French 0 .812, Chinese 0 .593; possibly confounded with training-data composition, App. ?? ); steering requires per-architecture calibration (Gemma 29 .8× lower divergence); the independence assumption s ⊥ p in Proposition 1 is approximate. (L8) Predictive scope of CKA ∆: LOO cross-validation ( n= 30) shows CKA ∆ does not predict absolute direct-transfer accuracy across concepts ( R2=−0.14), but reliably detects architectural outliers ( d=1.08, AUC 0 .79) and rank-orders pairs within concepts (truthfulness ρ= 0.88); CKA ∆ is a regime classifier and outlier detector, not an absolute transfer predictor. (L9–L10) : practical deployment requires standardized prompt suites; extension to >100B replications and to multimodal joint architectures (e.g., VLM cross-modal alignment) is open. Cross-modal evidence: acontrolled pilot on three ViT-class vision encoders ( ×5 CIFAR-100 polar concepts) recovers the same pattern in non-language modality (same-concept CKA ∆=0.560 vs. cross-concept CKA ∆=−0.004, d=7.34, p< 10 −10 ; App. ?? ). (L11–L12) Personality-trait subtleties : BFI-44 forced-choice administration yields zero mean Likert drift— CKA ∆ tracks generative-behavior structure, not self-report (Supp. §?? ); within personality, conscientiousness shows unusually 
+
+> 14
+
+Concept-Specific Structural Alignment 
+
+high direct transfer (96 .2%) vs. the other 7 traits (33–62%), but the Spearman ranking is robust to this outlier under the median (43 .7%) as well as the mean (51 .3%) (Table 4). In summary, we systematically characterize a geometric-functional universality dissocia-tion across LLM architectures: moderate geometric convergence coexists with near-perfect functional transfer ( ≥94.0%) across six concept domains—five established with p ≤ 0.017 geometric discrimination, and safety with converging functional, SVD, and SAE evidence (p = 0 .08 geometric trend)—and five architectural families. Contrastive-difference CKA (CKA ∆), the diagnostic metric enabling this characterization, isolates concept-specific con-vergence from generic similarity with provably improved signal-to-noise ratio. Formality provides the sharpest demonstration of the dissociation ( CKA ∆ = 0 .342 yet 99 .9% affine transfer). A single 70B/72B pair ( CKA ∆ = 0 .830) provides suggestive evidence of scale effects, though replication with additional large-scale models is needed. Non-instruction concepts show even stronger same-vs-cross discrimination ( d = 1 .8–3 .0) than instruction-level concepts ( d = 0 .60), confirming that CKA ∆ captures structural universality arising from pretraining, not prompt engineering. Rigorous controls—random concepts ( d = 0 .04 on the geometric channel), cross-trait alignment (70 .7% vs. 99 .9% same-trait, indicating 
+
+∼60% trait-specific structure), random-label baselines ( ∼50%)—establish concept-specificity primarily through the geometric channel for five domains, with safety relying on the con-verging functional+SVD+SAE pattern. These results establish that concept-level structure is functionally universal across architectures, with CKA ∆ providing a practical, training-free diagnostic for scalable alignment monitoring. 
+
+References 
+
+Collin Burns, Haotian Ye, Dan Klein, and Jacob Steinhardt. Discovering latent knowledge in language models without supervision. In ICLR , 2023. Mack Yan-Lun Chen, Andy Arditi, Henry Sleight, Owain Evans, and Jack Lindsey. Persona vectors: Monitoring and controlling character traits in language models. arXiv preprint arXiv:2507.21509 , 2025. Tony Cristofano. Universal refusal circuits across LLMs: Cross-model transfer via trajectory replay and concept-basis reconstruction. arXiv preprint arXiv:2601.16034 , 2026. Nelson Elhage, Tristan Hume, Catherine Olsson, Nicholas Schiefer, Tom Henighan, Shauna Kravec, Zac Hatfield-Dodds, Robert Lasenby, Dawn Drain, Carol Chen, et al. Toy models of superposition. Transformer Circuits Thread , 2022. URL https://transformer-circuits.pub/2022/toy_model/index.html .Gemma Team. Gemma 2: Improving open language models at a practical size. arXiv preprint arXiv:2408.00118 , 2024. Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aieleen Letman, Akhil Mathur, Alan Schelten, et al. The Llama 3 herd of models. arXiv preprint arXiv:2407.21783 , 2024. Arthur Gretton, Olivier Bousquet, Alex Smola, and Bernhard Sch¨ olkopf. Measuring statistical dependence with Hilbert-Schmidt norms. In Algorithmic Learning Theory (ALT) , 2005. Rishav Gupta et al. Can role vectors affect LLM behaviour? In Findings of EMNLP , 2025. Florian Hoppe, David Khachaturov, Robert Mullins, and Mark Huasong Meng. Controllable and explainable personality sliders for LLMs at inference time. arXiv preprint arXiv:2603.03326 , 2026. Youcheng Huang, Wenqiang Feng, Chen Chen, Huiming Tan, Haobo Wen, and Qingsong Jin. Cross-model transferability among large language models on the platonic representations of concepts. In ACL , 2025. arXiv:2501.02009. Minyoung Huh, Brian Cheung, Tongzhou Wang, and Phillip Isola. The platonic representation hypothesis. 
+
+arXiv preprint arXiv:2405.07987 , 2024. 
+
+15 Gao 
+
+Albert Q. Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford, Devendra Singh Chaplot, Diego de las Casas, Florian Bressand, Gianna Lengyel, Guillaume Lample, Lucile Saulnier, et al. Mistral 7B. 
+
+arXiv preprint arXiv:2310.06825 , 2023. Tianjie Ju et al. Probing then editing response personality of large language models. In COLM , 2025. arXiv:2504.10227. Simon Kornblith, Mohammad Norouzi, Honglak Lee, and Geoffrey Hinton. Similarity of neural network representations revisited. In ICML , 2019. Nikolaus Kriegeskorte, Marieke Mur, and Peter Bandettini. Representational similarity analysis—connecting the branches of systems neuroscience. Frontiers in Systems Neuroscience , 2:4, 2008. doi: 10.3389/neuro. 06.004.2008. Samuel Marks and Max Tegmark. The geometry of truth: Emergent linear structure in large language model representations of true/false datasets. In ICLR , 2024. arXiv:2310.06824. Neel Nanda, Lawrence Chan, Tom Lieberum, Jess Smith, and Jacob Steinhardt. Progress measures for grokking via mechanistic interpretability. In ICLR , 2023. Narmeen Oozeer, Dhruv Nathawani, Nirmalendu Prakash, Michael Lan, Abir Harrasse, and Amirali Abdul-lah. Activation space interventions can be transferred between large language models. In ICML , 2025. arXiv:2503.04429. Kiho Park, Yo Joong Choe, and Victor Veitch. The linear representation hypothesis and the geometry of large language models. arXiv preprint arXiv:2311.03658 , 2023. Maithra Raghu, Justin Gilmer, Jason Yosinski, and Jascha Sohl-Dickstein. SVCCA: Singular vector canonical correlation analysis for deep learning dynamics and interpretability. In NeurIPS , 2017. Le Song, Alex Smola, Arthur Gretton, Justin Bedo, and Karsten Borgwardt. Feature selection via dependence maximization. Journal of Machine Learning Research , 13:1393–1434, 2012. Alessandro Stolfo, Tilman Rauker, Wes Gurnee, and Neel Nanda. Transferring linear features across language models with model stitching. In NeurIPS , 2025. arXiv:2506.06609. Harrish Thasarathan, Julian Forsyth, Thomas Fel, Matthew Kowal, and Konstantinos Derpanis. Universal sparse autoencoders: Interpretable cross-model concept alignment. In ICML , 2025. Curt Tigges, Oskar John Hollinsworth, Atticus Geiger, and Neel Nanda. Linear representations of sentiment in large language models. arXiv preprint arXiv:2310.15154 , 2023. Sohan Venkatesh and Ashish Mahendran Kurapath. On the non-identifiability of steering vectors in large language models. arXiv preprint arXiv:2602.06801 , 2026. Junxuan Wang, Xuyang Ge, Wentao Shu, Qiong Tang, Yunhua Zhou, Zhengfu He, and Xipeng Qiu. Towards universality: Studying mechanistic similarity across language model architectures. In ICLR , 2025. arXiv:2410.06672. Alex H. Williams, Erin Kunz, Simon Kornblith, and Scott Linderman. Generalized shape metrics on neural representations. In NeurIPS , 2021. An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu, Fei Huang, et al. Qwen2.5 technical report. arXiv preprint arXiv:2412.15115 , 2024. 
+
+16

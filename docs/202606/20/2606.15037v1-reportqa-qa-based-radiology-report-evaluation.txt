@@ -1,0 +1,2901 @@
+Title: ReportQA: QA-Based Radiology Report Evaluation
+
+URL Source: https://arxiv.org/pdf/2606.15037v1
+
+Published Time: Tue, 16 Jun 2026 00:20:53 GMT
+
+Number of Pages: 38
+
+Markdown Content:
+# ReportQA: QA-Based Radiology Report Evaluation 
+
+Yiming Shi 1∗
+
+Shaoshuai Yang 1∗
+
+Xi Chen 1 Haolin Li 1 Hengyu Zhang 1
+
+Che Jiang 1 Kaiwen Wang 1 Xun Zhu 1 Dong Xie 4 Fei Wang 4
+
+Dejing Dou 4 Miao Li 1†
+
+Ji Wu 1, 2, 3 † 
+
+> 1
+
+Department of Electronic Engineering, Tsinghua University  
+
+> 2
+
+College of AI, Tsinghua University  
+
+> 3
+
+Beijing National Research Center for Information Science and Technology  
+
+> 4
+
+Beijing Electronic Digital & Intelligence 
+
+{sym23,yangss24}@mails.tsinghua.edu.cn {miao-li, wuji_ee}@tsinghua.edu.cn 
+
+## Abstract 
+
+Radiology report evaluation is essential for advancing automated radiology report generation. Common natural language generation metrics have limited clinical relevance. Clinical efficacy (CE) metrics evaluate important medical findings, but focus mainly on presence and cover only a limited set of entities. Due to heavy reliance on manual annotations, it is difficult for CE metrics to extend clinical entities or attributes. In clinical practice, radiology reports serve as a medium for information transfer. Clinicians use them to perform downstream diagnostic tasks without directly inspecting images. Based on this insight, we propose ReportQA ,a clinical-related and flexible radiology report evaluation framework, supporting 
+
+detailed quantitative analysis of radiology report generation systems. We first collect datasets covering multiple imaging modalities and anatomical regions. We then construct knowledge trees of clinical entities and attributes with radiologist guidance, and use large language models (LLMs) to extract structured information from free-form reports. Next, we generate QA pairs from predefined templates and apply quality control through self-filtering and report-based filtering. During evaluation, the report is treated as context, and an LLM acts as a judge model to answer the QA pairs. Based on the resulting QA accuracy, we introduce QAScore 
+
+metric. Compared with existing metrics, QAScore shows better alignment with radiologist judgments. Experiments on multiple state-of-the-art vision-language models reveal that current report-based inference paradigms struggle to learn fine-grained clinical representations and exhibit strong negative prior biases. In contrast, question-driven inference provides a more effective alternative. For reproducibility and extensibility, we release the knowledge trees, structured reports, and QA pairs ‡, along with the pipeline code § for QA construction and evaluation. 
+
+## 1 Introduction 
+
+Medical imaging is indispensable in routine clinical practice [ 1 ]. This has motivated growing interest in automated radiology report generation (RRG), which can improve clinical efficiency and support consistent report quality. However, progress in RRG is constrained by the lack of reliable radiology   
+
+> *Equal contribution
+> †Corresponding authors: Ji Wu and Miao Li
+> ‡HuggingFace: https://huggingface.co/datasets/shiym2000/ReportQA
+> §GitHub: https://github.com/MSIIP/ReportQA
+> Preprint.
+> arXiv:2606.15037v1 [cs.CL] 13 Jun 2026
+
+report evaluation (RRE) frameworks. Existing RRE frameworks fail to provide meaningful feedback on clinical correctness, which limits the effective development of RRG systems. Existing RRE frameworks typically combine natural language generation (NLG) metrics with clinical efficacy (CE) metrics. However, they remain limited in clinical relevance and flexibility. NLG metrics, such as BLEU [ 2], mainly measure lexical overlap between generated and ground-truth reports. This evaluation paradigm is misaligned with clinical requirements. In practice, a report is clinically useful not because it is lexically similar to a reference report, but because it accurately describes key clinical entities and their associated attributes. CE metrics, such as CheXbert [ 3], partially address this issue by evaluating the presence of selected clinical entities. However, they remain limited to coarse-grained existence modeling. They fail to capture fine-grained attributes such as location, shape and size. Moreover, CE metrics rely on supervised models trained with substantial manual annotations. This makes them difficult to extend to new entities or attributes and thus limiting detailed quantitative analysis of RRG system. In clinical practice, radiology reports serve as a medium for information transfer [ 4, 5]. Clinicians use report content instead of raw imaging for a wide range of downstream diagnostic tasks. Motivated by this, we propose to evaluate reports by treating them as context for question answering (QA). This design simulates how clinicians interact with reports in real-world settings. The resulting QA-based evaluation framework better aligns RRE with the clinical use of RRG systems and provides a more faithful measure of report utility. First, we collect diverse radiology report datasets covering multiple imaging modalities and anatomi-cal regions. To better align with real-world clinical scenarios, we transform raw free-form reports into a structured format using dataset-specific knowledge trees designed by radiologists. The structured reports are then converted into QA pairs. We use large language models (LLMs) for quality control. During evaluation, each report is treated as contextual input, and an LLM is used as the judge model to answer the corresponding QA pairs. Based on the LLM responses, we introduce QAScore metric. Compared with existing RRE metrics, QAScore shows stronger alignment with radiologist judgments. Furthermore, through a comprehensive evaluation of state-of-the-art (SOTA) vision-language models (VLMs), we find that current report-based inference paradigms struggle to learn fine-grained clinical representations and exhibit strong negative prior biases. In contrast, question-driven inference provides a more promising alternative. Our main contributions are summarized as follows: 1. We propose ReportQA , a QA-based radiology report evaluation framework, supporting detailed quantitative analysis of RRG systems. Additionally, we introduce QAScore , which is an aggregated metric based on the judge model responses. 2. ReportQA reveals hidden failure modes that are invisible to common report-level metrics. Experiments indicate that existing report-based inference paradigms struggle to learn fine-grained clinical information and exhibit strong negative prior biases. In contrast, question-driven inference provides a more effective alternative. 3. We release all knowledge trees, structured reports and QA pairs, along with the pipeline code for QA construction and evaluation. Users can plug in stronger LLMs to improve QA quality and apply the pipeline to more datasets. 
+
+## 2 Related Work 
+
+2.1 Radiology report evaluation 
+
+RRE frameworks can be broadly categorized into NLG metrics and CE metrics. Among NLG metrics, BLEU [ 2] measures n-gram precision between generated and reference texts, ROUGE [ 6] focuses on recall-oriented overlap, and METEOR [ 7] incorporates synonym matching and alignment-based scoring. Despite their widespread use, NLG metrics primarily rely on surface-level lexical similarity and fail to capture the accuracy of clinically relevant information. CE-based metrics attempt to address this limitation by explicitly evaluating clinical entities. CheXbert [ 3] is a BERT-based classifier trained to predict the presence of predefined clinical findings from reports, while RadGraph [ 8] extracts structured entities and relations to enable more fine-grained 2QA                      
+
+> Template
+> LLM
+> Extract
+> ✓✓✓✓
+> ✓
+> ✓✓✘
+> X-ray MRI CT Ultrasound Brain Chest Abdomen Knee
+> Radiologists Knowledge Trees
+> Refine
+> Base
+> (leaf -level )
+> Self -filter
+> Report -based Filter
+> Hierarchical
+> (ancestor -level)
+> Negative
+> Generated Report
+> Structured Report Extraction QA Generation QA -based Evaluation
+> QAScore
+> Q1 Q2 …
+> A1 A2 …
+> Modalities Anatomies
+> ✓
+> LLM LLM
+> Free -form Report Structured Report QA Candidates
+
+Figure 1: Overview framework of ReportQA. First, we collect datasets covering multiple imaging modalities and anatomical regions. Second, free-form reports are transformed into a structured format based on radiologist-defined knowledge trees. Third, QA pairs are generated via predefined templates and refined through self-filtering and report-based filtering, resulting in three categories of QA: base (leaf-level) , hierarchical (ancestor-level) , and negative . Finally, the generated report is treated as context, and an LLM answers filtered questions. LLM responses are used to calculate QAScore. evaluation. However, these approaches depend heavily on manually annotated data and predefined label spaces, making them difficult to extend to new clinical entities or attributes. Recently, several advanced RRE metrics have been proposed. For example, GREEN [ 9] leverages LLMs to identify and explain clinical errors in reports, providing scores that better align with radiol-ogist preferences. However, its evaluation operates primarily at a holistic semantic level and lacks systematic modeling of fine-grained clinical entities. Similarly, RaTEScore [ 10 ] introduces entity-level semantic modeling by combining named entity recognition with embedding-based similarity measures to improve consistency assessment of clinically relevant information. Nevertheless, it relies on predefined entity categories and fixed semantic spaces, which constrain its expressiveness and limit flexibility to more complex or diverse clinical scenarios. In contrast, our QA-based RRE framework is grounded in the fundamental role of radiology reports as clinical information media. It combines clinical relevance and flexibility, enabling detailed quantitative analysis of RRG systems. 
+
+2.2 Medical visual question answering 
+
+In the medical domain, visual question answering (VQA) provides a unified interface for diverse tasks, including disease diagnosis [ 11 ], lesion localization [ 12 ], and RRG. PMC-VQA [ 13 ] is constructed from the Open Access subset of PubMed Central, covering multiple imaging modalities and anatomical regions. Similarly, OmniMedVQA [ 14 ] and GMAI-MMBench [ 15 ] aggregate data from multiple public datasets to improve coverage across modalities, clinical specialties, and tasks. However, these datasets are not directly derived from raw clinical workflows, which introduces a potential gap between benchmark performance and real-world applicability. In addition, most existing VQA datasets are limited to 2D images. 3D VQA resources remain scarce: M3D-VQA [ 16 ] is constructed from Radiopaedia but raises potential licensing concerns, while CT-RATE [ 17 ] provides a VQA subset that lacks a systematic and quality-controlled construction pipeline, resulting in relatively simple queries that may not meet the demands of current VLMs. To address these limitations, we construct a high-quality medical VQA dataset by leveraging widely used radiology report datasets across both 2D and 3D imaging. Our approach employs a well-designed 3{" question _type ": "base",  "attribute" : "presence",                                                                                                                                                                                                                             
+
+> "question" :"Is [Atelectasis/Incomplete Expansion]
+> present ?", "options" :["No", "Yes"], "answer" :1}
+> {" question _type ":"base", "attribute" :"location",
+> "question" :"Is [Atelectasis/Incomplete Expansion]
+> present in the [Right Medial segment ]?", "options" :
+> ["No", "Yes"], "answer" :1}
+> {" question _type ":"base", "attribute" :"shape",
+> "question" :"Regarding the [Atelectasis/Incomplete
+> Expansion] in the [Right Medial segment], what is its
+> [Shape ]?", "options" :["Mass -like /conglomerate",
+> "Patchy", "Punctate /speckled", "Linear /streaky"],
+> "answer" :3}
+> {" question _type ":"hierarchical", "attribute" :
+> "presence", "question" :"Is [Abnormal Lung Volume]
+> present ?", "options" :["Yes", "No"], "answer" :0}
+> {" question _type ":"negative", "attribute" :"presence",
+> "question" :"Is [Acute Bronchitis] present ?", "options" :
+> ["Yes", "No"], "answer" :1}
+> {" question _type ":"negative", "attribute" :"presence",
+> "question" :"Is [Ankylosing Spondylitis] present ?",
+> "options" :["Yes", "No"], "answer" :1}
+> …
+> Findings :Trachea and both main bronchi are open .
+> No occlusive pathology was detected in the trachea
+> and both main bronchi .There are linear atelectasis
+> in the right lung middle lobe medial segment and
+> left lung upper lobe lingular segment .No mass or
+> infiltrative lesion was detected in both lungs .
+> Mediastinal structures cannot be evaluated optimally
+> because contrast material is not given .As far as can
+> be observed :Heart contour and size are normal .
+> There is no pleural or pericardial effusion .The widths
+> of the mediastinal main vascular structures are
+> normal .There are no pathologically enlarged lymph
+> nodes in the mediastinum and hilar regions .No
+> pathological increase in wall thickness was detected
+> in the esophagus within the sections .No upper
+> abdominal free fluid -collection was detected in the
+> sections .Thoracic vertebral corpus heights,
+> alignments and densities are normal .The neural
+> foramina are open .Impression :Linear atelectasis in
+> both lungs .
+> {
+> "clinical _entity ": {
+> "raw": "atelectasis",
+> "normalized": "Atelectasis /Incomplete Expansion"
+> },
+> "presence": {
+> "raw": "present",
+> "normalized": "Present"
+> },
+> "location": {
+> "raw": " lingular segment",
+> "normalized": "Inferior lingular segment"
+> },
+> "distribution": {
+> "raw": "left lung",
+> "normalized": "Left"
+> },
+> "shape": {
+> "raw": "linear",
+> "normalized": "Linear /streaky"
+> },
+> "evidence": "There are linear atelectasis in the right
+> lung middle lobe medial segment and left lung upper
+> lobe lingular segment"
+> }
+> …
+> (a) Raw free -form report (b) Structured report (part) (c) QA pairs (part)
+
+Figure 2: An example from CT-RATE [ 17 ], including raw free-form report, structured report, and QA pairs. The structured report and QA pairs are simplified and shown only partially for visualization. pipeline to extract structured reports and generate clinically grounded QA pairs, bridging the gap between real-world clinical data and VQA evaluation. 
+
+## 3 Method 
+
+As shown in Figure 1, we construct ReportQA through a four-stage pipeline. First, we collect datasets consisting of free-form radiology reports. Second, we transform these reports into a structured format using dataset-specific knowledge trees, which encode clinically relevant entities and their attributes. Third, we generate QA pairs from the structured reports. Finally, we evaluate reports by answering filtered QA pairs, with comprehensive performance quantified via proposed QAScore. 
+
+3.1 Dataset preparation 
+
+ReportQA is constructed from diverse radiology report datasets spanning multiple imaging modalities and anatomical regions, including chest X-ray data from MIMIC-CXR [ 18 ], brain CT data from CTRG-Brain [ 19 ], chest CT data from CT-RATE [ 17 ], and abdominal CT data from AMOS-MM [ 20 ]. For 2D imaging datasets, images are provided in JPEG format, such as MIMIC-CXR-JPG [ 21 ], while 3D volumes are standardized to the NIfTI format to ensure consistency across datasets. ReportQA is constructed based on the official validation or test splits whenever available. For datasets without predefined splits, such as CTRG-Brain, we adopt a reproducible 4:1 train-validation split. 
+
+3.2 Structured report extraction 
+
+First, radiologists construct two dataset-specific knowledge trees based on dataset metadata, including imaging modality and anatomical region. One knowledge tree models clinical entities, consisting of findings and diagnoses, where findings are primarily extracted from the Findings section of reports and diagnoses from the Impression section. The other tree defines a comprehensive set of clinical attributes, covering 15 dimensions: presence , location , distribution , number , dimension , density ,
+
+shape , margin , enhancement , internal features , secondary effects , severity , chronicity , clinical score ,and certainty . Detailed examples of knowledge trees are provided in Appendix E. We then employ LLMs to extract structured information from raw free-form reports. To improve consistency and coverage, we adopt a two-stage extraction process. In the first stage, LLMs generate preliminary structured outputs. These outputs are subsequently used to refine the knowledge trees by identifying missing or ambiguous nodes. In the second stage, the refined knowledge trees are used to remap the extracted entities and attributes, ensuring that all structured information is aligned with predefined nodes. Invalid entities and attributes that cannot be mapped to the knowledge trees are 4Table 1: Statistics of QA construction across datasets. After filtering, a high QA density is maintained, demonstrating that the filtering strategy effectively improves quality without sacrificing coverage. Dataset #Reports #QAs (filtered) QA density CTRG-Brain [19] 2001 182136 91.0 CT-RATE [17] 3039 298654 98.3 AMOS-MM [20] 400 25433 63.6 MIMIC-CXR [18] 1417 153821 108.6 filtered out, resulting in a controlled and standardized representation. Figure 2 shows the example of structured reports. The prompts used for structured extraction are provided in Appendix E. 
+
+3.3 QA generation 
+
+Given the structured reports, we construct base (leaf-level) multiple-choice QA pairs using predefined templates that systematically cover different attributes of clinical entities. As shown in Figure 2, each QA instance targets a specific (entity, attribute) combination. To account for hierarchical (ancestor-level) clinical entities, we incorporate ontology-aware question generation. In practice, entities may not be described at the most fine-grained level (leaf-level). For example, if the ground-truth report contains diffuse brain atrophy while the generated report predicts brain atrophy, the prediction can be considered partially correct. To reflect this, we additionally generate QA pairs for ancestor nodes of entities based on hierarchy in the clinical entity tree. We further construct negative QA pairs for clinical entities that are absent in the ground-truth report, focusing on the presence attribute. To mitigate overconfident guessing by LLM-based evaluators when evidence is missing, we include an "Insufficient information" option in the answer choices. Finally, we employ an LLM as the judge model to perform quality control over QA pairs through a two-stage filtering process. First, we directly evaluate QA pairs without providing report context and remove those that can be correctly answered without contextual information. Second, we re-evaluate QA pairs using the ground-truth report as context and filter out instances with low accuracy. This process ensures that remaining QA pairs are both context-dependent and reliable for evaluation. After self-filtering and report-based filtering, approximately 660K QAs remain for 6857 radiology reports, averaging nearly 100 high-quality QAs per report. Detailed statistics are provided in Table 1. 
+
+3.4 QA-based evaluation 
+
+Following a procedure similar to QA filtering in Section 3.3, we employ an LLM as the judge model to evaluate reports generated by RRG systems. Specifically, the judge model answers filtered QA pairs based on generated reports. The overall performance is quantified using QA accuracy. The framework enables fine-grained analysis by decomposing performance across different question types, allowing for a more detailed understanding of model behavior. Additionally, we propose an overall metric, termed QAScore , to jointly evaluate a generated report’s ability to preserve positive clinical entities and to avoid introducing spurious entities. Specifically, 
+
+base (leaf-level) and hierarchical (ancestor-level) questions are used to measure positive consistency, defined as: Score pos = 1
+
+Npos 
+
+> Npos
+
+X
+
+> i=1
+
+Acc i, (1) where Npos denotes the total number of base (leaf-level) and hierarchical (ancestor-level) questions, and Acc i ∈ { 0, 1} indicates whether the i-th question is answered correctly. Notably, if the presence question of a positive entity is answered incorrectly, all associated questions for that entity are considered incorrect, as entity existence is a prerequisite for subsequent attribute reasoning. 
+
+Negative questions are used to assess whether the generated report introduces entities absent from the ground-truth report. Due to the typically large number of negative questions, accuracy alone may be 5Table 2: Correlation between automatic metrics and total_errors . QAScore shows the strongest correlation with human-annotated errors, indicating the best alignment with radiologist judgments. Metric |Pearson | |Spearman | |Kendall |
+
+BLEU-4 [2] 0.1190 0.0964 0.0728 RadGraph F1 [8] 0.1743 0.1692 0.1238 BLEU-2 [2] 0.1851 0.1742 0.1265 RadCliQ [31] 0.2017 0.2153 0.1586 BERTScore [32] 0.2575 0.2525 0.1901 RaTEScore [10] 0.3539 0.3551 0.2651 CheXbert [3] 0.3870 0.3779 0.2896 GREEN [9] 0.4194 0.4022 0.3148 QAScore 0.4507 0.4612 0.3910 
+
+dominated by trivial correct answers and fail to reflect clinically critical false positives. Therefore, we focus on the false positive rate for negative questions, denoted as FPR neg , which measures the proportion of negative entities incorrectly predicted as present. The corresponding negative score is defined as: Score neg = exp( −λ · FPR neg ), (2) where λ controls the sensitivity to false positive errors. The overall report-level score is defined as the harmonic mean of Score pos and Score neg :QAScore = 2 · Score pos · Score neg 
+
+Score pos + Score neg 
+
+. (3) Finally, we report the average QAScore across all reports, assigning equal weight to each case to avoid bias toward reports with a larger number of questions. 
+
+## 4 Experiment 
+
+4.1 Implementation details 
+
+For structured report extraction, we employ DeepSeek-V3.2 [ 22 ] API. For QA filtering and evaluation, we deploy locally a judge model, Qwen3.5-27B, with vLLM [23] on a single A800 (80GB) GPU. We evaluate a diverse set of SOTA VLMs, including both proprietary API-based VLMs and open-source general [ 24 ] and medical [ 25 –28 , 17 ] VLMs. We adopt the official inference protocols released with each model if available. Otherwise, we perform inference using SWIFT [ 29 ] or TRL [ 30 ]. All open-source model inference experiments are conducted on a single A800 (80GB) GPU, except for CT-CHAT (70B), which required two A800 GPUs. For medical image preprocessing, we follow the recommended configurations provided by each model. For API-based VLMs without explicit guidelines, we uniformly sample three slices at equal intervals for inference. For VLMs lacking predefined settings, 2D images are resized to 512 × 512 ,and 3D volumes are uniformly resized to 16 slices along the depth dimension. 
+
+4.2 QAScore better aligns with radiologist judgments 
+
+To evaluate the alignment between QAScore and radiologist judgments, we conduct a correlation study on the RadEvalX [ 33 ] dataset. RadEvalX is designed for chest X-ray report evaluation and contains 100 report pairs, each consisting of a ground-truth report from the IU-Xray [ 34 ] dataset, a generated report from the M2Tr [ 35 ] model, and annotations from two board-certified radiologists covering two types of errors across eight error categories. We aggregate the two error types into a single scalar, total_errors , for each report, which serves as the human reference signal. 6Table 3: ReportQA results of proprietary VLMs, open-source general VLMs, and open-source medical VLMs across different datasets. Bold indicates the best performance among all models, while underlined values denote the best performance within each model category. Model CTRG-Brain CT-RATE AMOS-MM MIMIC-CXR 
+
+Proprietary VLMs 
+
+GPT-5.4 0.4536 0.4702 0.2165 0.6126 
+
+Gemini 3.1 Pro 0.4271 0.2009 0.0837 0.5055 Claude Opus 4.6 0.1912 0.2597 0.3125 0.4995 
+
+Open-source VLMs (general) 
+
+Qwen3.5-27B 0.1059 0.2319 0.0161 0.4657 InternVL3.5-38B [24] 0.1032 0.1004 0.0003 0.4072 
+
+Open-source VLMs (medical) 
+
+Hulu-Med-32B [25] 0.3476 0.1662 0.1256 0.4687 Lingshu-32B [26] - - - 0.2483 MedGemma 1.5 (4B) [27] 0.1544 0.0910 0.0110 0.3394 RadFM [28] 0.2472 0.1271 0.2499 0.1632 CT-CHAT (70B) [17] 0.0000 0.3408 0.1719 -For automatic evaluation, we include standard metrics provided by RadEvalX, including BLEU [2], BERTScore [ 32 ], CheXbert [ 3], RadGraph F1 [ 8], and RadCliQ [ 31 ], and further extend the compari-son with two recent radiology-specific metrics, GREEN [9] and RaTEScore [10]. To comprehensively assess alignment with radiologist judgments, we compute Pearson, Spearman, and Kendall correlation coefficients between each metric and total_errors . As shown in Table 2, QAScore achieves the highest absolute correlation across all three measures, with Pearson = 0 .4507 ,Spearman = 0 .4612 , and Kendall = 0 .3910 , outperforming GREEN, RaTEScore, and other baseline metrics. These results demonstrate that QAScore more faithfully reflects radiologist judgments of report errors and provides a more reliable measure of clinical quality. 
+
+4.3 Proprietary VLMs better, while 3D datasets remain challenging 
+
+As shown in Table 3, proprietary VLMs consistently outperform open-source counterparts across most datasets, even when provided with only three sampled slices as input. In particular, GPT-5.4 achieves the strongest overall performance. Among open-source general VLMs, Qwen3.5 shows relatively competitive results, while Hulu-Med [ 25 ] performs best among medical VLMs. CT-CHAT [ 17 ], which is specifically trained for chest CT, demonstrates strong performance on the chest CT dataset CT-RATE [17], as well as on AMOS-MM [20], which partially includes thoracic regions. Model performance on MIMIC-CXR [ 18 ] is generally higher than on 3D datasets. This is likely because 2D chest X-ray data are more prevalent in training corpora, whereas 3D CT data remain underrepresented, leaving substantial room for improvement-particularly for open-source VLMs. Among 3D datasets, AMOS-MM [ 20 ] yields the lowest performance, which can be attributed to its broader anatomical coverage, including abdominal, thoracic, and pelvic regions, resulting in increased complexity and variability. As 3D imaging continues to play an increasingly important role in clinical practice, advancing 3D medical image understanding is both a key research direction and a significant challenge for future VLMs. 
+
+4.4 VLMs struggle with fine-grained attribute understanding 
+
+We analyze the accuracy across different attributes in ReportQA. As shown in Figure 3, performance varies substantially across attributes. Overall, presence is the easiest attribute, with both its median and overall distribution higher than those of other attributes. This suggests that most VLMs are relatively stable and reliable in determining whether a clinical entity exists. Attributes such as location ,
+
+certainty , and size also achieve moderate performance, but exhibit larger variance, indicating that their effectiveness depends more on specific models or datasets and is less consistent than presence .7presence 
+
+> location
+> distribution
+> internal_features
+> size
+> certainty
+> shape
+> secondary_effects
+> number
+> density
+> severity
+> chronicity
+> margin
+> enhancement
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+
+Figure 3: Attribute-level accuracy distribution across all dataset-model pairs. Y-axis denotes Accuracy, and each box shows the score distribution for one attribute. Higher boxes indicate attributes that are relatively easier for VLMs, while boxes concentrated near zero indicate more challenging attributes. 0 1e 2e 3e 4e 5e            
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0 (a) Base (leaf-level)
+> 01e 2e 3e 4e 5e
+> (b) Hierarchical (ancestor-level)
+> 01e 2e 3e 4e 5e
+> (c) Negative
+> Report-based (SFT)
+> Question-driven (zero-shot)
+
+Figure 4: Performance of report-based SFT Qwen3.5-2B on CTRG-Brain for (a) Base (leaf-level), (b) Hierarchical (ancestor-level), and (c) Negative questions. On base (leaf-level) questions targeting fine-grained entities, the untrained question-driven model performs comparably to SFT models. In contrast, margin , chronicity , and enhancement are significantly more challenging. Their distri-butions are concentrated near zero, with low medians, indicating that models rarely achieve high accuracy on these fine-grained attributes. Attributes such as distribution , internal features , and 
+
+secondary effects show occasional high outliers but maintain low medians, suggesting that strong performance is limited to specific cases rather than being broadly achievable. Overall, these results reveal a clear hierarchy in attribute difficulty: models perform well on presence-level judgments but struggle with fine-grained attributes, highlighting a key limitation of current VLMs and an important direction for future research on medical image analysis. 
+
+4.5 Report-based SFT provides limited gains in fine-grained entity perception 
+
+Most existing RRG systems adopt a report-based inference paradigm, where the model generates a complete report in a single pass, during both zero-shot inference and supervised fine-tuning (SFT). In contrast, we explore a question-driven inference paradigm, where the same report is decomposed into multiple questions and the VLM is queried in a VQA-style manner. As shown in Figure 4, report-based SFT models outperform the untrained model under question-driven inference on hierarchical (ancestor-level) questions, but achieve comparable performance on base (leaf-level) questions. As discussed in Section 3.3, base (leaf-level) questions target relatively fine-grained clinical entities, whereas hierarchical (ancestor-level) questions correspond to coarser-grained concepts. These results suggest that the gains from report-based SFT may primarily arise from improved report-style generation and coarse-grained structured reasoning, while improvements in fine-grained entity 8Report-based (w/ image) Report-based (wo image) Question-driven (w/ image) Question-driven (wo image)      
+
+> (a) Base (leaf-level)  GPT-5.4 GPT-4o-mini Qwen3.5-27B Qwen3.5-2B Hulu-Med-32B
+> (b) Hierarchical (ancestor-level)  GPT-5.4 GPT-4o-mini Qwen3.5-27B Qwen3.5-2B Hulu-Med-32B
+> (c) Negative
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> GPT-5.4 GPT-4o-mini Qwen3.5-27B Qwen3.5-2B Hulu-Med-32B
+
+Figure 5: Impact of image input on performance under different inference paradigms. recognition remain limited and unstable. Therefore, current report-based training paradigms may encourage models to generate reports that better match the evaluation distribution, rather than consistently acquiring stronger fine-grained visual understanding capabilities. 
+
+4.6 Report-based inference exhibits strong negative prior bias 
+
+As shown in Figure 5, models consistently exhibit a strong negative prior bias under the report-based inference paradigm. Even without image input, report-based inference tends to classify most clinical entities as negative. In contrast, question-driven inference shows a milder positive prior bias. The difference in bias direction is likely related to training data distributions. Report-based inference typically learns the global distribution of complete radiology reports, where negative or routine descriptions are highly prevalent. As a result, when image evidence is absent, models tend to fall back to generic negative templates. In contrast, question-driven inference is centered around specific findings, lesions, or abnormalities. The questions themselves often contain stronger positive cues, which may encourage models to predict the presence of related abnormalities. Overall, different inference paradigms activate different forms of textual priors. These biases are likely jointly influenced by both training data distributions and evaluation task design. Compared with report-based inference, question-driven inference may represent a more promising solution, as its bias can potentially be mitigated through the incorporation of negative training examples. Additionally, the comparison between image input ( w/ image ) and image-free input ( wo image )reveals varying degrees of mirage reasoning across VLMs. Even without image input, VLMs can still produce seemingly plausible answers based solely on textual priors, achieving nontrivial or even relatively high scores. This phenomenon is more pronounced in VLMs with weaker visual capabilities, and in some cases leads to performance inversion, where wo image outperforms w/ image .For example, GPT-4o-mini exhibits clear inversion under both report-based and question-driven inference, suggesting it relies more heavily on textual priors than on stable visual grounding. 
+
+## 5 Conclusion 
+
+We present ReportQA , a QA-based RRE framework which supports detailed quantitative analysis 
+
+of RRG systems. Through a well-designed pipeline, we construct approximately 660K QA pairs, averaging nearly 100 questions per report. Based on QA accuracy, we introduce QAScore metric. On RadEvalX [ 33 ], QAScore shows stronger alignment with radiologist judgments than existing metrics. We conduct a comprehensive study across different VLMs, including proprietary VLMs, open-source general and medical VLMs. Results show that current VLMs still struggle with 3D medical tasks 9and fine-grained clinical attributes. Existing report-based inference paradigms have limited ability to learn fine-grained representations and exhibit strong negative prior biases. In contrast, we believe that question-driven inference paradigms, whose biases can be mitigated through mixed positive and negative training samples, represent a more promising solution for RRG systems. We release all knowledge trees, structured reports, QA pairs, and pipeline code for QA construction and evaluation to support reproducibility and extensibility. Our framework can be readily applied to new datasets. Researchers can leverage more powerful judge models to further improve QA quality. 
+
+## References 
+
+[1] Vishwanatha M Rao, Michael Hla, Michael Moor, Subathra Adithan, Stephen Kwak, Eric J Topol, and Pranav Rajpurkar. Multimodal generative ai for medical image interpretation. Nature , 639(8056):888–896, 2025. [2] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. Bleu: a method for automatic evaluation of machine translation. In Proceedings of the 40th annual meeting of the Association for Computational Linguistics , pages 311–318, 2002. [3] Akshay Smit, Saahil Jain, Pranav Rajpurkar, Anuj Pareek, Andrew Y Ng, and Matthew Lungren. Combining automatic labelers and expert annotations for accurate radiology report labeling using bert. In Proceedings of the 2020 conference on empirical methods in natural language processing (EMNLP) , pages 1500–1519, 2020. [4] Felix Busch, Lena Hoffmann, Daniel Pinto Dos Santos, Marcus R Makowski, Luca Saba, Philipp Prucker, Martin Hadamitzky, Nassir Navab, Jakob Nikolas Kather, Daniel Truhn, et al. Large language models for structured reporting in radiology: past, present, and future. European Radiology , 35(5):2589–2602, 2025. [5] Ryutaro Tanno, David GT Barrett, Andrew Sellergren, Sumedh Ghaisas, Sumanth Dathathri, Abigail See, Johannes Welbl, Charles Lau, Tao Tu, Shekoofeh Azizi, et al. Collaboration between clinicians and vision-language models in radiology report generation. Nature Medicine , 31(2):599–608, 2025. [6] Chin-Yew Lin. Rouge: A package for automatic evaluation of summaries. In Text summarization branches out , pages 74–81, 2004. [7] Satanjeev Banerjee and Alon Lavie. Meteor: An automatic metric for mt evaluation with improved correlation with human judgments. In Proceedings of the acl workshop on intrinsic and extrinsic evaluation measures for machine translation and/or summarization , pages 65–72, 2005. [8] Saahil Jain, Ashwin Agrawal, Adriel Saporta, Steven QH Truong, Du Nguyen Duong, Tan Bui, Pierre Chambon, Yuhao Zhang, Matthew P Lungren, Andrew Y Ng, et al. Radgraph: Extracting clinical entities and relations from radiology reports. arXiv preprint arXiv:2106.14463 , 2021. [9] Sophie Ostmeier, Justin Xu, Zhihong Chen, Maya Varma, Louis Blankemeier, Christian Bluethgen, Arne Edward Michalson Md, Michael Moseley, Curtis Langlotz, Akshay S Chaudhari, et al. Green: Generative radiology report evaluation and error notation. In Findings of the association for computational linguistics: EMNLP 2024 , pages 374–390, 2024. [10] Weike Zhao, Chaoyi Wu, Xiaoman Zhang, Ya Zhang, Yanfeng Wang, and Weidi Xie. Ratescore: A metric for radiology report generation. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , pages 15004–15019, 2024. [11] Shuang Zhou, Zidu Xu, Mian Zhang, Chunpu Xu, Yawen Guo, Zaifu Zhan, Yi Fang, Sirui Ding, Jiashuo Wang, Kaishuai Xu, et al. Large language models for disease diagnosis: A scoping review. npj Artificial Intelligence , 1(1):9, 2025. [12] Melissa MJ Chua, Alfredo Morales Pinzon, Clemens Neudorfer, Patrick R Ng, Sarah E Blitz, Garance M Meyer, Konstantin Butenko, Till A Dembek, Alexandre Boutet, Andrew Z Yang, et al. Optimal focused ultrasound lesion location in essential tremor. Science advances , 11(20):eadp0532, 2025. [13] Xiaoman Zhang, Chaoyi Wu, Ziheng Zhao, Weixiong Lin, Ya Zhang, Yanfeng Wang, and Weidi Xie. Development of a large-scale medical visual question-answering dataset. Communications Medicine , 4(1): 277, 2024. [14] Yutao Hu, Tianbin Li, Quanfeng Lu, Wenqi Shao, Junjun He, Yu Qiao, and Ping Luo. Omnimedvqa: A new large-scale comprehensive evaluation benchmark for medical lvlm. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 22170–22183, 2024. 
+
+10 [15] Pengcheng Chen, Jin Ye, Guoan Wang, Yanjun Li, Zhongying Deng, Wei Li, Tianbin Li, Haodong Duan, Ziyan Huang, Yanzhou Su, et al. Gmai-mmbench: A comprehensive multimodal evaluation benchmark towards general medical ai. Advances in Neural Information Processing Systems , 37:94327–94427, 2024. [16] Fan Bai, Yuxin Du, Tiejun Huang, Max Q-H Meng, and Bo Zhao. M3d: Advancing 3d medical image analysis with multi-modal large language models. arXiv preprint arXiv:2404.00578 , 2024. [17] Ibrahim Ethem Hamamci, Sezgin Er, Chenyu Wang, Furkan Almas, Ayse Gulnihan Simsek, Sevval Nil Esirgun, Irem Dogan, Omer Faruk Durugol, Benjamin Hou, Suprosanna Shit, et al. Generalist foundation models from a multimodal dataset for 3d computed tomography. Nature Biomedical Engineering , pages 1–19, 2026. [18] Alistair EW Johnson, Tom J Pollard, Seth J Berkowitz, Nathaniel R Greenbaum, Matthew P Lungren, Chih-ying Deng, Roger G Mark, and Steven Horng. Mimic-cxr, a de-identified publicly available database of chest radiographs with free-text reports. Scientific data , 6(1):317, 2019. [19] Yuhao Tang, Haichen Yang, Liyan Zhang, and Ye Yuan. Work like a doctor: Unifying scan localizer and dynamic generator for automated computed tomography report generation. Expert Systems with Applications , 237:121442, 2024. [20] Yuanfeng Ji, Haotian Bai, Chongjian Ge, Jie Yang, Ye Zhu, Ruimao Zhang, Zhen Li, Lingyan Zhanng, Wanling Ma, Xiang Wan, et al. Amos: A large-scale abdominal multi-organ benchmark for versatile medical image segmentation. Advances in neural information processing systems , 35:36722–36732, 2022. [21] Alistair EW Johnson, Tom J Pollard, Nathaniel R Greenbaum, Matthew P Lungren, Chih-ying Deng, Yifan Peng, Zhiyong Lu, Roger G Mark, Seth J Berkowitz, and Steven Horng. Mimic-cxr-jpg, a large publicly available database of labeled chest radiographs. arXiv preprint arXiv:1901.07042 , 2019. [22] Aixin Liu, Aoxue Mei, Bangcai Lin, Bing Xue, Bingxuan Wang, Bingzheng Xu, Bochao Wu, Bowei Zhang, Chaofan Lin, Chen Dong, et al. Deepseek-v3.2: Pushing the frontier of open large language models. 
+
+arXiv preprint arXiv:2512.02556 , 2025. [23] Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph Gonzalez, Hao Zhang, and Ion Stoica. Efficient memory management for large language model serving with pagedattention. In Proceedings of the 29th symposium on operating systems principles , pages 611–626, 2023. [24] Weiyun Wang, Zhangwei Gao, Lixin Gu, Hengjun Pu, Long Cui, Xingguang Wei, Zhaoyang Liu, Linglin Jing, Shenglong Ye, Jie Shao, et al. Internvl3. 5: Advancing open-source multimodal models in versatility, reasoning, and efficiency. arXiv preprint arXiv:2508.18265 , 2025. [25] Songtao Jiang, Yuan Wang, Sibo Song, Tianxiang Hu, Chenyi Zhou, Bin Pu, Yan Zhang, Zhibo Yang, Yang Feng, Joey Tianyi Zhou, et al. Hulu-med: A transparent generalist model towards holistic medical vision-language understanding. arXiv preprint arXiv:2510.08668 , 2025. [26] Weiwen Xu, Hou Pong Chan, Long Li, Mahani Aljunied, Ruifeng Yuan, Jianyu Wang, Chenghao Xiao, Guizhen Chen, Chaoqun Liu, Zhaodonghui Li, et al. Lingshu: A generalist foundation model for unified multimodal medical understanding and reasoning. arXiv preprint arXiv:2506.07044 , 2025. [27] Andrew Sellergren, Chufan Gao, Fereshteh Mahvar, Timo Kohlberger, Fayaz Jamil, Madeleine Traverse, Alberto Tono, Bashir Sadjad, Lin Yang, Charles Lau, et al. Medgemma 1.5 technical report. arXiv preprint arXiv:2604.05081 , 2026. [28] Chaoyi Wu, Xiaoman Zhang, Ya Zhang, Hui Hui, Yanfeng Wang, and Weidi Xie. Towards generalist foundation model for radiology by leveraging web-scale 2d&3d medical data. Nature Communications , 16 (1):7866, 2025. [29] Yuze Zhao, Jintao Huang, Jinghan Hu, Xingjun Wang, Yunlin Mao, Daoze Zhang, Zeyinzi Jiang, Zhikai Wu, Baole Ai, Ang Wang, et al. Swift: a scalable lightweight infrastructure for fine-tuning. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 39, pages 29733–29735, 2025. [30] Leandro von Werra, Younes Belkada, Lewis Tunstall, Edward Beeching, Tristan Thrush, Nathan Lambert, Shengyi Huang, Kashif Rasul, and Quentin Gallouédec. TRL: Transformers Reinforcement Learning, 2020. URL https://github.com/huggingface/trl .[31] Feiyang Yu, Mark Endo, Rayan Krishnan, Ian Pan, Andy Tsai, Eduardo Pontes Reis, Eduardo Kaiser Ururahy Nunes Fonseca, Henrique Min Ho Lee, Zahra Shakeri Hossein Abad, Andrew Y Ng, et al. Evaluating progress in automatic chest x-ray radiology report generation. Patterns , 4(9), 2023. 
+
+11 [32] Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q Weinberger, and Yoav Artzi. Bertscore: Evaluating text generation with bert. arXiv preprint arXiv:1904.09675 , 2019. [33] Amos Rubin Calamida, Farhad Nooralahzadeh, Morteza Rohanian, Mizuho Nishio, Koji Fujimoto, and Michael Krauthammer. Radiology Report Generation Models Evaluation Dataset For Chest X-rays (RadEvalX). PhysioNet , June 2024. doi: 10.13026/tp88-q278. URL https://doi.org/10.13026/ tp88-q278 . Version 1.0.0. [34] Dina Demner-Fushman, Marc D Kohli, Marc B Rosenman, Sonya E Shooshan, Laritza Rodriguez, Sameer Antani, George R Thoma, and Clement J McDonald. Preparing a collection of radiology examinations for distribution and retrieval. Journal of the American Medical Informatics Association , 23(2):304–310, 2016. [35] Marcella Cornia, Matteo Stefanini, Lorenzo Baraldi, and Rita Cucchiara. Meshed-memory transformer for image captioning. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition ,pages 10578–10587, 2020. 
+
+12 0.6991              
+
+> 0.8736
+> 0.9634 0.9529 0.9805
+> 0.8B 2B 4B 9B 27B
+> 0
+> 50000
+> 100000
+> 150000
+> 200000
+> 250000
+> 0.8B 2B 4B 9B 27B
+> Free-form Self-filtered Report-based Filtered (a) (b)
+
+Figure 6: (a) Number of QA pairs retained after self-filtering and report-based filtering using judge models (Qwen3.5 family) with different parameter sizes. (b) QAScore based on ground-truth reports using judge models (Qwen3.5 family) with different parameter sizes. 1 3 5 7 9     
+
+> 0.000
+> 0.150
+> 0.300
+> 0.450
+> 0.600
+> (a)
+> CTRG-Brain
+> CT-RATE
+> L1 L2 L3 L4 L5 L6
+> 0.000
+> 0.150
+> 0.300
+> 0.450
+> (b)
+> GPT-5.4
+> Hulu-Med-32B
+> Qwen3.5-27B
+
+Figure 7: (a) Performance of GPT-5.4 with different numbers of input slices. (b) Performance of different models on CTRG-Brain [ 19 ] under varying prompt specificity, where L1 denotes the least detailed prompts and L6 denotes the most detailed. 
+
+## A Judge models with different parameter scales 
+
+We analyze the impact of judge models with different parameter sizes (Qwen3.5 family) on both ReportQA construction, particularly QA filtering, and QA-based evaluation. As shown in Figure 6 (a), different judge models lead to significantly different filtering ratios, with larger models such as 27B retaining substantially more QA pairs. Figure 6 (b) shows QAScores when ground-truth reports are used as context. The 0.8B model performs worst, achieving only around 0.7 accuracy, while the 27B model approaches near-perfect performance. 4B and 9B models also perform strongly, exceeding 0.95 accuracy, and remain feasible for deployment on consumer-grade GPUs. These results reveal a trade-off between performance and efficiency. For optimal performance, both QA filtering and evaluation benefit from large-scale models such as 27B. However, during evaluation, smaller models such as 4B and 9B provide an alternative with minimal performance degradation. 
+
+## B Limited gains from increasing input slices 
+
+As shown in Figure 7 (a), model performance exhibits a modest upward trend as the number of input slices increases from 1 to 9, suggesting that additional slices provide more complete contextual information and yield incremental improvements. However, the overall gain remains limited, with a relatively flat curve, indicating that simply increasing the number of input slices does not fundamentally improve performance in radiology report generation. 13 0.8B 2B 4B 9B 27B           
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0 (a) Base (leaf-level)
+> 0.8B 2B 4B 9B 27B
+> (b) Hierarchical (ancestor-level)
+> 0.8B 2B 4B 9B 27B
+> (c) Negative
+> Qwen3.5 (Report-based) Qwen3.5-2B (Question-driven w/ image)
+> Qwen3.5-2B (Question-driven wo image)
+> Qwen3.5-27B (Question-driven w/ image)
+> Qwen3.5-27B (Question-driven wo image)
+
+Figure 8: Performance of Qwen3.5 with different parameter sizes on CTRG-Brain [19]. 
+
+## C Prompt specificity improves performance but model-dependent 
+
+As shown in Figure 7 (b), as prompt specificity increases from L1 to L6, both GPT-5.4 and Hulu-Med-32B [25] exhibit an upward trend in performance, indicating that more detailed and structured prompts help models better understand task requirements and organize their responses. In contrast, Qwen3.5-27B shows relatively limited performance variation, suggesting that general VLMs may lack sufficient training in RRG, and thus cannot fully benefit from increased prompt specificity due to gaps in domain knowledge and task-specific capabilities. 
+
+## D Scaling alone is insufficient for RRG 
+
+As shown in Figure 8, under the report-based inference setting, Qwen3.5 family does not exhibit a consistent performance gain with increasing model size. Curves across different parameter scales remain at similar levels. This suggests that, for the complex and relatively unfamiliar task of RRG, scaling model size alone does not naturally translate into stronger task generalization, and model capacity is not the primary performance bottleneck. Comparing question-driven inference (using images) to the report-based setting, further reveals that VLMs possess a certain level of clinical entity recognition ability, but this capability is not fully utilized in RRG. In particular, performance under question-driven setting is consistently higher, indicating that when the task is decomposed into explicit clinical queries, VLMs can more effectively leverage the input information. In contrast, report-based inference requires not only identifying clini-cal entities, but also organizing report structure, selecting appropriate expressions, and maintaining consistency with visual evidence. As a result, the bottleneck likely lies in aligning visual evidence with structured text generation, rather than in low-level recognition alone. The fact that question-driven inference without images still achieves non-trivial performance suggests the presence of strong textual priors, where VLMs rely on statistical patterns in the questions even without visual input. However, question-driven inference with images consistently performs better, indicating that visual information still provides meaningful gains. Thus, the issue is not the absence of visual reasoning, but rather the incomplete utilization of visual signals. Furthermore, comparing smaller and larger models, such as 2B and 27B, shows a relative decline in wo image performance, suggesting that reliance on textual priors may weaken with scale, although this trend requires further validation across more models. 
+
+## E Examples of prompt and knowledge trees 
+
+Figures 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 illustrate prompts used for QA construction. Figures 21, 22 show knowledge trees for CTRG-Brain [ 19 ]. Figures 23, 24, 25 show knowledge trees for CT-RATE [ 17 ]. Figures 26, 27, 28, 29, 30 show knowledge trees for AMOS-MM [ 20 ]. Figures 31, 32 show knowledge trees for MIMIC-CXR [18]. 14 # Role 
+
+You are an expert system specializing in medical image analysis and clinical Natural Language 
+
+Processing (NLP). You are proficient in radiological terminology, anatomical knowledge, and clinical 
+
+diagnostic logic for all imaging modalities (CT, MRI, ultrasound, X -ray, etc.). 
+
+# Task 
+
+Your task is: deeply read and parse the findings section of the input medical imaging report text, 
+
+extract all clinical findings mentioned in the report (including abnormal lesions, positive findings, 
+
+and explicitly excluded negative findings), and strictly convert them into fine -grained structured data 
+
+according to the JSON Schema defined below. 
+
+Special attention: Parallel structures in the report (such as "A, B, C + description") must first be 
+
+expanded into multiple complete descriptions, and then the structured information extracted separately. 
+
+# Core Rules (Strictly Observe) 
+
+1. Extraction range (Coverage): 
+
+* Must extract: Positive lesions (e.g., "circular low -density lesion seen in the liver"), explicitly 
+
+described negative exclusions (e.g., "no free gas in the abdominal cavity seen"), specifically 
+
+emphasized abnormal or normal structures. 
+
+* Must ignore: Routine/templated normal anatomical descriptions without pathological implication 
+
+(e.g., "symmetrical thorax", "bladder well -filled", "natural course of the bowel", and other nonsense 
+
+with no special assessment value). 
+
+2. Zero hallucination principle (Zero Hallucination): 
+
+* Must be absolutely faithful to the original text. For fine -grained attributes (such as shape, 
+
+margin, blood supply, etc.), if not explicitly mentioned in the report text, the field must strictly 
+
+output `null`. It is strictly forbidden to infer, imagine, or default fill based on medical common 
+
+sense. 
+
+3. Clinical entity standardization (Clinical Entity Standardization): 
+
+* Standard medical terminology must be used. 
+
+* It is absolutely forbidden to include anatomical location in the entity name, and it is also 
+
+absolutely forbidden to include spatial distribution in the anatomical location. 
+
+4. Evidence traceability (Evidence Traceability): 
+
+* An ` evidence_span ` must be provided for each extracted entity. The content of this field must be a 
+
+verbatim continuous substring of the original text that can prove the existence of the entity and all 
+
+its attributes. No form of summarization, rewriting, or truncation is allowed. 
+
+5. Output format (Output Format): 
+
+Only output a valid JSON array, strictly forbid outputting any explanatory text, thought process, or 
+
+content outside of the Markdown code block tags. 
+
+6. Parallel structure splitting rules (Conjunction Expansion  - Mandatory): 
+
+* When multiple anatomical structures or multiple lesions in the text are connected by " 、
+
+/and/with/&" etc., and share the same description, they must be split into multiple independent 
+
+entities. 
+
+* It is strictly forbidden to merge multiple structures into one ` clinical_entity `. 
+
+7. No compound entities (No Compound Clinical Entity): 
+
+* The ` clinical_entity ` field must be a single medical concept. 
+
+* If the original text is a parallel structure, it must be split into multiple entities. 
+
+# Data Dictionary (Field -level specification) 
+
+Please fill in each field strictly according to the following instructions: 
+
+* Clinical entity (` clinical_entity `): A single abnormal sign or lesion, please split when multiple 
+
+parts are described together; do not include anatomical location and spatial distribution. 
+
+* Presence (`presence`): The existence status of the abnormal entity on the image (present/absent). 
+
+* Anatomical location (`location`): Specific anatomical structure or anatomical region, used to 
+
+describe its absolute position or anatomical attribution in the human body. 
+
+* Spatial distribution (`distribution`): The distribution pattern and spatial relationship 
+
+characteristics of the lesion within one or more anatomical regions. 
+
+* Number (`number`): Qualitative description or specific count value of the number of abnormal 
+
+entities. 
+
+* Size (`size`): Qualitative assessment of the size of the lesion or specific linear measurement 
+
+value (e.g., mm/cm). 
+
+* Density (`density`): Basic physical characteristics of the lesion on the image. 
+
+* Shape (`shape`): The overall geometric contour or macroscopic outline characteristics of the 
+
+abnormal entity. 
+
+* Margin (`margin`): The clarity of the boundary between the edge of the lesion and the surrounding 
+
+normal tissue. 
+
+Prompt for Finding Information Extraction | English Version Figure 9: Prompt for finding information extraction (English version). 15 (continued) 
+
+* Enhancement (`enhancement`): The enhancement pattern and degree of the lesion in the enhanced scan 
+
+after contrast agent injection. 
+
+* Internal features (` internal_features `): The uniformity of the internal texture of the lesion, and 
+
+whether it contains specific components such as necrosis or calcification. 
+
+* Secondary effects (` secondary_effects `): Compression, traction, obstruction, destruction caused by 
+
+the lesion to surrounding tissues, or accompanying pathological reactions (e.g., pleural traction, bile 
+
+duct dilation, intestinal obstruction). 
+
+* Severity (`severity`): Grading of lesion progression or severe status reflected by imaging findings. 
+
+* Chronicity (`chronicity`): The time stage of disease occurrence and development inferred based on 
+
+imaging features. 
+
+* Clinical score (` clinical_score `): Standardized imaging scale score for a specific disease. 
+
+* Certainty grading (`certainty`): definite/probably/possible/unlikely 
+
+# Example 
+
+{example} 
+
+# Task Execution 
+
+[Report to Analyze]: 
+
+{report_text }
+
+Prompt for Finding Information Extraction | English Version Figure 10: Prompt for finding information extraction (English version). 16 # Role 
+
+你是一个医学影像分析与临床自然语言处理（ NLP ）专家系统。你精通所有影像学模态（ CT 、MRI 、超声、 X光等）的放射学专 
+
+业术语、解剖学知识与临床诊断逻辑。 
+
+# Task 
+
+你的任务是：深度阅读并解析输入的医学影像学报告文本的发现部分，提取出报告中提及的所有临床发现（包括异常病变、阳 
+
+性发现以及被明确排除的阴性发现），并严格按照下方定义的  JSON Schema  转化为细粒度的结构化数据。 
+
+特别注意：报告中的并列结构（如“ A、B、C +  描述”）必须先展开为多个完整描述，再分别提取结构化信息。 
+
+# Core Rules ( 严格遵守 )
+
+1.  提取范围  (Coverage) ：
+
+* 必须提取：阳性病灶（如“可见肝脏类圆形低密度灶”）、明确描述的阴性排除（如“未见腹腔游离气体”）、被特意强调的 
+
+异常或正常结构。 
+
+* 必须忽略：无病理暗示的常规 /模板化正常解剖描述（如“胸廓对称”、“膀胱充盈良好”、“肠管走形自然”等无特殊评估价值 
+
+的废话）。 
+
+2.  零幻觉原则  (Zero Hallucination) ：
+
+* 必须绝对忠于原文。对于细粒度属性（如形态、边缘、血供等），如果报告文本中未明确提及，该字段必须严格输出 
+
+`null` 。严禁基于医学常识自行推理、脑补或默认填充。 
+
+3.  实体命名规范  (Clinical Entity Standardization) ：
+
+* 必须使用标准的医学术语。 
+
+* 绝对禁止将解剖位置包含在实体名称中，也绝对禁止将空间分布包含在解剖定位中。 
+
+4.  证据追溯  (Evidence Traceability) 
+
+* 必须为每个提取的实体提供  `evidence_span `。该字段的内容必须是能够证明该实体及其全部属性存在的、一字不差的 
+
+原文连续子串。不允许任何形式的概括、改写或截断。 
+
+5.  输出格式  (Output Format) ：
+
+* 只能输出一个合法的  JSON  数组  (Array) ，严禁输出任何解释性文本、思考过程或  Markdown  代码块标记之外的内容。 
+
+6.  并列结构拆分规则  (Conjunction Expansion  - 强制执行 )：
+
+* 当文本中多个解剖结构或多个病灶以“、 /及/和/与”等连接，并共享同一个描述时，必须拆分为多个独立实体。 
+
+* 严禁将多个结构合并为一个  clinical_entity 。
+
+7.  禁止复合实体  (No Compound Clinical Entity) ：
+
+* clinical_entity  字段必须为单一医学概念。 
+
+* 如原文为并列结构，必须拆分为多个实体。 
+
+* 示例：若原文为“肝脏及双侧肾脏见多发囊肿”，不得提取为一个复合实体。必须拆分为两个独立实体。 
+
+# Data Dictionary ( 字段级规范 )
+
+请严格按照以下说明填充每个字段： 
+
+* 临床实体 (clinical_entity ）：单一的异常征象或病灶，多部位共同描述时请拆分；不要包含解剖位置和空间分布 
+
+* 存在性  (presence) ：异常实体在影像上的存在状态  (present/absent) 
+
+* 解剖定位（ location ）：具体解剖结构或解剖区域，用于描述其在人体中的绝对位置或解剖归属 
+
+* 空间分布  (distribution) ：病灶在一个或多个解剖区域内的分布模式和空间关系特征 
+
+* 数量  (number) ：异常实体的数目定性描述或具体计数值 
+
+* 尺度  (size) ：病灶的大小定性评估或具体的径线测量数值（如 mm/cm ）
+
+* 密度  (density) ：病灶在影像上的基础物理特征 
+
+* 形态  (shape) ：异常实体的整体几何外形或宏观轮廓特征 
+
+* 边界  (margin) ：病灶边缘与周围正常组织之间的界限清晰度 
+
+* 强化表现  (enhancement) ：注入造影剂后，病灶在增强扫描中的强化模式与程度 
+
+* 内部特征  (internal_features )：病灶内部质地的均匀度，以及是否包含坏死、钙化等特定成分 
+
+* 继发改变  (secondary_effects )：病灶对周围组织造成的压迫、牵拉、阻塞、破坏或伴随的病理反应（如胸膜牵拉、胆管 
+
+扩张、肠管梗阻） 
+
+* 严重程度  (severity) ：影像表现所反映的病变进展或严重状态分级 
+
+* 演变分期  (chronicity) ：基于影像学特征推断的疾病发生与发展的时间阶段 
+
+* 临床评分  (clinical_score )：针对特定疾病的标准化影像量表评分 
+
+* 确定性分级（ certainty ）： definite/probably/possible/unlikely 
+
+# Example 
+
+{example} 
+
+# Task Execution 
+
+【Report to Analyze 】:
+
+{report_text }
+
+Prompt for Finding Information Extraction Prompt for Finding Information Extraction | Chinese Version Figure 11: Prompt for finding information extraction (Chinese version). 17 # Role 
+
+You are a world's top medical image analysis and clinical natural language processing (NLP) expert 
+
+system. You are proficient in the final diagnostic logic of medical imaging, disease grading standards, 
+
+and clinical reasoning processes. 
+
+# Task 
+
+Your task is: deeply read and parse the diagnostic opinions/conclusions (Diagnosis) section of the 
+
+input medical imaging report. Extract the core diagnosis, disease severity, diagnostic tendency, and 
+
+evolution staging given by the doctor, and strictly convert them into fine -grained structured data 
+
+according to the JSON Schema aligned with objective signs (Findings). 
+
+# Core Rules (Strictly Observe) 
+
+1. Diagnosis disassembly and anatomical site stripping (Entity Disentanglement): 
+
+- The ` clinical_entity ` field must be a pure disease ontology, final diagnosis, or pathological 
+
+state (e.g., "pneumonia", "nodule", "cyst", "stone", "fatty liver", "metastasis", "effusion", "no 
+
+abnormality seen"). 
+
+- It is absolutely forbidden to include directional words or anatomical sites in ` clinical_entity `. 
+
+2. Independent diagnosis slicing (Independent Diagnosis Splitting): 
+
+- The report conclusion usually contains multiple items, which must be thoroughly split into 
+
+multiple independent JSON objects. 
+
+- Negative exclusions also need to be extracted. 
+
+3. Parallel structure splitting rules (Conjunction Expansion): 
+
+- When multiple anatomical structures or multiple lesions in the text are connected by " 、
+
+/and/with/&", etc., and share the same description, they must be split into multiple independent 
+
+entities. 
+
+4. Collaborative logic of presence and certainty (Presence vs. Certainty): 
+
+- `presence` only indicates whether it exists. 
+
+- `certainty` only indicates diagnostic confidence. 
+
+- When `presence=absent`, `certainty` must be `null`. 
+
+5. Zero hallucination and evidence tracing: 
+
+- `severity` or `chronicity` not given in the original text must output `null`. 
+
+- Each entity must provide the original text continuous substring ` evidence_span `. 
+
+6. Output format: 
+
+- Only output a valid JSON array, do not output explanatory text. 
+
+# Data Dictionary 
+
+- `clinical_entity `: Pure disease concept, qualitative diagnosis, or pathological state. 
+
+- `presence`: `present` | `absent` 
+
+- `location`: Specific anatomical structure or region where the disease occurs. 
+
+- `distribution`: Spatial distribution or laterality characteristics. 
+
+- `severity`: Severity or grading. 
+
+- `chronicity`: Time evolution stage. 
+
+- `certainty`: `definite` | `probable` | `possible` | `null` 
+
+- `evidence_span `: Original continuous evidence fragment. 
+
+# Example 
+
+{example} 
+
+# Task Execution 
+
+[Diagnosis Text to Analyze]: 
+
+{report_text }
+
+Prompt for Diagnosis Information Extraction | English Version Figure 12: Prompt for diagnosis information extraction (English version). 18 # Role 
+
+你是一个世界顶尖的医学影像分析与临床自然语言处理（ NLP ）专家系统。你精通医疗影像学的最终诊断逻辑、疾病分级标准 
+
+以及临床推理过程。 
+
+# Task 
+
+你的任务是：深度阅读并解析输入的医学影像学报告诊断意见 /结论（ Diagnosis ）部分。提取出医生给出的核心诊断、疾病 
+
+严重程度、确诊倾向性以及演变分期，并严格按照与客观征象（ Findings ）对齐的  JSON Schema  转化为细粒度的结构化数据。 
+
+# Core Rules ( 严格遵守 )
+
+1.  诊断拆解与部位剥离  (Entity Disentanglement) ：
+
+- `clinical_entity ` 字段必须是纯粹的疾病本体、最终诊断或病理状态。 
+
+- 绝对禁止在  `clinical_entity ` 中包含方位词或解剖部位。 
+
+2.  独立诊断切分  (Independent Diagnosis Splitting) ：
+
+- 报告结论通常包含多条，必须将其彻底拆分为多个独立的  JSON  对象。 
+
+- 阴性排除同样需要提取。 
+
+3.  并列结构拆分规则  (Conjunction Expansion) ：
+
+- 当文本中多个解剖结构或多个病灶以“、 /及/和/与”等连接，并共享同一个描述时，必须拆分为多个独立实体。 
+
+4.  存在性与确定性的协同逻辑  (Presence vs. Certainty) ：
+
+- `presence`  只表示是否存在。 
+
+- `certainty`  只表示诊断信心。 
+
+- 当 `presence=absent`  时， `certainty`  必须为  `null` 。
+
+5.  零幻觉与证据追溯： 
+
+- 原文未给出的  `severity`  或 `chronicity`  必须输出  `null` 。
+
+- 每个实体都必须给出原文连续子串  `evidence_span `。
+
+6.  输出格式： 
+
+- 只能输出合法  JSON  数组，不要输出解释性文字。 
+
+# Data Dictionary 
+
+- `clinical_entity `:  纯粹的疾病概念、定性诊断或病理状态。 
+
+- `presence`: `present` | `absent` 
+
+- `location`:  疾病发生的具体解剖结构或区域。 
+
+- `distribution`:  空间分布或侧性特征。 
+
+- `severity`:  严重程度或分级。 
+
+- `chronicity`:  时间演变阶段。 
+
+- `certainty`: `definite` | `probable` | `possible` | `null` 
+
+- `evidence_span `:  原文连续证据片段。 
+
+# Example 
+
+{example} 
+
+# Task Execution 
+
+【Diagnosis Text to Analyze 】:
+
+{report_text }
+
+Prompt for Diagnosis Information Extraction | Chinese Version Figure 13: Prompt for diagnosis information extraction (Chinese version). 19 You are a Medical Imaging Knowledge Graph Expert. Your task is to map the extracted entities from the 
+
+Findings section of a {Modality} report to three standard hierarchical trees, standardize the 
+
+attributes, and generate a complete JSON output. 
+
+-----------------------------------
+
+[Standard Tree Structures] 
+
+1. Anatomy Tree 
+
+{anatomy_tree }
+
+2. Imaging Findings Tree 
+
+{clinical_entity_tree }
+
+3. Attributes Tree 
+
+{attributes_tree }
+
+-----------------------------------
+
+[Mapping and Output Rules (Core Rules)] 
+
+1. Structured Output Schema: 
+
+- You MUST output a valid JSON Array. Every entity object in the input array must correspond to one 
+
+mapped object in the output array. 
+
+- For every non -null and non -empty field (e.g.,  clinical_entity , location, distribution, density, 
+
+etc.) in the input entity, generate a corresponding Key of the same name in the output object. 
+
+- If ` evidence_span ` is present in the input, treat it only as an auxiliary evidence snippet for 
+
+disambiguation; do not map it to any tree and do not emit an ` evidence_span ` object in the output. 
+
+- It is strictly prohibited to output fields that are null or missing in the input data. 
+
+2. Field Mapping Object Structure: 
+
+The value of each field must be a JSON Object containing the following three fixed Keys: 
+
+- `raw`: Strictly preserve the original text from the input. 
+
+- `mapped_path `: The mapping path array. The first element must be the root node name of the 
+
+corresponding tree (i.e., "Anatomy", "Imaging Findings", or "Attributes"). Additional note: The mapping 
+
+path is not required to reach a leaf node. If an intermediate node already sufficiently captures the 
+
+meaning of the field and no more specific  subnode  can be determined, the path should stop at that 
+
+higher -level node, as long as it is directly supported by the original text. 
+
+- `normalized_name `: The standardized name, which MUST strictly equal the last element of the 
+
+`mapped_path ` array. If the value should retain its original form (e.g., a numerical size), it should 
+
+match the original value. 
+
+3. CRITICAL Anti -Hallucination Rules: 
+
+- NO Repeating Nodes: Stop mapping once a valid terminal node is reached. Do not duplicate the same 
+
+term at the end of the path. 
+
+- NO Fabricated Variant Nodes: Every element in the ` mapped_path ` MUST exist verbatim in the 
+
+provided trees. When encountering negations or modifiers such as "no pleural effusion" or "mild pleural 
+
+thickening", extract the core medical term and map only that core term. 
+
+4. Type Binding Constraint (Field -to -Tree Mapping Rule) 
+
+To prevent cross -type mapping errors, each field must be mapped only to its designated tree. Cross -
+
+tree mapping is strictly prohibited. 
+
+- `clinical_entity `: 
+
+Must be mapped only to the [Imaging Findings Tree] 
+
+- `location`: 
+
+Must be mapped only to the [Anatomy Tree] 
+
+- All attribute fields (including but not limited to `presence`, `distribution`, `density`, 
+
+`number`, `size`, `shape`, etc.): 
+
+Must be mapped only to the [Attributes Tree] 
+
+[Mandatory Enforcement Rules]: 
+
+- If the semantic meaning of a field cannot be matched to any node within its designated tree: 
+
+→ First, check whether there is a more specific description in **" evidence_span "** that can help 
+
+identify a matching node. 
+
+* If **" evidence_span "** contains a clear description, the mapping should be based on its 
+
+content. 
+
+* If **" evidence_span "** does not contain a clear description, or if it is absent altogether, 
+
+then it is permissible to output ` mapped_path  = ["Other"]`. 
+
+Prompt for Finding Ontology Mapping | English Version Figure 14: Prompt for finding ontology mapping (English version). 20 (continued) 
+
+→ You MUST output ` mapped_path  = ["Other"]`, and ` normalized_name ` should be `"Other"`. 
+
+→ You MUST NOT select a “seemingly reasonable” node from another tree to force a match 
+
+-----------------------------------
+
+[Input and Output Mapping Examples] 
+
+{example} 
+
+-----------------------------------
+
+[Task Execution] 
+
+PURE JSON OUTPUT ONLY. Do not include markdown markers such as ``` json  or any explanatory text. 
+
+-----------------------------------
+
+[Input Content] 
+
+Extracted Entities JSON: 
+
+{input_json }
+
+Prompt for Finding Ontology Mapping | English Version Figure 15: Prompt for finding ontology mapping (English version). 21 你是医学影像知识图谱专家。你的任务是将给定的  {Modality}  报告  Finding  部分中已抽取的实体，映射到标准三棵树，并 
+
+标准化属性，同时生成完整的  JSON  输出。 
+
+-----------------------------------
+
+【标准树结构 】
+
+1.  解剖结构树 
+
+{anatomy_tree }
+
+2.  影像征象树 
+
+{clinical_entity_tree }
+
+3.  属性树 
+
+{attributes_tree }
+
+-----------------------------------
+
+【映射与输出规则  (Core Rules) 】
+
+1.  结构化输出规范  (Schema) ：
+
+- 必须输出一个合法的  JSON  数组  (Array) 。输入数组中的每一个实体对象，对应输出数组中的一个映射对象。 
+
+- 针对输入实体中每一个非  null  且非空的字段（如  clinical_entity , location, distribution, density  等）， 
+
+在输出对象中生成一个同名的  Key 。
+
+- 若输入中包含  `evidence_span `，它只是辅助理解的原文证据片段，仅用于消歧；不要对它做树映射，也不要在输出中 
+
+生成  `evidence_span ` 对象。 
+
+- 严禁输出输入数据中为  null  或缺失的字段（不要生成空对象）。 
+
+2.  字段映射对象结构： 
+
+每个字段的值必须是一个包含以下三个固定  Key  的 JSON Object ：
+
+- `raw`:  完整保留输入时的原词表述。 
+
+- `mapped_path `:  映射路径数组。数组的第一个元素必须是所属树的根节点名称（即  "解剖结构 "、"影像征象 " 或 "属
+
+性"），后续元素为从根节点到最符合子节点的完整层级路径。 
+
+补充说明：映射路径不要求必须到达叶子节点；当某一中间节点已能充分表达该字段语义，且无法区分更具体子节点，应 
+
+停在可被原文直接支持的上位节点。 
+
+- `normalized_name `:  标准化名称，必须严格等于  `mapped_path ` 数组的最后一个元素。如果属于保留原值的情况 
+
+（如具体尺寸），则与原值一致。 
+
+3.  强校验防幻觉规则  (CRITICAL Anti -Hallucination) ：
+
+- 禁止重复节点：路径走到合法节点即停止，绝不可重复拼写同一词汇。 
+
+- 禁止捏造变体节点： `mapped_path ` 内的每一个元素必须一字不差地存在于给定标准树中。遇到带有否定词 /程度词的 
+
+raw text （如“无胸腔积液”、“轻度胸膜增厚”），必须提取核心词映射到树中已有节点，严禁自创后缀 /前缀。 
+
+4.  字段 -树强约束规则（ Type Binding Constraint ）： 
+
+为避免跨类型错误映射，每个字段只能映射到指定的树中，严禁跨树映射： 
+
+- `clinical_entity `：
+
+只能映射到 【影像征象树 】
+
+- `location` ：
+
+只能映射到 【解剖结构树 】
+
+- 所有属性字段（包括但不限于  `presence`, `distribution`, `density`, `number`, `size`, `shape`  等）： 
+
+只能映射到 【属性树 】
+
+【强制执行规则 】：
+
+- 若某字段的语义无法在指定树中找到匹配节点： 
+
+→ 首先检查 "evidence_span "中是否有更明确的描述可以帮助找到匹配节点 
+
+- 如果  evidence_span  中有明确描述，则根据  evidence_span  的内容进行映射。 
+
+- 如果  evidence_span  中没有明确描述，或者根本没有  evidence_span ，那么才允许输出  `mapped_path  =
+
+["Other"]` 。
+
+→ 必须输出  `mapped_path  = ["Other"]` ，此时  `normalized_name ` 输出  `"Other"` 。
+
+→ 严禁为了匹配而跨树选择“看起来合理”的节点 
+
+-----------------------------------
+
+【输入与输出映射示例 】
+
+{example} 
+
+-----------------------------------
+
+【Task Execution 】
+
+纯 JSON  输出，严禁包含  markdown  标记  (如 ``` json ) 或任何解释性文字。 
+
+-----------------------------------
+
+【输入内容 】
+
+已抽取实体  JSON ：
+
+{input_json }
+
+Prompt for Finding Ontology Mapping Prompt for Finding Ontology Mapping | Chinese Version Figure 16: Prompt for finding ontology mapping (Chinese version). 22 You are a Medical Imaging Knowledge Graph Expert. Your task is to map the extracted entities from the 
+
+Diagnosis section of a {Modality} report to three standard hierarchical trees, standardize the 
+
+attributes, and generate a complete JSON output. 
+
+-----------------------------------
+
+[Standard Tree Structures] 
+
+1. Anatomy Tree 
+
+{anatomy_tree }
+
+2. Disease Tree 
+
+{clinical_entity_tree }
+
+3. Attributes Tree 
+
+{attributes_tree }
+
+4. Imaging Findings Tree 
+
+{imaging_findings_tree }
+
+-----------------------------------
+
+[Mapping and Output Rules (Core Rules)] 
+
+1. Structured Output Schema: 
+
+- You MUST output a valid JSON Array. Every entity object in the input array must correspond to one 
+
+mapped object in the output array. 
+
+- For every non -null and non -empty field (e.g.,  clinical_entity , location, distribution, certainty, 
+
+etc.) in the input entity, generate a corresponding Key of the same name in the output object. 
+
+- If ` evidence_span ` is present in the input, treat it only as an auxiliary evidence snippet for 
+
+disambiguation; do not map it to any tree and do not emit an ` evidence_span ` object in the output. 
+
+- It is strictly prohibited to output fields that are null or missing in the input data. 
+
+2. Field Mapping Object Structure: 
+
+The value of each field must be a JSON Object containing the following three fixed Keys: 
+
+- `raw`: Strictly preserve the original text from the input. 
+
+- `mapped_path `: The mapping path array. The first element must be the root node name of the 
+
+corresponding tree (i.e., "Anatomy", "Disease", "Imaging Findings", or "Attributes"). Additional note: 
+
+The mapping path is not required to reach a leaf node. If an intermediate node already sufficiently 
+
+captures the meaning of the field and no more specific  subnode  can be determined, the path should stop 
+
+at that higher -level node, as long as it is directly supported by the original text. 
+
+- `normalized_name `: The standardized name, which MUST strictly equal the last element of the 
+
+`mapped_path ` array. If the value should retain its original form, it should match the original value. 
+
+3. CRITICAL Anti -Hallucination Rules: 
+
+- NO Repeating Nodes: Stop mapping once a valid terminal node is reached. Do not duplicate the same 
+
+term at the end of the path. 
+
+- NO Fabricated Variant Nodes: Every element in the ` mapped_path ` MUST exist verbatim in the 
+
+provided trees. Do not invent categories or names. 
+
+4. Type Binding Constraint (Field -to -Tree Mapping Rule) 
+
+To prevent cross -type mapping errors, each field must be mapped only to its designated tree. Cross -
+
+tree mapping is strictly prohibited. 
+
+- `clinical_entity `: 
+
+Must be mapped only to the [Disease Tree] or [Imaging Findings Tree] (choose the more appropriate 
+
+tree based on the specific semantics of  clinical_entity )
+
+- `location`: 
+
+Must be mapped only to the [Anatomy Tree] 
+
+- All attribute fields (including but not limited to `presence`, `distribution`, `density`, 
+
+`number`, `size`, `shape`, etc.): 
+
+Must be mapped only to the [Attributes Tree] 
+
+[Mandatory Enforcement Rules]: 
+
+- If the semantic meaning of a field cannot be matched to any node within its designated tree: 
+
+→ First, check whether there is a more specific description in **" evidence_span "** that can help 
+
+identify a matching node. 
+
+* If **" evidence_span "** contains a clear description, the mapping should be based on its 
+
+content. 
+
+Prompt for Diagnosis Ontology Mapping | English Version Figure 17: Prompt for diagnosis ontology mapping (English version). 23 (continued) 
+
+* If **" evidence_span "** does not contain a clear description, or if it is absent altogether, then 
+
+it is permissible to output ` mapped_path  = ["Other"]`. 
+
+→ You MUST output ` mapped_path  = ["Other"]`, the ` mapped_path ` should be `["Other"]`, and 
+
+`normalized_name ` should be `"Other"`. 
+
+→ You MUST NOT select a “seemingly reasonable” node from another tree to force a match 
+
+[Correct Behavior]: 
+
+- Always prioritize correct tree type over semantic similarity 
+
+-----------------------------------
+
+[Input and Output Mapping Examples] 
+
+{example} 
+
+-----------------------------------
+
+[Task Execution] 
+
+PURE JSON OUTPUT ONLY. Do not include markdown markers such as ``` json  or any explanatory text. 
+
+-----------------------------------
+
+[Input Content] 
+
+Extracted Entities JSON: 
+
+{input_json }
+
+Prompt for Diagnosis Ontology Mapping | English Version Figure 18: Prompt for diagnosis ontology mapping (English version). 24 你是医学影像知识图谱专家。你的任务是将给定的  {Modality}  报告  Diagnosis （印象 /诊断）部分已抽取的实体，映射到标准 
+
+三棵树，并标准化属性，同时生成完整的  JSON  输出。 
+
+-----------------------------------
+
+【标准树结构 】
+
+1.  解剖结构树 
+
+{anatomy_tree }
+
+2.  疾病树 
+
+{clinical_entity_tree }
+
+3.  属性树 
+
+{attributes_tree }
+
+4.  影像征象树 
+
+{imaging_findings_tree }
+
+-----------------------------------
+
+【映射与输出规则  (Core Rules) 】
+
+1.  结构化输出规范  (Schema) ：
+
+- 必须输出一个合法的  JSON  数组  (Array) 。输入数组中的每一个实体对象，对应输出数组中的一个映射对象。 
+
+- 针对输入实体中每一个非  null  且非空的字段（如  clinical_entity , location, distribution, certainty  等）， 
+
+在输出对象中生成一个同名的  Key 。
+
+- 若输入中包含  `evidence_span `，它只是辅助理解的原文证据片段，仅用于消歧；不要对它做树映射，也不要在输出中生 
+
+成 `evidence_span ` 对象。 
+
+- 严禁输出  输入数据中为  null  或缺失的字段（不要生成空对象）。 
+
+2.  字段映射对象结构： 
+
+每个字段的值必须是一个包含以下三个固定  Key  的 JSON Object ：
+
+- `raw`:  完整保留输入时的原词表述。 
+
+- `mapped_path `:  映射路径数组。数组的第一个元素必须是所属树的根节点名称（即  "解剖结构 "、"疾病 " 、"影像征象 "
+
+或 "属性 "），后续元素为从根节点到最符合子节点的完整层级路径。 
+
+补充说明：映射路径不要求必须到达叶子节点；当某一中间节点已能充分表达该字段语义，若无法区分更具体子节点，应停 
+
+在可被原文直接支持的上位节点。 
+
+- `normalized_name `:  标准化名称，必须严格等于  `mapped_path ` 数组的最后一个元素。如果属于保留原值的情况（如 
+
+具体尺寸），则与原值一致。 
+
+3.  强校验防幻觉规则  (CRITICAL Anti -Hallucination) ：
+
+- 禁止重复节点：路径走到合法节点即停止，绝不可重复拼写同一词汇。 
+
+- 禁止捏造变体节点： `mapped_path ` 内的每一个元素必须一字不差地存在于给定标准树中。严禁模型编造不存在的分类或 
+
+名称。 
+
+4.  字段 -树强约束规则（ Type Binding Constraint ）： 
+
+为避免跨类型错误映射，每个字段只能映射到指定的树中，严禁跨树映射： 
+
+- `clinical_entity `：
+
+只能映射到 【疾病树 】或【影像征象树 】（根据  clinical_entity  的具体语义选择更合适的树） 
+
+- `location` ：
+
+只能映射到 【解剖结构树 】
+
+- 所有属性字段（包括但不限于  `presence`, `distribution`, `density`, `number`, `size`, `shape`  等）： 
+
+只能映射到 【属性树 】
+
+【强制执行规则 】：
+
+- 若某字段的语义无法在指定树中找到匹配节点： 
+
+→ 首先检查 "evidence_span "中是否有更明确的描述可以帮助找到匹配节点 
+
+- 如果  evidence_span  中有明确描述，则根据  evidence_span  的内容进行映射。 
+
+- 如果  evidence_span  中没有明确描述，或者根本没有  evidence_span ，那么才允许输出  `mapped_path  =
+
+["Other"]` 。
+
+→ 必须输出  `mapped_path  = ["Other"]` ，此时  `normalized_name ` 输出  `"Other"` 。
+
+→ 严禁为了匹配而跨树选择“看起来合理”的节点 
+
+【正确行为 】：
+
+- 优先保证“树类型正确”，其次才是“语义最相似” 
+
+Prompt for Diagnosis Ontology Mapping | Chinese Version Figure 19: Prompt for diagnosis ontology mapping (Chinese version). 25 (continued) 
+
+-----------------------------------
+
+【示例：输入与输出映射 】
+
+{example} 
+
+-----------------------------------
+
+【Task Execution 】
+
+纯 JSON  输出，严禁包含  markdown  标记  (如 ``` json ) 或任何解释性文字。 
+
+-----------------------------------
+
+【输入内容 】
+
+已抽取实体  JSON ：
+
+{input_json }
+
+Prompt for Diagnosis Ontology Mapping | Chinese Version Figure 20: Prompt for diagnosis ontology mapping (Chinese version). 26 "FINDINGS_TREE":  {
+
+"密度特征异常 ": [" 高密度影 ", " 低密度影 ", " 等密度影 ", " 混杂密度影 ", " 水样 /脑脊液样密度影 ", " 气体密度影 "], 
+
+"形态与体积异常 ": { 
+
+"脑实质异常 ": [" 脑实质肿胀 ", " 脑实质萎缩 ", " 灰白质界限不清 "], 
+
+"脑沟异常 ": [" 脑沟增宽 /加深 ", " 脑沟变窄 /变浅 ", " 脑沟模糊 "], 
+
+"脑裂异常 ": [" 脑裂增宽 /加深 ", " 脑裂变窄 /变浅 "], 
+
+"脑回异常 ": [" 脑回萎缩 /变小 ", " 脑回增大 /增宽 "], 
+
+"脑室异常 ": [" 脑室扩大 ", " 脑室变小 /受压 ", " 脑室不对称 "], 
+
+"脑池异常 ": [" 脑池扩大 /增宽 ", " 脑池变窄 /受压 ", " 脑池模糊 "], 
+
+"蛛网膜下腔异常 ": [" 蛛网膜下腔增宽 ", " 蛛网膜下腔变窄 "], 
+
+"透明隔异常 ": [" 透明隔增宽 "] 
+
+}, 
+
+"空间与占位效应异常 ": [" 占位效应 /征象 ", " 中线结构移位 ", " 脑结构疝出 "], 
+
+"骨及颅外异常 ": { 
+
+"颅骨异常 ": [" 骨皮质连续性中断 ", " 骨缝分离 ", " 骨质破坏 ", " 骨质增生 /硬化 ", " 骨质凹陷 "], 
+
+"软组织异常 ": [" 软组织肿胀 /增厚 ", " 软组织破损 /中断 "], 
+
+"鼻窦及黏膜异常 ": [" 黏膜增厚 ", " 窦腔软组织影 ", " 鼻中隔偏曲 "] 
+
+}, 
+
+"特定内容物及附加影 ": [" 钙化灶 /影", " 游离碎骨片影 ", " 引流管 /植入物影 ", " 气液平面 "] 
+
+}
+
+"DIAGNOSIS_TREE":  {
+
+"血管性疾病 ": { 
+
+"缺血性改变 ": [" 脑梗死 (非腔隙性 )", " 脑软化灶 ", " 腔隙性梗死 ", " 脑白质缺血性改变 "], 
+
+"出血性疾病 ": [" 脑实质出血 ", " 蛛网膜下腔出血 ", " 脑室内出血 ", " 硬膜下血肿 ", " 硬膜外血肿 ", " 出血（未特指） 
+
+"], 
+
+"血管结构异常 ": [" 动脉瘤 "], 
+
+"小血管病 ": [" 脑小血管病 "] 
+
+}, 
+
+"占位性病变与肿瘤 ": { 
+
+"良性及特定肿瘤 ": [" 脑膜瘤 ", " 脂肪瘤 ", " 颈静脉球瘤 ", " 骨肿瘤 "], 
+
+"非特异性占位病变 ": [" 占位性病变（未定性） "] 
+
+}, 
+
+"退行性与慢性改变 ": { 
+
+"脑老化与脑萎缩 ": [" 老年性脑改变 ", " 弥漫性脑萎缩 ", " 局灶性脑萎缩 "], 
+
+"白质相关改变（非特异） ": [" 脑白质变性 ", " 白质异常（未特指） ", " 脑白质疏松 ", " 室周白质变性 "] 
+
+}, 
+
+"外伤性病变及相关并发症 ": { 
+
+"颅内损伤 ": [" 脑挫伤 ", " 颅骨骨折 ", " 骨质凹陷 "], 
+
+"颅外软组织损伤 ": [" 皮下血肿 ", " 头皮血肿 ", " 软组织肿胀 ", " 皮下软组织挫伤 "] 
+
+}, 
+
+"头颈五官及附属器病变 ": { 
+
+"鼻窦炎症 ": [" 副鼻窦炎 ", " 上颌窦炎 ", " 筛窦炎 ", " 蝶窦炎 "], 
+
+"耳部炎症 ": [" 中耳炎 ", " 乳突炎 ", " 中耳乳突炎 "] 
+
+}, 
+
+"囊性病变 ": [" 蛛网膜囊肿 ", " 皮下囊肿 ", " 脑室囊肿 ", " 囊性病变（未定性） ", " 上颌窦囊肿 ", " 粘膜下囊肿 "], 
+
+"脑室、脑脊液与结构变异 ": { 
+
+"脑室与脑池变异 ": [" 透明隔腔增宽 ", " 第六脑室形成 ", " 大枕大池扩大 "], 
+
+"动力学异常 ": [" 脑积水 ", " 脑疝 "], 
+
+"颅骨发育异常 ": [" 颅缝增宽 ", " 额骨内板增厚症 "] 
+
+}, 
+
+"医疗干预 /术后改变 ": [" 支架置入术后改变 ", " 引流术后改变 ", " 造影剂残留 "] 
+
+}
+
+"ATTRIBUTES_TREE":  {
+
+"存在性 ": ["present", "absent", "uncertain"], 
+
+"空间分布 ": { 
+
+"侧性 ": [" 左侧 ", " 右侧 ", " 双侧 ", " 中线 "], 
+
+"对称性 ": [" 对称 ", " 不对称 "], 
+
+"累及范围 ": [" 局灶 ", " 多灶 ", " 弥漫 "] 
+
+}, 
+
+"数量 ": [" 单发 ", " 多发 ", " 少量 ", " 具体数量 (int)"], 
+
+"尺度 ": [" 小", " 中", " 大面积 ", " 增宽 /增厚 /增深 /扩大 ", " 变小 ", " 具体尺寸 (mm/cm)"], 
+
+"形态 ": [" 斑点状 ", " 片状 ", " 斑片状 ", " 条片状 ", " 团块状 ", " 结节状 ", " 圆形 ", " 椭圆形 ", " 弧形 ", " 新月形 ", " 
+
+铸型 ", " 梭形 ", " 线状 ", " 条状 ", " 不规则 "], 
+
+"边界 ": [" 清晰 ", " 模糊 ", " 欠清晰 ", " 部分清晰 "], 
+
+"密度 ": [" 低密度 ", " 等密度 ", " 高密度 ", " 混杂 ", " 稍高 ", " 稍低 "], 
+
+"内部特征 ": [" 均匀 ", " 不均匀 ", " 不连续 ", " 空腔 ", " 气体影 ", " 环形结构 ", " 内部分隔 ", " 扭曲 ", " 毛糙 "], 
+
+"结构改变 ": [" 中线偏移 ", " 脑沟变浅 ", " 脑室形态改变 "], 
+
+"严重程度 ": [" 轻度 ", " 中度 ", " 重度 "], 
+
+Knowledge Trees Used for Report Standardization | CTRG -Brain Figure 21: Knowledge trees for CTRG-Brain [19]. 27 (continued) 
+
+"演变分期 ": [" 急性 ", " 亚急性 ", " 慢性 ", " 陈旧性 "], 
+
+"确定性 ": ["definite", "probable", "possible"] 
+
+}
+
+"ANATOMY_TREE": { 
+
+"脑实质 ": { 
+
+"幕上 ": { 
+
+"大脑皮层 ": { 
+
+"脑叶 ": [" 额叶 ", " 顶叶 ", " 颞叶 ", " 枕叶 ", " 岛叶 "], 
+
+"皮层下白质 ": [" 放射冠 ", " 半卵圆中心 ", " 脑室周围白质 "] 
+
+}, 
+
+"深部灰质 ": { 
+
+"基底节区 ": [" 尾状核 ", " 壳核 ", " 苍白球 "], 
+
+"丘脑 ": [], 
+
+"海马区 ": [" 海马 ", " 海马回 "], 
+
+"松果体 ": [] 
+
+}
+
+}, 
+
+"幕下 ": { 
+
+"脑干 ": [" 中脑 ", " 脑桥 ", " 延髓 "], 
+
+"小脑 ": [" 小脑半球 ", " 小脑蚓部 ", " 小脑脚池 ", " 小脑扁桃体 "] 
+
+}
+
+}, 
+
+"脑室系统 ": { 
+
+"侧脑室 ": [" 前角 ", " 体部 ", " 后角 ", " 下角 "], 
+
+"第三脑室 ": [], 
+
+"第四脑室 ": [], 
+
+"脑室周围白质 ": [] 
+
+}, 
+
+"脑沟裂 ": [" 脑沟 ", " 脑裂 "], 
+
+"脑膜及腔隙 ": { 
+
+"蛛网膜下腔 ": [" 脑池 "], 
+
+"硬膜下 ": [], 
+
+"颅内间隙 ": [] 
+
+}, 
+
+"中线结构 ": [" 大脑纵裂 ", " 透明隔 ", " 胼胝体 ", " 大脑镰 ", " 小脑幕 "], 
+
+"颅骨 ": { 
+
+"颅盖 ": [" 额骨 ", " 顶骨 ", " 枕骨 ", " 颞骨 ", " 颧弓 "], 
+
+"颅底 ": [" 前颅凹 ", " 中颅凹 ", " 蝶骨大翼 ", " 鞍区 ", " 蝶鞍 ", " 颈静脉孔 "], 
+
+"鼻窦 ": [" 上颌窦 ", " 筛窦 ", " 蝶窦 ", " 副鼻窦 ", " 鼻中隔 ", " 骨性鼻中隔 "] 
+
+}, 
+
+"颅外结构 ": { 
+
+"头皮及皮下软组织 ": [], 
+
+"颌面部及眶周软组织 ": [], 
+
+"眼眶 ": [], 
+
+"乳突及中耳 ": [" 乳突 ", " 中耳 "] 
+
+}, 
+
+"血管 ": { 
+
+"大脑中动脉 ": ["M1 段", "M3 段及远端 "] 
+
+}
+
+}
+
+Knowledge Trees Used for Report Standardization | CTRG -Brain Figure 22: Knowledge trees for CTRG-Brain [19]. 28 "FINDINGS_TREE":  {
+
+"High -Attenuation Pulmonary Opacities": ["Consolidation", "Ground -Glass Opacity (GGO)", 
+
+"Interstitial/Reticular Opacity", "Tree -in -Bud Pattern", "Crazy -Paving Pattern", "Honeycombing"], 
+
+"Focal Lung Lesions": ["Solid Nodule", "Ground -Glass Nodule (GGN)", "Part -Solid Nodule", "Mass", 
+
+"Cavitation", "Cyst"], 
+
+"Decreased Lung Attenuation & Hyperinflation": ["Emphysema", "Bulla", "Mosaic Attenuation"], 
+
+"Abnormal Lung Volume": ["Atelectasis/Incomplete Expansion", "Fibrotic Band/Streak"], 
+
+"Airway Abnormalities": ["Bronchiectasis", "Traction Bronchiectasis", "Airway Stenosis", "Airway Wall 
+
+Thickening", "Mucoid Impaction", "Tracheal Diverticulum"], 
+
+"Pleural Abnormalities": ["Pneumothorax", "Pleural Effusion", "Pleural Thickening", "Pleural 
+
+Nodule/Mass", "Pleural Plaque/Calcification"], 
+
+"Lymphatic System Abnormalities": ["Lymphadenopathy", "Lymph Node Calcification/Necrosis"], 
+
+"Mediastinal Abnormalities": ["Mediastinal Shift", "Pneumomediastinum", "Mediastinal Mass"], 
+
+"Cardiac & Pericardial Abnormalities": ["Cardiomegaly", "Pericardial Effusion", "Pericardial 
+
+Thickening/Calcification", "Cardiovascular Calcification"], 
+
+"Vascular Abnormalities": ["Vascular Dilatation", "Vascular Stenosis", "Vascular Dissection/Intimal 
+
+Flap", "Filling Defect/Thrombus", "Vascular Wall Calcification", "Aneurysm"], 
+
+"Diaphragmatic Abnormalities": ["Diaphragmatic Hernia", "Diaphragmatic Eventration"], 
+
+"Thoracic & Skeletal Abnormalities": ["Fracture", "Osteolytic Lesion", "Osteophyte/Degenerative 
+
+Change", "Thoracic/Spinal Deformity", "Decreased Bone Density"], 
+
+"Chest Wall Soft Tissue & Lower Neck": ["Soft Tissue Mass", "Subcutaneous/Intermuscular Emphysema", 
+
+"Thyroid Nodule/Enlargement"], 
+
+"Tubes & Implants": ["Central Venous Catheter/PICC", "Endotracheal Tube", "Chest Tube", 
+
+"Pacemaker/Defibrillator", "Prosthetic Valve/Stent", "Surgical Fixation Hardware"], 
+
+"Abdominal & Accessory Organ Abnormalities": { 
+
+"Hepatobiliary & Spleen": ["Organomegaly", "Irregular Hepatic Contour", "Decreased Hepatic 
+
+Attenuation", "Biliary Dilatation", "Gallbladder Wall Thickening"], 
+
+"Gastrointestinal Tract": ["Hiatal Hernia", "Gastrointestinal Wall Thickening", "Diverticulum"], 
+
+"Genitourinary & Adrenal": ["Hydronephrosis", "Focal Lesion/Nodule", "Calculus"] 
+
+}
+
+}
+
+"DIAGNOSIS_TREE":  {
+
+"Pulmonary Neoplastic Diseases": { 
+
+"Focal Pulmonary Neoplasms": ["Primary Lung Cancer (including small cell and non -small cell)", 
+
+"Benign Pulmonary Tumor (including adenoma, etc.)"], 
+
+"Disseminated Pulmonary Neoplasms": ["Pulmonary Metastasis", "Lymphangitis  Carcinomatosa "] 
+
+}, 
+
+"Diffuse Lung Parenchymal Diseases": { 
+
+"Infectious Pulmonary Diseases": ["Viral Pneumonia (including COVID -19, influenza, etc.)", 
+
+"Bacterial Pneumonia (including S. aureus, etc.)", "Fungal Pneumonia", "Atypical Pneumonia (including 
+
+Mycoplasma, Chlamydia, etc.)", "Pneumocystis Pneumonia (PCP)", "Mycobacterial Infection (including 
+
+active pulmonary tuberculosis)"], 
+
+"Non -Infectious Inflammatory Lung Diseases": ["Organizing Pneumonia", "Hypersensitivity 
+
+Pneumonitis", "Drug -Induced Lung Injury", "Eosinophilic Lung Disease", "Granulomatosis with 
+
+Polyangiitis (formerly Wegener's granulomatosis)", "Diffuse Alveolar Hemorrhage"], 
+
+"Interstitial and Fibrotic Lung Diseases": ["Idiopathic Interstitial Pneumonia (including ILD, 
+
+pulmonary fibrosis)", "Sarcoidosis", "Pneumoconiosis (including asbestosis)", "Smoking -Related 
+
+Interstitial Lung Disease", "Post -Infectious Pulmonary Sequelae"], 
+
+"Chronic Destructive Lung Diseases": ["Chronic Obstructive Pulmonary Disease (COPD) (including 
+
+emphysema)", "Destroyed Lung"], 
+
+"Pulmonary Circulation -Related Diseases": ["Acute Respiratory Distress Syndrome (ARDS)", 
+
+"Cardiogenic Pulmonary Edema"] 
+
+}, 
+
+"Airway Diseases": { 
+
+"Central Airway Diseases": ["Acute Bronchitis", "Bronchiectasis", " Tracheobronchopathia 
+
+Osteochondroplastica "], 
+
+"Small Airway Diseases": ["Bronchiolitis (including active and respiratory bronchiolitis)", "Asthma 
+
+(including reactive airway disease)"] 
+
+}, 
+
+"Pleural Diseases": { 
+
+"Infectious Pleural Diseases": ["Empyema", "Non -Infectious Pleuritis"], 
+
+"Pneumothorax -Related Diseases": ["Pneumothorax"], 
+
+"Pleural Neoplastic Diseases": ["Mesothelioma"] 
+
+}, 
+
+"Mediastinal and Hilar Diseases": { 
+
+"Mediastinal Lymphatic Diseases": ["Lymphoma (including Hodgkin and non -Hodgkin lymphoma)"], 
+
+"Mediastinal Neoplasms and Soft Tissue Diseases": ["Thymic Epithelial Tumor (including thymoma)", 
+
+"Hiatal Hernia (including  paraesophageal  hernia)", "Mediastinal Goiter (including thyroid cancer 
+
+extension)"] 
+
+}, 
+
+Knowledge Trees Used for Report Standardization | CT -RATE Figure 23: Knowledge trees for CT-RATE [17]. 29 (continued) 
+
+"Thoracic Vascular Diseases": { 
+
+"Pulmonary Vascular Diseases": ["Pulmonary Embolism (including pulmonary thrombosis)", "Pulmonary 
+
+Hypertension"], 
+
+"Systemic Thoracic Vascular Diseases": ["Coronary Artery Disease (including coronary lesions)", 
+
+"Aortic Disease (including aortic aneurysm and atherosclerosis)"] 
+
+}, 
+
+"Chest Wall, Skeletal, and Diaphragmatic Diseases": { 
+
+"Thoracic Skeletal Trauma and Degeneration": ["Fracture (including rib and vertebral compression 
+
+fractures)", "Spinal Degenerative Disease (including osteoarthritis, thoracic spondylosis)", "Diffuse 
+
+Idiopathic Skeletal Hyperostosis (DISH)", "Osteoporosis (including osteopenia)"], 
+
+"Chest Wall and Skeletal Neoplasms": ["Bone Metastasis", "Multiple Myeloma"], 
+
+"Thoracic Deformities and Other Bone Diseases": ["Spinal Deformity (including scoliosis, kyphosis)", 
+
+"Ankylosing Spondylitis"], 
+
+"Diaphragmatic Diseases": ["Chilaiditi Syndrome"], 
+
+"Chest Wall Soft Tissue Diseases": ["Gynecomastia", "Breast Cancer", "Benign Mesenchymal Tumor of 
+
+Chest Wall (including lipoma)"] 
+
+}, 
+
+"Extrathoracic  and Other Systemic Diseases (Incidental CT Findings)": { 
+
+"Hepatobiliary and Pancreatic Diseases": ["Fatty Liver Disease (including hepatic steatosis)", 
+
+"Biliary Stone Disease", "Hepatic Malignancy (including hepatocellular carcinoma)", "Gallbladder 
+
+Malignancy", "Pancreatitis", "Pancreatic Malignancy"], 
+
+"Genitourinary System Diseases": ["Urolithiasis (including nephrolithiasis)", "Polycystic Kidney 
+
+Disease", "Renal Malignancy (including renal cell carcinoma)", "Renal Angiomyolipoma", "Urinary Tract 
+
+Infection", "Prostate Malignancy", "Reproductive System Malignancy (including ovarian cancer, 
+
+testicular tumor)"], 
+
+"Gastrointestinal and Systemic Diseases": ["Colorectal Cancer (including colon and rectal cancer)", 
+
+"Gastritis (including pangastritis)", "Hematologic Malignancy (including acute myeloid leukemia)", 
+
+"Autoimmune Disease (including rheumatoid arthritis, graft -versus -host disease)"] 
+
+}
+
+}
+
+"ATTRIBUTES_TREE" : {
+
+"Presence": ["Present", "Absent", "Uncertain"], 
+
+"Spatial distribution": { 
+
+"Laterality": ["Left", "Right", "Bilateral"], 
+
+"Symmetry": ["Symmetric", "Asymmetric"], 
+
+"Extent": ["Focal", "Multifocal", "Scattered", "Diffuse", "Confluent"] 
+
+}, 
+
+"Number": ["Solitary", "Few", "Multiple"], 
+
+"Size": ["Small", "Medium", "Large", "Widening/thickening/deepening/enlarging/dilating", 
+
+"Decreasing/shrinking", "Specific size(mm/cm)"], 
+
+"Shape": ["Punctate/speckled", "Miliary", "Nodular", "Mass -like/conglomerate", "Patchy", 
+
+"Linear/streaky", "Reticular", "Cystic", "Tubular", "Tree -in -bud", "Wedge -shaped", "Round/ subround ", 
+
+"Irregular"], 
+
+"Margin": ["Well -defined", "Ill -defined", "Smooth", "Spiculated/shaggy"], 
+
+"Density": ["Low density", " Isodense ", "High density", "Mixed density", "Ground -glass opacity", 
+
+"Consolidation", "Water density", "Fat density", "Gas density", "Calcification density", "Metallic 
+
+density", "Mosaic attenuation"], 
+
+"Internal features": ["Homogeneous", "Heterogeneous", "Air bronchogram", "Cavitation", "Cavity", 
+
+"Air -fluid level"], 
+
+"Secondary effects": ["Volume reduction", "Volume increase", "Architectural distortion", 
+
+"Displacement/compression"], 
+
+"Severity": ["Mild", "Moderate", "Severe"], 
+
+"Chronicity": ["Acute", "Chronic", "Old/prior", "Stable", "Progressive", "Improving"], 
+
+"Certainty": ["Definite", "Probable", "Possible"] 
+
+}
+
+"ANATOMY_TREE": { 
+
+"Thoracic Cavity": { 
+
+"Lungs": { 
+
+"Upper Lobe": ["Apical segment", "Posterior segment", "Anterior segment", " Apicoposterior 
+
+segment", "Superior  lingular  segment", "Inferior  lingular  segment"], 
+
+"Middle Lobe": ["Medial segment", "Lateral segment"], 
+
+"Lower Lobe": ["Superior segment", "Medial basal segment", "Anterior basal segment", "Lateral 
+
+basal segment", "Posterior basal segment", "Anteromedial basal segment"] 
+
+}, 
+
+"Trachea and Bronchi": { 
+
+"Trachea": ["Cervical trachea", "Thoracic trachea", "Carina"], 
+
+Knowledge Trees Used for Report Standardization | CT -RATE Figure 24: Knowledge trees for CT-RATE [17]. 30 (continued) 
+
+"Bronchial Branches": ["Main bronchus", "Bronchus intermedius", "Lobar bronchus", "Segmental 
+
+bronchus", "Subsegmental bronchus", "Bronchiole"] 
+
+}, 
+
+"Hilar Region": ["Pulmonary hilum"] 
+
+}, 
+
+"Pleura and Pleural Spaces": { 
+
+"Pleura and Fissures": ["Visceral pleura", "Parietal pleura", "Mediastinal pleura", "Diaphragmatic 
+
+pleura", "Horizontal fissure", "Oblique fissure", "Accessory fissure"], 
+
+"Spaces and Angles": ["Pleural cavity", "Costophrenic angle", " Cardiophrenic  angle"] 
+
+}, 
+
+"Mediastinum": { 
+
+"Heart": ["Atrium", "Ventricle", "Myocardium", "Endocardium", "Atrial appendage", "Aortic valve", 
+
+"Mitral valve", "Tricuspid valve", "Pulmonary valve"], 
+
+"Mediastinal Spaces": ["Anterior mediastinum", "Middle mediastinum", "Posterior mediastinum", 
+
+"Prevascular  space", "Paratracheal space", "Aortopulmonary window", "Subcarinal space", " Paraesophageal 
+
+space", "Paravertebral space"], 
+
+"Mediastinal Ancillary Structures": ["Thymus", "Thoracic esophagus", "Thoracic duct", "Pericardium", 
+
+"Pericardial cavity", "Pericardial fat pad"] 
+
+}, 
+
+"Lymph Nodes": { 
+
+"Upper Mediastinal and Cervical Zones": ["Supraclavicular lymph node", "Upper paratracheal lymph 
+
+node", " Prevascular  lymph node", " Retrotracheal  lymph node", "Lower paratracheal lymph node"], 
+
+"Aortic and Lower Mediastinal Zones": ["Aortopulmonary window lymph node", "Para -aortic lymph node", 
+
+"Subcarinal lymph node", " Paraesophageal  lymph node", "Pulmonary ligament lymph node"], 
+
+"Hilar and Intrapulmonary Zones": ["Hilar lymph node", "Interlobar lymph node", "Lobar lymph node", 
+
+"Segmental lymph node", "Subsegmental lymph node"], 
+
+"Chest Wall and  Extrathoracic  Zones": ["Axillary lymph node", "Internal mammary lymph node", 
+
+"Cardiophrenic  angle lymph node"] 
+
+}, 
+
+"Blood Vessels": { 
+
+"Pulmonary Vessels": ["Pulmonary trunk", "Pulmonary conus", "Main pulmonary artery", "Interlobar 
+
+artery", "Lobar artery", "Segmental artery", "Superior pulmonary vein", "Inferior pulmonary vein", 
+
+"Lobar vein"], 
+
+"Aorta and Branches": ["Aortic root", "Aortic sinus", " Sinotubular  junction", "Ascending aorta", 
+
+"Aortic arch", "Thoracic aorta", "Descending aorta", "Brachiocephalic trunk", "Common carotid artery", 
+
+"Subclavian artery"], 
+
+"Other Great Vessels": ["Superior vena cava", "Inferior vena cava", "Brachiocephalic vein", "Azygos 
+
+vein", "Hemiazygos vein", "Coronary artery"] 
+
+}, 
+
+"Chest Wall and Skeletal System": { 
+
+"Skeletal System": { 
+
+"Spine": ["Cervical vertebra", "Thoracic vertebra", "Lumbar vertebra", "Vertebral body", 
+
+"Intervertebral disc", "Pedicle", "Posterior elements"], 
+
+"Thoracic Cage and Periphery": ["Sternum", "Rib", "Costal cartilage", "Clavicle", "Scapula", 
+
+"Humerus"] 
+
+}, 
+
+"Body Wall Soft Tissues": ["Pectoralis major", "Pectoralis minor", "Intercostal muscle", "Serratus 
+
+anterior", "Erector spinae", "Breast", "Subcutaneous fat", "Skin"] 
+
+}, 
+
+"Lower Neck": { 
+
+"Cervical Organs": ["Thyroid lobe", "Thyroid isthmus", "Larynx", "Glottic region"] 
+
+}, 
+
+"Upper Abdomen and Diaphragm": { 
+
+"Upper Gastrointestinal Tract": ["Esophagogastric junction", "Gastric fundus", "Gastric body", 
+
+"Gastric antrum", "Duodenum"], 
+
+"Hepatobiliary, Pancreas, and Spleen": ["Hepatic lobe", "Caudate lobe", "Hepatic segment", 
+
+"Gallbladder", "Common bile duct", "Spleen", "Pancreas"], 
+
+"Genitourinary and Endocrine": ["Renal cortex", "Renal medulla", "Renal pelvis", "Ureter", 
+
+"Adrenal body", "Medial limb of adrenal gland", "Lateral limb of adrenal gland"], 
+
+"Diaphragmatic Structures": ["Diaphragm", "Diaphragmatic crus", "Esophageal hiatus"] 
+
+}, 
+
+"Mid -Lower Abdomen and Pelvic Edges": { 
+
+"Mid -Lower Gastrointestinal Tract": ["Colon", "Rectum"], 
+
+"Pelvic Organs": ["Urinary bladder", "Uterus", "Ovary", "Prostate", "Testis"], 
+
+"Abdominopelvic Supporting Structures": ["Inguinal canal", "Peritoneal cavity", "Retroperitoneal 
+
+space", " Omentum ", "Mesentery"] 
+
+}, 
+
+"Nerves": { 
+
+"Autonomic and Peripheral Nerves": [" Vagus  nerve", "Recurrent laryngeal nerve", "Phrenic nerve", 
+
+"Thoracic sympathetic trunk"]}} 
+
+Knowledge Trees Used for Report Standardization | CT -RATE Figure 25: Knowledge trees for CT-RATE [17]. 31 "FINDINGS_TREE":  {
+
+"Chest Imaging Abnormalities": { 
+
+"Density and Parenchymal Abnormalities": { 
+
+"High -Density Opacities": ["Consolidation", "Ground -Glass Opacity", "Linear Opacities", "Patchy 
+
+Opacities", "Calcification"], 
+
+"Low -Density and Air -Filled Spaces": [" Lucency ", "Cystic Lesions", "Cavitation"], 
+
+"Space -Occupying Lesions": ["Pulmonary Nodule", "Pulmonary Mass"] 
+
+}, 
+
+"Morphological and Volumetric Abnormalities": ["Cardiomegaly", "Hilar Enlargement", "Atelectasis", 
+
+"Lung Volume Loss", "Mediastinal Shift", "Mediastinal Widening"], 
+
+"Luminal and Airway Abnormalities": ["Bronchiectasis", "Bronchial Stenosis or Occlusion", 
+
+"Bronchial Wall Thickening", "Air Bronchogram", "Tree -in -Bud Pattern"], 
+
+"Interstitial Abnormalities": ["Interlobular Septal Thickening", "Reticular Opacities", "Increased 
+
+Lung Markings", "Honeycomb Pattern"], 
+
+"Serosal Cavity and Space Abnormalities": ["Pleural Effusion", "Pericardial Effusion", 
+
+"Pneumothorax", "Pleural Thickening", "Pericardial Thickening", "Widened Interlobar Fissure", 
+
+"Hemothorax/Hematoma"], 
+
+"Chest Wall and Skeletal Abnormalities": ["Fracture Line", "Bone Destruction", "Hyperostosis", 
+
+"Cortical Disruption"], 
+
+"Chest Lymph Node Abnormalities": ["Mediastinal Lymphadenopathy", "Hilar Lymphadenopathy", "Lymph 
+
+Node Calcification"] 
+
+}, 
+
+"Abdominal Imaging Abnormalities": { 
+
+"Density and Enhancement Abnormalities": { 
+
+"High -Density Features": ["Calculus", "Calcification", "Contrast or Lipiodol Deposition", 
+
+"Implant or Device"], 
+
+"Low/Mixed -Density Features": ["Fat -Density Lesion", "Fluid/Cystic -Density Lesion", "Mixed -
+
+Density Lesion"], 
+
+"Enhancement Abnormalities": ["Avidly Enhancing Lesion", "Mildly Enhancing Lesion", 
+
+"Heterogeneous Enhancement", "Ring Enhancement", "Abnormal Mucosal Enhancement"] 
+
+}, 
+
+"Parenchymal and Space -Occupying Abnormalities": ["Parenchymal Nodule", "Parenchymal Mass", 
+
+"Parenchymal Cyst"], 
+
+"Organ Morphological and Volumetric Changes": ["Solid Organ Enlargement", "Solid Organ Atrophy", 
+
+"Irregular Organ Contour", "Focal Organ Bulge"], 
+
+"Abdominal Luminal and Wall Abnormalities": ["Bowel Dilatation", "Biliary Dilatation", "Luminal 
+
+Stenosis or Occlusion", "Bowel Wall Thickening", "Gallbladder Wall Thickening", "Intraluminal Filling 
+
+Defect", "Diverticulum", "Fistula/Sinus Tract"], 
+
+"Vascular Abnormalities": ["Vascular Dilatation or Aneurysm", "Vascular Wall Thickening", "Vascular 
+
+False Lumen"], 
+
+"Peritoneal Cavity and Space Abnormalities": { 
+
+"Abnormal Space Collections": ["Ascites", "Loculated Fluid Collection", "Air -Fluid Level", 
+
+"Pneumoperitoneum", "Localized Gas Collection", "Hemoperitoneum/Hematoma"], 
+
+"Fat and Fascial Changes": ["Fat Stranding", "Fascial Thickening", "Exudative Opacities"] 
+
+}, 
+
+"Abdominal Lymph Node Abnormalities": ["Abdominal Lymphadenopathy"] 
+
+}, 
+
+"Pelvic Region Imaging Abnormalities": { 
+
+"Pelvic Density and Space -Occupying Abnormalities": { 
+
+"Pelvic Region High -Density Opacities": [], 
+
+"Pelvic Region Low/Mixed -Density Opacities": ["Fat -Density Lesion", "Cystic/Fluid -Density 
+
+Lesion"], 
+
+"Space -Occupying Lesions": ["Pelvic Nodule", "Pelvic Mass", "Adnexal Space -Occupying Lesion"] 
+
+}, 
+
+"Pelvic Region Organ Morphological Changes": { 
+
+"Reproductive System Abnormalities": ["Prostatic Enlargement", "Uterine Enlargement", "Cervical 
+
+Thickening"], 
+
+"Urinary System Abnormalities": ["Bladder Wall Thickening"] 
+
+}, 
+
+"Pelvic Region Skeletal Abnormalities": ["Bone Destruction", "Cortical Thinning", "Osteosclerosis", 
+
+"Cortical Disruption", "Fracture Line"], 
+
+"Pelvic Cavity Content Abnormalities": ["Pelvic Fluid Collection", " Hematocele /Hematoma", "Pelvic 
+
+Free Air", "Pelvic Implant/Device"], 
+
+"Pelvic Lymphatic and Vascular Abnormalities": { 
+
+"Lymph Node Abnormalities": ["Pelvic Lymphadenopathy", "Pelvic Lymph Node Calcification"], 
+
+"Vascular Abnormalities": ["Pelvic Vein Engorgement and Tortuosity"] 
+
+}
+
+}
+
+}
+
+Knowledge Trees Used for Report Standardization | AMOS -MM Figure 26: Knowledge trees for AMOS-MM [20]. 32 “DIAGNOSIS_TREE":  {
+
+"Thoracic Diseases": { 
+
+"Pulmonary Parenchymal and Interstitial Diseases": ["Pneumonia", "Emphysema", "Pulmonary 
+
+Tuberculosis", "Lung Abscess", "Lung Cancer", "Pulmonary Metastasis", "Pulmonary Lymphoma", 
+
+"Interstitial Lung Disease", "Pulmonary Bulla"], 
+
+"Tracheal and Bronchial Diseases": ["Bronchitis", "Bronchiectasis", "Tracheal Malignancy", 
+
+"Bronchial Malignancy"], 
+
+"Pleural Diseases": ["Pleurisy", "Pneumothorax", "Pleural Mesothelioma", "Empyema"], 
+
+"Mediastinal Diseases": ["Mediastinal Lymphoma", "Mediastinal Teratoma", "Mediastinal Goiter", 
+
+"Nodular Goiter", "Foregut Cyst", "Thymoma"], 
+
+"Cardiovascular Diseases": ["Atherosclerosis", "Aortic Dissection", "Aneurysm", "Hypertension", 
+
+"Pulmonary Embolism", "Coronary Atherosclerotic Heart Disease", "Pericarditis"], 
+
+"Chest Wall and Breast Diseases": ["Breast Cancer", "Chest Wall Fracture", "Chest Wall Tumor"] 
+
+}, 
+
+"Abdominal Diseases": { 
+
+"Solid Abdominal Organ Diseases": { 
+
+"Hepatic Diseases": ["Fatty Liver", "Liver Cirrhosis", "Hepatic Hemangioma", "Focal Nodular 
+
+Hyperplasia of Liver", "Hepatocellular Carcinoma", "Hepatocellular Adenoma", "Dysplastic Nodule of 
+
+Liver", "Hemochromatosis", "Hepatic Cyst", "Hepatic Abscess"], 
+
+"Splenic Diseases": ["Splenomegaly", "Accessory Spleen", "Splenic Cyst", "Splenic Infarction", 
+
+"Splenic Rupture"], 
+
+"Pancreatic Diseases": ["Pancreatitis", "Ectopic Pancreas", "Pancreatic Cancer", "Intraductal 
+
+Papillary Mucinous Neoplasm", "Pancreatic Neuroendocrine Tumor"], 
+
+"Adrenal Diseases": ["Adrenal Adenoma", "Pheochromocytoma", "Adrenal Myelolipoma", 
+
+"Adrenocortical Hyperplasia"], 
+
+"Renal and Ureteral Diseases": ["Polycystic Kidney Disease", "Hydronephrosis", "Renal Calculus", 
+
+"Clear Cell Carcinoma", "Renal Cell Carcinoma", "Renal Cyst", "Renal Angiomyolipoma"] 
+
+}, 
+
+"Gastrointestinal Diseases": { 
+
+"Esophageal/Gastric/Duodenal Diseases": ["Gastric Cancer", "Gastrointestinal Stromal Tumor", 
+
+"Esophageal Cancer", "Peptic Ulcer", "Hiatal Hernia"], 
+
+"Small Intestinal Diseases": ["Intestinal Obstruction", "Intussusception", "Intestinal 
+
+Perforation", "Volvulus", "Ischemic Bowel Disease"], 
+
+"Colorectal/Appendiceal Diseases": ["Appendicitis", "Colon Cancer", "Colorectal Cancer", "Rectal 
+
+Cancer", "Ulcerative Colitis", "Diverticulum", "Polyp", "Appendicolith"] 
+
+}, 
+
+"Biliary Tract Diseases": ["Cholecystitis", "Cholangitis", "Cholestasis", "Cholangiocarcinoma", 
+
+"Adenomyomatosis  of Gallbladder", "Gallstone", "Choledocholithiasis", "Gallbladder Polyp", "Gallbladder 
+
+Carcinoma"], 
+
+"Abdominal Vascular Diseases": ["Portal Hypertension", "Thrombosis", "Varices", "Abdominal Aortic 
+
+Aneurysm", "Mesenteric Artery Embolism"], 
+
+"Peritoneal and Retroperitoneal Diseases": ["Peritonitis", "Hernia"], 
+
+"Abdominal Wall Diseases": ["Lipoma", "Abdominal Wall Hernia"] 
+
+}, 
+
+"Pelvic Diseases": { 
+
+"Pelvic Organ Diseases": { 
+
+"Bladder and Distal Urethral Diseases": ["Bladder Cancer", "Bladder Calculus", "Cystitis"], 
+
+"Female Reproductive System Diseases": ["Uterine Fibroids", "Uterine Leiomyoma", "Uterine 
+
+Leiomyosarcoma", "Chocolate Cyst", "Hydrosalpinx", "Ovarian Cyst", "Ovarian Cancer", "Cervical Cancer", 
+
+"Endometrial Cancer", "Pelvic Inflammatory Disease"], 
+
+"Male Reproductive System Diseases": ["Benign Prostatic Hyperplasia", "Hydrocele", "Prostate 
+
+Cancer"] 
+
+}
+
+}, 
+
+"Skeletal System Diseases": { 
+
+"Spinal and Rib Diseases": ["Vertebral Compression Fracture", "Rib Fracture", "Bone Metastasis", 
+
+"Multiple Myeloma", "Ankylosing Spondylitis"] 
+
+}
+
+}
+
+Knowledge Trees Used for Report Standardization | AMOS -MM Figure 27: Knowledge trees for AMOS-MM [20]. 33 “ATTRIBUTES_TREE":  {
+
+"Presence": ["Present", "Absent", "Uncertain"], 
+
+"Spatial distribution": { 
+
+"Laterality": ["Left", "Right", "Bilateral"], 
+
+"Symmetry": ["Symmetric", "Asymmetric"], 
+
+"Extent": ["Focal", "Multifocal", "Scattered", "Diffuse", "Confluent"] 
+
+}, 
+
+"Number": ["Solitary", "Few", "Multiple"], 
+
+"Size": ["Small", "Medium", "Large", "Widening/thickening/deepening/enlarging/dilating", 
+
+"Decreasing/shrinking", "Specific size(mm/cm)"], 
+
+"Shape": ["Punctate/Speckled", "Miliary", "Nodular", "Mass -like/Conglomerate", "Patchy", 
+
+"Linear/Streaky", "Tubular", "Reticular", "Cystic", "Round/Oval", "Annular/Arcuate", "Wedge -shaped", 
+
+"Tree -in -bud", "Lobulated", "Irregular"], 
+
+"Margin": ["Well -defined", "Ill -defined", "Smooth", "Spiculated/shaggy"], 
+
+"Density": ["Hypodense", " Isodense ", "Hyperdense", "Mixed Density", "Ground -Glass Opacity", "Soft -
+
+Tissue Density", "Fluid Density", "Fat Density", "Gas Density", "Calcific Density", "Metallic Density"], 
+
+"Internal features": ["Homogeneous", "Heterogeneous", "Calcification", "Gas", "Fluid/Cystic", "Air -
+
+fluid level", "Necrosis/Liquefaction", "Septation/Loculation", "Internal nodules", "Vascular", 
+
+"Hemorrhagic", "Fat -containing", "Capsular"], 
+
+"Secondary effects": ["Volume reduction", "Volume increase", "Architectural distortion", 
+
+"Displacement/compression"], 
+
+"Severity": ["Mild", "Moderate", "Severe"], 
+
+"Chronicity": ["Acute", "Chronic", "Old/prior", "Stable", "Progressive", "Improving"], 
+
+"Certainty": ["Definite", "Probable", "Possible"] 
+
+}
+
+"ANATOMY_TREE":  {
+
+"Neck": { 
+
+"Neck Organs and Airway": ["Thyroid Gland", "Larynx", "Hypopharynx", "Cervical Trachea", "Cervical 
+
+Esophagus"], 
+
+"Cervical Vascular System": ["Common Carotid Artery", "Internal Carotid Artery", "External Carotid 
+
+Artery", "Internal Jugular Vein", "External Jugular Vein", "Cervical Vascular Bundle"] 
+
+}, 
+
+"Chest": { 
+
+"Airway and Lung Parenchyma": { 
+
+"Trachea and Bronchial Tree": ["Trachea", "Carina", "Main Bronchus", "Bronchus Intermedius", 
+
+"Lobar Bronchus", "Segmental Bronchus"], 
+
+"Lung Lobes": ["Upper Lobe", "Middle Lobe", "Lower Lobe"], 
+
+"Lung Segments": ["Apical Segment", "Posterior Segment", "Anterior Segment", "Lateral Segment", 
+
+"Medial Segment", "Superior Segment", "Medial Basal Segment", "Anterior Basal Segment", "Lateral Basal 
+
+Segment", "Posterior Basal Segment", "Superior  Lingular  Segment", "Inferior  Lingular  Segment", 
+
+"Apicoposterior  Segment", "Anteromedial Basal Segment"], 
+
+"Pulmonary  Interstitium  and Microstructures": [" Bronchovascular  Bundle", "Centrilobular Core"], 
+
+"Pulmonary Fissures": ["Oblique Fissure", "Horizontal Fissure"] 
+
+}, 
+
+"Pleura and Pleural Cavity": { 
+
+"Pleura": ["Pleura"], 
+
+"Pleural Cavity and Recesses": ["Free Pleural Space", " Costodiaphragmatic  Recess", 
+
+"Costomediastinal  Recess", " Phrenicomediastinal  Recess"] 
+
+}, 
+
+"Mediastinum and Cardiovascular System": { 
+
+"Mediastinal Compartments": ["Superior Mediastinum", "Anterior Mediastinum", "Middle Mediastinum", 
+
+"Posterior Mediastinum"], 
+
+"Cardiac Chambers and Structures": ["Atrium", "Ventricle", "Atrial Appendage", "Mitral Valve", 
+
+"Tricuspid Valve", "Aortic Valve", "Pulmonary Valve", "Myocardium", "Base of Pericardium"], 
+
+"Pericardial System": ["Pericardium", "Pericardial Cavity"], 
+
+"Thoracic Arterial System": ["Aortic Root", "Ascending Aorta", "Aortic Arch", "Descending 
+
+Thoracic Aorta", "Brachiocephalic Trunk", "Subclavian Artery", "Main Pulmonary Artery", "Main Pulmonary 
+
+Artery Branches", "Coronary Artery"], 
+
+"Thoracic Venous System": ["Superior Vena Cava", "Brachiocephalic Vein", "Azygos Vein", 
+
+"Hemiazygos Vein", "Thoracic Inferior Vena Cava", "Pulmonary Vein", "Coronary Sinus"], 
+
+"Other Mediastinal Organs": ["Thoracic Esophagus", "Thymus"] 
+
+}, 
+
+"Chest Wall and Diaphragm": { 
+
+"Chest Wall Soft Tissues": ["Subcutaneous Fat of Chest Wall", "Breast Glandular Tissue", 
+
+"Retromammary Space", "Axillary Fat Pad", "Pectoralis Major", "Pectoralis Minor", "Intercostal Muscle", 
+
+"Latissimus Dorsi", "Erector Spinae"], 
+
+"Thoracic Skeleton": ["Clavicle", "Scapula", "Manubrium  Sterni ", "Body of Sternum", "Xiphoid 
+
+Process", "Rib Bone", "Costal Cartilage", "Thoracic Vertebral Body", "Posterior Elements of Thoracic 
+
+Vertebra"], 
+
+Knowledge Trees Used for Report Standardization | AMOS -MM Figure 28: Knowledge trees for AMOS-MM [20]. 34 (continued) 
+
+"Diaphragmatic Parts": ["Diaphragmatic Crus", "Central Tendon of Diaphragm", "Costal Part of 
+
+Diaphragm", "Sternal Part of Diaphragm"] 
+
+}, 
+
+"Thoracic Lymph Node Stations": ["Supraclavicular Lymph Node", "Upper Paratracheal Lymph Node", 
+
+"Pretracheal  Lymph Node", " Retrotracheal  Lymph Node", "Aortopulmonary Window Lymph Node", "Para -aortic 
+
+Lymph Node", "Subcarinal Lymph Node", " Paraesophageal  Lymph Node", "Pulmonary Ligament Lymph Node", 
+
+"Hilar Lymph Node", "Interlobar Lymph Node", "Lobar Lymph Node", "Segmental Lymph Node", "Axillary 
+
+Lymph Node", "Internal Mammary Lymph Node"] 
+
+}, 
+
+"Abdomen": { 
+
+"Hepatobiliary System": { 
+
+"Liver Surface and Landmarks": ["Liver Dome", "Falciform Ligament", "Fissure for Ligamentum 
+
+Venosum", "Fissure for Ligamentum Teres", "Porta Hepatis"], 
+
+"Hepatic Segments": ["Hepatic Segment S1", "Hepatic Segment S2", "Hepatic Segment S3", "Hepatic 
+
+Segment S4", "Hepatic Segment S5", "Hepatic Segment S6", "Hepatic Segment S7", "Hepatic Segment S8"], 
+
+"Biliary System": ["Intrahepatic Bile Duct", "Common Hepatic Duct", "Cystic Duct", "Common Bile 
+
+Duct", "Major Duodenal Papilla"], 
+
+"Gallbladder Structures": ["Gallbladder Fundus", "Gallbladder Body", "Gallbladder Neck", 
+
+"Gallbladder Wall", "Gallbladder Lumen"] 
+
+}, 
+
+"Pancreaticosplenic  System": { 
+
+"Pancreatic Structures": ["Pancreatic Head", "Pancreatic Neck", "Pancreatic Body", "Pancreatic 
+
+Tail", "Uncinate Process", "Main Pancreatic Duct"], 
+
+"Splenic Structures": ["Upper Pole of Spleen", "Splenic Parenchyma", "Splenic Hilar Vascular 
+
+Sheath", "Accessory Spleen"] 
+
+}, 
+
+"Gastrointestinal System": { 
+
+"Gastric Divisions": ["Cardia", "Gastric Fundus", "Gastric Body", "Gastric Antrum", "Pylorus", 
+
+"Greater Curvature of Stomach", "Lesser Curvature of Stomach"], 
+
+"Duodenum and Small Intestine": ["Duodenal Bulb", "Descending Duodenum", "Horizontal Duodenum", 
+
+"Ascending Duodenum", "Jejunum", "Ileum", "Terminal Ileum"], 
+
+"Colorectum and Appendix": ["Cecum", "Ileocecal Valve", "Appendix", "Ascending Colon", "Hepatic 
+
+Flexure", "Transverse Colon", "Splenic Flexure", "Descending Colon", "Mid -upper Sigmoid Colon", 
+
+"Rectosigmoid Junction"] 
+
+}, 
+
+"Urinary System and Adrenal Glands": { 
+
+"Renal Parenchyma and Collecting System": ["Upper Pole of Kidney", "Renal Cortex", "Renal 
+
+Medulla", "Renal Column", "Minor Calyx", "Major Calyx", "Renal Pelvis", "Renal Hilum"], 
+
+"Ureters and Adrenal Glands": ["Abdominal Ureter", "Adrenal Cortex", "Adrenal Medulla"] 
+
+}, 
+
+"Major Abdominal Vessels": { 
+
+"Abdominal Arterial Trunks and Branches": ["Abdominal Aorta", "Celiac Trunk", "Left Gastric 
+
+Artery", "Common Hepatic Artery", "Splenic Artery", "Superior Mesenteric Artery", "Inferior Mesenteric 
+
+Artery", "Renal Artery", "Lumbar Artery"], 
+
+"Abdominal Venous Trunks and Branches": ["Main Portal Vein", "Portal Vein Branches", "Splenic 
+
+Vein", "Superior Mesenteric Vein", "Inferior Mesenteric Vein", "Abdominal Inferior Vena Cava", "Hepatic 
+
+Vein", "Renal Vein", "Gonadal Vein"] 
+
+}, 
+
+"Peritoneal Cavity and Retroperitoneal Space": { 
+
+"Omentum  and Mesentery": ["Greater  Omentum ", "Lesser  Omentum ", "Small Bowel Mesentery", 
+
+"Transverse Mesocolon", "Sigmoid Mesocolon", "Lower Abdominal Greater  Omentum "], 
+
+"Peritoneal Recesses and Spaces": ["Subphrenic Space", "Hepatorenal Recess", " Suprahepatic  Space", 
+
+"Subhepatic Space", "Lesser Sac", "Paracolic Gutter", "Mesenteric Sinus"], 
+
+"Retroperitoneal Compartments": ["Anterior Pararenal Space", "Perirenal Space", "Posterior 
+
+Pararenal Space", " Paravascular  Space"] 
+
+}, 
+
+"Abdominal Wall and Skeletal Muscle Group": { 
+
+"Abdominal Wall Musculature": ["Rectus Abdominis", "External Oblique Muscle", "Internal Oblique 
+
+Muscle", "Transversus Abdominis", "Psoas Major", "Quadratus Lumborum", "Iliacus Muscle", "Latissimus 
+
+Dorsi", "Erector Spinae"], 
+
+"Abdominal Skeleton": ["Lower Lumbar Spine", "Lumbar Vertebral Body", "Posterior Elements of 
+
+Lumbar Vertebra", "Lower Ribs"] 
+
+}, 
+
+"Abdominal Lymph Node Stations": { 
+
+"Abdominal and Retroperitoneal Lymph Nodes": ["Retroperitoneal Lymph Node", "Celiac Lymph Node", 
+
+"Perigastric  Lymph Node", "Porta Hepatis Lymph Node", "Splenic Hilar Lymph Node", "Peripancreatic Lymph 
+
+Node", "Mesenteric Lymph Node", "Paracolic Lymph Node", "Para -aortic Lymph Node", " Paracaval  Lymph 
+
+Node", "Renal Hilar Lymph Node"] 
+
+}
+
+}, 
+
+Knowledge Trees Used for Report Standardization | AMOS -MM Figure 29: Knowledge trees for AMOS-MM [20]. 35 (continued) 
+
+"Pelvis": { 
+
+"Pelvic Digestive System": { 
+
+"Rectum and Anal Canal": ["Middle Rectum", "Lower Rectum", "Anal Canal", "Anal Sphincter Complex"] 
+
+}, 
+
+"Pelvic Urinary System": { 
+
+"Lower Urinary Tract Structures": ["Pelvic Ureter", "Bladder Dome", "Bladder Body", "Bladder 
+
+Base", "Bladder Neck", "Urethra"] 
+
+}, 
+
+"Pelvic Reproductive System": { 
+
+"Female Reproductive Organs": ["Cervix", "Uterine Body", "Uterine Fundus", "Endometrium", 
+
+"Myometrium", "Adnexal Region", "Ovary", "Vaginal Fornix", "Vaginal Wall"], 
+
+"Male Reproductive Organs": ["Prostate", "Seminal Vesicle", "Spermatic Cord", "Scrotal Wall", 
+
+"Testis", "Epididymis", "Penis"] 
+
+}, 
+
+"Pelvic Floor Support and Surrounding Spaces": { 
+
+"Pelvic Floor Musculature": [" Levator  Ani", "Puborectalis", "Obturator Internus", "Piriformis"], 
+
+"Pelvic Spaces": ["Rectouterine Pouch", " Vesicouterine  Pouch", "Rectovesical Pouch", "Retropubic 
+
+Space", " Retrorectal  Space", " Ischioanal  Fossa"] 
+
+}, 
+
+"Pelvic Vascular System": { 
+
+"Pelvic Arteries": ["Common Iliac Artery", "External Iliac Artery", "Internal Iliac Artery", 
+
+"Obturator Artery", "Uterine Artery", "Internal Pudendal Artery", "Pelvic Vessels"], 
+
+"Pelvic Veins": ["Common Iliac Vein", "External Iliac Vein", "Internal Iliac Vein", "Prostatic 
+
+Venous Plexus", "Uterine Venous Plexus"] 
+
+}, 
+
+"Pelvic Skeleton and Joints": { 
+
+"Bony Pelvis": ["Sacrum", "Coccyx", "Ilium", "Iliac Wing", "Ischium", "Pubis"], 
+
+"Pelvic Joints": ["Sacroiliac Joint", "Pubic Symphysis", "Hip Joint"] 
+
+}
+
+}, 
+
+"Thigh and Superficial Structures": { 
+
+"Proximal Thigh Structures": ["Femoral Head", "Femoral Neck", "Upper Thigh Musculature"], 
+
+"Superficial and External Genitalia": ["Superficial Tissues of External Genitalia"] 
+
+}
+
+}
+
+Knowledge Trees Used for Report Standardization | AMOS -MM Figure 30: Knowledge trees for AMOS-MM [20]. 36 "FINDINGS_TREE":  {
+
+"Increased Pulmonary Parenchymal Opacity": ["Ground -Glass Opacity", "Air -Space Opacity", 
+
+"Interstitial Opacity", "Linear Or Reticular Opacity", "Focal Opacity"], 
+
+"Focal Pulmonary Lesion": ["Nodule", "Mass", "Cavity", "Cystic Lesion", "Granuloma"], 
+
+"Increased Pulmonary  Lucency ": ["Diffuse Increased  Lucency ", "Emphysematous Change", "Bulla"], 
+
+"Abnormal Lung Volume": ["Atelectasis", "Low Lung Volume"], 
+
+"Airway Abnormality": ["Bronchiectasis", "Airway Narrowing", "Airway Wall Thickening", "Mucus 
+
+Plugging", "Tracheal Deviation"], 
+
+"Pleural Abnormality": ["Pneumothorax", "Hydropneumothorax", "Pleural Effusion", "Pleural Thickening", 
+
+"Pleural Plaque", "Pleural Calcification"], 
+
+"Mediastinal Abnormality": ["Mediastinal Widening", "Mediastinal Shift", "Pneumomediastinum", 
+
+"Mediastinal Mass"], 
+
+"Hilar Abnormality": ["Hilar Enlargement", "Hilar Indistinctness", "Lymphadenopathy", "Lymph Node 
+
+Calcification"], 
+
+"Cardiac Silhouette Abnormality": ["Cardiomegaly"], 
+
+"Great Vessel Abnormality": ["Aortic Tortuosity Or Unfolding", "Aneurysmal Dilatation", 
+
+"Prominent Pulmonary Artery", "Vascular Calcification"], 
+
+"Pulmonary Vascular Abnormality": ["Pulmonary Vascular Congestion", "Prominent Pulmonary 
+
+Vasculature", "Pulmonary Vascular Redistribution", "Increased Pulmonary Vascular Markings"], 
+
+"Diaphragmatic Abnormality": ["Elevated Hemidiaphragm", "Flattened Diaphragm", "Diaphragmatic 
+
+Eventration"], 
+
+"Thoracic Cage And Osseous Abnormality": ["Chest Wall Deformity", "Scoliosis", "Kyphotic 
+
+Deformity", "Non -Compression Fracture", "Compression Fracture", "Osteopenia", "Osseous Destruction", 
+
+"Cortical Irregularity", "Osteophyte Or Ossification"], 
+
+"Chest Wall Soft Tissue Abnormality": ["Chest Wall Soft Tissue Mass", "Non -Device Foreign Body", 
+
+"Subcutaneous Emphysema", "Deep Neck Emphysema"], 
+
+"Tubal Or Catheter Abnormality": ["Central Venous Catheter", "PICC Line", "Endotracheal Tube", 
+
+"Chest Tube", "Enteric Tube", "Dialysis Catheter", "Pulmonary Artery Catheter", "Intra -Aortic Balloon 
+
+Pump", "Tracheostomy Tube", " Malpositioned  Catheter"], 
+
+"Implanted Device Abnormality": ["Stent", "Pacemaker Or Defibrillator", "Pacing Lead", "Prosthetic 
+
+Valve", "Other Implanted Device"], 
+
+"Postoperative Change": ["Sternal Wire", "Surgical Clip Or Suture", "Orthopedic Or Spinal Fixation 
+
+Hardware"], 
+
+"Subdiaphragmatic Free Air": [] 
+
+}
+
+"DIAGNOSIS_TREE":  {
+
+"Airspace Diseases": { 
+
+"Infectious Lung Diseases": ["Pneumonia", "Pulmonary Tuberculosis", "Lung Abscess", 
+
+"Lobar/Bronchopneumonia"], 
+
+"Non -Infectious Airspace Diseases": ["Aspiration and Aspiration Pneumonia", "Pulmonary Edema", 
+
+"Pulmonary Hemorrhage", "Acute Respiratory Distress Syndrome (ARDS)"] 
+
+}, 
+
+"Interstitial and Diffuse Lung Parenchymal Diseases": ["Interstitial Lung Disease (ILD)", 
+
+"Cryptogenic Organizing Pneumonia (COP)", "Pulmonary Fibrosis", "Sarcoidosis", "Granulomatous Disease", 
+
+"Drug -Induced Lung Injury", " Lymphangioleiomyomatosis  (LAM)"], 
+
+"Airway and Chronic Obstructive Pulmonary Diseases": ["Chronic Obstructive Pulmonary Disease 
+
+(COPD/Emphysematous Changes)", "Bronchiectasis", "Emphysema and Hyperinflation"], 
+
+"Pulmonary Neoplasms and Nodules": ["Pulmonary Nodule", "Mass/Space -Occupying Lesion", "Granulomas 
+
+and Calcifications", "Lung Cancer/Adenocarcinoma", "Pulmonary Metastases", "Lymphangitic 
+
+Carcinomatosis"], 
+
+"Pleural Diseases": ["Empyema", "Hemothorax", "Pleural Plaques and Thickening", "Chronic Pleural 
+
+Scarring"], 
+
+"Air Leak Syndromes": ["Pneumothorax", "Hydropneumothorax", "Pneumomediastinum", "Subcutaneous/Deep 
+
+Cervical Emphysema"], 
+
+"Cardiac and Pericardial Diseases": ["Heart Failure", "Cardiac Decompensation", 
+
+"Cardiomyopathy/Dilated Cardiomyopathy", "Valve Replacement and Stenosis", "Pericardial Effusion"], 
+
+"Great Vessel Diseases": ["Aneurysm", "Aortic Dissection", "Atherosclerosis"], 
+
+"Mediastinal and Esophageal Diseases": { 
+
+"Mediastinal Diseases": ["Mediastinal Tumor", "Mediastinal Lymphadenopathy"], 
+
+"Esophageal and Thyroid Diseases": ["Hiatal Hernia", "Esophageal Tumor", "Esophagitis", "Achalasia", 
+
+"Enlarged Thyroid / Goiter"] 
+
+}, 
+
+"Pulmonary Vascular and Volume Overload Diseases": ["Pulmonary Embolism", "Pulmonary Infarction", 
+
+"Pulmonary Vascular Congestion and Prominence"], 
+
+"Diaphragmatic Diseases": ["Diaphragmatic Paralysis", "Subdiaphragmatic Free Air / Pneumoperitoneum"], 
+
+"Chest Wall and Skeletal Diseases": ["Sternal/Rib Fractures", "Chest Contusion and Laceration", 
+
+"Osteoarthritis/Degenerative Changes", "Scoliosis/Deformity", "Ankylosing Spondylitis", " Syndesmophyte ", 
+
+"Osseous Metastases", "Lytic Destruction", "Osteosclerosis"], 
+
+"Postoperative and Device -Related Chest Abnormalities": ["Post -Thoracotomy/Sternotomy", "Post -
+
+Lobectomy/Pneumonectomy", "Disrupted Sternal Wires/Dehiscence", "Medical Device Malposition and 
+
+Complications"]} 
+
+Knowledge Trees Used for Report Standardization | MIMIC -CXR Figure 31: Knowledge trees for MIMIC-CXR [18]. 37 "ATTRIBUTES_TREE" : {
+
+"Presence": ["Present", "Absent", "Uncertain"], 
+
+"Spatial distribution": { 
+
+"Laterality": ["Left", "Right", "Bilateral", "Midline"], 
+
+"Symmetry": ["Symmetrical", "Asymmetrical"], 
+
+"Extent": ["Focal", "Multifocal/Multiple", "Scattered", "Diffuse/Extensive", "Confluent"] 
+
+}, 
+
+"Number": ["Solitary", "Few", "Multiple"], 
+
+"Size": ["Small", "Moderate", "Large", "Widening/thickening/deepening/enlarging/dilating", 
+
+"Decreasing/shrinking", "Specific dimension (mm/cm)"], 
+
+"Shape": ["Punctate/Nodular", "Mass -like", "Patchy", "Linear/Band -like", "Reticular", "Wedge -
+
+shaped/Triangular", "Flat/Discoid", "Round/Oval", "Tortuous/Coiled", "Loculated/Encapsulated", 
+
+"Stratified/Laminated", "Irregular"], 
+
+"Margin": ["Clear/Well -defined", "Ill -defined/Obscured", "Irregular/Spiculated", "Blunted"], 
+
+"Density": ["Low density/Radiolucent", "High density/Radiopaque", "Mixed density", "Ground -
+
+glass/Hazy", "Calcific density", "Metallic/Foreign body density"], 
+
+"Internal features": ["Homogeneous", "Heterogeneous", "Air bronchogram", "Cavity", "Cyst/Air space", 
+
+"Air -fluid level", "Calcification"], 
+
+"Secondary effects": ["Volume loss/Collapse", "Hyperinflation/Volume expansion", "Architectural 
+
+distortion/Crowding", "Mass effect/Displacement", "Traction/Retraction", "Silhouette sign/Obscuration"], 
+
+"Severity": ["Mild", "Moderate", "Severe"], 
+
+"Chronicity": ["Acute/New", "Chronic/Old", "Stable/Unchanged", "Progressive/Worsening", 
+
+"Resolving/Improving", "Postoperative/Post -treatment"], 
+
+"Certainty": ["Definite", "Probable", "Possible"] 
+
+}
+
+"ANATOMY_TREE":  {
+
+"Airway and Pulmonary System": { 
+
+"Tracheobronchial Region": ["Trachea", "Carina", "Bronchus"], 
+
+"Lung Parenchyma (Anatomical)": ["Upper lobe parenchyma", "Middle lobe parenchyma", "Lower lobe 
+
+parenchyma", " Lingular  parenchyma", "Lung apex", "Lung base"], 
+
+"Lung Zones (2D Projection)": ["Upper lung zone", "Middle lung zone", "Lower lung zone", "Hilar 
+
+region", "Retrocardiac region", " Paramediastinal  region"], 
+
+"Interstitial and Parenchymal Tissues": ["Airspaces", "Pulmonary  interstitium "] 
+
+}, 
+
+"Cardiovascular System": { 
+
+"Cardiac Chambers and Walls": ["Atrium", "Ventricle", "Myocardial contour"], 
+
+"Cardiac Valves": ["Aortic valve", "Mitral valve", "Tricuspid valve"], 
+
+"Aorta and Major Branches": ["Aortic sinus/root", "Ascending aorta", "Aortic arch", "Descending 
+
+aorta", "Aortic knob"], 
+
+"Major Veins (Catheter locations)": ["Superior vena cava (SVC)", "Inferior vena cava (IVC)", 
+
+"Cavoatrial  junction (CAJ)", "Azygos vein", "Brachiocephalic vein", "Internal jugular vein", 
+
+"Subclavian vein"], 
+
+"Pulmonary Arterial System": ["Main pulmonary trunk", "Main pulmonary artery branches", 
+
+"Aortopulmonary window"], 
+
+"Peripheral Arterial System": ["Coronary artery", "Subclavian artery", "Splenic artery"] 
+
+}, 
+
+"Pleural and Diaphragmatic System": { 
+
+"Pleural Surfaces and Spaces": ["Pleural cavity", "Visceral/Parietal pleura", "Costophrenic 
+
+angle/sinus", " Cardiophrenic  angle/sinus"], 
+
+"Pleural Fissures": ["Oblique fissure", "Horizontal fissure"], 
+
+"Diaphragm": ["Diaphragmatic dome"] 
+
+}, 
+
+"Skeletal and Body Wall System": { 
+
+"Axial Skeleton": ["Cervical vertebra", "Thoracic vertebra", "Lumbar vertebra", "Vertebral body", 
+
+"Manubrium", "Sternal body", "Rib", "Costal cartilage"], 
+
+"Appendicular Skeleton": ["Clavicle", "Scapula", "Proximal humerus", "Shoulder joint", 
+
+"Acromioclavicular joint"], 
+
+"Soft Tissues": ["Cervical soft tissues", "Chest wall soft tissues", "Subcutaneous fat", "Axillary 
+
+region", "Pectoral musculature"] 
+
+}, 
+
+"Marginal Organs": { 
+
+"Cervical Organs": ["Thyroid gland"], 
+
+"Upper Gastrointestinal System": ["Esophagus", "Gastroesophageal (GE) junction", "Stomach", 
+
+"Duodenum"], 
+
+"Abdominal Solid and Hollow Organs": ["Spleen", "Biliary system", "Peritoneal cavity", 
+
+"Bowel/Intestines"] 
+
+}, 
+
+"Medical Devices and Implants (High -frequency Non -anatomical Entities)": { 
+
+"Tubes and Lines": ["Central venous catheter (CVC)", "Peripherally inserted central catheter 
+
+(PICC)", "Nasogastric/Orogastric (NG/OG) tube", "Chest tube / Pleural drain"], 
+
+"Metals and Implants": ["Pacemaker", "ECG leads", "Vascular stent", "Sternotomy wires"]}} 
+
+Knowledge Trees Used for Report Standardization | MIMIC -CXR Figure 32: Knowledge trees for MIMIC-CXR [18]. 38
