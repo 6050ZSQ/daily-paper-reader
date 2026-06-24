@@ -1,0 +1,770 @@
+Title: Comparing Transformers and Hybrid Models at the Token Level
+
+URL Source: https://arxiv.org/pdf/2606.20936v1
+
+Published Time: Tue, 23 Jun 2026 00:19:06 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# Comparing Transformers and Hybrid Models at the Token Level 
+
+Yanhong Li 
+
+Allen Institute for AI 
+
+yanhongl@allenai.org 
+
+William Merrill 
+
+Allen Institute for AI 
+
+willm@allenai.org 
+
+Abstract 
+
+Hybrid language models that mix attention and recurrent layers have shown promise: theoretically, recurrent layers ameliorate the limitations of pure transform-ers on state tracking, and empirically, hybrids can outperform pure transformers in loss and downstream evaluations (Waleffe et al., 2024; Merrill et al., 2026). Yet it remains unclear which data or capabilities drive these gains, and to what degree they reflect the theoretical advantages motivating hybrid models. We address this question using the open weights from Olmo 3 (Olmo et al., 2026) and Olmo Hybrid (Merrill et al., 2026): we compare the loss of a matched transformer and hybrid at the same target tokens under the same prefixes, stratifying the results by natural token tags, copy features, delimiter structure, and controlled synthetic probes. The hybrid has lower loss on most tag families, but the gains are not uniform: they are largest for open-class content words and smaller for many closed-class function words. Across prose, code, and markup, the hybrid’s loss advantage is larger on opening delimiters than on the corresponding closing delimiters, and nearly vanishes on repeated n-grams. Synthetic probes show the same split: the hybrid is favored on pronoun-memory and entity-tracking tasks, whereas the transformer is favored on bracket-matching tasks that require choosing closing delimiters. These patterns suggest that the recurrent layers in hybrids improve predictions that lever-age the semantic state of a document, whereas attention helps on tokens predictable by n-gram copying or syntactic bracket matching. We conclude with proof-of-concept filtered evaluations showing how token-level decompositions can sharpen pretraining diagnostics for hybrid architectures. 
+
+1 Introduction 
+
+Hybrid language models that mix attention with recurrent sequence layers have recently challenged the attention-only transformer as the default architecture for large-scale language modeling. Theo-retically, hybrid models are motivated by the complementary expressivity of attention and recurrent layers: attention allows retrieving information from past tokens, which is useful for copying and syntactic tasks like bracket matching, while recurrent layers offer advantages for constructing and updating latent state in ordered state-tracking computations (Merrill et al., 2024; Grazzi et al., 2025). Theoretically, hybrid models inherit both of these strengths and, empirically, they can outperform transformers with the same pretraining budget in loss and downstream benchmarks (Waleffe et al., 2024; Merrill et al., 2026). While these empirical results are impressive, it remains unclear what finegrained predictions are improved by adding hybrid layers to a model, or to what degree these relate to the theoretical advantages of hybrid models. In this work, we therefore aim to understand the finegrained prediction differences between transformers and hybrid models at the token level ,asking the following two questions: 
+
+> Preprint.
+> arXiv:2606.20936v1 [cs.CL] 18 Jun 2026
+
+1. What kinds of tokens and prediction contexts do hybrid models predict better than trans-formers? More concretely, which individual token occurrences account for the lower average loss of a hybrid model relative to a matched transformer? 2. Do those token occurrences match the theoretical advantages of the component architec-tures? More specifically, do hybrid-favored tokens look like the expressivity advantages associated with recurrence, such as ordered state tracking, while transformer-favored tokens look like the advantages associated with attention, such as recall from the visible prefix? We study these questions by comparing two released 7B-scale models from the same recipe family, Olmo 3 7B and Olmo Hybrid 7B (Olmo et al., 2026; Merrill et al., 2026). For a target position i with prefix x<i and observed token xi, we compute paired token losses 
+
+ℓTr  
+
+> i
+
+= − log pTr (xi | x<i ), ℓHyb  
+
+> i
+
+= − log pHyb (xi | x<i ),
+
+and the paired gap ∆i = ℓTr  
+
+> i
+
+− ℓHyb  
+
+> i
+
+. Thus ∆i > 0 means that the hybrid assigns higher probability, equivalently lower NLL, to the observed next token at the same prefix. This paired quantity lets us move from the average question “which model has lower loss?” to the token-level question “which prediction events produce the gain?” Our first analysis is observational. We compute ∆i over prose, code, and markup, then align target tokens to surface tags: POS tags for prose and source-level categories such as identifiers, strings, comments, text nodes, attributes, commands, brackets, and tags for structured text. We report raw tag-stratified means, which describe the absolute hybrid advantage on the actual corpus positions, and regression robustness checks, which ask whether the same patterns remain after controlling for difficulty, frequency, position, subword status, and local reuse. The regression analysis is complementary to the raw summaries: it asks whether the tag-level patterns persist after controlling for difficulty, frequency, position, subword status, and local reuse. The natural-token results are non-uniform. The hybrid has lower loss on most token families, but the advantage is largest on open-class content-bearing categories. In prose, content words have a larger raw gap than function words, and the aggregate content–function contrast remains after controls. In structured domains, hybrid-favored categories include identifiers, strings, comments, text nodes, attribute values, and commands. By contrast, the hybrid advantage is smaller on closing delimiters and rigid formatting tokens, and it approaches zero on long repeated n-grams. Thus, while the hybrid wins overall—especially on open-class words—the transformer remains competitive, and sometimes favored, in contexts where attention is the important primitive: retrieving material already present in the visible prefix or satisfying an already-open structural obligation. Our second analysis uses controlled synthetic probes to separate delayed information from the type of computation required at the target. In a pronoun-memory probe, the model sees people with roles and later must choose the pronoun for the person filling a queried role. In an entity-tracking probe, it sees entities bound to attributes and later must choose which entity has a queried attribute. In a structural-closure probe, it sees an opened bracket or tag region and later must predict the required closing token. The first two probes require readout of a maintained role or entity–attribute binding and favor the hybrid. The closure probe also involves delayed information, but the answer is already determined by an opener visible in the prefix, and it favors the transformer. Thus the relevant distinction is not simply short versus long dependency, but whether the target is primarily a state-conditioned choice, a visible-prefix copy, or a closure decision. These results point to two different follow-on uses of the token-level analysis. The first is for designing controlled state-tracking benchmarks. Existing state-tracking tasks often ask a model to update a small, fixed set of symbols according to a sequence of instructions and then report the final symbol or value. Such closed-world tasks are useful because they isolate ordered update and readout, but once architectures solve the fixed-slot setting, they become less informative for distinguishing future recurrent layers. Our results suggest a more demanding, open-world extension: discourse state tracking. In these tasks, the input can introduce new people, objects, variables, or document regions over time, change their attributes or relations, and later require a context-dependent prediction, such as which entity, value, or content word should come next. This framing keeps the connection to state tracking while moving from fixed symbolic slots to the growing, relational state needed in natural text, code, and markup. Controlled discourse-state-tracking tasks would therefore provide a more demanding testbed for developing linear-RNN and hybrid sequence layers. 2The second use is for comparing architectures during pretraining experiments. In 1B-scale develop-ment runs comparing a Transformer, a Hybrid, and a Pure RNN, aggregate validation loss compresses distinct regimes into a single number. Filtered token losses could be a useful way to compare and contrast architectures in this setting: losses on hybrid-favored non-copy tokens separate architectures more sharply, while a copy-only filter exposes the complementary regime in which attention-based models outperform the Pure RNN on visible-prefix reuse. Because these filters are computed from the same per-token NLL as standard validation, they add little overhead while providing a more capability-resolved view of training progress. Reporting filtered token losses alongside aggregate validation loss can therefore show not only whether a design improves overall perplexity, but which predictive capabilities it improves or sacrifices. 
+
+2 Expressivity Background and Empirical Hypotheses 
+
+Expressivity theory gives a useful way to separate the computations that can be hidden inside next-token prediction. We organize the background by architectural primitive: attention, recurrence, and their combination in hybrid models. 
+
+Transformer expressivity: copy/recall and structural matching. Attention gives transformers a direct mechanism for selecting positions in the visible prefix. Under standard formalizations, this lets transformers express recall-style computations such as n-gram retrieval, and it also supports many bracket-matching or structural-matching problems by making the relevant earlier position or opener accessible (Weiss et al., 2021; Yao et al., 2023). Thus attention should be especially useful when the next token can be recovered by reusing already-visible material or by matching an explicit structural opener: (1) John works for the National Hamburger Association of America. The National Hamburger Association of America . . . 
+
+(2) ( [ ] [ { ( ) } ] ) .The first example asks for copy/recall from the visible prefix, while the second asks for structural matching against a visible opener. In contrast, copy/recall is a known limitation of pure recurrent models with bounded state: copying or recalling arbitrary prefix information can require storing more information than a fixed-size recurrent state can retain (Arora et al., 2024; Jelassi et al., 2024; Merrill et al., 2026). 
+
+RNN expressivity: ordered state tracking. The complementary limitation of fixed-depth trans-formers is ordered state composition. Under standard fixed-depth and log-precision assumptions, transformer next-token predictors are contained in low-depth threshold-circuit classes such as TC 0;consequently, they cannot express general NC 1-complete ordered state-composition problems unless 
+
+TC 0 = NC 1 (Merrill and Sabharwal, 2023; Chiang, 2025). In contrast, modern linear RNNs with suf-ficiently expressive transition matrices, including DeltaNet/GDN variants with negative eigenvalues, can represent such state-tracking computations (Merrill et al., 2024; Grazzi et al., 2025; Merrill et al., 2026). These results motivate the complementary hypothesis that predictions requiring ordered state updates should favor models with recurrent layers over pure transformers. A simple program-state example is: (3) a,b,c = 1,2,3; a,c = c,a; assert a == 3. 
+
+Hybrid expressivity: composing recall with state. Hybrid models combine attention layers, which support recall from the visible prefix, with recurrent layers, which support ordered state updates. This combination should allow them to handle contexts like Items 1 to 3, where a pure RNN or a pure transformer is missing one of the relevant primitives. Moreover, hybrids are not merely the union of two independent capabilities: Merrill et al. (2026) show that a GDN–attention hybrid can solve 
+
+state-based recall , where a model must track updates to a pointer and then use the resulting pointer to retrieve a value from the prefix, while neither a pure transformer nor a pure GDN model can express the full problem under the standard assumptions. A code-like example is: (4) bits = [0,1,0,0, . . . ]; a,b,c = 3,1,2; a,c = c,a; assert bits[a] == 0. This expressivity picture gives the empirical hypotheses for the rest of the paper. Next-token prediction is not a single homogeneous computation: we treat each prefix as inducing a latent 3discourse/program state, and we view each target token as a query against, or an update to, some aspect of that state. Some targets are recoverable from the visible prefix; others require ordered state construction and state-conditioned readout; still others compose both. We therefore expect attention-heavy transformers to be competitive on visible-prefix reuse and structural closure, recurrent layers to help on state-conditioned predictions, and hybrids to be strongest when natural language, code, or markup requires both. The remainder of the paper tests where these regimes appear in ordinary next-token prediction across natural language, code, and markup. 
+
+3 Empirical Methodology 
+
+We ask which individual next-token predictions account for the loss gap between a hybrid model and a matched transformer. The basic unit of analysis is one target position. For a packed token sequence 
+
+x1: L and target position i, both models are evaluated on the same prefix x<i and the same observed target token xi. Let 
+
+ℓTr  
+
+> i
+
+= − log pTr (xi | x<i ), ℓHyb  
+
+> i
+
+= − log pHyb (xi | x<i ),
+
+where Tr denotes the transformer and Hyb denotes the hybrid model. We define the paired token-level loss gap 1
+
+∆i = ℓTr  
+
+> i
+
+− ℓHyb  
+
+> i
+
+= log pHyb (xi | x<i ) − log pTr (xi | x<i ).
+
+Thus ∆i > 0 means that, at position i, the hybrid assigns higher probability to the observed next token than the transformer. All natural-token analyses in this section aggregate these per-position quantities. 
+
+Models, domains and evaluation. We compare two released 7B-scale models from the same recipe family: Olmo 3 7B and Olmo Hybrid 7B (Olmo et al., 2026; Merrill et al., 2026). This pair is closely matched in tokenizer, data mixture, and training recipe, making the per-token gap primarily reflect the architectural difference (the sequence mixer). We evaluate on prose and structured text spanning natural language, code, and markup (prose: PG-19, News, Wikipedia, essay, textbooks and scientific papers; structured: Python, HTML, L ATEX). Text is packed into length-L=8192 sequences and we compute next-token NLL at every position. Unless otherwise stated, all 7B token-level and synthetic analyses use the final released checkpoint pair. Additional preprocessing and checkpoint details are in Appendix A. 
+
+Token tagging and alignment. After computing ∆i for every LM target position, we assign surface tags using the same two-step procedure across domains. First, we tag spans in the original source text. Second, we align those source-level tags to LM target tokens by character-span overlap between the decoded LM token and the tagged source span. Prose and structured domains differ in the source-level tagger and tag inventory, and share the alignment procedure. For prose, the source spans are words tagged with the Brown POS tagset. For Python, HTML, and L ATEX, the source spans come from lightweight tokenizers or parsers, with categories such as identifiers, strings, comments, delimiters, tags, attributes, commands, and text nodes. When an LM token overlaps multiple source-level tags, we use multi-tag attribution, so the same ∆i contributes to each overlapping tag’s summary. Full tag taxonomies and alignment rules are in Appendix A.2 and Appendices B.1–B.2. We also record each LM token’s word-position type: whole word, prefix, middle subword, or suffix. 
+
+Analysis I: Tag-stratified raw summaries. Raw here means unadjusted: we average the paired loss gap over the observed corpus positions assigned to a tag, without reweighting those positions or controlling for other variables. This answers the descriptive question: among the actual corpus positions with a given tag, how much lower is the hybrid’s NLL than the transformer’s? For a tag or position set τ , let Iτ be the set of target positions assigned that tag. We report 
+
+b∆( τ ) = 1
+
+|I τ |
+
+X
+
+> i∈I τ
+
+∆i = E[∆ i | i ∈ I τ ].
+
+For example, τ can be N OUN , O PEN BRACKET , or HTML OPEN TAG . If an LM token overlaps multiple source-level tags, that position belongs to each corresponding Iτ , so its token-level gap contributes to each relevant raw summary.          
+
+> 1Because ∆iis a log-probability difference, a mean gap of ¯∆nats corresponds to a geometric-mean probability ratio of
+> exp( ¯∆) in favor of the hybrid. For example, 0.04 nats is about a 4.1% probability ratio. It is not a log-odds ratio.
+
+4Analysis II: Regression robustness check. Raw tag means provide the main descriptive summary: they show the hybrid–transformer gap on the actual positions belonging to each tag. However, a raw tag mean can be confounded by other properties of those positions. Tags are correlated with difficulty, frequency, position, subword status, and local reuse, and these covariates can affect ∆i
+
+independently of tag membership. For example, content and function categories differ substantially in token frequency. We therefore fit linear regressions that control for these correlates: 
+
+∆i ∼ DOMAIN i + TAG i + WPOS i
+
++ RELPOS i + ¯ℓi + ¯ℓ2
+
+> i
+
++ X
+
+> k∈{ 1,2,3,4}
+> COPY k,i
+
++ log PREVDIST i + log FREQ (xi).                             
+
+> ∆ipaired NLL gap ℓTr
+> i−ℓHyb
+> i(>0= hybrid better)
+> DOMAIN prose source fixed effects
+> TAG either coarse POS family or aggregate word class, depending on the model
+> WPOS subword position in word (whole/prefix/middle/suffix)
+> RELPOS relative position in packed sequence
+> ¯ℓimean NLL; difficulty proxy ( ¯ℓ2
+> iallows curvature)
+> COPY kprefix-reuse features for k= 1 ,2,3,4;COPY 1,i is same-token reuse (the target token type appeared earlier in the prefix), and COPY k,i for
+> k≥2indicates that the target completes a repeated k-gram
+> PREVDIST distance to previous occurrence of the same token type (log-scaled)
+> FREQ empirical target-token type frequency in the pooled regression sample
+
+(1) 
+
+We fit two instantiations of Equation 1. The first is the coarse-tag model , where TAG is the full coarse Brown-POS family; this model gives the detailed adjusted effects for nouns, verbs, auxiliaries, brackets, punctuation, and other coarse categories. The second is the aggregate word-class model ,where TAG is replaced by the three-way label C ONTENT /F UNCTION /O THER ;2 this model gives the aggregate rows in Figure 2. We fit the aggregate model separately. Both models include the same controls. The raw summaries and regression effects answer complementary questions: raw gaps show whether the hybrid is better or worse on a token family in absolute terms, while regression effects show whether that family is more or less hybrid-favored than expected after controlling for confounds. 
+
+Pronoun memory 
+
+Structural closure 
+
+Entity tracking         
+
+> Liam is the violinist. Naomi is the pilot. ... dfiller tokens ... the violinist reviewed the report, and
+> <header> counter += 1 ... dfiller tokens ...
+> Julia carried the orange notebook. Sofia carried the green folder. ... dfiller tokens ... Q: Who carried the green folder? (A) Sofia (B) Julia Answer:
+
+he </header> 
+
+Sofia  
+
+> vs. she NLL on closer
+> vs. Julia
+
+Figure 1: Synthetic probe examples. We vary the distance d between an antecedent/opener and a scored target token. 
+
+Analysis III: Controlled synthetic probes. The natural-token analyses are observational: they reveal where the gap appears in real text, but a surface tag does not directly specify the decision the model must make at the scored position. We therefore add three controlled synthetic probe families (Figure 1): • PRONOUN MEMORY . The prompt introduces two people with different genders and roles, inserts filler, then refers to one role and scores the matching pronoun, e.g., he versus she .• ENTITY TRACKING . The prompt binds two entities to different attributes, inserts filler, then asks which entity has a queried attribute. • STRUCTURAL CLOSURE . The prompt opens a bracketed or tagged region, inserts filler, then scores the required closing token. For each family, we keep the surface template and filler distribution fixed while varying the distance 
+
+d ∈ { 32 , 64 , 128 , 256 , 512 , 1024 } between the relevant earlier cue and the scored target token. For the first two probes, we score them contrastively using accuracy 1[m > 0] and margin 
+
+m = log p(y+ | c) − log p(y− | c), 
+
+> 2
+
+CONTENT includes open-class lexical categories such as nouns, main verbs, adjectives, and adverbs. FUNCTION 
+
+includes closed-class grammatical categories such as determiners, prepositions, conjunctions, pronouns, auxiliaries, modals, wh-categories, particles, and infinitival TO. O THER includes punctuation, brackets, symbols, numerals, and remaining tags. 
+
+5−0.02 0.00 0.02 0.04 0.06 0.08 0.10 0.12 0.14 
+
+> raw loss gap, Δ (nats)
+> TO
+> Aux HAVE
+> Close Bracket
+> Punctuation
+> Aux BE
+> Wh-word
+> Conjunction
+> Other
+> Preposition
+> Pronoun
+> Det/Article
+> Aux DO
+> Numeral
+> Noun
+> Open Bracket
+> Interjection
+> Qualifier
+> Modal
+> Verb
+> Adjective
+> Adverb
+> Particle
+> Existential
+
+Coarse-tag loss gap       
+
+> −0.075 −0.050 −0.025 0.000 0.025 0.050 0.075
+> regression effect vs global mean (nats)
+> Aux HAVE
+> Wh-word
+> Aux DO
+> Pronoun
+> TO
+> Aux BE
+> Conjunction
+> Punctuation
+> Qualifier
+> Verb
+> Preposition
+> Interjection
+> Close Bracket
+> Noun
+> Numeral
+> Det/Article
+> Other
+> Adverb
+> Adjective
+> Modal
+> Open Bracket
+> Particle
+> Existential
+
+Coarse-tag effect     
+
+> Content
+> Function
+> Other
+> 0.00 0.01 0.02 0.03 0.04
+> raw loss gap, Δ (nats)
+> Other
+> Function words
+> Content words
+
+Aggregate loss gap     
+
+> −0.002 −0.001 0.000 0.001 0.002
+> regression effect vs global mean (nats)
+> Function words
+> Other
+> Content words
+
+Aggregate effect Figure 2: Raw and adjusted tag effects in prose. Left panels show raw paired loss gaps, where positive values mean the hybrid has lower NLL on that token family. Right panels show regression-adjusted effects relative to the global mean from the regressions. Top panels use the full coarse POS taxonomy; bottom panels use the separately fitted three-way aggregate model (content/function/other). where y+ is the correct token, y− is a matched distractor, and c is the shared prefix. S TRUCTURAL CLOSURE instead tests visible structural closure, so we report NLL on the closing token, 
+
+ℓclose = − log p(yclose | c).
+
+4 Empirical Results 
+
+We organize the results into two parts. Section 4.1 analyzes natural tokens from prose, code, and markup; these analyses show where the hybrid–transformer gap appears in real data and distinguish absolute raw gaps from controlled regression effects. Section 4.2 uses controlled synthetic probes to test whether the same split appears when we directly manipulate the target type and antecedent distance. 
+
+4.1 Natural-token analysis Hybrid advantage across token tags is largest for open-class content words. Figure 2 shows that the hybrid is better on most prose tag families, but not uniformly so. In the aggregate raw panel, content words have the largest hybrid advantage ( 0.0384 nats) versus function words ( 0.0238 
+
+nats), a difference of 0.0146 nats (about 61% larger). This ordering persists after controls (difficulty, token/subword position, sequence position, local reuse, previous-token distance, and token frequency): content stays above the global mean, while function falls below it. The regression gives a stricter test of the raw trend: after matching positions by difficulty, token frequency, subword status, sequence position, and local reuse, do the same tag-level observations still point in the same direction? For the main pattern, they do. The aggregate content–function contrast survives the controls, and many open-class categories remain more hybrid-favored than closed-class or highly constrained categories. The effects for individual function tags are more heterogeneous, but several function-like categories (e.g., auxiliaries, wh-words, TO, pronouns) still appear among the least hybrid-favored. The aggregate contrast is also closely related to the open-/closed-class distinction: function words tend to come from small, closed inventories, whereas content words tend to be open class. We therefore ask whether the tag-level effects vary continuously with tag vocabulary size. Figure 3 plots 62 4 6 8 10 12 
+
+> log (distinct token types per tag)
+> −0.025
+> 0.000
+> 0.025
+> 0.050
+> 0.075
+> 0.100
+> 0.125
+> 0.150
+> raw loss gap, Δ (nats)
+
+Raw loss gap vs. tag vocabulary diversity         
+
+> TO
+> Existential
+> Particle
+> Aux DO
+> Aux HAVE Other
+> Aux BE
+> Modal
+> Wh-word
+> Conjunction
+> Interjection
+> Det/Article
+> Pronoun
+> Close Bracket
+> Numeral Qualifier Open Bracket
+> Preposition
+> Punctuation
+> Adverb
+> Adjective
+> Verb Noun
+> slope = +0.0019 ± 0.0010
+> R2= 0.145
+> n = 23, p = 0.059
+> Content
+> Function
+> Other
+> 246810 12
+> log (distinct token types per tag)
+> −0.04
+> −0.02
+> 0.00
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> regression effect vs global mean (nats)
+
+Regression effect vs. tag vocabulary diversity   
+
+> TO
+> Existential
+> Particle
+> Aux DO Aux HAVE
+> Other Aux BE
+> Modal
+> Wh-word
+> Conjunction
+> Interjection
+> Det/Article
+> Pronoun
+> Close Bracket
+> Numeral
+> Qualifier
+> Open Bracket
+> Preposition
+> Punctuation Adverb
+> Adjective
+> Verb
+> Noun
+> slope = +0.0006 ± 0.0005
+> R2= 0.054
+> n = 23, p = 0.273
+
+Figure 3: Tag vocabulary size is associated with the prose tag effects. Each point is a coarse prose tag from Figure 2, marked by aggregate word class. The x-axis is log |V τ |, where Vτ is the set of distinct target-token types observed with tag τ . Left: raw paired loss gap ¯∆( τ ). Right: regression-adjusted tag effect relative to the global mean. −0.06 −0.04 −0.02 0.00 0.02 0.04 0.06 0.08 
+
+> raw gap (nats)
+> LaTeX
+> HTML
+> Python
+> ArXiv
+> Wikipedia
+> CC-News
+> PG-19
+> Δ = 0.064
+> Δ = 0.010
+> Δ = 0.017
+> Δ = 0.028
+> Δ = 0.049
+> Δ = 0.077
+> Δ = 0.068
+
+(a) Open vs. close bracket gap by domain 
+
+> Open bracket
+> Close bracket
+> Open − Close gap
+> 0.00
+> 0.01
+> 0.02
+> Δ (nats)
+
+(b) Repeated-token loss gap (raw)                
+
+> 12345678910 11 12 13 14 15 16
+> n-gram length
+> −0.04
+> −0.02
+> 0.00
+> implied coef. (nats)
+
+(c) Repeated-token effect (adjusted) 
+
+Figure 4: Brackets and repeated n-grams. A: Open and close bracket raw gaps across domains; line segments show the open–close difference. B: Raw paired loss gaps for repeated-token events from repeated 1-grams through 16-grams. Positive raw gaps mean lower hybrid NLL. C: Implied repetition effects from an extension of Equation 1 with COPY 1–COPY 16 . Negative adjusted effects mean that repetition reduces the hybrid advantage relative to comparable non-copy positions. 
+
+log |V τ |, the number of distinct target token types realized under tag τ , against both the raw and adjusted tag effects. Open-class tags (large vocabularies) tend to occupy the more hybrid-favored region in both the raw and adjusted views. After controls the slope is modest, which is expected because frequency, difficulty, and reuse explain part of the same variation; nevertheless, its positive direction agrees with the aggregate content–function result. The weaker adjusted slope should not be read as eliminating the closed-class pattern: several closed-class/function-like tags still have strongly negative adjusted effects, even though the overall vocabulary-size relationship is less steep after controls. A notable exception is E XISTENTIAL , which remains unusually hybrid-favored despite a small choice set (also under the controlled view). A plausible explanation is that existential there 
+
+often signals a discourse-introducing construction (“there is/are . . . ”), so the decision to use it can depend on latent state updates even though the surface choice set is small. 
+
+Opening vs. closing brackets: the hybrid advantage is reduced on structural closure. If the bracket pattern is about the predictive role of the target rather than the bracket character itself, then openers and closers should behave differently: openers begin a new region or scope, whereas closers satisfy an obligation already established by the visible prefix. Figure 4A tests this prediction across domains. Across all seven domains (prose, Python, HTML, L ATEX), opening brackets are consistently more hybrid-favored than the corresponding closing brackets; the gap is largest in prose and remains visible in structured text. This matters because opening and closing delimiters have similar surface form but different predictive roles. Openers often initiate a new region/scope (a state update), whereas closers typically satisfy an already-established structural obligation (closure). The cross-domain consistency therefore supports an interpretation in terms of what computation is queried at the target, not the bracket character per se. 732 64 128 256 512 1024                              
+
+> Distance (words)
+> 40
+> 60
+> 80
+> 100
+> Accuracy (%)
+> (a) Accuracy
+> 32 64 128 256 512 1024
+> Distance (words)
+> 0.0
+> 0.5
+> 1.0
+> 1.5
+> Log-prob margin
+> (b) Margin
+> 32 64 128 256 512 1024
+> Distance (words)
+> 30
+> 40
+> 50
+> 60
+> 70
+> 80
+> Accuracy (%)
+> (c) Accuracy
+> 32 64 128 256 512 1024
+> Distance (words)
+> −0.25
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> Log-prob margin
+> (d) Margin
+> 32 64 128 256 512 1024
+> Distance (words)
+> 12
+> 14
+> 16
+> 18
+> NLL at closure token (nats)  (e) NLL
+> Pronoun Memory Entity Tracking Structural Closure
+> Transformer Hybrid Chance
+
+Figure 5: Controlled probes at the final matched checkpoint. Pronoun memory and entity tracking are scored by contrastive accuracy and log-probability margin; structural closure is scored by NLL on the closing token. Higher is better for accuracy and margin; lower is better for NLL. 
+
+Hybrid advantage nearly disappears on repeated n-grams. Figure 4B–C isolates repeated spans, an observable proxy for prefix-based copying in a weak sense rather than direct evidence of a copying mechanism. We call a target a repeated n-gram event when the contiguous n-token sequence ending at the target has appeared earlier in the prefix. For example, in “ a b c d a b c ”, the underlined target completes a repeated 3-gram, “ a b c ”. Figure 4B reports raw paired loss gaps on such targets for n = 1 , . . . , 16 . A repeated 1-gram only means that the target token type appeared earlier in the prefix, so it captures ordinary token reuse rather than a clean repeated-span continuation. As n grows, the event becomes a cleaner repetition proxy: if a longer span appears twice, the target is increasingly determined by continuing material already visible in the prefix. Consistent with this interpretation, the raw hybrid advantage shrinks rapidly with n and approaches zero for long repeated spans. In these settings, the repeated continuation in the visible prefix provides a strong prediction, so the hybrid no longer has a measurable absolute advantage. The regression view in Figure 4C makes the same point under controls. We extend Equation 1 by replacing COPY 1–COPY 4 with COPY 1–COPY 16 . Because repeated-n events nest (a repeated n-gram also activates all shorter copy indicators), we plot the implied repetition effect at length n by summing active copy coefficients through n. These implied effects are consistently transformer-shifting (negative), with uncertainty growing for large n because long repeated spans are rare and the nested indicators are highly correlated. Non-repetition control coefficients are reported in Appendix D. 
+
+4.2 Controlled synthetic analysis 
+
+Figure 5 provides the controlled counterpart to the natural-token split by fixing templates and varying the dependency distance and target type. Pronoun memory favors the hybrid (larger contrastive margins and typically higher accuracy). Entity tracking shows a stronger separation: the hybrid stays above chance across distances, while the transformer dips below chance at intermediate distances and yields negative margins there. Structural closure reverses sign: when the target is a closer whose opener is already present, the transformer attains lower NLL at every distance. Thus delay alone is not the relevant variable: all three probes require information from earlier context, but only the state-readout probes favor the hybrid. This is consistent with the theoretical expectation that recurrent layers help most when prediction requires maintaining and querying latent state, whereas attention remains competitive or better when the target is a closure token determined by a visible opener. 
+
+4.3 Summary of empirical findings 
+
+Across observational tagging and controlled probes, we find a consistent, non-uniform token-level structure in the hybrid–transformer gap: (i) the hybrid advantage is broad but especially pronounced on open-class, content-bearing choices; the effect is weaker and more heterogeneous for closed-class/function categories; (ii) in contrast, the transformer matches or exceeds the hybrid on structural closure: closing delimiters are less hybrid-favored than openers across domains, and the controlled closure probe favors the transformer; and (iii) finally, the hybrid advantage collapses on explicit visible-prefix reuse (repeated n-grams), and repetition features shift the gap toward the transformer even after controls. 85 Interpretation: Hybrid Gains and Discourse-State Tracking 
+
+We now give a preliminary theoretical account of the empirical split in §4. 
+
+Setup. Fix a target position t and prefix x<t . Let τ denote the target token’s coarse local class, such as a POS tag, delimiter class, or markup/code token type. For any such class, define 
+
+Vτ = {x ∈ V : x can realize class τ }.
+
+Since our empirical strata are assigned in the analysis, we treat τ as an oracle local-slot variable. Thus, when analyzing a fixed class τ , we use class-conditional next-token distributions; equivalently, the domain of Xt is restricted to Vτ . To keep the notation local to this fixed target and class, write 
+
+p⋆τ (·) = p⋆(Xt = · | X<t = x<t , X t ∈ V τ )
+
+for the ideal full-prefix next-token distribution under the data-generating process, conditional on the target class. Let ϕ be a feature map of the prefix. A reduced predictor that can use only the information summarized by ϕ(x<t ), together with the same class restriction, predicts 
+
+pϕ,τ (·) = pϕ(Xt = · | ϕ(x<t ), X t ∈ V τ ) .
+
+Going forward, pϕ,τ denotes the best predictor under that feature restriction and class conditioning. For an actual architecture, ϕ can be viewed as the class of prefix features that the sequence mixer makes easy to express: attention can expose visible-prefix retrieval and structural-matching features, while recurrent layers can expose updated latent-state features. The reducible loss incurred by using 
+
+pϕ,τ to approximate p⋆τ is 
+
+Eϕ,τ (t) = H(p⋆τ , p ϕ,τ ) − H(p⋆τ ) = DKL (p⋆τ ∥ pϕ,τ ) ,
+
+where, for distributions supported on Vτ ,
+
+H(p) = − X
+
+> x∈V τ
+
+p(x) log p(x), H(p, q ) = − X
+
+> x∈V τ
+
+p(x) log q(x).
+
+A feature map is predictive enough for a token family when this class-conditional KL divergence is small on that family. 
+
+First: visible-prefix sufficiency explains why the gap closes on recall and closure. The common structure in recall and closure is simple: within the relevant local class τ , suppose a prefix feature 
+
+ϕ lets the reduced predictor determine the class-conditional next-token distribution. Then, in the deterministic idealization, 
+
+pϕ,τ = p⋆τ and hence DKL (p⋆τ ∥pϕ,τ ) = 0 .
+
+In less deterministic natural text, the corresponding claim is that this class-conditional KL is small. Thus, once such a feature is available, a richer state representation has little additional loss to remove. In the repeated-n-gram case, ϕ is the visible continuation of the longest repeated suffix: if the current suffix has occurred before and its continuation is unambiguous, then the target is predictable by continuing material already present in the prefix. In the closure case, ϕ is the relevant structural matcher, such as the top of the active delimiter stack: if the target is a closing delimiter, the correct closer is predictable from that stack state. Since both the matched transformer and the hybrid can express these features in the regimes measured by repeated continuations and bracket/tag closure, we expect little systematic difference between them there. This explains why repeated n-grams and closing delimiters are transformer-friendly or near-neutral. 
+
+Second: local class size bounds how much any richer feature map can help. Let Uτ be the uniform distribution on Vτ , and let pclass ,τ be the best predictor that sees only the class restriction Xt ∈ V τ
+
+and no prefix features. The following bound is the formal version of the POS-vocabulary-size effect in Figure 3. 
+
+Proposition 1. Fix a target class τ and restrict the domain of Xt to Vτ . Then any richer feature map 
+
+ϕ, evaluated through its best class-conditional reduced predictor, satisfies 
+
+DKL (p⋆τ ∥pϕ,τ ) ≤ log |V τ |.
+
+9Proof. Because pϕ,τ is the best predictor under the feature restriction ϕ and the class restriction 
+
+Xt ∈ V τ , it can always ignore ϕ(x<t ) and emulate the best class-only predictor pclass ,τ . Therefore, 
+
+DKL (p⋆τ ∥pϕ,τ ) ≤ DKL (p⋆τ ∥pclass ,τ )
+
+≤ DKL (p⋆τ ∥Uτ )= log |V τ | − H(p⋆τ ) ≤ log |V τ |.
+
+For small closed classes, knowing the local class leaves only a limited amount of possible extra information. Thus, the additional benefit of information beyond the local class is bounded even when that information is useful. For open classes, the bound is much looser: knowing that the next token is a noun, identifier, string, or text node can still leave substantial uncertainty about which token should fill the slot. This prediction is consistent with our empirical finding that many function-like categories have smaller and more heterogeneous hybrid gains, while larger open-class categories leave more room for architectural differences. 
+
+Finally: when recall, closure, and local class are not enough, the missing feature is semantic state. We state this final case as a hypothesis. For non-copy open-class choices, identifiers, attribute values, and controlled entity/role probes, the local class can specify the kind of slot being filled, while reuse and closure features still need not determine the filler. We hypothesize that the semantic state of the discourse provides useful predictive cues in these contexts. More concretely, let δ[t]−1 be a discourse state representing the longer-lived discourse, program, or document state after the previous sentence/unit, where [t] is the index of the sentence containing token t or the analogous local unit in code/markup. In the context of code evaluation, the discourse state can be identified with the current variable assignments after a step of execution. In linguistics, different theories of dynamic semantics provide different ways of instantiating δj to encode entities, events, relations, salience, variable bindings, scopes, or document regions (Heim, 1982, 2002; Kamp and Reyle, 2013; Grosz and Sidner, 1986; Grosz et al., 1995). At a high level of abstraction, we imagine that, for a sequence of sentences sent 1, . . . , sent j , this discourse state is some structured object updated recurrently by each sentence: 
+
+δj = Update (δj−1, sent j ).
+
+Thus, each sentence acts as an update operator over the discourse state δj . While models may not explicitly store the discourse state as a structured object, we hypothesize it is useful for them to represent some potentially lossy part of it, since δj carries information useful for predicting the next token that is not supplied by the local class, repeated-prefix continuation, or local structural obligation alone. For example, as shown in Figure 6, in “John took the book and gave it to Mary. Mary grabbed her ,” the local class suggests a noun phrase, and neither copy nor delimiter state resolves the filler. What makes reading glasses plausible is semantic state: Mary now has the book, so a reading-related continuation becomes more likely. This is the sense in which we use “state-conditioned” or “semantically conditioned”: the local slot is partly specified, but the filler depends on accumulated context. Thus, we hypothesize that discourse state tracking can provide useful additional information for next-token prediction in open-class contexts, and thus that models that can better represent discourse state updates may achieve lower loss in these contexts. Putting the three parts together, repeated continuations and closing delimiters are mostly explained by features that both architectures can access, while small closed classes leave limited room for any richer feature to help. The largest hybrid gains should therefore appear on open-class, non-copy, state-conditioned targets whose fillers depend on accumulated semantic, program, or document context. This is the split seen in Figures 2, 4 and 5. 3
+
+5.1 Discourse State Tracking Targets to Guide RNN Architectures 
+
+Much recent work on recurrent sequence layers uses the A5 word problem as a standard benchmark for state tracking (Merrill et al., 2024; Grazzi et al., 2025; Peng et al., 2025; Yang et al., 2026; Merrill et al., 2026). In this task, the input specifies a sequence of permutations from the alternating group 
+
+A5; the model must compose these updates in order and then read out the resulting state, or a property of it. In the notation above, A5 is a closed-world case where δ is a fixed-size finite state and the target 
+
+> 3One caveat is that our tags and copy features are noisy proxies for these latent components, so individual tokens may mix several regimes. The argument should therefore be read as a token-family-level explanation of the observed directions.
+
+10 Discourse tracking     
+
+> John took the book and gave it to Mary.
+> Mary grabbed her
+> predict content phrase
+> John book Mary
+> reading glasses
+> gives to
+> has
+> makes likely
+> grabs
+> A5-style state tracking
+> x = [a, b, c, d, e] # permutation (1 2 3) tmp = x[0] x[0] = x[2] x[2] = x[1] x[1] = tmp assert x[2] == b
+> special case
+
+Figure 6: Discourse tracking as richer state tracking. Left: predicting the masked content phrase requires tracking that the book has ended up with Mary and using that discourse state to make reading-related objects likely. Right: closed-world A5 permutation updates apply ordered, deterministic state changes over a fixed set of slots, followed by a deterministic readout such as an assertion about one slot. is a deterministic readout from that state. The right side of Figure 6 gives a schematic example of this kind of closed-world permutation-update problem. 
+
+A5 has been useful because it cleanly isolates ordered update and readout over a fixed finite state space. However, structured linear-RNN variants can already solve this benchmark essentially perfectly (Terzic et al., 2026), which makes it less informative for distinguishing future recurrent sequence layers. Moreover, A5 does not capture certain properties of state tracking in discourse or code. Unlike A5,natural text and code can introduce new entities, events, variables, scopes, and situations over time, so the effective state can grow with input length. The state is also relational: useful readouts may depend on who did what to whom, which object is salient, which scope is active, or which variable binding currently holds (Kamp and Reyle, 2013). Thus, a broad takeaway from our analysis is that more realistic state tracking could be a good synthetic-task target for future architectures. Such tasks would preserve the clean update/readout structure of A5 while adding dynamic entity introduction and relational state, making them a more demanding testbed for future linear-RNN and hybrid sequence layers. 
+
+6 Application: Higher-Signal Evaluations for Pretraining Hybrid Models 
+
+The decomposition in §4 suggests that aggregate next-token loss mixes several distinct computation regimes that respond differently to the choice of sequence mixer. Because most tokens are easy for any reasonable architecture, aggregate loss is a relatively low-signal target for architecture search: real but systematic gaps can be diluted by the easy majority. We propose tracking filtered losses, computed from the same next-token NLL, as a higher-signal complement to aggregate validation. The filters serve two roles. First, they can amplify small architecture gaps by concentrating on the tokens where a capability matters. Second, they can reveal different empirical behaviors across token families that a single aggregate number hides. As a proof of concept, we show that filtered 
+
+validation losses, computed from the same per-token NLL as standard validation, can reveal capability differences between architectures that are nearly invisible in aggregate loss. 
+
+Filters. We evaluate three filters built from the token-level features of §3: (i) A LL TOKENS , the standard aggregate; (ii) T OP -10 ∩ NO-C OPY , restricted to the ten most hybrid-favored open-class POS families (Figure 2) and excluding positions that complete a repeated n-gram for n ≤ 4;(iii) C OPY -5 ONLY , positions that complete a repeated 5-gram. By construction, (ii) targets state-conditioned readout while removing visible-prefix retrieval, and (iii) isolates retrieval. 
+
+Setup. To check that filtered evals carry useful architectural signal during small-scale pretraining, we evaluate checkpoints from three 1B-parameter development training runs released by Merrill et al. (2026): a Transformer , a Hybrid (interleaved GDN/attention, 3:1 ratio), and a Pure RNN (GDN, no attention). The three are trained on a matched data mixture and budget under WSD scheduling; we score every annealed checkpoint and report token-loss curves in Figure 7. 
+
+State-oriented filters amplify small architecture gaps. Under aggregate A LL TOKENS loss (Figure 7, left), the Transformer–Hybrid separation is small, with a maximum of roughly 0.06 
+
+nats and smaller gaps later in training. Under T OP -10 ∩ NO-C OPY (middle), the maximum 11 10 4 10 5    
+
+> checkpoint step
+> 1.6
+> 1.7
+> 1.8
+> 1.9
+> 2.0
+> loss (nats / token)
+> All tokens
+> 10 410 5
+> checkpoint step
+> 3.3
+> 3.4
+> 3.5
+> 3.6
+> 3.7
+> 3.8
+> loss (nats / token)
+> Top-10 ∩ No Copy
+> 10 410 5
+> checkpoint step
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> loss (nats / token)
+> Copy-5 only
+> Transformer Hybrid Pure RNN
+
+Figure 7: Filtered token losses surface architecture differences during 1B pretraining. Token-loss curves at WSD-annealed checkpoints for a Transformer, a Hybrid, and a Pure RNN. Transformer–Hybrid separation is roughly 0.12 nats, about twice as large, and the ordering be-comes H YBRID < PURE RNN < TRANSFORMER . This supports the intended use of the filter: removing copy positions and restricting to open-class targets leaves a regime that is more sensitive to how well an architecture supports latent-state construction and state-conditioned readout. 
+
+Copy filters expose what aggregate loss averages away. In the aggregate A LL TOKENS curve, the Transformer and Pure RNN appear roughly matched, especially at later checkpoints. Taken alone, this comparison would suggest that the two architectures have similar validation behavior. The filtered curves show that this apparent match is an average over different regimes. The T OP -10 ∩ NO-C OPY 
+
+filter separates the models on state-oriented non-copy targets, where the Pure RNN does better than the Transformer. The C OPY -5, ONLY filter reveals the compensating weakness: on positions that continue a repeated 5-gram, where prediction mainly requires retrieving material from the visible prefix, the Pure RNN is consistently about 0.10 –0.20 nats worse than the two attention-based models. Thus filtered loss makes visible a split that aggregate loss largely obscures: recurrence-only models can look competitive on average while still lagging on visible-prefix retrieval. 
+
+A diagnostic for hybrid architecture design. Aggregate loss reports whether an architecture is competitive overall; filtered evals diagnose why . A Pure RNN that closes the T OP -10 ∩ NO-C OPY gap but stays far behind attention-based models on C OPY -5 ONLY has improved its state representation but not the retrieval problem; an architecture that does the reverse is borrowing attention’s strength without gaining on state-tracking. This decomposition is especially useful when iterating on hybrid 
+
+architectures, where the design space spans the layer ratio, the choice of recurrent mixer, and the placement of attention: filtered evals make it possible to ask which of those knobs is buying which capability, rather than reading a single aggregate number that aggregates over both regimes. Because both filters are computed from the same per-token NLL as standard validation, they add negligible cost, and we suggest reporting them alongside aggregate loss during architecture sweeps. 
+
+7 Conclusion 
+
+We compared a matched pair of models—a transformer model (Olmo 3) and a hybrid model (Olmo Hybrid)—at the token level to identify which next-token predictions drive the average loss gap. Three patterns recur: (i) the hybrid’s edge concentrates on open-class content predictions; (ii) opening delimiters are hybrid-favored while closing delimiters are transformer-favored; and (iii) the hybrid advantage vanishes on visible-prefix copying. Overall, these findings seem to align with the expressivity benefits of hybrid models: attention provides direct visible-prefix retrieval, while recurrent layers support ordered state update and state-conditioned readout. It therefore makes sense that the hybrid advantage concentrates on predictions whose answer depends on an evolving discourse, program, or document state, rather than on copying or bracket closure. Two directions follow. First, A5-style benchmarks capture only a closed-world special case of the state tracking natural language requires; formal-language tasks admitting dynamic entity introduction and relational structure, evaluated on linear-RNN variants (§5.1), would test whether architectures that better realize discourse-style state tracking also improve on the token families driving the hybrid gap. Second, the same token-level profile can diagnose data-mixture and post-training choices: underperformance on a narrow family (e.g., numeric literals, closing delimiters) signals where 12 targeted data might help, while the rest of the profile checks that gains do not erode state-dependent predictions. Our filtered-evaluation results provide an encouraging proof of concept for this diagnostic use: token-level decompositions can sharpen pretraining comparisons, expose capability tradeoffs that aggregate loss hides, and identify concrete token families for targeted intervention. Future work can build on this proof of concept by exploring the practical implications of token-level profiles for architecture search, data selection, and post-training. 
+
+Acknowledgments and Disclosure of Funding 
+
+The authors thank Allyson Ettinger and Kyle Richardson for relevant feedback. 
+
+References 
+
+Simran Arora, Sabri Eyuboglu, Aman Timalsina, Isys Johnson, Michael Poli, James Zou, Atri Rudra, and Christopher Ré. Zoology: Measuring and improving recall in efficient language models. In The Twelfth International Conference on Learning Representations, ICLR 2024, Vienna, Austria, May 7-11, 2024 . OpenReview.net, 2024. URL https://openreview.net/forum?id=LY3ukUANko .Steven Bird, Ewan Klein, and Edward Loper. Natural language processing with Python: analyzing text with the natural language toolkit . " O’Reilly Media, Inc.", 2009. David Chiang. Transformers in uniform TC 0. Trans. Mach. Learn. Res. , 2025, 2025. URL 
+
+https://openreview.net/forum?id=ZA7D4nQuQF .W Nelson Francis. Brown corpus manual. http://icame. uib. no/brown/bcm. html , 1979. Riccardo Grazzi, Julien Siems, Arber Zela, Jörg K. H. Franke, Frank Hutter, and Massimiliano Pontil. Unlocking state-tracking in linear rnns through negative eigenvalues. In The Thirteenth International Conference on Learning Representations, ICLR 2025, Singapore, April 24-28, 2025 .OpenReview.net, 2025. URL https://openreview.net/forum?id=UvTo3tVBk2 .Barbara J Grosz and Candace L Sidner. Attention, intentions, and the structure of discourse. Compu-tational linguistics , 12(3):175–204, 1986. Barbara J Grosz, Aravind Joshi, and Scott Weinstein. Centering: A framework for modeling the local coherence of discourse. Computational linguistics , 21(2):203–225, 1995. Irene Heim. File change semantics and the familiarity theory of definiteness. Formal semantics: The essential readings , pages 223–248, 2002. Irene Roswitha Heim. The semantics of definite and indefinite noun phrases . University of Mas-sachusetts Amherst, 1982. Samy Jelassi, David Brandfonbrener, Sham M. Kakade, and Eran Malach. Repeat after me: Trans-formers are better than state space models at copying. In Ruslan Salakhutdinov, Zico Kolter, Katherine A. Heller, Adrian Weller, Nuria Oliver, Jonathan Scarlett, and Felix Berkenkamp, editors, 
+
+Forty-first International Conference on Machine Learning, ICML 2024, Vienna, Austria, July 21-27, 2024 , Proceedings of Machine Learning Research, pages 21502–21521. PMLR / OpenReview.net, 2024. URL https://proceedings.mlr.press/v235/jelassi24a.html .Hans Kamp and Uwe Reyle. From discourse to logic: Introduction to modeltheoretic semantics of natural language, formal logic and discourse representation theory , volume 42. Springer Science & Business Media, 2013. William Merrill and Ashish Sabharwal. The parallelism tradeoff: Limitations of log-precision transformers. Trans. Assoc. Comput. Linguistics , 11:531–545, 2023. doi: 10.1162/TACL\_A\ _00562. URL https://doi.org/10.1162/tacl_a_00562 .William Merrill, Jackson Petty, and Ashish Sabharwal. The illusion of state in state-space models. In Ruslan Salakhutdinov, Zico Kolter, Katherine A. Heller, Adrian Weller, Nuria Oliver, Jonathan Scarlett, and Felix Berkenkamp, editors, Forty-first International Conference on Machine Learning, ICML 2024, Vienna, Austria, July 21-27, 2024 , Proceedings of Machine Learning Research, 13 pages 35492–35506. PMLR / OpenReview.net, 2024. URL https://proceedings.mlr.press/ v235/merrill24a.html .William Merrill, Yanhong Li, Tyler Romero, Anej Svete, Caia Costello, Pradeep Dasigi, Dirk Groeneveld, David Heineman, Bailey Kuehl, Nathan Lambert, Chuan Li, Kyle Lo, Saumya Malik, DJ Matusz, Benjamin Minixhofer, Jacob Morrison, Luca Soldaini, Finbarr Timbers, Pete Walsh, Noah A. Smith, Hannaneh Hajishirzi, and Ashish Sabharwal. Olmo hybrid: From theory to practice and back, 2026. URL https://arxiv.org/abs/2604.03444 .Team Olmo, :, Allyson Ettinger, Amanda Bertsch, Bailey Kuehl, David Graham, David Heineman, Dirk Groeneveld, Faeze Brahman, Finbarr Timbers, Hamish Ivison, Jacob Morrison, Jake Poznan-ski, Kyle Lo, Luca Soldaini, Matt Jordan, Mayee Chen, Michael Noukhovitch, Nathan Lambert, Pete Walsh, Pradeep Dasigi, Robert Berry, Saumya Malik, Saurabh Shah, Scott Geng, Shane Arora, Shashank Gupta, Taira Anderson, Teng Xiao, Tyler Murray, Tyler Romero, Victoria Graf, Akari Asai, Akshita Bhagia, Alexander Wettig, Alisa Liu, Aman Rangapur, Chloe Anastasiades, Costa Huang, Dustin Schwenk, Harsh Trivedi, Ian Magnusson, Jaron Lochner, Jiacheng Liu, Lester James V. Miranda, Maarten Sap, Malia Morgan, Michael Schmitz, Michal Guerquin, Michael Wilson, Regan Huff, Ronan Le Bras, Rui Xin, Rulin Shao, Sam Skjonsberg, Shannon Zejiang Shen, Shuyue Stella Li, Tucker Wilde, Valentina Pyatkin, Will Merrill, Yapei Chang, Yuling Gu, Zhiyuan Zeng, Ashish Sabharwal, Luke Zettlemoyer, Pang Wei Koh, Ali Farhadi, Noah A. Smith, and Hannaneh Hajishirzi. Olmo 3, 2026. URL https://arxiv.org/abs/2512.13961 .Bo Peng, Ruichong Zhang, Daniel Goldstein, Eric Alcaide, Xingjian Du, Haowen Hou, Jiaju Lin, Jiaxing Liu, Janna Lu, William Merrill, Guangyu Song, Kaifeng Tan, Saiteja Utpala, Nathan Wilce, Johan S. Wind, Tianyi Wu, Daniel Wuttke, and Christian Zhou-Zheng. RWKV-7 "goose" with expressive dynamic state evolution. CoRR , abs/2503.14456, 2025. doi: 10.48550/ARXIV.2503. 14456. URL https://doi.org/10.48550/arXiv.2503.14456 .Aleksandar Terzic, Nicolas Menet, Michael Hersche, Thomas Hofmann, and Abbas Rahimi. Struc-tured sparse transition matrices to enable state tracking in state-space models. In The Thirty-ninth Annual Conference on Neural Information Processing Systems , 2026. URL https: //openreview.net/forum?id=RDbuSCWhad .Roger Waleffe, Wonmin Byeon, Duncan Riach, Brandon Norick, Vijay Korthikanti, Tri Dao, Albert Gu, Ali Hatamizadeh, Sudhakar Singh, Deepak Narayanan, Garvit Kulshreshtha, Vartika Singh, Jared Casper, Jan Kautz, Mohammad Shoeybi, and Bryan Catanzaro. An empirical study of mamba-based language models. CoRR , abs/2406.07887, 2024. doi: 10.48550/ARXIV.2406.07887. URL https://doi.org/10.48550/arXiv.2406.07887 .Gail Weiss, Yoav Goldberg, and Eran Yahav. Thinking like transformers, 2021. URL https: //arxiv.org/abs/2106.06981 .Songlin Yang, Yikang Shen, Kaiyue Wen, Shawn Tan, Mayank Mishra, Liliang Ren, Rameswar Panda, and Yoon Kim. PaTH attention: Position encoding via accumulating householder transformations. In The Thirty-ninth Annual Conference on Neural Information Processing Systems , 2026. URL 
+
+https://openreview.net/forum?id=ZBlHEeSvKd .Shunyu Yao, Binghui Peng, Christos Papadimitriou, and Karthik Narasimhan. Self-attention net-works can process bounded hierarchical languages, 2023. URL https://arxiv.org/abs/2105. 11115 .14 A Empirical methodology details 
+
+A.1 Domains, packing, and pairing protocol 
+
+We evaluate both models on the same evaluation sequences and compute NLL at every position. Text is packed into contiguous sequences of length T = 8192 . Allcomparisons are paired at the level of a single next-token decision: same checkpoint, same prefix/context, same target token . For each position i we compute ∆i = ℓT 
+
+> i
+
+− ℓH 
+
+> i
+
+.For the main text we focus on prose (PG-19, CC-News, Wikipedia, ArXiv) and three structured domains (Python, HTML, L ATEX). The pooled prose regression uses a slightly expanded prose suite at the final matched checkpoint (including additional textbooks and scientific papers), but uses the same packing and pairing protocol. 
+
+A.2 Token tagging and alignment Prose POS tags and content/function mapping. We POS-tag prose at the word level using the Brown tagset (Francis, 1979; Bird et al., 2009), then map each Brown tag to a coarse family. For the aggregate prose analysis, we define: • Content words: NOUN , V ERB , A DJECTIVE , A DVERB , I NTERJECTION , Q UALIFIER .• Function words: EXISTENTIAL , P RONOUN , D ET /A RTICLE , P REPOSITION , C ONJUNCTION ,AUX BE, A UX HAVE, A UX DO, M ODAL , TO, W H-WORD .• Other: punctuation, brackets, numerals, particles, and residual tags. 
+
+Coarse Brown-tag mapping. Table 1 gives the exact mapping used to produce the coarse families in the main-text prose figures. Table 1: Mapping from Brown tags to the coarse categories used in the prose analyses.                                                                                             
+
+> Coarse category Brown tags
+> Content words
+> Noun NN ,NN$ ,NNS ,NNS$ ,NP ,NP$ ,NPS ,NPS$ ,NR ,NR$ ,NRS
+> Verb VB ,VBD ,VBG ,VBN ,VBZ
+> Adjective JJ ,JJ$ ,JJR ,JJS ,JJT
+> Adverb RB ,RB$ ,RBR ,RBT ,RN
+> Interjection UH
+> Qualifier QL ,QLP
+> Function words
+> Pronoun PP$ ,PP$$ ,PPL ,PPLS ,PPO ,PPS ,PPSS ,PN ,PN$
+> Det/Article AT ,DT ,DT$ ,DTI ,DTS ,DTX ,ABL ,ABN ,ABX ,AP ,AP$
+> Preposition IN
+> Conjunction CC ,CS
+> Aux BE BE ,BED ,BEDZ ,BEG ,BEM ,BEN ,BER ,BEZ
+> Aux HAVE HV ,HVD ,HVG ,HVN ,HVZ
+> Aux DO DO ,DOD ,DOZ
+> Modal MD
+> TO TO
+> Existential EX
+> Other categories
+> Wh-word WDT ,WP$ ,WPO ,WPS ,WQL ,WRB
+> Numeral CD ,CD$ ,OD
+> Particle RP
+> Punctuation ,,.,:,’,”,“,–,*
+> Open Bracket (
+> Close Bracket )
+
+Projecting word tags onto subword tokens. Because the LM uses subword tokenization, we assign each word-level tag to every LM token whose decoded character span overlaps the tagged 15 word. Each LM token also receives a word-position indicator W HOLE /P REFIX /M IDDLE /S UFFIX to separate category effects from word-onset effects. 
+
+Structured domains and multi-tag overlap. For Python we tokenize files using the standard 
+
+tokenize module. For HTML and L ATEX we use lightweight parser/regex pipelines that separate text-like content from structural tokens (tags/delimiters/commands/whitespace). We align source-level tags to LM subword tokens by character-span overlap. A single LM token can overlap multiple source tokens (e.g., ): spans both a close-paren and a colon). We therefore use multi-tag attribution : the LM-token loss contributes to every overlapping source tag rather than forcing a single primary label. 
+
+B Structured-domain tagsets and coarse breakdowns 
+
+This section supplies the structured-domain tag taxonomies. 
+
+B.1 Python Tagging and multi-tag alignment. We tokenize source files with Python’s tokenize module and map the resulting source-level tags onto LM subword tokens by character-span overlap. Because one LM token can contain several Python tokens (e.g., ): ), the Python analysis uses multi-tag attribution. Table 2: Python token taxonomy.                                                  
+
+> Coarse Fine-grained tags Examples Identifier identifier ,upper_camel ,
+> private ,dunder x,MyClass ,_val ,__init__
+> Keyword keyword ,soft_keyword def ,return ,match
+> Builtin builtin print ,len ,ValueError
+> Operator arithmetic ,assignment ,
+> comparison ,bitwise +,+= ,== ,&
+> Delimiter enclosure ,delimiter ,other (,),,,:,.
+> String string ,triple_quoted ,
+> fstring ,raw ,bytes ’hello’ ,"""doc""" ,f’{x}’
+> Number integer ,float ,hex ,octal ,
+> complex 42 ,3.14 ,0xFF
+> Comment COMMENT # ...
+> Structure NEWLINE ,INDENT ,WHITESPACE indentation and layout
+
+B.2 HTML 
+
+We tag HTML with a parser-plus-regex pipeline that distinguishes opening/closing markup, attributes, text nodes, comments, punctuation glyphs, and whitespace. Table 3: HTML token taxonomy.                             
+
+> Coarse Fine-grained tags Examples Tag open ,close ,self_close ,
+> void ,doctype <div> ,</div> ,<br/> ,<img>
+> Attribute name ,equals ,value_quoted ,
+> value_unquoted class ,=,"main"
+> Text content ,entity free-form page text Comment comment <!– ... –>
+> Punctuation angle_open ,angle_close ,
+> slash ,quote <,>,/,"
+> Whitespace ws spaces and indentation
+
+16 B.3 LATEX 
+
+We tag L ATEX with a lightweight regex pipeline that separates commands, environments, math, tables, grouping symbols, text, comments, and newlines. Table 4: L ATEX token taxonomy.                               
+
+> Coarse Fine-grained tags Examples Command control ,section ,ref ,cite ,
+> formatting , etc.
+> \section ,\textbf
+> Environment begin/end ,begin/end_math ,
+> begin/end_table \begin{table}
+> Math inline/display_open/close ,
+> env_name $,$$
+> Table ampersand ,hline ,rule ,
+> multicolumn ,linebreak &,\\
+> Group brace/bracket_open/close {,}
+> Text content ,space ordinary words and spaces Comment comment % ...
+> Special escaped ,tilde ,caret ,
+> underscore
+> escaped symbols Newline newline ,blank_line line-level layout
+
+C Controlled synthetic probes: templates and scoring 
+
+The main text reports results for three controlled probe families (pronoun memory, entity tracking, structural closure). This section records the minimal information needed to reproduce the probes. 
+
+Distances and sampling. We evaluate antecedent distances d ∈ { 32 , 64 , 128 , 256 , 512 , 1024 }. For each family and distance we generate a fixed number of examples with a shared filler distribution across models. 
+
+Scoring. Pronoun memory and entity tracking are scored contrastively at the target position using (i) accuracy 1[m > 0] and (ii) a log-probability margin m = log p(y+ | c) − log p(y− | c), where 
+
+y+ is the correct target and y− is a matched distractor under the same prefix c. Structural closure is scored by the raw NLL on the closing token, ℓclose = − log p(yclose | c).
+
+Prompt templates. We use simple, highly regular templates so that the only manipulated factor is antecedent distance. • Pronoun memory: introduce two entities with different genders and roles; later, reference the role and force a pronoun choice (e.g., he vs. she ). • Entity tracking: bind two same-gender entities to distinct attributes; later, query the attribute and force a name choice. • Structural closure: open a structure (e.g., an HTML tag or bracketed span), insert filler, and score the closing token. 
+
+D Additional regression control diagnostics 
+
+The main text focuses on the dedicated repeated-n-gram analysis in Figure 4. Here we report the remaining control-feature diagnostics from the original coarse-tag regression. Figure 8 separates two quantities: raw paired gaps for concrete repeated-token subsets, and fitted coefficients from the frequency-adjusted regression in Equation 1. The raw gaps ask whether the hybrid has lower NLL on a subset in absolute terms; the coefficients ask how each feature shifts the paired hybrid–transformer gap after controlling for domain, tag, word position, sequence position, difficulty, previous-token distance, and target-token frequency. The sign convention is the same as in the main text. Positive raw gaps mean lower hybrid NLL, while positive coefficients increase the adjusted hybrid advantage. The repeated-token coefficients 17 0.000 0.005 0.010 0.015 0.020 0.025     
+
+> raw loss gap, Δ (nats)
+> Repeated 4-gram
+> Repeated 3-gram
+> Repeated 2-gram
+> Repeated 1-gram
+> Repeated-token loss gap
+> −0.04 −0.02 0.00 0.02 0.04
+> regression coefficient (nats)
+> Repeated 1-gram
+> Repeated 2-gram
+> Difficulty²
+> Repeated 3-gram
+> Repeated 4-gram
+> Log token freq.
+> Relative position
+> Log prev. dist.
+> Difficulty
+> Control-feature coefficient
+
+Figure 8: Full control-feature coefficient diagnostic. Left: raw paired loss gaps for repeated 1–4-gram events. Right: frequency-adjusted coefficients from the coarse-tag regression, including difficulty, position, previous-token distance, target-token frequency, and repeated-token controls. Raw gaps show absolute hybrid advantage on repeated-token subsets, whereas coefficients show adjusted shifts in the paired hybrid–transformer gap after the full regression specification. are negative or near zero, consistent with the conclusion that visible-prefix reuse reduces the hybrid advantage once comparable tokens are matched by the regression. The remaining controls are included as adjustment variables rather than central findings. 
+
+E Limitations 
+
+Our analysis has several limitations. First, our coarse POS, bracket, and copy tags are noisy proxies for the underlying computation a token requires. A noun token can be a state-conditioned readout in one context and a near-copy in another; regression controls reduce but do not eliminate this confounding. Second, the tag-stratified and regression analyses are correlational. The synthetic probes provide controlled manipulation, but each isolates a narrow construction and does not directly measure the contribution of individual recurrent layers. Third, our interpretation in §5 is a description of where the gap concentrates, not a mechanistic claim. We do not localize the hybrid advantage to specific layers or heads, and dynamic-semantics formalisms are used as a high-level lens rather than as a probed representation. Fourth, all evaluations are in English prose, Python, HTML, and L ATEX; we do not test other natural languages or programming languages. 
+
+F Compute resources 
+
+All token-level analyses use forward passes only (no training) on the released Olmo 3 7B and Olmo Hybrid 7B checkpoints. Scoring the full evaluation suite (packed length-8192 sequences across the four prose and three structured domains) requires approximately 100 GPU-hours on a single 8xH100 node. The 1B filtered-evaluation curves in §6 re-score released WSD-annealed checkpoints from Merrill et al. (2026) and require approximately 20 additional GPU-hours. 
+
+G Licenses for existing assets 
+
+We use the following released artifacts. Models: Olmo 3 7B and Olmo Hybrid 7B (Olmo et al., 2026; Merrill et al., 2026) are released under the Apache 2.0 license; the 1B development checkpoints are released under the same terms. Datasets: PG-19 (Apache 2.0); CC-News (CC-BY); Wikipedia (CC BY-SA 3.0/4.0 / GFDL); ArXiv articles (per individual paper licenses; we use only abstracts/text exposed via the public dump). Tools: NLTK (Apache 2.0) for the Brown POS tagset; the Python 
+
+tokenize module (PSF license). We use these assets in accordance with their licenses for non-commercial research. 18
