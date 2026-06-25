@@ -1,0 +1,1613 @@
+Title: Behavioral and Representational Evidence of Binomial Ordering Preferences in Large Language Models
+
+URL Source: https://arxiv.org/pdf/2606.21645v1
+
+Published Time: Tue, 23 Jun 2026 01:41:41 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+## Behavioral and Representational Evidence of Binomial Ordering Preferences in Large Language Models 
+
+Zhiqing Yang 1,† Yilun Liu 1,2,† Yunpu Ma 1,2 Volker Tresp 1,2 Hinrich Schütze 1,21Ludwig Maximilian University of Munich 2Munich Center for Machine Learning 
+
+zhiqing.yang@campus.lmu.de liuyilun2000@126.com †Equal contribution. 
+
+Abstract 
+
+Large language models (LLMs) can readily reproduce conventional expressions, yet their ability to model gradient frequency distribu-tions remains underexplored. We investigate this using linguistic binomials, such as men and women , where both word permutations are grammatically valid but exhibit distinct, cross-linguistic variations in conventionality. We for-malize binomial ordering as a distributional alignment problem, and construct a multilin-gual dataset of 600 binomial pairs across 8 languages. With categorical and distributional metrics, we measure and compare the corpus-derived preferences with model-induced or-dering probabilities of 6 open-weight LLMs. While models often behaviorally recover the dominant corpus-preferred order, particularly for strongly conventionalized pairs, they align less well with the exact corpus preference dis-tributions. This suggests that apparent direc-tional order overstates how faithfully LLMs capture the statistical nuances of language use. Sparse probing verifies that the concept of preference strength is partially encoded among middle-to-late layers, and steering along probe-derived directions alters model-induced order-ing distributions, demonstrating that the sta-tistical behavioral preference of LLMs can be mechanistically measured and manipulated via internal representations. 
+
+1 Introduction 
+
+Large language models (LLMs) are increasingly examined for their ability to reflect human-like linguistic knowledge, including grammatical judg-ments, rare linguistic phenomena, and cross-lingual diversity (Espinosa-Anke et al., 2021; Mad-abushi et al., 2022; De Luca Fornaciari et al., 2024; 
+
+> Code and data are publicly available at
+> https://github.com/Zhi-qing-Yang/ Linguistic-Binomials-in-Large-Language-Models .
+
+Hu et al., 2024; Qiu et al., 2024; Misra and Ma-howald, 2025; Guo et al., 2025). The majority of this work focuses on evaluating whether models distinguish acceptable from unacceptable forms, while natural language often involves gradient pref-erences among multiple alternatives that are all grammatically valid. This leaves open whether LLMs capture the distributional strength of con-ventional usage preferences beyond the binary di-rection. Linguistic binomials provide an ideal test sub-ject to isolate and examine this capability. Bi-nomials are conventionalized two-word conjunc-tive phrases, whose components exhibit a pre-ferred ordering that may vary across languages and specific lexical items (Malkiel, 1959; Mollin, 2012). These preferences are rarely enforced by rigid rules, but are often shaped by a complex interplay of phonological, semantic, pragmatic, frequency-based, and sometimes socially mediated constraints (Cooper and Ross, 1975; Benor and Levy, 2006; Mollin, 2012; Motschenbacher, 2013). Because binomials cleanly separate basic gram-matical acceptability from the gradient strength of conventional ordering, they allow us to test whether LLMs faithfully mirror empirical usage patterns. Prior work has shown that ordering pref-erences English LLMs behave are driven mainly by corpus statistical patterns (Houghton et al., 2025), yet it is still unexplored whether the model be-havior distribution align with the corpus prefer-ences, whether the alignment patterns generalize across languages and models, and whether the pref-erences are encoded in internal representations. To address these gaps, we formalize binomial ordering as a distributional alignment problem, and construct a multilingual dataset comprising 600 binomial pairs across 8 languages, covering typologically diverse scripts and language fami-lies. For each binomial pair, we estimate a corpus-derived ordering distribution from the relative fre-1
+
+> arXiv:2606.21645v1 [cs.CL] 19 Jun 2026 Figure 1: Pipeline for analyzing behavioral and representational binomial ordering preferences of LLMs. Corpus statistics define reference preferences, model scores induce predicted preferences, and representation-level probing and steering test whether these preferences are encoded and causally manipulable.
+
+quencies of the two candidate orders, and compare this with a model-induced ordering distribution derived from the relative likelihoods assigned by LLMs. Alignment can then be assessed at two lev-els, whether the model prefers the right direction and whether it assigns the right strength. Behav-ioral evaluation across 6 open-weight LLMs span-ning different families and parameter scales re-veals that while models recover the empirical pref-erence direction reliably, especially for strongly conventionalized pairs, the probability-level pref-erence strength aligns less faithfully, with system-atic variation across languages and model families. To answer whether preference strength informa-tion has been absent from the model, or has been partially internalized but imperfectly expressed in output probabilities, we probe hidden states at each decoder layer to test whether the ordering preference strength is linearly encoded (Alain and Bengio, 2018; Hewitt and Manning, 2019), and apply activation steering to test whether moving along the decoded direction shifts models’ pref-erences (Turner et al., 2024; Panickssery et al., 2024). Results confirm that the gradient prefer-ence strength is partially recoverable at middle-to-late layers, and steering within internal repre-sentations has visible systematic behavioral conse-quences in model-induced ordering probabilities. Our contributions are as follows: 1. We propose an evaluation protocol of binomial ordering preference for LLMs, with a dataset of 600 binomial pairs across 8 languages; 2. We show that LLMs behaviorally align with the empirically preferred direction more reli-ably than the strength, and that strength can be representationally located and manipulated. 
+
+2 Related Work 
+
+Recent studies have evaluated whether LLMs cap-ture linguistic knowledge across a variety of dimen-sions, including grammatical judgments (Hu et al., 2024; Qiu et al., 2024; Ide et al., 2025), syntac-tic behavior (Tenney et al., 2019), rare construc-tions (Misra and Mahowald, 2025), and multilin-gual benchmarks (Hu et al., 2020). These studies, however, rely on discrete contrasts or task-level ac-curacy, and less attention has been paid to gradient features where multiple alternatives are acceptable, but some are conventionally preferred to a measur-able degree. For usage-based linguistic knowledge, the question is not only which form a model prefers, but whether preference strength also matches the empirical distribution. Binomial ordering has long been used to study how conventional preferences emerge from re-peated language use. Earlier work demonstrates that speakers are sensitive to broad ordering ten-dencies (Cooper and Ross, 1975) as well as item-specific experience, making some pairs strongly associated with one order while others remain variable (Mollin, 2012; Morgan and Levy, 2015). Similar to multi-word expressions, binomials in-volve familiar combinations rather than fully pro-ductive rules (Pinker and Birdsong, 1979; Morgan and Levy, 2016). Human usage favors multiple 2plausible orderings to different degrees, making binomials a fundamentally gradient phenomenon, far more so than much Natural Language Process-ing subjects on conventionalized expressions. Re-cent work on English binomials suggests that LLM preferences are shaped by corpus-observed order-ing patterns (Houghton et al., 2025). We extend this perspective by investigating how well model-induced preference strength behaviorally and rep-resentationally aligns with corpus-derived order-ing distribution across languages. Cross-lingual evidence suggests that prefer-ences within a single language should not be as-sumed to transfer seamlessly to other languages. LLM performance varies with language resource levels, scripts, typological distance, and task for-mats (Hu et al., 2020), Furthermore, multilingual LLMs, even with superb benchmark performances, still exhibit distinct behaviors across languages and linguistic phenomena, (Lai et al., 2023; Ahuja et al., 2023; Guo et al., 2025). For binomials, pre-ferred orders may differ across languages, and lan-guages closer in script or structure may align with model preferences differently from more distant ones. We therefore evaluate ordering preferences across eight typologically diverse languages. Behavioral preferences derived from model out-put do not answer how well gradient preference is encoded in models’ internal representations. Prob-ing methods are commonly used to test whether linguistic properties, including syntactic struc-tures (Hewitt and Manning, 2019; Tenney et al., 2019), semantics (Alain and Bengio, 2018), and other intermediate features (Gurnee et al., 2023; Jiao et al., 2024), can be genuinely recovered from hidden states. Yet recoverability alone does not guarantee the encoded features to causally af-fect model behavior. Activation steering meth-ods address this limitation by testing whether mod-ifying internal representations systematically af-fects model outputs (Turner et al., 2024; Pan-ickssery et al., 2024). We combine these perspec-tives by examining whether binomial preference strength is linearly recoverable from hidden states and whether moving along the resulting direction changes the model-induced ordering distribution. 
+
+3 Methodology 
+
+3.1 Binomial Formalization 
+
+Binomials are conventionally ordered coordinate expressions whose ordering preferences are of-ten probabilistically preferred rather than categor-ically grammatical (Morgan and Levy, 2015). We represent each binomial as (A, g, B ), where A and 
+
+B are conjuncts and g is the connective. Each binomial pair defines two surface continuations, 
+
+yAB = A g B and yBA = B g A . Since these surfaces may be tokenized into different numbers of sub-word tokens, all model scores are computed over the tokenizer-specific token sequence sections 
+
+xAB and xBA .
+
+3.2 Corpus and Model Ordering Preferences 
+
+For each binomial item i, let n(i) 
+
+> AB
+
+and n(i) 
+
+> BA
+
+be the corpus counts of the two orders. Without loss of generality, we take A–B as the preferred order when n(i) 
+
+> AB
+
+≥ n(i)
+
+> BA
+
+. We estimate corpus ordering probability as the posterior mean of a Bernoulli rate under a Jeffreys prior (Jeffreys, 1946): 
+
+p(i) 
+
+> corpus
+
+= n(i) 
+
+> AB
+
++ 0 .5
+
+n(i) 
+
+> AB
+
++ n(i) 
+
+> BA
+
++ 1 .
+
+For model preference, we derive from the likelihood that the language model assigns to each candidate ordering. Each ordering is re-alized as a tokenizer-specific continuation x =(x1, . . . , x T ) following specific prefix context to-kens u. We score a continuation by its autoregres-sive log-likelihood under the decoder-based lan-guage model M (Radford et al., 2018): 
+
+s(x | u) = 
+
+> T
+
+∑
+
+> t=1
+
+log pM(xt | u, x <t ),
+
+where pM denotes the next-token distribution of 
+
+M. For each item and prompt condition, we score the tokenized continuations xAB and xBA , obtain-ing sAB and sBA . We then convert the score dif-ference into a model-induced ordering probability: 
+
+p(i) 
+
+> LLM
+
+= σ(sAB − sBA ), σ (z) = (1 + e−z )−1.
+
+3.3 Prompt Conditions 
+
+Because prompt wording can influence model be-havior, a single prompt may provide only a par-tial estimate of model preference (Jiang et al., 2020). Therefore, we score each candidate or-dering under four language-specific prefix condi-tions. The minimal condition presents the bino-mial as a simple phrase continuation, without ex-plicitly mentioning frequency or conventionality. The frequency condition frames the continuation as the more common way of saying the expression. The discourse condition frames the expression 3as something speakers habitually say, targeting us-age in ordinary discourse. The metalinguistic 
+
+condition directly asks for the conventional order of the pair. We then pool scored instances across all four conditions before computing metrics, so that the evaluation is less dependent on any single elicitation context. Prefix templates used for all 8 languages are listed in Appendix A.2. 
+
+3.4 Evaluation Metrics 
+
+For each language and model, we compare pLLM 
+
+with pcorpus using Spearman correlation, pair-wise accuracy, mean absolute error (MAE), and Jensen –Shannon divergence. Spearman correla-tion measures whether the model and corpus rank binomial preferences similarly (Spearman, 1904): 
+
+ρ = Spearman (pLLM , p corpus 
+
+) .
+
+Beyond this within-language model–corpus com-parison, Spearman correlation is also utilized for cross-language corpus–corpus, model–corpus, and model–model comparisons. These correla-tions are computed over the same set of binomials, with prompt-conditioned model probabilities aver-aged within each language before comparison. Pairwise accuracy measures whether the model and corpus prefer the same order. Let ˆo(i)
+
+> LLM
+
+and ˆo(i) 
+
+> corpus
+
+denote the model-preferred and corpus-preferred ordering, respectively. Then Acc = 1
+
+N
+
+> N
+
+∑
+
+> i=1
+
+1
+
+[
+
+ˆo(i) 
+
+> LLM
+
+= ˆ o(i)
+
+> corpus
+
+]
+
+.
+
+Probability-level distance is measured with MAE: MAE = 1
+
+N
+
+> N
+
+∑
+
+> i=1
+
+∣∣∣p(i) 
+
+> LLM
+
+− p(i)
+
+> corpus
+
+∣∣∣ .
+
+For Jensen –Shannon divergence (Lin, 1991), let 
+
+P (i) = ( p(i)
+
+> corpus
+
+, 1 − p(i)
+
+> corpus
+
+),Q(i) = ( p(i)
+
+> LLM
+
+, 1 − p(i)
+
+> LLM
+
+),M (i) = 12 (P (i) + Q(i)).
+
+We compute 
+
+DJS (P (i)∥Q(i)) = 12 DKL (P (i)∥M (i))+ 12 DKL (Q(i)∥M (i)),
+
+with DKL the Kullback –Leibler divergence 
+
+DKL (P ∥Q) = ∑
+
+> k
+
+P [k] log P [k]
+
+Q[k] ,
+
+where P [k] and Q[k] are the k-th components of the distributions. 
+
+3.5 Representational Analysis and Intervention 
+
+We complement behavioral evaluation with representation-level probing and intervention experiments, testing whether corpus-derived pref-erence strength is encoded in hidden states (Alain and Bengio, 2018; Belinkov et al., 2017; Hewitt and Manning, 2019) and whether steering along probe-derived directions can alter the ordering preference of model output (Ravfogel et al., 2020; Turner et al., 2023; Zou et al., 2025). 
+
+Sparse Probing. For each scored continuation, we extract decoder-layer representations xℓ,r at layer ℓ with pooling over the continuation span 
+
+r ∈ { last , mean } using either the final continu-ation token or the mean over continuation tokens. The probing target is 
+
+y(i) =
+
+∣∣∣p(i) 
+
+> corpus
+
+− 0.5
+
+∣∣∣ .
+
+For each layer–representation pair (ℓ, r ) we fit 
+
+ˆy(i) = w⊤
+
+> ℓ,r
+
+˜x(i) 
+
+> ℓ,r
+
++ bℓ,r ,
+
+where ˜x(i) 
+
+> ℓ,r
+
+is representation with z-score standard-ization applied in each dimension: 
+
+˜x(i) 
+
+> ℓ,r
+
+= x(i) 
+
+> ℓ,r
+
+− μℓ,r 
+
+σℓ,r 
+
+,
+
+with μℓ,r and σℓ,r the per-dimension mean and standard deviation estimated on the training split. Each layer’s sparse probe uses an ℓ1-regularized linear regression objective (Tibshirani, 1996), min 
+
+> w,b
+
+1
+
+N
+
+> N
+
+∑
+
+> i=1
+
+(
+
+y(i) − w⊤x(i) 
+
+> ℓ,r
+
+− b
+
+)2
+
++ α∥w∥1.
+
+We carry out K-fold cross validation in our prob-ing experiments. The detailed data and model con-figurations are specified in Section 4. 
+
+Activation Steering. We reuse the K sparse probes fit across the K cross-validation folds. For a selected layer–representation pair (ℓ, r ), we de-rive a steering vector by averaging the fold-specific probe coefficients and normalizing: 
+
+¯wℓ,r = 1
+
+K
+
+> K
+
+∑
+
+> k=1
+
+w(k) 
+
+> ℓ,r
+
+, vℓ,r = ¯wℓ,r 
+
+∥ ¯wℓ,r ∥2
+
+.
+
+At inference time, we add this direction to the se-lected layer’s hidden states: 
+
+ht,ℓ ← ht,ℓ + λvℓ,r ,
+
+4DJS ↓                                                                   
+
+> Model EN DE RU ID AR TR JA ZH Avg
+> Qwen3-4B .077 .128 .121 .132 .178 .139 .069 .024 .109 Qwen3-14B .072 .098 .108 .114 .145 .094 .045 .027 .088 Llama-3.2-3B .062 .103 .124 .113 .167 .110 .082 .048 .102 Llama-3.1-8B .053 .080 .100 .088 .111 .074 .069 .030 .076
+> Gemma-3-4B .100 .149 .134 .133 .178 .118 .070 .045 .116 Gemma-3-12B .106 .151 .148 .132 .166 .105 .060 .039 .113
+> Table 1: Mean Jensen–Shannon divergence DJS between model-induced and corpus-derived ordering distributions across languages. Lower values indicate closer model–corpus agreement; Avg reports the mean DJS across lan-guages. Cells are shaded by value, with red indicating stronger alignment, and blue indicating weaker alignment.
+
+where t indexes sequence position and λ is the in-tervention strength. This intervention follows the broader line of work using linear directions in rep-resentation space to analyze or control model be-havior (Turner et al., 2023; Zou et al., 2025; Marks and Tegmark, 2024). The two candidate continua-tions are then rescored to obtain the updated p(i)
+
+> LLM
+
+.Selected layers, representation types, and interven-tion scales are reported in Section 4. 
+
+4 Experiments 
+
+4.1 Cross-linguistic Binomial Dataset 
+
+We construct a multilingual binomial dataset of 75 concept pairs shared across eight languages: En-glish (EN), German (DE), Russian (RU), Indone-sian (ID), Arabic (AR), Turkish (TR), Japanese (JA), and Chinese (ZH) . The pairs are selected to cover culturally common and cross-linguistically lexicalizable concepts, so that comparable expres-sions could be identified across all languages. We use conventional English binomials as the initial seed list, where the first conjunct corresponds to the commonly attested English order. This seed order is used only to define the shared concept in-ventory; corpus-based preferences are calculated independently for each target language. For each language, we map the two concepts to language-specific lexical forms and define a set of frequent language-specific connectives for corpus querying. We then query the corresponding Sketch Engine 1 (Kilgarriff et al., 2014) TenTen corpora (Jakubíček et al., 2013), with the language-specific corpus sources listed in Appendix A.1, using CQL patterns (Jakubíček et al., 2010) that cover both A–
+
+B and B–A orders with these connectives. The resulting counts provide a language-specific refer-ence distribution over the two possible orders. Since raw corpus frequencies are not directly 
+
+> 1http://www.sketchengine.eu
+
+comparable across languages, we assign evidence tiers separately within each language with splitting binomial pairs into language-specific tertiles by the total number of occurrences of both the A–B and 
+
+B–A orders, categorizing them as weak , medium ,or strong evidence. 
+
+4.2 Experiment Setup 
+
+The evaluation dataset consists of multilingual bi-nomial items paired with corpus-derived order preferences. Each item contains the scored or-der variants together with a corpus-based prefer-ence statistics pcorpus and an evidence tier reflect-ing the reliability of the corpus evidence. Our behavioral evaluation compares six open-weight multilingual causal LMs, Qwen3-4B/14B (Yang et al., 2025), Llama-3.2-3B (Meta, 2024), Llama-3.1-8B (Grattafiori et al., 2024), and Gemma-3-4B/12B (Team et al., 2025), by measuring how closely pLLM matches pcorpus across eight languages, four elicitation contexts (minimal ,
+
+frequency , discourse , metalinguistic ), and three evidence tiers. For probing, we test where corpus-derived preference strength is linearly recoverable from Qwen3-4B hidden states, following Section 3.5. We use grouped 5-fold cross-validation with the binomial concept as the grouping unit, so that all language realizations of a given binomial fall in the same fold, and the probes are trained jointly over all languages to encourage recovering language-agnostic encoding of ordering-preference strength. This prevents the model from being evaluated on the same binomial just in a different language than it was trained on, which would otherwise leak item-level information across folds. Spear-man correlation is used as the metric, and α ∈{0.01 , 0.03 , 0.05 } is varied to assess the alignment-sparsity tradeoff. Finally, we perform activation steering using the probe-derived direction from 50.0              
+
+> 0.5
+> 1.0
+> Model Preference
+> EN DE RU ID
+> 0.0 0.5 1.0
+> Corpus Preference
+> 0.0
+> 0.5
+> 1.0
+> Model Preference
+> AR
+> 0.0 0.5 1.0
+> Corpus Preference
+> TR
+> 0.0 0.5 1.0
+> Corpus Preference
+> JA
+> 0.0 0.5 1.0
+> Corpus Preference
+> ZH
+> Evidence Tier
+> Strong Medium Weak
+
+Figure 2: Item-level alignment between Llama-3.1-8B and corpus-derived ordering preferences across languages. Each point corresponds to a language-specific binomial item, with color indicating the corpus evidence tier based on the combined frequency of both orders. The diagonal denotes perfect model–corpus agreement; larger deviations indicate larger probability-level mismatches. EN DE RU ID AR TR JA ZH                                                         
+
+> Corpus language
+> EN
+> DE
+> RU
+> ID
+> AR
+> TR
+> JA
+> ZH
+> Model language
+> 0.65 0.37 0.33 0.31 0.17 0.26 -0.14 0.08
+> 0.39 0.60 0.23 0.26 0.29 0.22 0.01 0.14
+> 0.47 0.36 0.50 0.29 0.18 0.05 0.04 -0.01
+> 0.28 0.05 0.40 0.65 0.15 0.14 0.09 0.10
+> 0.31 0.24 0.27 0.19 0.39 0.22 0.13 0.08
+> 0.25 0.30 0.23 0.07 0.10 0.70 -0.11 -0.20
+> -0.12 -0.13 0.16 0.07 -0.03 -0.36 0.87 0.56
+> 0.05 0.10 0.21 0.13 -0.01 -0.20 0.58 0.93
+> 1.0
+> 0.5
+> 0.0
+> 0.5
+> 1.0
+
+Figure 3: Model–corpus cross-linguistic correlation for Llama-3.1-8B. Rows correspond to model-induced or-dering distributions and columns to corpus-derived or-dering distributions. Each cell reports the Spearman correlation ρ between the model preferences and the corpus preferences. 
+
+the last-token representation at layer 14. Interven-tion strengths are set to λ ∈ { 0, ±10 , ±20 , ±50 },with λ = 0 denoting the original baseline, to test whether pLLM shifts systematically. Appendix D additionally reports steering with the mean-pooled direction at layer 23. 
+
+5 Results and Discussion 
+
+5.1 Behavioral Distributional Alignment 
+
+We first examine whether model-induced ordering distributions reproduce the empirical ordering dis-tributions observed in corpora. Table 1 shows that Llama-3.1-8B achieves the lowest average diver-gence, and the larger models within each family generally perform better. However, the alignment is only partial and the results vary significantly across languages. ZH and JA show relatively better alignment across models, partly because many bi-nomial items in these languages occupy the polar-ized ends of the corpus probability scale, as shown in Figure 2. As corpus preferences are closer to categorical, the model can align well by simply re-covering the dominant order. For EN, its corpus probabilities are less concentrated at the extremes, and its predictions remain comparatively close to the diagonal, indicating a match at the level of or-dering probabilities and not only of preferred direc-tion. In other languages, particularly ID and TR, many points in Figure 2 fall in the correct prefer-ence quadrant as the corpus but remain far from the diagonal, indicating directionally consistent yet probability-displaced predictions across evidence tiers. RU and AR show more diffuse patterns, in-dicating that neither direction nor strength is recov-ered cleanly. The Spearman correlation, pairwise accuracy, and MAE results in Appendix B.1 also further support that while models can often recover the corpus-preferred direction reliably, matching the strength of that preference remains consistently more difficult. This pattern is consistent with re-cent evidence that LLMs can capture broad linguis-tic tendencies without fully reproducing the distri-butional variation of human-written text (Reinhart et al., 2025). 60 10 20 30   
+
+> Layer
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.01
+> 0.03
+> 0.05
+> 10 010 110 2
+> Nonzero Dimensions
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.01
+> 0.03
+> 0.05
+
+Figure 4: Sparse probing results for corpus-derived preference strength in Qwen3-4B using last-token binomial representations. The y-axis shows Spearman correlation between predicted and corpus-derived preference strength; the left x-axis shows decoder layers, and the right x-axis shows the average number of nonzero Lasso coefficients. Different Lasso regularization strengths are indicated with different colors, line styles (left), and marker sizes (right). 
+
+Figure 3 further indicates that these mismatches are structured across languages rather than ran-dom. Llama-3.1-8B often correlates most strongly with the matching target-language corpus along the diagnal in most rows, indicating that it preserves language-specific ordering information. At the same time, the off-diagonal correlations are nonetheless substantial, showing that its in-duced distributions are not fully language-specific but appears to combine target-language evidence with broader cross-linguistic ordering tendencies. The additional corpus–corpus and model–model heatmaps in Appendix B.2 support this interpreta-tion. Corpus preferences themselves exhibit cross-linguistic structure, and the model preserves part of this structure while smoothing distinctions be-tween language-specific ordering distributions. Together these results show that behavioral alignment is partial and uneven. Models recover the preferred direction of a binomial order reliably, especially for strongly conventionalized pairs, but do not consistently reproduce the gradient strength of that preference, and the gap varies systemati-cally across languages. This dissociation between direction and strength motivates the representa-tional analysis that follows. 
+
+5.2 Probing Distribution 
+
+We next test whether corpus-derived preference strength is linearly recoverable from Qwen3-4B hidden states. Figure 4 shows a clear layer-wise pattern for last-token binomial representa-tions. Probing performance is weaker in the begin-ning layers, rises through the middle of the model, and stays relatively high across a broad middle-to-late region before declining near the final layers. This inverted-U profile, low at both ends and high in the middle, is the signature commonly reported in interpretability literature for various abstract and semantic properties, in contrast to surface features that peak early (Tenney et al., 2019; Liu et al., 2019; Gurnee et al., 2023; Tigges et al., 2023; Jiao et al., 2024). Its presence here is itself evidence that preference strength is an abstracted concept the model has actually acquired, rather than a shal-low lexical correlate read off the input tokens. The best probe reaches ρ = 0 .576 at layer 14 under weak regularization, confirming a linearly recover-able signal for gradient preference strength and not only for the preferred ordering direction. The signal is moreover compact with substan-tial sparsity. At α = 0.03 , the best last-token probe reaches ρ = 0 .522 at layer 14 with an aver-age of only 12.2 nonzero dimensions across folds, a 0.48% fraction of the 2,560-dimensional repre-sentation retaining most of the correlation in the weakly regularized probe. This indicates that pref-erence strength is not diffusely smeared across the hidden state but concentrated in a low-dimensional subspace, which is what makes the following steer-ing intervention in Section 5.3 feasible. The mean-pooled representations in Figure 14 show the same qualitative trend, with performance again peaking in the middle-to-late layers, reaching ρ = 0 .522 
+
+at layer 23 under α = 0 .03 ; layer-wise results for both representation types are reported in Table 7. Thus, the effect is not an artifact of the last-token pooling choice. 
+
+5.3 Steering Distribution 
+
+Given that preference strength is decodable from a subspace, we finally investigate whether the probe-70.0                              
+
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Probability
+> EN DE RU ID
+> 0100 200 300 400 500 600
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Probability
+> AR
+> 0100 200 300 400 500 600
+> TR
+> 0100 200 300 400 500 600
+> JA
+> 0100 200 300 400 500 600
+> ZH
+> Scale
+> -20 020
+
+Figure 5: Effects of steering on Qwen3-4B binomial order probabilities using the last-token steering vector at layer 14. Each panel corresponds to one language; the x-axis indexes binomial orders sorted by their original probability, and the y-axis shows the model probability after steering. Curves compare the original baseline ( λ = 0 ) with negative and positive steering ( λ = −20 , +20 ); additional scales are reported in Appendix D. 
+
+derived representational direction within models is behaviorally relevant. Can intervening along that subspace change the model’s binomial order-ing preferences? Following prior work that uses representation-level interventions to test whether learned directions are behaviorally meaningful (Ravfogel et al., 2020; Turner et al., 2023; Zou et al., 2025), we steer Qwen3-4B along the probe-derived direction at a range of scales and measure the resulting order-level probabilities. We use the last-token direction at layer 14, where the sparse probe achieves its best performance under α =0.03 ; the mean-pooled direction at layer 23 is eval-uated as a robustness check in Appendix D. Figure 5 confirms that the intervention changes the model’s ordering preferences. For the origi-nal model, the rank-ordered probabilities form sig-moidal curves, with binomial ordering that the model significantly prefers and disprefers at the both end. Steering changes the shape of these curves, especially at large positive scales. The ef-fect is not a uniform shift, since steering does not push every order up or down. Instead, it flattens the curve, raising the probability of low-ranked or-ders and lowering that of high-ranked ones. The size of this effect differs across languages. ID and RU show the clearest suppression effect under large positive steering, with the curve lifted on the left and lowered on the right as the model becomes less determined in its original ordering. preferences. EN follows the same tendency more mildly. In JA and ZH, the binomial ordering prefer-ences are more extreme, with a ceiling effect where 0 0.5 1.0     
+
+> Probability
+> EN
+> DE
+> RU
+> ID
+> AR
+> TR
+> JA
+> ZH
+> Scale = 0 Scale = -10 Scale = -20 men and women women and men
+
+Figure 6: Steering case study for men and women us-ing the last-token steering vector at layer 14. For each language, stacked bars compare the model probabilities of men and women (orange) and women and men (blue) at λ = 0 , −10 , −20 , with λ = 0 denoting the original baseline. 
+
+leaves less visible room for change, since a base-line already pinned near zero or one mechanically limits how far probabilities can move, even though steering still affects parts of the curve. This shows how the steering direction interacts with the base-line sharpness of each language’s ordering prefer-ences. Figure 6 gives an illustrative view of the same phenomenon with the binomial men and women ,making the cross language pattern easier to inspect in a single item. Where the model initially as-signs high probability to men and women , steering 8lowers that probability. In TR, where the model initially prefers the reverse order, steering weak-ens that reverse preference and correspondingly in-creases the probability of men and women . In JA and ZH the preference is pinned almost exactly at one, so steering produces little visible change. The item-level pattern mirrors the curve-level result. Steering mainly alters how strongly the model fa-vors its currently preferred order in each language, rather than imposing one fixed ordering preference direction order across languages. Together, these results establish that the probe-derived representational directions has causal con-sequences in model behavior rather than mere ar-tifacts of predictive correlations. This links the two halves of the representational analysis. The middle-to-late subspace from which preference strength is decodable is also the subspace through which that strength can be modulated, supporting the conclusion that gradient binomial preference is both internally encoded and causally active in model behavior. 
+
+6 Conclusion 
+
+We confirm that LLMs capture binomial order-ing preferences across languages, and we char-acterize the limits of this competence. We for-malize binomial ordering as a distributional align-ment problem, comparing corpus-derived ordering preferences with model-induced distributions. Be-haviorally, across languages and model families, LLMs reliably align with the corpus-preferred di-rection, yet capture the gradient strength of those preferences less consistently. Probing experiments show that corpus-derived preference strength is re-coverable from hidden states, with the clearest sig-nal appearing in middle-to-late layers, indicating that the preference strength is encoded in com-pact and linearly accessible forms. Steering further show that shifting hidden states along the decoded preference-strength direction alters model-induced ordering distributions, causally linking representa-tional signals to model behavior. Our results re-veal a subtle but informative gap in LLMs’ linguis-tic knowledge, that models reliably recover which order is conventional, while how strongly that con-vention holds remains harder to capture. 
+
+Limitations 
+
+Corpus-derived ordering probabilities are a usage-based proxy for binomial preferences, rather than direct human judgments. Although corpus fre-quencies reflect conventional usage, they may also be shaped by genre, register, topic, and data availability. Future work could compare model-induced preferences against human accept-ability or forced-choice judgments to better sepa-rate corpus-level conventions from speaker-level preferences. Estimating these probabilities from web corpora introduces additional sources of variation. Al-though we use language-specific lexical forms and connectives, the resulting counts may be affected by tokenization, morphology, orthographic varia-tion, and uneven domain coverage. Such issues are especially relevant in cross-linguistic compari-son, where the same binomial concept may not be equally lexicalized or equally frequent across lan-guages. For this reason, our results should be inter-preted cautiously as alignment with estimated cor-pus distributions, rather than an exhaustive record of binomial usage. Dataset construction also shapes the scope of the analysis. We use 75 concept pairs shared across eight languages, with the concept inventory ini-tially seeded from conventional English binomi-als. This design makes cross-linguistic compar-ison tractable, but may underrepresent binomial preferences specific to individual languages or cul-tural contexts. The preferred order is nevertheless estimated independently for each target language, so the evaluation does not assume that English or-dering preferences transfer to other languages. At the representation level, our analyses are narrower in scope than the behavioral evalua-tion. Probing and steering provide evidence that corpus-derived preference strength is reflected in hidden states and related to model-induced or-dering probabilities, but the generality of this representation–behavior link across architectures, training regimes, and intervention settings remains open. Extending these analyses to more models and more exhaustive interventions would possibly better clarify how stable this link is across lan-guages and model families. 
+
+Ethics Considerations 
+
+This work studies linguistic binomial ordering pref-erences in large language models and does not target sensitive personal data or individual users. Nevertheless, several ethical considerations merit attention. 9The web corpora used to derive ordering prefer-ences may reflect demographic, cultural, and so-cioeconomic biases present in large-scale online text. Ordering preferences extracted from such corpora are therefore proxies for the usage pat-terns of populations overrepresented on the web, and may not reflect the preferences of speakers from underrepresented communities or linguistic varieties. Conclusions drawn from corpus-derived preferences should accordingly be interpreted as reflecting dominant usage conventions rather than universal speaker knowledge. The open-weight LLMs evaluated in this work were trained on large internet corpora and may themselves encode or amplify societal biases. Bi-nomial ordering is not inherently harmful, but some pairs in our dataset involve socially salient terms, such as gendered or culturally marked ex-pressions, whose conventional ordering may re-flect historical power asymmetries. We do not in-tervene on or reinforce such orderings beyond mea-suring model behavior, but downstream applica-tions that rely on model-preferred orderings in gen-erated text should be aware of this potential. The probing and steering experiments demon-strate that model-induced ordering preferences can be manipulated through representational interven-tion. While we apply this methodology to study gradient preference strength, the same techniques could in principle be used to systematically bias model outputs toward non-conventional or socially skewed orderings. We therefore caution against de-ploying probe-derived steering vectors in produc-tion systems without careful evaluation of down-stream effects, particularly for pairs involving so-cially sensitive concepts. We do not conduct dedicated bias audits or fair-ness evaluations on the models or corpora used. Downstream users who adapt our methodology or dataset for applied purposes are encouraged to per-form appropriate task-specific evaluations before deployment. 
+
+Acknowledgments 
+
+The authors gratefully acknowledge the support and resources provided at the Center for Informa-tion and Language Processing (CIS), Ludwig Max-imilian University of Munich, by the German Re-search Foundation (DFG, grant SCHU 2246/141). This work is also supported by the Munich Center for Machine Learning (MCML). 
+
+References 
+
+Kabir Ahuja, Harshita Diddee, Rishav Hada, Milli-cent Ochieng, Krithika Ramesh, Prachi Jain, Ak-shay Nambi, Tanuja Ganu, Sameer Segal, Max-amed Axmed, Kalika Bali, and Sunayana Sitaram. 2023. Mega: Multilingual evaluation of generative ai. Preprint , arXiv:2303.12528. Guillaume Alain and Yoshua Bengio. 2018. Under-standing intermediate layers using linear classifier probes. Preprint , arXiv:1610.01644. Yonatan Belinkov, Nadir Durrani, Fahim Dalvi, Hassan Sajjad, and James R. Glass. 2017. What do neu-ral machine translation models learn about morphol-ogy? CoRR , abs/1704.03471. Sarah Bunin Benor and Roger Levy. 2006. The chicken or the egg? a probabilistic analysis of english bino-mials. Language , 82(2):233–278. William E. Cooper and John Robert Ross. 1975. World order. In Robin E. Grossman, L. James San, and Tim-othy J. Vance, editors, Papers from the Parasession on Functionalism , pages 63–111. Chicago Linguistic Society, Chicago, IL. Francesca De Luca Fornaciari, Begoña Altuna, Itziar Gonzalez-Dios, and Maite Melero. 2024. A hard nut to crack: Idiom detection with conversational large language models. In Proceedings of the 4th Work-shop on Figurative Language Processing (FigLang 2024) , pages 35–44, Mexico City, Mexico (Hybrid). Association for Computational Linguistics. Luis Espinosa-Anke, Joan Codina-Filbà, and Leo Wan-ner. 2021. Evaluating language models for the re-trieval and categorization of lexical collocations. In 
+
+Proceedings of the 16th Conference of the European Chapter of the Association for Computational Lin-guistics: Main Volume , pages 1406–1417, Online. Association for Computational Linguistics. Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schel-ten, Alex Vaughan, Amy Yang, Angela Fan, Anirudh Goyal, Anthony Hartshorn, Aobo Yang, Archi Mi-tra, Archie Sravankumar, Artem Korenev, Arthur Hinsvark, and 542 others. 2024. The llama 3 herd of models. Preprint , arXiv:2407.21783. Yanzhu Guo, Guokan Shang, and Chloé Clavel. 2025. Benchmarking linguistic diversity of large language models. Preprint , arXiv:2412.10271. Wes Gurnee, Neel Nanda, Matthew Pauly, Kather-ine Harvey, Dmitrii Troitskii, and Dimitris Bert-simas. 2023. Finding neurons in a haystack: Case studies with sparse probing. ArXiv preprint ,abs/2305.01610. John Hewitt and Christopher D. Manning. 2019. Astructural probe for finding syntax in word represen-tations. In Proceedings of the 2019 Conference of the 
+
+10 North American Chapter of the Association for Com-putational Linguistics: Human Language Technolo-gies, Volume 1 (Long and Short Papers) , pages 4129– 4138, Minneapolis, Minnesota. Association for Com-putational Linguistics. Zachary Nicholas Houghton, Kenji Sagae, and Emily Morgan. 2025. The role of abstract representations and observed preferences in the ordering of binomi-als in large language models. In Proceedings of the 63rd Annual Meeting of the Association for Compu-tational Linguistics (Volume 2: Short Papers) , pages 695–702, Vienna, Austria. Association for Computa-tional Linguistics. Jennifer Hu, Kyle Mahowald, Gary Lupyan, Anna Ivanova, and Roger Levy. 2024. Language mod-els align with human judgments on key grammatical constructions. Proceedings of the National Academy of Sciences , 121(36). Junjie Hu, Sebastian Ruder, Aditya Siddhant, Gra-ham Neubig, Orhan Firat, and Melvin Johnson. 2020. Xtreme: A massively multilingual multi-task benchmark for evaluating cross-lingual generaliza-tion. Preprint , arXiv:2003.11080. Yusuke Ide, Yuto Nishida, Justin Vasselli, Miyu Oba, Yusuke Sakai, Hidetaka Kamigaito, and Taro Watan-abe. 2025. How to make the most of LLMs’ gram-matical knowledge for acceptability judgments. In 
+
+Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Com-putational Linguistics: Human Language Technolo-gies (Volume 1: Long Papers) , pages 7416–7432, Al-buquerque, New Mexico. Association for Computa-tional Linguistics. Miloš Jakubíček, Adam Kilgarriff, Vojtěch Kovář, Pavel Rychlý, and Vít Suchomel. 2013. The ten-ten corpus family. In Proceedings of the 7th Inter-national Corpus Linguistics Conference , pages 125– 127. Miloš Jakubíček, Adam Kilgarriff, Diana McCarthy, and Pavel Rychlý. 2010. Fast syntactic searching in very large corpora for many languages. PACLIC 24 Proceedings , pages 741–747. Harold Jeffreys. 1946. An invariant form for the prior probability in estimation problems. Proceedings of the Royal Society of London. Series A. Mathematical and Physical Sciences , 186(1007):453–461. Zhengbao Jiang, Frank F. Xu, Jun Araki, and Graham Neubig. 2020. How can we know what language models know? Transactions of the Association for Computational Linguistics , 8:423–438. Difan Jiao, Yilun Liu, Zhenwei Tang, Daniel Matter, Jürgen Pfeffer, and Ashton Anderson. 2024. SPIN: Sparsifying and integrating internal neurons in large language models for text classification. In Find-ings of the Association for Computational Linguis-tics: ACL 2024 , pages 4666–4682, Bangkok, Thai-land. Association for Computational Linguistics. Adam Kilgarriff, Vít Baisa, Jan Bušta, Miloš Jakubíček, Vojtěch Kovář, Jan Michelfeit, Pavel Rychlý, and Vít Suchomel. 2014. The sketch engine: ten years on. 
+
+Lexicography , 1:7–36. Viet Dac Lai, Nghia Trung Ngo, Amir Pouran Ben Veyseh, Hieu Man, Franck Dernoncourt, Trung Bui, and Thien Huu Nguyen. 2023. Chatgpt beyond en-glish: Towards a comprehensive evaluation of large language models in multilingual learning. Preprint ,arXiv:2304.05613. J. Lin. 1991. Divergence measures based on the shan-non entropy. IEEE Transactions on Information The-ory , 37(1):145–151. Nelson F. Liu, Matt Gardner, Yonatan Belinkov, Matthew E. Peters, and Noah A. Smith. 2019. Lin-guistic knowledge and transferability of contextual representations. In Proc. of NAACL-HLT , pages 1073–1094, Minneapolis, Minnesota. Association for Computational Linguistics. Harish Tayyar Madabushi, Edward Gow-Smith, Marcos Garcia, Carolina Scarton, Marco Idiart, and Aline Villavicencio. 2022. Semeval-2022 task 2: Multilin-gual idiomaticity detection and sentence embedding. 
+
+Preprint , arXiv:2204.10050. Yakov Malkiel. 1959. Studies in irreversible binomials. 
+
+Lingua , 8:113–160. Samuel Marks and Max Tegmark. 2024. The geome-try of truth: Emergent linear structure in large lan-guage model representations of true/false datasets. 
+
+Preprint , arXiv:2310.06824. Meta. 2024. Llama-3.2-3b model card. https:// huggingface.co/meta-llama/Llama-3.2-3B .Kanishka Misra and Kyle Mahowald. 2025. Language models learn rare phenomena from less rare phe-nomena: The case of the missing aanns. Preprint ,arXiv:2403.19827. Sandra Mollin. 2012. Revisiting binomial order in en-glish: ordering constraints and reversibility. English Language and Linguistics , 16(1):81 –103. Emily Morgan and Roger Levy. 2015. Modeling id-iosyncratic preferences: How generative knowledge and expression frequency jointly determine language structure. In Proceedings of the Annual Meeting of the Cognitive Science Society , volume 37. Emily Morgan and Roger Levy. 2016. Abstract knowl-edge versus direct experience in processing of bino-mial expressions. Cognition , 157:384–402. Heiko Motschenbacher. 2013. Gentlemen before ladies? a corpus-based study of conjunct order in personal binomials. Journal of English Linguistics ,41(3):212–242. Nina Panickssery, Nick Gabrieli, Julian Schulz, Meg Tong, Evan Hubinger, and Alexander Matt Turner. 2024. Steering llama 2 via contrastive activation ad-dition. Preprint , arXiv:2312.06681. 
+
+11 Steven Pinker and David Birdsong. 1979. Speakers’ sensitivity to rules of frozen word order. Journal of Verbal Learning and Verbal Behavior , 18(4):497– 508. Zhuang Qiu, Xufeng Duan, and Zhenguang Cai. 2024. Evaluating grammatical well-formedness in large language models: A comparative study with human judgments. In Proceedings of the Workshop on Cognitive Modeling and Computational Linguistics ,pages 189–198, Bangkok, Thailand. Association for Computational Linguistics. Alec Radford, Karthik Narasimhan, Tim Salimans, Ilya Sutskever, and 1 others. 2018. Improving language understanding by generative pre-training. Shauli Ravfogel, Yanai Elazar, Hila Gonen, Michael Twiton, and Yoav Goldberg. 2020. Null it out: Guarding protected attributes by iterative nullspace projection. In Proceedings of the 58th Annual Meet-ing of the Association for Computational Linguistics ,pages 7237–7256, Online. Association for Computa-tional Linguistics. Alex Reinhart, Benjamin Markey, Matt Laudenbach, Kaitlyn Pantusen, Ronald Yurko, Graham Weinberg, and David W. Brown. 2025. Do llms write like hu-mans? variation in grammatical and rhetorical styles. 
+
+Proceedings of the National Academy of Sciences ,122(8):e2422455122. Charles Spearman. 1904. The proof and measurement of association between two things. The American Journal of Psychology , 15(1):72–101. Gemma Team, Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin, Tatiana Matejovicova, Alexandre Ramé, Morgane Rivière, Louis Rouillard, Thomas Mesnard, Geoffrey Cideron, Jean bastien Grill, Sabela Ramos, Edouard Yvinec, Michelle Cas-bon, Etienne Pot, Ivo Penchev, and 197 others. 2025. Gemma 3 technical report. Preprint ,arXiv:2503.19786. Ian Tenney, Dipanjan Das, and Ellie Pavlick. 2019. Bert rediscovers the classical nlp pipeline. Preprint ,arXiv:1905.05950. Robert Tibshirani. 1996. Regression shrinkage and selection via the lasso. Journal of the Royal Sta-tistical Society Series B: Statistical Methodology ,58(1):267–288. Curt Tigges, Oskar John Hollinsworth, Atticus Geiger, and Neel Nanda. 2023. Linear representations of sentiment in large language models. ArXiv preprint ,abs/2310.15154. Alex Turner, Lisa Thiergart, David Udell, Gavin Leech, Ulisse Mini, and Monte MacDiarmid. 2023. Acti-vation addition: Steering language models without optimization. ArXiv preprint , abs/2308.10248. Alexander Matt Turner, Lisa Thiergart, Gavin Leech, David Udell, Juan J. Vazquez, Ulisse Mini, and Monte MacDiarmid. 2024. Steering language models with activation engineering. Preprint ,arXiv:2308.10248. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Day-iheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, and 41 others. 2025. Qwen3 technical report. Preprint ,arXiv:2505.09388. Andy Zou, Long Phan, Sarah Chen, James Campbell, Phillip Guo, Richard Ren, Alexander Pan, Xuwang Yin, Mantas Mazeika, Ann-Kathrin Dombrowski, Shashwat Goel, Nathaniel Li, Michael J. Byun, Zifan Wang, Alex Mallen, Steven Basart, Sanmi Koyejo, Dawn Song, Matt Fredrikson, and 2 others. 2025. Representation engineering: A top-down approach to ai transparency. Preprint , arXiv:2310.01405. 
+
+12 A Data Source and Prompt Details 
+
+A.1 Corpora 
+
+Table 2 lists the Sketch Engine TenTen corpora used to extract order counts and estimate corpus-derived ordering preferences for each language.          
+
+> Language Corpus
+> EN enTenTen21 DE deTenTen23 RU ruTenTen20 ID idTenTen24 AR arTenTen24 TR trTenTen20 JA jpTenTen11 ZH zhTenTen17 (Simplified)
+> Table 2: Language-specific TenTen corpora used to es-timate corpus-derived ordering preferences.
+
+A.2 Prefix Templates 
+
+Table 3 lists the language-specific prefixes used for the four elicitation contexts. During scoring, each candidate ordering is appended to the correspond-ing prefix. 
+
+B Behavioral Analyses 
+
+B.1 Evaluation Metrics 
+
+In addition to the Jensen–Shannon divergence results, Tables 4–6 report Spearman correla-tion for rank-level agreement, pairwise accu-racy for preferred-order direction, and MAE for probability-level deviation. 
+
+B.2 Cross-linguistic Preference Correlations 
+
+We use cross-linguistic Spearman correlation heatmaps to compare ordering-preference vectors across languages over the shared binomial set. Corpus–corpus correlations serve as an empirical reference for cross-language similarity. Model– corpus correlations test whether each model lan-guage aligns most strongly with its corresponding corpus language, while model–model correlations characterize the model’s internal cross-language preference similarity. Figure 7 shows the corpus–corpus reference and the model–model heatmap for Llama-3.1-8B. Figures 8–12 provide the corresponding model– corpus and model–model diagnostics for the re-maining models. 
+
+B.3 Item-level Alignment 
+
+Figure 13 provides item-level scatter plots compar-ing pLLM and pcorpus for each language-specific bi-nomial item. Colors indicate corpus evidence tiers based on the combined frequency of the two or-ders. 
+
+C Probing Results 
+
+Complementing the last-token results in the main text, Figure 14 reports sparse probing results us-ing mean-pooled binomial representations. Ta-ble 7 provides layer-wise Spearman correlations for both last-token and mean-pooled representa-tions, allowing a direct comparison of the two pool-ing choices across decoder layers. 
+
+D Steering Across Scales 
+
+Figure 15 extends the last-token steering analysis at layer 14 to additional intervention scales. As a robustness check, Figure 16 shows the correspond-ing mean-pooled steering results at layer 23. 13 minimal frequency discourse metalinguistic 
+
+EN The phrase goes: The more common way to say it is: People always say: In this language, the conventional order for this pair is: DE Die Redewendung lautet: Die häufigere Art, es zu sagen, lautet: Man sagt immer: In dieser Sprache lautet die übliche Reihenfolge dieses Paares: RU Выражение звучит так: Более распространённый способ сказать это: Всегда говорят: В этом языке привычный порядок для этой пары таков: ID Ungkapan ini adalah: Cara yang lebih umum untuk mengatakannya adalah: Orang selalu bilang: Dalam bahasa ini, urutan lazim untuk pasangan ini adalah: AR ڷٓﻩ ﺍ۹שغ׍ﺭﺓ ᇖᇇ: ﺍ۹ݠܦ ؊ٵڶ ﺍটগۑ૯૖ ݈سݮ໣ً׍ ኱ካـשغ૯ે ע܌ :ᇖᇇ ኿ካﺫ ؊ٵݮ۹ݮﻥ ﺩﺍୗସً׍: ᇖᆱ ڷٓﻩ ﺍ኱ካפڶ، ﺍ׻ཛྷཀ૯૔۹ ﺍঔঐשـ׍ﺩ ଚଖٓﺍ ﺍඕආﻭﺝ ڷݮ: 
+
+TR Bu ifade şöyledir: Daha yaygın söyleniş şekli şöyledir: Hep derler ki: Bu dilde bu çiftin alışılmış sırası şöyledir: JA この表現は： より一般的な言い方は： よく言う： この言語でこの語の組の慣用的な順序は： 
+
+ZH 这个说法是： 更常见的说法是： 大家都说： 在这种语言中，这对词的惯用顺序是： 
+
+Table 3: Language-specific prefixes used for the four elicitation contexts. 
+
+Spearman ρ ↑
+
+Model EN DE RU ID AR TR JA ZH Avg 
+
+Qwen3-4B .513 .396 .286 .373 .173 .341 .850 .903 .479 Qwen3-14B .438 .434 .375 .455 .311 .543 .899 .912 .546 Llama-3.2-3B .520 .322 .341 .439 .240 .522 .783 .873 .505 Llama-3.1-8B .566 .504 .411 .565 .331 .634 .843 .905 .595 
+
+Gemma-3-4B .426 .313 .245 .392 .193 .526 .867 .857 .477 Gemma-3-12B .511 .372 .439 .431 .292 .563 .857 .861 .541 
+
+Table 4: Spearman correlation ρ between model-induced and corpus-derived ordering preferences across languages. Higher values indicate closer rank-level model–corpus agreement. 
+
+Pairwise accuracy ↑
+
+Model EN DE RU ID AR TR JA ZH Avg 
+
+Qwen3-4B .783 .707 .703 .750 .620 .710 .833 .937 .755 Qwen3-14B .817 .770 .673 .777 .650 .737 .900 .927 .781 Llama-3.2-3B .810 .683 .630 .730 .633 .763 .820 .910 .748 Llama-3.1-8B .810 .770 .697 .787 .687 .807 .817 .920 .787 
+
+Gemma-3-4B .770 .677 .637 .700 .657 .697 .830 .890 .732 Gemma-3-12B .723 .657 .643 .710 .620 .770 .837 .887 .731 
+
+Table 5: Pairwise accuracy between model-induced and corpus-derived ordering preferences across languages. Higher values indicate that the model more often assigns higher probability to the corpus-preferred order. 
+
+MAE ↓
+
+Model EN DE RU ID AR TR JA ZH Avg 
+
+Qwen3-4B .191 .270 .269 .282 .345 .282 .155 .066 .232 Qwen3-14B .184 .225 .255 .254 .298 .230 .115 .070 .204 Llama-3.2-3B .172 .247 .291 .263 .320 .244 .175 .105 .227 Llama-3.1-8B .156 .208 .247 .226 .266 .200 .161 .078 .193 
+
+Gemma-3-4B .217 .291 .294 .282 .330 .262 .153 .097 .241 Gemma-3-12B .233 .290 .311 .277 .321 .238 .134 .087 .236 
+
+Table 6: Mean absolute error (MAE) between model-induced and corpus-derived ordering distributions across languages. Lower values indicate closer probability-level model–corpus agreement. 
+
+14 EN DE RU ID AR TR JA ZH 
+
+Corpus language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Corpus language
+
+1.00 
+
+0.53 1.00 
+
+0.55 0.44 1.00 
+
+0.32 0.27 0.59 1.00 
+
+0.26 0.21 0.24 0.39 1.00 
+
+0.37 0.31 0.18 0.16 0.22 1.00 
+
+-0.07 -0.08 0.23 0.18 -0.01 -0.21 1.00 
+
+0.01 0.08 0.14 0.08 -0.04 -0.21 0.60 1.00 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 (a) pcorpus vs. pcorpus EN DE RU ID AR TR JA ZH 
+
+Model language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+1.00 
+
+0.32 1.00 
+
+0.35 0.21 1.00 
+
+0.36 0.20 0.20 1.00 
+
+0.14 0.25 0.12 0.14 1.00 
+
+0.18 0.18 0.22 0.13 0.30 1.00 
+
+-0.10 -0.05 -0.01 0.01 0.17 -0.24 1.00 
+
+0.09 0.19 0.02 0.12 0.08 -0.13 0.56 1.00 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 (b) pLLM vs. pLLM 
+
+Figure 7: Corpus reference and Llama-3.1-8B cross-linguistic structure. Each cell reports the Spearman correla-tion between ordering-preference vectors computed over shared binomial items. Left: corpus–corpus correlations, which serve as the empirical reference for cross-linguistic similarity. Right: model–model correlations for Llama-3.1-8B, showing the similarity structure among the model’s language-specific ordering preferences. EN DE RU ID AR TR JA ZH 
+
+Corpus language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+0.61 0.34 0.37 0.23 0.19 0.21 0.09 0.22 
+
+0.14 0.46 0.07 0.09 0.02 0.17 -0.09 0.14 
+
+0.24 0.04 0.35 0.15 -0.03 0.04 0.32 0.17 
+
+0.22 0.09 0.29 0.45 0.13 0.17 0.07 -0.06 
+
+0.14 0.13 0.10 0.00 0.18 0.06 0.00 -0.02 
+
+0.30 0.33 0.18 0.17 0.09 0.40 -0.09 -0.04 
+
+-0.19 -0.09 0.09 0.14 -0.05 -0.28 0.87 0.63 
+
+-0.02 0.09 0.19 0.13 0.01 -0.17 0.56 0.92 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 
+
+(a) pLLM vs. pcorpus EN DE RU ID AR TR JA ZH 
+
+Model language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+1.00 
+
+0.19 1.00 
+
+0.32 0.09 1.00 
+
+0.28 -0.02 0.30 1.00 
+
+0.15 0.31 0.02 -0.01 1.00 
+
+0.17 0.19 -0.01 0.03 -0.05 1.00 
+
+0.07 -0.07 0.30 0.12 -0.01 -0.21 1.00 
+
+0.21 0.12 0.21 -0.08 -0.02 -0.02 0.62 1.00 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 (b) pLLM vs. pLLM 
+
+Figure 8: Cross-linguistic alignment diagnostics for Qwen3-4B. Left: model–corpus correlations. Right: model– model correlations. Each cell reports Spearman correlation over shared binomial items. EN DE RU ID AR TR JA ZH 
+
+Corpus language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+0.51 0.26 0.29 0.25 0.20 0.30 0.00 0.09 
+
+0.35 0.51 0.19 0.07 0.03 0.29 -0.09 0.12 
+
+0.38 0.22 0.47 0.27 0.19 0.08 0.17 0.12 
+
+0.24 0.10 0.22 0.55 0.13 0.17 -0.07 -0.11 
+
+-0.02 -0.04 0.05 0.12 0.36 0.06 0.04 0.04 
+
+0.28 0.21 0.14 0.15 -0.02 0.64 -0.04 -0.16 
+
+-0.09 -0.05 0.18 0.16 -0.08 -0.21 0.91 0.63 
+
+-0.01 0.06 0.15 0.09 -0.08 -0.16 0.54 0.94 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 
+
+(a) pLLM vs. pcorpus EN DE RU ID AR TR JA ZH 
+
+Model language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+1.00 
+
+0.28 1.00 
+
+0.15 0.33 1.00 
+
+0.07 0.04 0.08 1.00 
+
+0.16 -0.07 0.00 0.02 1.00 
+
+0.23 0.25 0.08 0.21 0.08 1.00 
+
+0.02 -0.05 0.10 -0.01 0.00 -0.01 1.00 
+
+0.08 0.16 0.14 -0.06 0.03 -0.11 0.60 1.00 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 (b) pLLM vs. pLLM 
+
+Figure 9: Cross-linguistic alignment diagnostics for Qwen3-14B. Left: model–corpus correlations. Right: model– model correlations. Each cell reports Spearman correlation over shared binomial items. 
+
+15 EN DE RU ID AR TR JA ZH 
+
+Corpus language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+0.59 0.35 0.23 0.14 0.04 0.20 -0.09 0.03 
+
+0.53 0.40 0.43 0.33 0.05 0.27 0.09 -0.06 
+
+0.37 0.34 0.38 0.31 0.30 -0.07 0.19 0.12 
+
+0.21 0.13 0.30 0.49 0.03 0.29 -0.03 -0.06 
+
+0.28 0.23 0.28 0.21 0.24 0.04 0.19 0.16 
+
+0.14 0.25 0.14 0.06 0.19 0.60 0.00 -0.06 
+
+-0.07 -0.05 0.24 0.06 -0.03 -0.33 0.82 0.60 
+
+0.00 0.10 0.20 0.12 -0.01 -0.21 0.52 0.89 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 (a) pLLM vs. pcorpus EN DE RU ID AR TR JA ZH 
+
+Model language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+1.00 
+
+0.44 1.00 
+
+0.17 0.25 1.00 
+
+0.36 0.20 0.07 1.00 
+
+0.11 0.26 0.30 0.04 1.00 
+
+0.13 0.16 -0.01 0.23 0.11 1.00 
+
+0.01 0.01 0.19 -0.02 0.25 -0.11 1.00 
+
+0.02 0.01 0.10 -0.04 0.10 -0.05 0.57 1.00 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 (b) pLLM vs. pLLM 
+
+Figure 10: Cross-linguistic alignment diagnostics for Llama-3.2-3B. Left: model–corpus correlations. Right: model–model correlations. Each cell reports Spearman correlation over shared binomial items. EN DE RU ID AR TR JA ZH 
+
+Corpus language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+0.52 0.31 0.11 0.05 0.09 0.17 -0.10 0.03 
+
+0.36 0.41 0.25 0.21 0.08 0.25 0.20 0.21 
+
+0.41 0.23 0.29 0.12 -0.08 0.14 0.19 0.16 
+
+0.03 -0.01 0.27 0.46 -0.05 0.14 0.27 0.08 
+
+0.23 0.22 0.15 0.05 0.23 0.10 0.05 0.14 
+
+0.19 0.32 0.18 0.18 0.06 0.61 -0.10 -0.07 
+
+-0.08 -0.07 0.14 0.11 -0.04 -0.21 0.89 0.56 
+
+-0.03 -0.02 0.14 0.05 -0.08 -0.20 0.60 0.90 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 
+
+(a) pLLM vs. pcorpus EN DE RU ID AR TR JA ZH 
+
+Model language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+1.00 
+
+0.33 1.00 
+
+0.07 0.31 1.00 
+
+0.24 0.32 0.09 1.00 
+
+0.10 0.12 0.09 -0.01 1.00 
+
+0.07 0.08 0.18 0.10 -0.09 1.00 
+
+-0.02 0.20 0.20 0.30 0.09 -0.07 1.00 
+
+0.02 0.19 0.16 0.14 0.06 -0.03 0.59 1.00 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 (b) pLLM vs. pLLM 
+
+Figure 11: Cross-linguistic alignment diagnostics for Gemma-3-4B. Left: model–corpus correlations. Right: model–model correlations. Each cell reports Spearman correlation over shared binomial items. EN DE RU ID AR TR JA ZH 
+
+Corpus language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+0.61 0.38 0.32 0.25 0.16 0.36 -0.03 0.00 
+
+0.43 0.55 0.32 0.28 0.06 0.28 -0.01 0.07 
+
+0.49 0.35 0.59 0.40 0.06 0.13 0.04 0.12 
+
+0.18 0.09 0.32 0.58 0.13 0.16 0.21 0.15 
+
+0.30 0.07 0.10 0.05 0.38 -0.04 0.14 0.11 
+
+0.17 0.22 0.03 0.06 0.07 0.65 -0.09 -0.08 
+
+-0.05 -0.04 0.17 0.16 0.00 -0.19 0.88 0.55 
+
+-0.05 0.06 0.13 0.06 0.04 -0.17 0.55 0.89 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 
+
+(a) pLLM vs. pcorpus EN DE RU ID AR TR JA ZH 
+
+Model language 
+
+EN 
+
+DE 
+
+RU 
+
+ID 
+
+AR 
+
+TR 
+
+JA 
+
+ZH 
+
+> Model language
+
+1.00 
+
+0.56 1.00 
+
+0.34 0.36 1.00 
+
+0.32 0.33 0.31 1.00 
+
+0.22 0.03 0.05 0.05 1.00 
+
+0.27 0.21 0.05 0.28 -0.03 1.00 
+
+0.07 0.02 0.05 0.26 0.21 -0.09 1.00 
+
+-0.05 0.07 0.07 0.16 0.11 0.01 0.53 1.00 
+
+1.0 
+
+0.5 
+
+0.0 
+
+0.5 
+
+1.0 (b) pLLM vs. pLLM 
+
+Figure 12: Cross-linguistic alignment diagnostics for Gemma-3-12B. Left: model–corpus correlations. Right: model–model correlations. Each cell reports Spearman correlation over shared binomial items. 
+
+16 0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+EN DE RU ID 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+AR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+TR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+JA 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+ZH 
+
+Evidence Tier 
+
+Strong Medium Weak (a) Qwen3-4B 0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+EN DE RU ID 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+AR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+TR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+JA 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+ZH 
+
+Evidence Tier 
+
+Strong Medium Weak (b) Qwen3-14B 0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+EN DE RU ID 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+AR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+TR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+JA 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+ZH 
+
+Evidence Tier 
+
+Strong Medium Weak 
+
+(c) Llama-3.1-8B 0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+EN DE RU ID 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+AR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+TR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+JA 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+ZH 
+
+Evidence Tier 
+
+Strong Medium Weak (d) Llama-3.2-3B 0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+EN DE RU ID 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+AR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+TR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+JA 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+ZH 
+
+Evidence Tier 
+
+Strong Medium Weak 
+
+(e) Gemma-3-4B 0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+EN DE RU ID 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+0.0 
+
+0.5 
+
+1.0 
+
+> Model Preference
+
+AR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+TR 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+JA 
+
+0.0 0.5 1.0 
+
+Corpus Preference 
+
+ZH 
+
+Evidence Tier 
+
+Strong Medium Weak (f) Gemma-3-12B 
+
+Figure 13: Item-level model–corpus alignment for different models across languages. Points are language-specific binomial items; the diagonal indicates perfect probability-level agreement. 0 10 20 30 
+
+Layer 
+
+0.1 
+
+0.2 
+
+0.3 
+
+0.4 
+
+0.5 
+
+0.6 
+
+0.01 
+
+0.03 
+
+0.05 
+
+10 0 10 1 10 2
+
+Nonzero Dimensions 
+
+0.1 
+
+0.2 
+
+0.3 
+
+0.4 
+
+0.5 
+
+0.6 
+
+0.01 
+
+0.03 
+
+0.05 
+
+Figure 14: Sparse probing results for corpus-derived preference strength in Qwen3-4B using mean-pooled binomial representations. The y-axis shows Spearman correlation between predicted and corpus-derived preference strength; the left x-axis shows decoder layers, and the right x-axis shows the average number of nonzero Lasso coefficients. Different Lasso regularization strengths are indicated with different colors, line styles (left), and marker sizes (right). 
+
+17 Layer Last ρ Mean ρ Layer Last ρ Mean ρ Layer Last ρ Mean ρ Layer Last ρ Mean ρ
+
+0 .367 .397 9 .409 .388 18 .478 .489 27 .485 .493 1 .358 .385 10 .409 .397 19 .481 .501 28 .491 .490 2 .404 .399 11 .439 .425 20 .491 .497 29 .488 .488 3 .394 .389 12 .485 .420 21 .497 .498 30 .477 .479 4 .424 .383 13 .499 .450 22 .500 .522 31 .486 .472 5 .404 .405 14 .522 .438 23 .511 .522 32 .464 .484 6 .427 .397 15 .504 .459 24 .469 .502 33 .460 .499 7 .401 .408 16 .475 .469 25 .493 .490 34 .442 .408 8 .403 .387 17 .494 .470 26 .498 .505 35 .414 .435 
+
+Table 7: Layer-wise probing results for Qwen3-4B. Values are mean Spearman ρ across five folds. Probes are trained using either the last-token representation or the mean-pooled representation. 0.0 
+
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Probability
+
+EN DE RU ID       
+
+> 0100 200 300 400 500 600
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Probability
+
+AR       
+
+> 0100 200 300 400 500 600
+
+TR       
+
+> 0100 200 300 400 500 600
+
+JA       
+
+> 0100 200 300 400 500 600
+
+ZH   
+
+> Scale
+> -10 010 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Probability
+
+EN DE RU ID       
+
+> 0100 200 300 400 500 600
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Probability
+
+AR       
+
+> 0100 200 300 400 500 600
+
+TR       
+
+> 0100 200 300 400 500 600
+
+JA       
+
+> 0100 200 300 400 500 600
+
+ZH   
+
+> Scale
+> -50 050
+
+Figure 15: Effects of steering on Qwen3-4B binomial order probabilities using the last-token steering vector at layer 14. The upper panel compares λ = −10 , 0, +10 , and the lower panel compares λ = −50 , 0, +50 , with λ = 0 
+
+denoting the original baseline. Each language panel sorts binomial orders by their original model probability. 0.0 
+
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Probability
+
+EN DE RU ID       
+
+> 0100 200 300 400 500 600
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> Probability
+
+AR       
+
+> 0100 200 300 400 500 600
+
+TR       
+
+> 0100 200 300 400 500 600
+
+JA       
+
+> 0100 200 300 400 500 600
+
+ZH       
+
+> Scale
+> -50 20 10 010 20 50
+
+Figure 16: Effects of steering on Qwen3-4B binomial order probabilities using the mean-pooled steering vector at layer 23. Curves compare λ ∈ {− 50 , −20 , −10 , 0, +10 , +20 , +50 }, with λ = 0 denoting the original baseline. Each language panel sorts binomial orders by their original model probability. 
+
+18
