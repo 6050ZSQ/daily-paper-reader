@@ -6,83 +6,85 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-25
-- 运行时间：2026-06-25 21:17:20 UTC
+- 最新运行日期：2026-06-26
+- 运行时间：2026-06-26 21:37:16 UTC
 - 运行状态：成功
 - 本次总论文数：21
 - 精读区：8
 - 速读区：13
 
 ### 今日简报（AI）
-今日共收录21篇论文，精读8篇，速读13篇，重点关注LLM的二项序偏好和跨语言裁判可靠性。精读推荐《Behavioral and Representational Evidence of Binomial Ordering Preferences in Large Language Models》与《BabelJudge》两篇高分论文，分别揭示LLM的语言顺序偏好和裁判一致性缺陷。建议普通读者优先精读这两篇，后续可关注跨语言知识探索与特征纠错机制的研究进展。
-- 详情：[/202606/25/README](/202606/25/README)
+今日推荐21篇AI论文，精读8篇，其中Transformer可解释性（LIG）与跨模态语言模型（Interleaved Speech Language Models）获最高9.0分。  
+重点关注两方向：层内梯度归因分析（LIG）与文本潜变量驱动的语音-语言联合建模。  
+建议优先精读这两篇高分论文，速读中CAVEWOMAN对语言压缩行为的研究也值得了解。
+- 详情：[/202606/26/README](/202606/26/README)
 
 ### 精读区论文标签
-1. [Behavioral and Representational Evidence of Binomial Ordering Preferences in Large Language Models](/202606/25/2606.21645v1-behavioral-and-representational-evidence-of-binomial-ordering-preferences-in-large-language-models)  
-   标签：评分：9.0/10、query:llm-ling
-   evidence：研究LLM中二项式排序偏好以检验句法和语义知识
-2. [BabelJudge: Measuring LLM-as-a-Judge Reliability Across Languages and Agent Trajectories](/202606/25/2606.22329v1-babeljudge-measuring-llm-as-a-judge-reliability-across-languages-and-agent-trajectories)  
+1. [LIG: Layer-wise Integrated Gradients for Within-Layer Flow Analysis in Transformers](/202606/26/2606.21564v1-lig-layer-wise-integrated-gradients-for-within-layer-flow-analysis-in-transformers)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：用于分析Transformer层内token表示的可解释性方法
+2. [Interleaved Speech Language Models Latently Work In Text](/202606/26/2606.22473v1-interleaved-speech-language-models-latently-work-in-text)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：通过logit lens分析交错语音-文本语言模型，揭示隐式转录阶段
+3. [Soft Token Alignment for Cross-Lingual Reasoning](/202606/26/2606.26466v1-soft-token-alignment-for-cross-lingual-reasoning)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：跨语言对齐软令牌表征以解决推理分歧，研究LLM如何编码语言意义
+4. [Discovering Millions of Interpretable Features with Sparse Autoencoders](/202606/26/2606.26620v1-discovering-millions-of-interpretable-features-with-sparse-autoencoders)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：使用稀疏自编码器将语言模型表征分解为可解释特征
+5. [Ask, Don't Judge: Binary Questions for Interpretable LLM Evaluation and Self-Improvement](/202606/26/2606.27226v1-ask-dont-judge-binary-questions-for-interpretable-llm-evaluation-and-self-improvement)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：LLM作为评判者的可靠性基准与审计框架
-3. [TriggerBench: Investigating Prospective Memory for Large Language Models](/202606/25/2606.23459v1-triggerbench-investigating-prospective-memory-for-large-language-models)  
-   标签：评分：9.0/10、query:llm-eval
-   evidence：LLM前瞻记忆基准
-4. [The Table Says Otherwise: Testing LLMs with Counterfactual Relational Data](/202606/25/2606.23667v1-the-table-says-otherwise-testing-llms-with-counterfactual-relational-data)  
-   标签：评分：9.0/10、query:llm-eval
-   evidence：引入反事实基准评估LLM对表格数据的利用能力
-5. [Same Evidence, Different Answer: Auditing Order Sensitivity in Multimodal Large Language Models](/202606/25/2606.26079v1-same-evidence-different-answer-auditing-order-sensitivity-in-multimodal-large-language-models)  
-   标签：评分：9.0/10、query:llm-eval
-   evidence：用系统框架审计多模态大模型的顺序敏感性
-6. [Orthogonal Representation Editing: Decoupling Semantic Entanglement in Batch Knowledge Editing of LLMs](/202606/25/2606.22627v1-orthogonal-representation-editing-decoupling-semantic-entanglement-in-batch-knowledge-editing-of-llms)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：LLM表示中的语义解耦
-7. [Sentence-Level Contextual Entrainment in Large Language Models](/202606/25/2606.24077v1-sentence-level-contextual-entrainment-in-large-language-models)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：探究LLM中句子级概率偏移的上下文牵引
-8. [Evaluating Japanese Dialect Robustness Across Speech and Text-based Large Language Models](/202606/25/2606.25436v1-evaluating-japanese-dialect-robustness-across-speech-and-text-based-large-language-models)  
+   evidence：可解释的LLM评估；二元问题分解
+6. [LMs as Task-Specific Knowledge Bases: An Interpretability Analysis](/202606/26/2606.27237v1-lms-as-task-specific-knowledge-bases-an-interpretability-analysis)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：对LM中任务特异性知识编码的机制分析
+7. [The Table Says Otherwise: Testing LLMs with Counterfactual Relational Data](/202606/26/2606.23667v1-the-table-says-otherwise-testing-llms-with-counterfactual-relational-data)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：评估LLM和语音语言模型在日语方言上的鲁棒性
+   evidence：评估LLM是否基于表格数据回答的基准
+8. [Same Evidence, Different Answer: Auditing Order Sensitivity in Multimodal Large Language Models](/202606/26/2606.26079v1-same-evidence-different-answer-auditing-order-sensitivity-in-multimodal-large-language-models)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：针对LLM顺序敏感性的评测基准方法
 
 ### 速读区论文标签
-1. [Interleaved Speech Language Models Latently Work In Text](/202606/25/2606.22473v1-interleaved-speech-language-models-latently-work-in-text)  
+1. [FiLM-Coordinated Dual-Branch Transformer for Global-Local Dependency Modeling in Language Modeling](/202606/26/2606.21075v1-film-coordinated-dual-branch-transformer-for-global-local-dependency-modeling-in-language-modeling)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：使用logit lens分析交错语音-文本语言模型，揭示隐含转录阶段
-2. [Cross-Lingual Exploration for Parametric Knowledge](/202606/25/2606.24579v1-cross-lingual-exploration-for-parametric-knowledge)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：探究跨语言探索访问LLM中参数化知识的方法
-3. [Evidence for feature-specific error correction in LLMs](/202606/25/2606.24964v1-evidence-for-feature-specific-error-correction-in-llms)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：提出基于激活扰动的LLM错误修正实证测试，有助于理解特征表征和可解释性。
-4. [ATMA: Length-Invariant Language Modeling via Polar Attention and Gated-Delta Compression Memory](/202606/25/2606.25156v1-atma-length-invariant-language-modeling-via-polar-attention-and-gated-delta-compression-memory)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：混合注意力架构实现长度不变的语言表示
-5. [IndicContextEval: A Benchmark for Evaluating Context Utilisation in Audio Large Language Models Across 8 Indic Languages](/202606/25/2606.19157v2-indiccontexteval-a-benchmark-for-evaluating-context-utilisation-in-audio-large-language-models-across-8-indic-languages)  
+   evidence：双分支Transformer建模语言的全局-局部依赖，涉及语言结构的神经表示
+2. [CAVEWOMAN: How Large Language Models Behave Under Linguistic Input and Output Compression](/202606/26/2606.24083v1-cavewoman-how-large-language-models-behave-under-linguistic-input-and-output-compression)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：大语言模型评估协议；输入输出压缩评估
+3. [Weave of Formal Thought](/202606/26/2606.25987v1-weave-of-formal-thought)  
+   标签：评分：8.0/10、query:llm-ling
+   evidence：面向代码LLM的句法验证和结构学习
+4. [What We are Missing in Multimodal LLM Evaluation?](/202606/26/2606.26348v1-what-we-are-missing-in-multimodal-llm-evaluation)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：多模态大语言模型评估基准分析
+5. [The Riddle Riddle: Testing Flexible Reasoning in Large Language Models and Humans](/202606/26/2606.27103v1-the-riddle-riddle-testing-flexible-reasoning-in-large-language-models-and-humans)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：通过谜题式任务测试LLM的灵活推理能力
+6. [Toward Open-Set Speaker Attribute Prediction with Keyword-Appended LLM Embeddings](/202606/26/2606.21979v1-toward-open-set-speaker-attribute-prediction-with-keyword-appended-llm-embeddings)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：利用LLM嵌入作为说话人属性的连续语义表征
+7. [Randomized YaRN Improves Length Generalization for Long-Context Reasoning](/202606/26/2606.23687v1-randomized-yarn-improves-length-generalization-for-long-context-reasoning)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：一个评估音频大模型上下文利用能力的基准
-6. [MSU-Bench: Towards Speaker-Centric Understanding in Conversational Multi-Speaker Scenarios](/202606/25/2606.22868v1-msu-bench-towards-speaker-centric-understanding-in-conversational-multi-speaker-scenarios)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：一个针对音频大模型多说话人对话理解的基准
-7. [SURGELLM: Rethinking Multi-Task Evaluation through Task-Aware Feature Gating with Class-Balanced Normalization](/202606/25/2606.24259v1-surgellm-rethinking-multi-task-evaluation-through-task-aware-feature-gating-with-class-balanced-normalization)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：LLM多任务评估框架
-8. [A Red Teaming Framework for Large Language Models: A Case Study on Faithfulness Evaluation](/202606/25/2606.25476v1-a-red-teaming-framework-for-large-language-models-a-case-study-on-faithfulness-evaluation)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：LLM红队评测框架
-9. [SFL-MTSC: Leveraging Semantic Frame-Level Multi-Task Self-Consistency for Robust Multi-Intent Spoken Language Understanding](/202606/25/2606.25552v1-sfl-mtsc-leveraging-semantic-frame-level-multi-task-self-consistency-for-robust-multi-intent-spoken-language-understanding)  
-   标签：评分：7.0/10、query:llm-ling
-   evidence：语义框架级多任务自一致性用于口语理解
-10. [Rubric-as-Experts: Case-Specific MQM Rubrics for Translation Quality Evaluation](/202606/25/2606.21559v1-rubric-as-experts-case-specific-mqm-rubrics-for-translation-quality-evaluation)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：翻译质量评估的动态评分标准分配
-11. [Sub-Billion, Super-Frontier: Small Language Models Rival Zero-Shot Frontier LLMs on General and Literary Relation Extraction](/202606/25/2606.22606v1-sub-billion-super-frontier-small-language-models-rival-zero-shot-frontier-llms-on-general-and-literary-relation-extraction)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：在小模型与大模型关系抽取基准上的比较评估
-12. [Does Translation-Enhanced Speech Encoder Pre-training Affect Speech LLMs?](/202606/25/2606.25444v1-does-translation-enhanced-speech-encoder-pre-training-affect-speech-llms)  
+   evidence：提出Randomized YaRN改进长度泛化，在BABILong等多轮核心指代基准上评估
+8. [Selective Capability Unlearning in End-to-End Spoken Language Understanding](/202606/26/2606.24063v1-selective-capability-unlearning-in-end-to-end-spoken-language-understanding)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：口语语言理解中的表示级能力遗忘框架
+9. [SARA: Unlocking Multilingual Knowledge in Mixture-of-Experts via Semantically Anchored Routing Alignment](/202606/26/2606.25821v1-sara-unlocking-multilingual-knowledge-in-mixture-of-experts-via-semantically-anchored-routing-alignment)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：提出语义锚定路由对齐迁移多语言知识，与语义表示学习相关
+10. [LangMAP: A Language-Adaptive Approach to Tokenization](/202606/26/2606.23566v1-langmap-a-language-adaptive-approach-to-tokenization)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：研究翻译增强预训练对齐语音编码器表示与LLM统一空间
-13. [BitNet Text Embeddings](/202606/25/2606.25674v1-bitnet-text-embeddings)  
+   evidence：语言自适应分词提升多语言LLM的表征质量
+11. [On the Limits of Prompt-Conditioned Language Models as General-Purpose Learners](/202606/26/2606.23668v1-on-the-limits-of-prompt-conditioned-language-models-as-general-purpose-learners)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：来自LLM的低比特文本嵌入用于语义表示
+   evidence：分析语言作为LLM任务编码的容量有限接口
+12. [Project Auto-World: Towards Automated Benchmarking of Neural Relational Reasoners](/202606/26/2606.24965v1-project-auto-world-towards-automated-benchmarking-of-neural-relational-reasoners)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：利用LLM自动生成神经推理器的评估基准
+13. [Don't Go Breaking My LLM: The Impact of Pruning Attention Layers on Explanation Faithfulness and Confidence Calibration](/202606/26/2606.24970v1-dont-go-breaking-my-llm-the-impact-of-pruning-attention-layers-on-explanation-faithfulness-and-confidence-calibration)  
+   标签：评分：6.0/10、query:llm-lang-rep
+   evidence：研究剪枝注意力层对解释忠实性和置信度校准的影响，与LLM可解释性相关
 
 
 <div class="dpr-home-promo-card">

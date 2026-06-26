@@ -1,0 +1,910 @@
+Title: LIG: Layer-wise Integrated Gradients for Within-Layer Flow Analysis in Transformers
+
+URL Source: https://arxiv.org/pdf/2606.21564v1
+
+Published Time: Tue, 23 Jun 2026 01:06:08 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# LIG: Layer-wise Integrated Gradients for Within-Layer Flow Analysis in Transformers 
+
+Eight Suzuki 1,3, Hideitsu Hino 1,2, and Noboru Murata 1 
+
+> 1
+
+Waseda University 
+
+suzuki8@akane.waseda.jp, noboru.murata@eb.waseda.ac.jp  
+
+> 2
+
+The Institute of Statistical Mathematics 
+
+hino@ism.ac.jp  
+
+> 3
+
+Fujitsu Limited 
+
+Abstract. Transformers achieve strong performance, but their inter-nal computations remain opaque. We view each Transformer layer as a dynamic graph whose nodes are token representations and per-head at-tention outputs, with Multi-Head Attention (ATT) and MLP as module boundaries. On this graph we use LIG (Layer-wise Integrated Gradi-ents), which applies set-to-set Integrated Gradients (IG) at nonlinear module boundaries. Set-to-set IG applies IG to a map from a set of input token representations to a set of output representations, evalu-ating token-to-token contributions, which is not standard in prior IG applications. This extends IG from the usual scalar-objective setting to set-to-set maps via an L2 scalarization, and composes within-layer contributions in the spirit of Layer-wise Relevance Propagation (LRP), with IG completeness playing the role of LRP-style conservation at each boundary. We use LIG to analyze (i) the agreement between module-wise composition and layer-whole attribution under an L2 criterion, and (ii) within-layer information flow by tracing separated ATT and MLP contributions. On BERT-base and PTB, configurations that best pre-served within-layer consistency used the target token’s embedding as the ATT baseline and either the ATT output at a = 0 or Zero as the MLP baseline. We therefore present LIG as a diagnostic XAI tool at module-boundary granularity, without model-specific retraining or per-operation interpreter design. Code is available at https://github.com/ eightsuzuki/layer-wise-integrated-gradients .
+
+Keywords: Transformer · natural language processing · explainability · Inte-grated Gradients · Layer-wise Relevance Propagation 
+
+## 1 Introduction 
+
+The Transformer [1] is a landmark architecture that flexibly integrates context via attention and dramatically improved NLP performance under large-scale parallel training. Transformer information processing can be viewed as dynam-ically restructuring a set of input token embedding vectors into the next-stage  
+
+> arXiv:2606.21564v1 [cs.LG] 19 Jun 2026 2E. Suzuki et al.
+
+feature vector set through the attention mechanism (in this paper, we abbreviate the within-layer block often called Multi-Head Attention (MHA) as ATT) and a multilayer perceptron (MLP). As layers stack, weighting and integration of infor-mation proceed and dispersed representations are organized along context. This capability spread encoder models such as BERT [2] and decoder large language models (LLMs) typified by GPT [3], while massive parameters and computation worsened opacity of prediction rationales (the black-box problem).  
+
+> Fig. 1. Basic Transformer structure and the dynamic-graph view. A token sequence enters from the left and passes through multiple Transformer layers (each with ATT and MLP) to become a context-aware set of vectors. Within each layer, token representation vectors and per-head attention outputs are nodes; information flows at ATT and MLP module boundaries.
+
+Most of Explainable AI (XAI) methods [4] focus on input-to-output contribu-tions and do not directly describe the information flow that separates ATT and MLP within the same layer. Factor attribution methods such as SHAP are typ-ical examples. Methods that track internal representations exist but incur large computational and design cost for retraining interpretable models or designing propagation rules per operation (Sec. 2). The contributions of this paper are twofold. First, we apply Integrated Gradients (IG) from a set of input token representations to a set of output representations (set-to-set IG) at nonlinear module boundaries (ATT and MLP). IG completeness at each boundary gives the same kind of conservation relation that motivates layer-wise propagation in Layer-wise Relevance Propagation (LRP), so within-layer composition can be chained without breaking that propagation view. We further identify that in-heriting the ATT output at integration endpoint a = 0 as the MLP baseline (ATTITBa = 0 ), or using Zero, ranks among the best normalized L2 configura-tions. Under this normalized diagnostic, the MLP baseline choice has little effect, whereas the ATT baseline is the dominant factor. Second, as an application of this framework, LIG (Layer-wise Integrated Gradients) separates and composes within-layer flow between ATT and MLP, enabling macroscopic layer-wise visu-alization of token-to-token contributions (Fig. 4) and qualitative reading of how Within-Layer Flow Analysis with LIG 3
+
+processing roles shift from local relations to sentence-wide integration across depth. 
+
+## 2 Related Work 
+
+2.1 Explainability and Post-hoc Explanation 
+
+Explainable AI (XAI) [4] aims to present model internal behavior and prediction rationales in forms understandable to humans. Intrinsically interpretable trans-parent models are broadly distinguished from post-hoc explanations attached to trained models in [4] . This paper does not target the former; we treat only post-hoc explanation. We then organize model-agnostic post-hoc explanations that construct ex-planations through relatively portable access (input–output, perturbation, gra-dients, activation statistics, etc.) into three classes (boundaries may overlap). First, explanation by simplification approximates a complex model with sim-pler interpretable representations or surrogate models and explains through that approximation. LIME and related methods are representative examples [4]. Second, feature attribution analysis assigns how much each feature or inter-mediate representation contributed to a prediction or a downstream representa-tion. Beyond input-dimension importance alone, the same framework can treat which upstream representations formed a given representation and which down-stream representations it influenced. Representative methods include SHAP-like approaches [4], Layer-wise Relevance Propagation (LRP) [5,6], and Integrated Gradients (IG) [7]. For Transformers, AttnLRP [8], which redistributes rele-vance along attention and matrix products, connects to this line. IG assigns contributions by integrating gradients along a path from baseline to input; LRP backpropagates relevance from output to input and allocates it layer by layer. Third, network analysis directly studies activation patterns, weight matrices, attention mechanisms, geometry of latent representations, etc., to reveal func-tions of particular units or subnetworks. Circuit analysis targeting grammatical structure or multi-step reasoning also falls in this frame. Attention Rollout [9], which aggregates inter-layer attention matrices to analyze information flow, is a representative example of this view. This work sits in feature attribution analysis above, and in particular uses set-to-set IG at within-layer module boundaries together with LRP-inspired path composition to analyze agreement between module-wise and layer-whole attri-bution (Sec. 4). 
+
+2.2 Existing Transformer Interpretations and Limits 
+
+Attention Map visualization [10,11] is standard for Transformer interpretation. However, attention weights need not match contributions to the output. A low correlation between attention scores and sensitivity-based feature importance, as well as cases where randomizing attention scores barely changes accuracy, are 4 E. Suzuki et al. 
+
+reported in [12]. Query–Key similarity alone cannot fully explain outputs shaped by value vectors and the nonlinear MLP. Attention Rollout [9] aggregates information flow by multiplying inter-layer attention matrices. It can be read as factor attribution or as network analysis of cross-layer flow. In either case it depends only on attention weights and ignores value magnitudes and MLP transforms. Norm-based analysis using value norms as well as weights is proposed in [13], showing that attention outputs depend on both. Neither directly designs contributions that separate ATT and MLP within the same layer. 
+
+2.3 Positioning of This Work 
+
+Most attribution methods surveyed in [4] (Saliency, DeepLIFT, SHAP, LIME) target scalar-valued objectives and are not naturally suited to baseline-controlled set-to-set comparison at ATT/MLP boundaries. The AttnLRP method [8] requires redesigning rules and references per oper-ation and layer, imposing cost whenever the model or implementation changes. Attention Map [10,11] and Rollout [9] rely on attention weights, ignoring values and MLP and known not to match contributions. Circuit-Tracer [14] analyzes circuits on interpretable SAE features rather than original representations. By contrast, this paper applies set-to-set IG at module boundaries on the dynamic graph of Fig. 1 and chains within-layer composition across those bound-aries in an LRP-inspired way (Sec. 4). Gradient-based attribution to intermedi-ate layers exists (e.g., intermediate-layer DeepLIFT), but our novelty is twofold: IG is applied to set-to-set maps between token representation sets with baseline control at ATT/MLP boundaries, not only to a scalar classification objective; and separated ATT and MLP contributions are composed within a layer so that path-wise flow can be compared with layer-whole attribution. 
+
+## 3 Transformer Graph View and Definitions 
+
+This section defines per-layer computation in Transformers to clarify input– output variables and weight matrices in the attention mechanism and MLP (position-wise feed-forward network), as the basis for attribution with LIG (Layer-wise Integrated Gradients). 
+
+3.1 Variables and Notation 
+
+Let sequence length be N , model dimension D, and number of heads H. Each head has dimension D/H . We use BERT Base (Uncased), so L=12 , H=12 ,
+
+D=768 . Let the input token set at layer l be z(l) = {z(l) 
+
+> i
+
+}Ni=1 , where z(l) 
+
+> i
+
+∈ RD is the representation of token i. l=0 is the embedding-layer output; l=1 , . . . , L −1
+
+correspond to outputs of each Transformer layer. Multi-Head Attention (MHA) and attention-module notation in the literature are unified under ATT as in Within-Layer Flow Analysis with LIG 5
+
+Sec. 1. Below we write attention mechanism in definitions and explanations and 
+
+ATT / IG ATT in maps, contributions, and paths (z2z, etc.). Throughout Sec. 3 and Sec. 4, we omit the layer superscript (l) and the head superscript h when context fixes them, writing e.g. zi, u i for z(l) 
+
+> i
+
+, u (l) 
+
+> i
+
+. We retain superscripts only when crossing layers or contrasting heads. 
+
+3.2 Attention Mechanism 
+
+From input zi ∈ RD , linear transforms yield Query qi, Key ki, and Value vi
+
+(each in RD/H ): 
+
+qi = WQzi + bQ, ki = WK zi + bK , vi = WV zi + bV . (1) 
+
+WQ, W K , W V are learned projection matrices from token representations to head dimension D/H ; bQ, b K , b V are the corresponding biases (per layer l and head 
+
+h; written W (l,h ) 
+
+> Q
+
+etc. before omission). Attention weights αij are defined by softmax over scaled dot products of query and key, and the head output ui is the value weighted average: 
+
+ui =
+
+> N
+
+X
+
+> j=1
+
+αij vj , αij = exp  (qi · kj )/pD/H PNk=1 exp  (qi · kk)/pD/H  . (2) We call the matrix of αij on the right-hand side of Eq. (2), arranged as weights from query position i to key position j, an Attention Map (visualizations of 
+
+αij alone, without the value weighted average on the left-hand side). ui ∈
+
+RD/H is shorthand for attention output u(l,h ) 
+
+> i
+
+at token i and head h; we write 
+
+ATT( {zi}i) = ui (strictly ATT (l,h )). {zi}i is the set of all token representations indexed by i; we sometimes omit i and write ATT( {zi}) = ui.
+
+3.3 MLP 
+
+We describe the MLP for token i at some layer l. For token i, attention out-puts u(l,h ) 
+
+> i
+
+are concatenated across heads, projected, and then passed through a residual connection and LayerNorm to obtain intermediate output oi (strictly 
+
+o(l) 
+
+> i
+
+) as 
+
+oi = LayerNorm 
+
+
+
+zi + Wo[u(l, 1)  
+
+> i
+
+; . . . ; u(l,H ) 
+
+> i
+
+] + bo
+
+
+
+, (3) and the MLP body is two fully connected layers and activation ϕ (GELU in BERT). The next-layer token representation is then given by 
+
+z(l+1)  
+
+> i
+
+= LayerNorm ( oi + W2ϕ(W1oi + b1) + b2) , (4) where Wo, W 1, W 2 are learned weights of that layer; bo, b 1, b 2 are biases. We define MLP( {u(l,h ) 
+
+> i
+
+}h) = z(l+1)  
+
+> i
+
+.With layer l fixed, within-layer computation is the composite z(l) ATT 
+
+−−−→
+
+u MLP 
+
+−−−→ z(l+1) . This work tracks contributions with z and u (strictly z(l) 
+
+> i
+
+and 
+
+u(l,h ) 
+
+> i
+
+) as nodes (Fig. 1). 6 E. Suzuki et al. 
+
+3.4 Two Views of Within-Layer Contributions 
+
+Within the same layer l, we verify whether decomposition into ATT and MLP aligns with layer-whole contributions via the two paths in Fig. 2 (bottom: the path measured separately for ATT and MLP; top: the layer-whole z2z path measured directly). In other words, this paper considers decomposition methods such that the path composition cIG ATT ◦MLP 
+
+, obtained by multiplying per-head ATT and MLP contributions and summing over heads, approaches fIG LAYER 
+
+.              
+
+> Fig. 2. Two views of contributions within layer l. On the decomposed path below, IG measures z(l)→u(l)(z2u, ATT) and u(l)→z(l+1) (u2z, MLP), multiplying per-head ATT and MLP contributions and summing over heads as the path composition. On the layer-whole z2z path above, IG directly measures normalized layer-whole contribution
+> fIG LAYER
+> on z(l)→z(l+1) (z2z) and evaluates agreement with the composition.
+
+## 4 Analyzing Within-Layer Flow with LIG 
+
+This section formalizes LIG (Layer-wise Integrated Gradients) as used in this paper. LIG uses set-to-set IG at module boundaries and LRP-inspired path composition within a layer. The LIG view is not specific to Transformers. Each internal representation (layer inputs/outputs, token embeddings, etc.) is a node, and each computational module is a local map from a set of input embeddings to a set of output embeddings. Even when the map is nonlinear, IG along an inter-polation path plus scalarization defines a scalar contribution per edge. Treating these contributions as coefficients of a linear combination in the LRP view en-ables propagation analysis across module boundaries in one framework. Below we formalize this with BERT’s attention mechanism (ATT), MLP, and layer-whole maps as examples. 
+
+4.1 Definition of Integrated Gradients 
+
+The typical IG setting attributes input x ∈ Rn to a scalar objective f : Rn → R
+
+(one logit component, loss, etc.). We first state this standard form, then appli-cation to ATT and MLP in this paper. Within-Layer Flow Analysis with LIG 7
+
+Fig. 3. Conceptual diagram of Integrated Gradients (IG). Starting from baseline in-put (zbase 1 , z base 2 ) and moving along the straight path to actual input (z1, z 2), IG line-integrates the gradient at each point to quantify how much each input dimension z1, z 2
+
+contributes to the output difference f (z1, z 2) − f (zbase 1 , z base 2 ).
+
+Consider map f : Rn → R from input x = ( x1, . . . , x n) to y = f (x). Through-out this paper, for computational cost and implementation simplicity, following [7] we use a straight path from baseline x(0) to actual input x, and define IG by 
+
+IG d(x) = ( xd − xd(0)) 
+
+Z 10
+
+∂f (x(a)) 
+
+∂x d
+
+da, (5) where x(a) = x(0) + a (x − x(0)) , a ∈ [0 , 1] . By completeness, the sum of IG over input dimensions equals the output difference f (x) − f (x(0)) .Within a layer, ATT and MLP are vector-valued maps F : Rn → Rm from input Rn to output Rm (n and m may differ; strictly, maps between sets of token representations on a sequence). To apply standard IG f : Rn → R, we map F
+
+to scalar objective g : Rn → R. Literature also uses per-output-component IG treating each Fk as f (k); we do not use that for main results. To obtain token-to-token contributions IG i,j , we apply Eq. (5) with g(x) = ϕ(F (x)) using ϕ such as the L2 norm of deviation from a reference point, in addition to interpolation and baseline design. For attention, Aj in Eq. (6); for MLP, M(l) in Eq. (8); for the layer, Lj in Eq. (9) correspond to this g. The L2 norm summarizes output-vector change in one scalar; completeness in Eq. (5) makes g(x) − g(x(0)) equal the sum of IG over input dimensions. 
+
+4.2 Relation to Layer-wise Relevance Propagation 
+
+Layer-wise Relevance Propagation (LRP) [5,6] propagates relevance so that con-servation, 
+
+X
+
+> i
+
+R(l) 
+
+> i
+
+= X
+
+> j
+
+R(l+1)  
+
+> j
+
+,8 E. Suzuki et al. 
+
+is maintained across layers. In this paper we do not directly use rule-based prop-agation such as LRP-ε. Instead, we use IG on nonlinear module boundaries, where IG completeness gives the same kind of boundary-level completeness rela-tion between scalarized output change and summed input contributions. In this sense, IG completeness plays at module boundaries the role that the conserva-tion relation plays across layers in LRP, while within-layer composition follows the LRP spirit of layerwise propagation. 
+
+4.3 Applying IG to Transformers 
+
+Below we define scalarization of Aj (ATT), M(l) (MLP), and Lj (layer-whole), and IG based on Eq. (5). To measure contribution to output token j’s representation uj , for interpola-tion parameter a ∈ [0 , 1] and interpolated input zi(a) = zbase  
+
+> i
+
++ a(zi − zbase  
+
+> i
+
+), we apply Eqs. (1)–(2) of Sec. 3 as written, with zi replaced by zi(a); the attention output is 
+
+ATT j (a) = ATT j ({zi(a)}i) = uj (a).
+
+Using the L2-norm scalarization Aj (a) for output token j, we apply Eq. (5) to 
+
+zi ∈ RD (Sec. 3). Token i’s contribution is a scalar obtained by summing over input dimensions d:
+
+IG ATT  
+
+> i,j,h
+
+=
+
+> D
+
+X
+
+> d=1
+
+(zi,d − zi,d (0)) 
+
+Z 10
+
+∂Aj (a)
+
+∂z i,d 
+
+da, Aj (a) = ∥uj (a) − uj (0) ∥2.(6) To make decomposition coefficients comparable across modules, we also use nor-malized contributions 
+
+fIG ATT  
+
+> i,j,h
+
+= IG ATT 
+
+> i,j,h
+
+Aj (1) − A j (0) , X
+
+> i
+
+fIG ATT  
+
+> i,j,h
+
+= 1 . (7) Because each IG ATT  
+
+> i,j,h
+
+is scalar, P 
+
+> i
+
+fIG ATT  
+
+> i,j,h
+
+= 1 follows from IG completeness over tokens i and dimensions d.To measure contribution to next-layer input z(l+1) , replace u(l,h ) 
+
+> i
+
+by interpo-lated input u(l,h ) 
+
+> i
+
+(a) = u(l,h ),base  
+
+> i
+
++ a(u(l,h ) 
+
+> i
+
+− u(l,h ),base  
+
+> i
+
+) in Eqs. (3) and (4) of Sec. 3. Under this interpolation, MLP output is written as 
+
+MLP (l)(a) = MLP (l)({u(l,h ) 
+
+> j
+
+(a)}h) = z(l+1)  
+
+> j
+
+(a).
+
+IG MLP  
+
+> h,j
+
+=
+
+> D/H
+
+X
+
+> d=1
+
+
+
+u(l,h ) 
+
+> j,d
+
+− u(l,h ) 
+
+> j,d
+
+(0) 
+
+ Z 10
+
+∂M(l)(a)
+
+∂u (l,h )
+
+> j,d
+
+da, (8) where M(l)(a) = ∥z(l+1)  
+
+> j
+
+(a) − z(l+1)  
+
+> j
+
+(0) ∥2. Likewise, for headwise aggregation we use normalized MLP contributions fIG MLP  
+
+> h,j
+
+so that P 
+
+> h
+
+fIG MLP  
+
+> h,j
+
+= 1 . The definition Within-Layer Flow Analysis with LIG 9
+
+is the same normalization form as Eq. (7), replacing ATT quantities with the MLP scalarization M(l). Likewise, the layer-whole map z(l) → z(l+1) is written as 
+
+LAYER (l) 
+
+> j
+
+(a) = LAYER (l) 
+
+> j
+
+({zi(a)}i) = z(l+1)  
+
+> j
+
+(a).
+
+IG LAYER  
+
+> i,j
+
+=
+
+> D
+
+X
+
+> d=1
+
+(zi,d − zi,d (0)) 
+
+Z 10
+
+∂Lj (a)
+
+∂z i,d 
+
+da, (9) where Lj (a) = ∥z(l+1)  
+
+> j
+
+(a) − z(l+1)  
+
+> j
+
+(0) ∥2. Likewise, we normalize layer-whole con-tributions by 
+
+fIG LAYER  
+
+> i,j
+
+= IG LAYER 
+
+> i,j
+
+Lj (1) − L j (0) , X
+
+> i
+
+fIG LAYER  
+
+> i,j
+
+= 1 . (10) 
+
+4.4 Within-Layer Composition and Consistency 
+
+For each layer l, head h, and output token j, we compute fIG ATT  
+
+> i,j,h
+
+via Eq. (7), normalized fIG MLP  
+
+> h,j
+
+as defined just above, and fIG LAYER  
+
+> i,j
+
+via Eq. (10). Collecting contributions along headwise paths z(l) → u(l,h ) → z(l+1) , we write 
+
+cIG ATT ◦MLP  
+
+> i,j
+
+=
+
+> H
+
+X
+
+> h=1
+
+fIG ATT  
+
+> i,j,h
+
+· fIG MLP 
+
+> h,j
+
+
+
+, cIG ATT ◦MLP  
+
+> i,j
+
+≈ fIG LAYER  
+
+> i,j
+
+. (11) Because P 
+
+> i
+
+fIG ATT  
+
+> i,j,h
+
+= 1 for each h, the composition satisfies P 
+
+> i
+
+cIG ATT ◦MLP  
+
+> i,j
+
+=
+
+P 
+
+> h
+
+fIG MLP  
+
+> h,j
+
+= 1 , so the chain of module boundaries preserves the conservation that LRP maintains across layers. The path is i → { h, j } → { j}, and Eq. (11) contracts h; “ ≈” indicates decomposition consistency between module-wise com-position and layer-whole attribution. ( cIG ATT ◦MLP 
+
+denotes the set obtained by summing headwise products over heads.) Below we define baselines for each module (comparisons in Sec. 5). 
+
+4.5 Baseline Definitions 
+
+Baseline design in this paper controls agreement with layer-whole attribution. Because MLP input is ATT output, our consistency-oriented MLP reference inherits the output at a = 0 from the ATT-side path that uses the output token itself as the reference, rather than choosing an independent baseline. We define this configuration below as ATTITBa = 0 .With the zero vector (zero), 
+
+zi(0) = 0, IG ATT ,zero  
+
+> i,j,h
+
+=
+
+> D
+
+X
+
+> d=1
+
+zi,d 
+
+Z 10
+
+∂Aj (a)
+
+∂z i,d 
+
+da. 10 E. Suzuki et al. 
+
+With Input Token Base (ITB; self-input-token reference), 
+
+zi(0) = zj , IG ATT ,ITB  
+
+> i,j,h
+
+=
+
+> D
+
+X
+
+> d=1
+
+(zi,d − zj,d )
+
+Z 10
+
+∂Aj (a)
+
+∂z i,d 
+
+da. 
+
+For i = j, zi(0) = zj gives (zi − zi(0)) = 0 , so Eq. (6) implies that the self term 
+
+IG ATT ,ITB  
+
+> j,j,h
+
+is theoretically zero [15]. We estimate the self term in two ways. Zero Base ratio (zeroRatio): 
+
+IG ATT ,ITB ,zeroRatio  
+
+> j,j,h
+
+= IG ATT ,zero  
+
+> j,j,h
+
+·
+
+P  
+
+> k̸=j
+
+IG ATT ,ITB 
+
+> k,j,h
+
+P  
+
+> k̸=j
+
+IG ATT ,zero 
+
+> k,j,h
+
+AttentionMap ratio (mapRatio): 
+
+IG ATT ,ITB ,mapRatio  
+
+> j,j,h
+
+≈
+
+X 
+
+> k̸=j
+
+IG ATT ,ITB 
+
+> k,j,h
+
+ · αj,j 
+
+1 − αj,j 
+
+For r ∈ { zeroRatio , mapRatio }, rescaling that preserves completeness: 
+
+cIG ATT ,ITB ,r i,j,h = ∥uj (1) − uj (0) ∥2
+
+P  
+
+> k̸=j
+
+IG ATT ,ITB  
+
+> k,j,h
+
++ IG ATT ,ITB ,r j,j,h 
+
+·
+
+(
+
+IG ATT ,ITB ,r j,j,h (i = j),
+
+IG ATT ,ITB  
+
+> i,j,h
+
+(i̸ = j)
+
+Ratio completion does not change ATT interpolation itself or uj (0) . For MLP (u2z), residual zi in Eq. (3) is not interpolated. With the zero vector, 
+
+u(0) = 0, IG MLP ,zero  
+
+> h,j
+
+=
+
+> D/H
+
+X
+
+> d=1
+
+u(l,h )
+
+> j,d
+
+Z 10
+
+∂M(l)(a)
+
+∂u (l,h )
+
+> j,d
+
+da. 
+
+For MLP (u2z), ATTITBa = 0 uses the ITB path on the ATT side and takes its endpoint output at a = 0 as the MLP baseline. A pure MLP-ITB that independently sets a self-token reference on MLP input also yields a trivially zero self term for the same reason and is unsuitable for contribution decomposition. Under ATTITBa = 0 ,
+
+z(l) 
+
+> k
+
+(a; j) = z(l) 
+
+> j
+
++ a
+
+
+
+z(l) 
+
+> k
+
+− z(l)
+
+> j
+
+
+
+, u(l,h ) 
+
+> j
+
+(0) = ATT (l,h )
+
+> j
+
+
+
+{z(l) 
+
+> k
+
+(0; j)}k
+
+
+
+,
+
+IG MLP ,ATTITBa=0  
+
+> h,j
+
+=
+
+> D/H
+
+X
+
+> d=1
+
+
+
+u(l,h ) 
+
+> j,d
+
+− u(l,h ) 
+
+> j,d
+
+(0) 
+
+ Z 10
+
+∂M(l)(a)
+
+∂u (l,h )
+
+> j,d
+
+da. 
+
+This keeps ATT and MLP on the same reference sequence and improves consis-tency with within-layer composition (Eq. (11)). For layer-whole attribution (z2z), we use Zero / ITB / LAYER-ITB-zeroRatio. LAYER-ITB-zeroRatio applies IG to the whole-layer map z(l) → z(l+1) . It uses ITB as the baseline and completes the self term by the ATT zeroRatio scheme. Within-Layer Flow Analysis with LIG 11 
+
+4.6 Numerical Approximation and Evaluation Metrics 
+
+Implementation approximates the integral with m segments: 
+
+IG i,j ≈ (xi − xi(0)) · 1
+
+m
+
+> m
+
+X
+
+> l=1
+
+∂f (x(a)) 
+
+∂x i a= lm
+
+.
+
+We typically use m = 32 ; decomposition-consistency procedure and baseline combinations appear in Sec. 5. 
+
+## 5 Experiments 
+
+5.1 Setup 
+
+We use pretrained BERT-base-uncased (12 layers, 12 heads). Evaluation data are PTB dev sentences from Treebank-3 [16] (Stanford Dependencies format; indices 0–1699 , 1700 sentences) used for within-layer L2 consistency analysis. Flow-consistency analysis. Following Eq. (11), the first analysis asks how close the path composition of ATT-IG and MLP-IG is to reference layer-whole IG (z2z). For each sentence, layer l, and output token j, let ec(l),LAYER :,j and ˆc(l):,j 
+
+denote the vectors of normalized contributions over input tokens i on the layer-whole z2z side and on the path-composed side, respectively. The layer-whole side uses fIG LAYER  
+
+> i,j
+
+(Eq. (10)); the composed side uses P
+
+> h
+
+(fIG ATT  
+
+> i,j,h
+
+· fIG MLP  
+
+> h,j
+
+) (Eq. (11)), and 
+
+d(l) 
+
+> j
+
+= ec(l),LAYER :,j − ˆc(l):,j 2
+
+. (12) Table 1 reports mean d(l) 
+
+> j
+
+over all evaluable (sentence , l, j ) pairs on PTB dev. Reference z2z baselines are three variants: Zero / ITB / LAYER-ITB-zeroRatio; the path-composed side compares multiple ATT/MLP baseline combinations. Table 1 reports results in three disjoint blocks; L2 ranks and absolute values are meaningful only within the same layer-whole z2z reference, not across blocks. 
+
+5.2 Consistency of Within-Layer Composition and Layer-Whole Attribution 
+
+Smaller d(l) 
+
+> j
+
+means the within-layer split into ATT and MLP more closely repro-duces layer-whole contributions under this analysis criterion. Table 1 must not be read as a single global ranking by the L2 column: absolute values differ markedly across reference blocks because the layer-whole baseline fixes both the reference vector and the L2 scale. Because ATT/MLP baseline combinations are numerous, including different self-term completions and MLP references, Table 1 compares only the three configurations with smallest L2 for each reference z2z baseline. When the reference z2z baseline is ITB, ATT(ITB) ×
+
+MLP(Zero) is minimal at L2 = 0 .214 . ATT(ITB) × MLP(ATTITBa=0) is nearly tied at 0.214 ; both rank among the best in the ITB reference group. As noted 12 E. Suzuki et al. 
+
+Table 1. Flow-consistency diagnostic for within-layer composition and layer-whole attribution. L2 averages d(l) 
+
+> j
+
+(Eq. (12)) between normalized layer-whole contributions 
+
+fIG LAYER :,j (Eq. (10)) and path-composed ˆc:,j (Eq. (11)) over all evaluable pairs. Left column: baseline of layer-whole z2z used as the reference; middle two columns: baselines on the side formed by path-composing ATT-IG and MLP-IG. Because there are many candidates, this table compares only the top three configurations with smallest L2 for each reference z2z baseline (Zero / ITB / LAYER-ITB-zeroRatio). Ranks are compared only within the same reference. z2z, z2u, and u2z abbreviate IG paths to the layer whole, Attention, and MLP respectively.                                    
+
+> Layer-whole z2z (reference) ATT-IG ×MLP-IG (path composition) L2 Rank ATT baseline MLP baseline
+> Reference z2z: Zero
+> Zero ITB-zeroRatio Zero 0.769 1Zero ITB-zeroRatio ATTITBa =00.770 2Zero Zero Zero 0.777 3
+> Reference z2z: ITB (input token)
+> ITB ITB Zero 0.214 1ITB ITB ATTITBa =00.214 2ITB ITB-zeroRatio Zero 0.239 3
+> Reference z2z: LAYER-ITB-zeroRatio
+> LAYER-ITB-zeroRatio ITB-zeroRatio Zero 0.784 1LAYER-ITB-zeroRatio ITB-zeroRatio ATTITBa =00.784 2LAYER-ITB-zeroRatio Zero Zero 0.791 3
+
+above, MLP input is ATT output. ATTITBa = 0 passes u(l,h ) 
+
+> j
+
+(0) at endpoint a =0 of the ATT ITB path as the MLP reference, inheriting the baseline sequence from ATT to MLP along within-layer flow. Using a zero-vector MLP baseline (Zero) is nearly as good (Table 1). Under the normalized flow-consistency diag-nostic, MLP(Zero) and ATTITBa = 0 best preserve agreement between module-wise decomposition and layer-whole attribution within the ITB reference group. When the reference z2z baseline is Zero, ATT(ITB -zeroRatio) × MLP(Zero) is minimal at L2 = 0 .769 ; ATT(ITB -zeroRatio) ×MLP(ATTITBa = 0) is nearly as good at 0.770 . Across all three reference groups, changing only the MLP baseline between Zero and ATTITBa = 0 alters L2 by at most ≈ 0.001 , whereas the ATT baseline determines the top-ranked configurations in Table 1 within each group. 
+
+5.3 Visualization with LIG: layer-wise token-to-token contributions 
+
+At layer l, we apply Integrated Gradients (IG) to the layer-whole map z(l) →
+
+z(l+1) including Multi-Head Attention (MHA) and MLP, obtaining a matrix of contributions from each prior-layer token representation to each next-layer token representation (layer-whole z2z; Sec. 4). Figure 4 shows a qualitative example with z2z and zero-vector baseline: contribution matrices from Layer 0 through Layer 11 side by side. In each panel the vertical axis is the prior layer (token symbols), the horizontal axis is the next layer (token indices), and circle size is contribution magnitude. Red is contribution from the target token itself; blue is from other tokens. Within-Layer Flow Analysis with LIG 13  
+
+> Fig. 4. Layerwise token-to-token contribution visualization (z2z IG, Zero baseline). Layers progress left (Layer 0, embedding output) to right (Layer 11). Input sentence tokenized on whitespace: “The firm’s drop in net reflected weaker revenue in transac-tions for its own account – a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities .”
+
+Near the input (e.g. Layer 0), contributions concentrate on the token and its neighborhood; local relations between adjacent tokens (phrases) are strong. Around Layer 4, contributions to expressions such as The firm’s drop in net 
+
+increasingly come from distant tokens such as a decline of 19% that are seman-tically linked in the sentence. From Layer 9 to Layer 11 the distribution becomes more uniform as information integration spans the whole sentence. Thus, in this qualitative example, we read a layerwise division of roles: local relation organi-zation early, organization of semantically or syntactically important relations at some distance in the middle, and sentence-wide integration late. This reading is consistent with the local-to-global hierarchy reported for interpretations based on attention weights alone, but we do not quantify it here. 
+
+## 6 Discussion 
+
+LIG provides a common criterion for comparing how closely ATT/MLP path decomposition matches layer-whole z2z attribution within a layer. We analyze this through L2 consistency. ITB measures incremental contributions, but an independent ITB on MLP tends to cause inconsistency; ATTITBa = 0 reduces that mismatch by passing the ATT integration endpoint to MLP. Using Zero as the MLP reference is nearly as good. Table 1 suggests that MLP -IG is relatively insensitive to baseline choice be-tween Zero and ATTITBa = 0 , whereas ATT -IG baseline and self-term comple-tion matter more. Figure 4 (Sec. 5.3) qualitatively suggests hierarchical roles: local organization in shallow layers, long-range semantic and syntactic relations in the middle, and sentence-wide integration in deep layers. 14 E. Suzuki et al. 
+
+Attention Maps can be strong per relation but ignore Value and MLP. The proposed LIG therefore serves as an analysis tool: at module-boundary granular-ity it makes visible where module-wise flow aligns with layer-whole attribution. Limitations. (i) Restricted to BERT-base and PTB dev sentences; because set-to-set IG at each module boundary and head is costly, we validate the framework on BERT-base, the lightest and most widely used standard encoder. (ii) Straight paths may pass through OOD regions [17,18]. (iii) Theoretical uniqueness of ITB completion (zeroRatio/mapRatio) remains future work. (iv) The local-to-global shift suggested in Fig. 4 rests on a qualitative visualization only; quantifying depth-dependent processing roles remains future work. 
+
+## 7 Conclusion 
+
+This paper viewed a Transformer as a dynamic graph with z and u as nodes and used LIG to analyze within-layer flow. Set-to-set IG measures contributions on nonlinear module boundaries, and IG completeness provides at those boundaries the same kind of completeness relation that motivates LRP-style conservation. Attention and MLP contributions are measured separately so that their path composition can be compared with layer-whole attribution. The flow-consistency analysis showed that baseline design matters, in particular for ATT -IG and the layer-whole z2z reference. Inheriting the ATT integration endpoint as the MLP reference ( ATTITBa = 0 ) ranks among the best normalized L2 configurations; 
+
+MLP(Zero) performs nearly as well once IG is normalized to a completeness-preserving allocation distribution. Layer-wise visualization further illustrated how separated ATT/MLP flow composes and how processing roles evolve across depth. In this sense, we present LIG as an XAI tool that applies set-to-set IG at module boundaries, diagnoses within-layer consistency ( L2) by comparing path composition with layer-whole attribution, and supports macroscopic reading of within-layer information flow. Future work includes application to large LLMs, baseline guidance on other tasks, and study of path shape. 
+
+## References 
+
+> 1. Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kaiser, Ł., Polosukhin, I.: Attention is all you need. In: Advances in Neural Information Processing Systems (NeurIPS). pp. 5998–6008 (2017) 2. Devlin, J., Chang, M.W., Lee, K., Toutanova, K.: BERT: Pre-training of deep bidirectional transformers for language understanding. In: Proceedings of NAACL-HLT. pp. 4171–4186 (2019) 3. Brown, T., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P., Neelakan-tan, A., Shyam, P., Sastry, G., Askell, A., et al.: Language models are few-shot learners. In: Advances in neural information processing systems. vol. 33, pp. 1877– 1901 (2020)
+
+Within-Layer Flow Analysis with LIG 15 4. Arrieta, A.B., Díaz-Rodríguez, N., Del Ser, J., Bennetot, A., Tabik, S., Barbado, A., García, S., Gil-López, S., Molina, D., Benjamins, R., Chatila, R., Herrera, F.: Explainable artificial intelligence (xai): Concepts, taxonomies, opportunities and challenges toward responsible ai. Information Fusion 58 , 82–115 (2020) 5. Bach, S., Binder, A., Montavon, G., Klauschen, F., Müller, K.R., Samek, W.: On pixel-wise explanations for non-linear classifier decisions by layer-wise relevance propagation. PLOS ONE 10 (7), e0130140 (2015) 6. Montavon, G., Lapuschkin, S., Binder, A., Samek, W., Müller, K.R.: Layer-wise relevance propagation: An overview. Explainable AI: Interpreting, Explaining and Visualizing Deep Learning pp. 193–209 (2019) 7. Sundararajan, M., Taly, A., Yan, Q.: Axiomatic attribution for deep networks. Proceedings of the 34th International Conference on Machine Learning pp. 3319– 3328 (2017) 8. Achtibat, R., Hatefi, S.M.V., Dreyer, M., Samek, W., Lapuschkin, S.: AttnLRP: Attention-Aware Layer-Wise Relevance Propagation for Transformers. In: Proceed-ings of the International Conference on Machine Learning (ICML) (2024) 9. Abnar, S., Zuidema, W.: Quantifying attention flow in transformers. In: Proceed-ings of ACL. pp. 4190–4197 (2020) 10. Vig, J.: A multiscale visualization of attention in the transformer model. In: Pro-ceedings of the 57th Annual Meeting of the Association for Computational Lin-guistics: System Demonstrations. pp. 37–42 (2019) 11. Clark, K., Khandelwal, U., Levy, O., Manning, C.D.: What does BERT look at? an analysis of BERT’s attention. In: Proceedings of the 2019 ACL Workshop Black-boxNLP. pp. 276–286 (2019) 12. Jain, S., Wallace, B.: Attention is not explanation. In: Proceedings of NAACL-HLT. pp. 3543–3556 (2019) 13. Kobayashi, G., Kuribayashi, T., Yokoi, S., Inui, K.: Attention is not only a weight: Analyzing transformers with vector norms. In: Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP). pp. 7057–7075 (2020) 14. Hanna, M., Piotrowski, M., Lindsey, J., Ameisen, E.: Circuit-tracer: A new library for finding feature circuits. In: Proceedings of the 8th BlackboxNLP Workshop: Analyzing and Interpreting Neural Networks for NLP. pp. 239–249. Association for Computational Linguistics, Suzhou, China (2025) 15. Sturmfels, P., Lundberg, S., Lee, S.I.: Visualizing the impact of feature attribution baselines. Distill (2020) 16. Marcus, M.P., Santorini, B., Marcinkiewicz, M.A., Taylor, A.: Treebank-3. Web Download (1999), lDC Catalog No. LDC99T42. https://catalog.ldc.upenn. edu/LDC99T42 . DOI: https://doi.org/10.35111/gq1x-j780 
+
+17. Sanyal, S., Ren, X.: Discretized integrated gradients for explaining language mod-els. In: Proceedings of the 2021 Conference on Empirical Methods in Natural Lan-guage Processing (EMNLP). pp. 10285–10299 (2021) 18. Hase, P., Xie, H., Bansal, M.: The out-of-distribution problem in explainability and search methods for feature importance explanations. In: Advances in Neural Information Processing Systems (NeurIPS). vol. 34, pp. 3650–3666 (2021)
