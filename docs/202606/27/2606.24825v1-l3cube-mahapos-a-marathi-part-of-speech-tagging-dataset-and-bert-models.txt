@@ -1,0 +1,373 @@
+Title: L3Cube-MahaPOS: A Marathi Part-of-Speech Tagging Dataset and BERT Models
+
+URL Source: https://arxiv.org/pdf/2606.24825v1
+
+Published Time: Wed, 24 Jun 2026 01:19:07 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# L3Cube-MahaPOS: A Marathi Part-of-Speech Tagging Dataset and BERT Models 
+
+Hariom Ingle 1,3 Ronit Ghode 1,3 Ishwari Gondkar 1,3 Jidnyasa Harad 1,3 Raviraj Joshi 2,31Department of Information Technology, PICT, Pune, India 
+
+> 2
+
+Indian Institute of Technology Madras, Chennai, India 
+
+> 3
+
+L3 Cube Labs, Pune, India 
+
+> ravirajoshi@gmail.com
+
+Abstract 
+
+Part-of-Speech (POS) tagging is a founda-tional NLP task underpinning machine trans-lation, information extraction, and syntactic parsing. Despite Marathi being spoken by over 83 million people and ranking among the top twenty most spoken languages world-wide, it remains severely under-resourced in annotated corpora and standardised evaluation benchmarks. Marathi presents unique chal-lenges for computational modelling owing to its rich morphology, relatively free word order, lack of capitalisation conventions, and perva-sive code-mixing with Hindi and English. We introduce L3Cube-MahaPOS , a gold-standard POS tagging dataset for Marathi com-prising 32,354 manually annotated sentences drawn from news text. Annotation was per-formed entirely manually by a team of Marathi-proficient annotators following a 16-tag Univer-sal Dependencies-aligned scheme. A structured preprocessing pipeline covering Unicode nor-malisation, Devanagari-aware tokenisation, and noise filtering ensures label consistency across all splits. We benchmark the dataset across six model families spanning HMM, CRF, BiLSTM, BiL-STM+CharCNN, MuRIL, and the Marathi-specific transformer MahaBERT-v2 . The best system achieves 88.67% token-level accuracy and a macro-F1 of 81.67% over 15 evaluated tag classes. We release the dataset, annotation guidelines, and trained model checkpoints to foster further research in Marathi NLP. 
+
+1 Introduction 
+
+Natural Language Processing has matured into a central pillar of artificial intelligence, transforming how computational systems comprehend and pro-duce human language. Among the elemental tasks within this field, Part-of-Speech (POS) tagging oc-cupies a privileged position: by assigning a gram-matical category—noun, verb, adjective, adverb, and so forth—to every token in a sentence, POS tagging supplies downstream components with the structural metadata they require to function reliably. Syntactic parsers, named entity recognisers, ma-chine translation decoders, and question-answering systems all trace a portion of their performance directly to the quality of the POS labels they con-sume. For high-resource languages such as English, French, and Mandarin, the combination of large treebanks, shared tasks, and pre-trained language models has pushed tagging accuracy above 97% on standard benchmarks (Manning, 2011). Tools such as Stanford NLP, NLTK, and spaCy pro-vide production-ready taggers that require mini-mal configuration. The landscape for Indian lan-guages, however, is strikingly different. Marathi is the official language of Maharashtra, India, rank-ing among the top twenty most spoken languages worldwide; yet within computational linguistics, it remains firmly categorised as a low-resource lan-guage (Kulkarni et al., 2021; Joshi, 2022a,b). The NLP challenges specific to Marathi are both numerous and interacting. First, Marathi is morpho-logically rich: a single verb stem may take dozens of inflected forms encoding tense, aspect, mood, number, gender, and honorific level simultaneously. This inflectional density multiplies vocabulary size and increases lexical sparsity. Second, the language exhibits relatively free word order, meaning syn-tactic roles must be inferred from morphological cues rather than positional patterns—the dominant strategy for English-centric models. Third, Marathi lacks capitalisation conventions that English-based systems exploit as features for proper noun detec-tion. Fourth, code-mixing with English and Hindi is pervasive in contemporary written Marathi, par-ticularly in digital and journalistic text. Finally, dialectal variation across geographic regions intro-duces orthographic inconsistencies that frustrate standard tokenisers. 
+
+> arXiv:2606.24825v1 [cs.CL] 23 Jun 2026
+
+Prior computational work on Marathi has con-centrated on tasks with immediate societal ap-plications. Kulkarni et al. (2021) introduced the L3Cube-MahaSent benchmark for sentiment analysis; Litake et al. (2022) presented L3Cube-MahaNER for named entity recognition; Pingle et al. (2023) extended sentiment analysis to a multi-domain setting; and Chaudhari et al. (2023) intro-duced social media NER for Marathi. POS tagging, however, has received comparatively little attention, and existing resources suffer from small size, non-standard tag sets, absent inter-annotator reliability reports, or restricted access. This paper addresses that gap through three co-ordinated contributions. First, we describe the con-struction of L3Cube-MahaPOS , a carefully cu-rated and manually annotated Marathi POS corpus comprising 32,354 sentences from real-world news text, annotated with 16 UD-aligned tags and sub-jected to a rigorous quality-assurance protocol. Sec-ond, we define a reproducible preprocessing and annotation pipeline—normalisation, tokenisation, ambiguity adjudication, and split stratification— that future corpus builders can adapt. Third, we present a comprehensive benchmarking study eval-uating six model families on the corpus, ranging from classical statistical models to the state-of-the-art Marathi BERT variant (Joshi, 2022a), providing the community with a transparent, reproducible baseline. The contributions of this paper may be sum-marised as follows: • We release L3Cube-MahaPOS 1, one of the first large-scale, manually annotated POS tag-ging datasets for Marathi, along with the cor-responding fine-tuned MahaPOS-BERT 23 
+
+model, with a well-documented annotation scheme. • We adopt a 16-tag set aligned with the Univer-sal Dependencies framework, ensuring inter-operability with multilingual resources. • We introduce a structured data preparation pipeline covering normalisation, tokenisation, and conflict resolution. • We benchmark six model families—from HMM to transformer-based architectures— establishing strong, reproducible baselines. 
+
+> 1MahaPOS Dataset (l3cube-pune/marathi-pos-tagger)
+> 2MahaPOS-BERT Model (l3cube-pune/marathi-pos-tagger)
+> 3https://github.com/l3cube-pune/MarathiNLP
+
+• We provide a detailed error analysis that re-veals the principal sources of tagging diffi-culty in Marathi, guiding future modelling efforts. The remainder of this paper is organised as follows. Section 2 surveys relevant prior work. Section 3 details corpus construction. Section 4 describes experimental methodology. Section 5 presents and analyses results. Section 6 acknowl-edges limitations, and Section 7 concludes. 
+
+2 Related Work 
+
+2.1 POS Tagging: A Longitudinal Perspective 
+
+Early POS taggers operated through hand-crafted rule systems that encoded morphological and syn-tactic knowledge directly as deterministic transfor-mations (Brill, 1992). Although interpretable and language-agnostic in principle, such systems de-manded prohibitive expert effort and generalised poorly across domains. The subsequent emer-gence of probabilistic sequence models—notably Hidden Markov Models and Maximum Entropy classifiers—shifted the paradigm toward corpus-driven learning, enabling taggers to acquire con-textual patterns automatically from annotated data. Ratnaparkhi (1996) first demonstrated that a max-imum entropy framework could combine diverse, overlapping contextual features without the inde-pendence assumptions imposed by Hidden Markov Models, achieving accuracy competitive with the best contemporary taggers on the Penn Tree-bank (Marcus et al., 1993). Brants (2000) sub-sequently showed, with the TnT tagger, that a care-fully smoothed second-order Markov model could match or exceed maximum-entropy approaches while remaining considerably faster to train, a find-ing that renewed interest in the practical trade-offs between generative and discriminative formula-tions. Conditional Random Fields (Lafferty et al., 2001) further improved upon their predecessors by relaxing the independence assumptions of HMMs, allowing richer feature templates that capture arbi-trary overlapping evidence from both the past and the future of an observation sequence. Toutanova et al. (2003) pushed discriminative tagging further still with a cyclic dependency network that condi-tions jointly on left and right tag contexts, reaching 97.24% accuracy on the Penn Treebank WSJ and establishing what remained, for over a decade, the benchmark feature-engineered English tagger. The deep learning era introduced representa-tion learning as an alternative to manual feature engineering. Recurrent architectures, particularly Long Short-Term Memory networks (Hochreiter, 1997) and their bidirectional extensions, learn dense token representations from context implicitly, bypassing the need for morphological analysers or gazetteers. Convolutional character-level en-coders added robustness to unseen words (Ma and Hovy, 2016). The introduction of attention-based transformer models (Vaswani et al., 2017)—and their fine-tunable pre-trained instantiations such as BERT (Devlin et al., 2019)—subsequently estab-lished new state-of-the-art results across almost ev-ery sequence labelling task, including POS tagging on the Penn Treebank and Universal Dependencies benchmarks. 
+
+2.2 POS Tagging for Indian Languages 
+
+Indian languages collectively present a challenging frontier for sequence labelling owing to their Dra-vidian or Indo-Aryan morphological complexity, script diversity, and limited annotation resources. Dedicated research programmes have produced an-notated corpora for Hindi, Bengali, Tamil, and Telugu, yet coverage remains uneven and quality varies considerably across resources. For Hindi, efforts culminating in the Hindi De-pendency Treebank (Palmer et al., 2009) provided a foundation for syntactic and POS studies. Singh et al. (2006) demonstrated that morphologically motivated features—chiefly suffix and inflectional cues—could offset the comparative scarcity of an-notated Hindi data, reporting tagging accuracy competitive with resource-rich English taggers de-spite a training corpus several orders of magnitude smaller; subsequent work leveraged multilingual BERT variants to achieve competitive accuracy de-spite limited data. Bengali POS tagging benefitted from the NLTR corpus and from pre-trained lan-guage models such as BanglaBERT. Tamil and Tel-ugu have seen similar, though smaller-scale, dataset creation initiatives. A cross-cutting observation from these efforts is that performance tends to de-grade sharply for morphologically rare tag classes and for out-of-vocabulary tokens produced by pro-ductive derivational processes—a finding that our Marathi results corroborate. 
+
+2.3 POS Tagging Beyond English: A Cross-Linguistic View 
+
+Outside the Indian subcontinent, POS tagging re-search has grappled with an equally diverse set of script- and morphology-specific obstacles, and the resulting body of work offers useful points of com-parison for Marathi. For Arabic, whose templatic morphology and absence of short-vowel diacrit-ics in everyday text create severe lexical ambigu-ity, Diab et al. (2004) introduced an SVM-based pipeline that jointly tokenises clitics, assigns POS tags, and chunks base phrases, reporting accuracy above 95% despite the lack of explicit word bound-aries for many bound morphemes. Chinese poses a distinct difficulty, since word segmentation and POS assignment are intertwined in the absence of whitespace; Ng and Low (2004) compared word-based and character-based tagging strategies com-bined with maximum-entropy classification and found that the optimal strategy depends on whether segmentation is performed jointly with or prior to tagging. Japanese shares this segmentation-tagging interdependence, and Kudo et al. (2004) showed that Conditional Random Fields could be adapted to settings where word boundaries are themselves ambiguous, improving over earlier HMM- and MEMM-based Japanese morphological analysers by reducing label- and length-bias effects. For Ko-rean, an agglutinative language with productive morpheme-internal alternation, Lee et al. (2002) addressed the dominant source of tagging error— unknown morphemes—through a syllable-pattern-based estimation method combined with a rule-based hybrid tagger. Taken together, these stud-ies reinforce a recurring theme also visible in our Marathi results: languages that lack reliable ortho-graphic cues (capitalisation, whitespace, or diacrit-ics) shift the tagging burden onto morphological and contextual features, and the most effective sys-tems are those that explicitly model this shift rather than treating the language as a script-transposed variant of English. Cross-lingual treebank initia-tives such as Universal Dependencies (Nivre et al., 2016) have since sought to harmonise annotation schemes across this typological diversity, a frame-work we adopt for L3Cube-MahaPOS. 
+
+2.4 Marathi NLP 
+
+Computational resources for Marathi have ex-panded noticeably over the past half-decade. The L3Cube-MahaSent dataset (Kulkarni et al., 2021) provided a foundational benchmark for Marathi sentiment analysis. Litake et al. (2022) pre-sented L3Cube-MahaNER, the first gold-standard NER dataset for Marathi, benchmarked across CNN, LSTM, and transformer models with Ma-haBERT achieving the best results. Pingle et al. (2023) extended this to L3Cube-MahaSent-MD, a multi-domain sentiment dataset covering movie reviews, tweets, and subtitles. Chaudhari et al. (2023) introduced L3Cube-MahaSocialNER, tar-geting informal social media text for NER. More re-cently, Kowtal and Joshi (2025) presented L3Cube-MahaEmotions for fine-grained emotion recogni-tion in Marathi using LLM-based annotation. The 
+
+MahaBERT-v2 model (Joshi, 2022a), pre-trained on a large Marathi text collection, has become the de facto starting point for Marathi downstream tasks and is the strongest model in our benchmark-ing study. Prior POS tagging work for Marathi is sparse. Existing studies have typically employed rule-based or small-scale statistical approaches with tag sets that lack standardisation, making cross-study comparison impossible. None of the publicly known datasets reach a size or annotation qual-ity that would support rigorous neural benchmark-ing. The Universal Dependencies project includes a small Marathi treebank (UD_Marathi-UFAL), but its scale—approximately 466 sentences—is insuf-ficient for reliable fine-tuning of large language models. The present paper directly addresses these gaps. 
+
+2.5 Multilingual and Transfer Learning Approaches 
+
+Recent advances in multilingual pre-training— including mBERT (Devlin et al., 2019), XLM-R (Conneau et al., 2020), and MuRIL—have en-abled cross-lingual transfer for low-resource lan-guages, including Marathi. These models, pre-trained on Wikipedia dumps across 100+ lan-guages, provide a useful baseline but typically un-derperform language-specific models trained on larger, in-domain corpora. IndicBERT and re-lated Indic-family models represent an intermedi-ate point, leveraging shared sub-word vocabularies across related Indian languages. Our benchmark-ing study includes comparisons that illuminate the trade-offs among these strategies. 
+
+> 1. Unicode Normalisation
+> 2. Devanagari Tokenisation
+> 3. Noise Filtering
+> 4. POS Annotation
+> Figure 1: Four-stage preprocessing pipeline for L3Cube-MahaPOS corpus construction.
+
+3 Dataset Construction 
+
+3.1 Data Sources and Collection 
+
+The raw corpus for L3Cube-MahaPOS was assem-bled from Marathi news portals covering diverse topical domains: politics, sports, culture, technol-ogy, and local affairs. News text was selected for three reasons: (i) it exhibits formal register with relatively consistent orthography, facilitating repro-ducible preprocessing; (ii) it provides broad vo-cabulary coverage including technical and domain-specific terminology; and (iii) it captures contem-porary Marathi as actively used in published media rather than archaic literary forms. HTML content was extracted using domain-specific scrapers, after which boilerplate elements— navigation menus, advertisements, metadata blocks—were removed via heuristic filtering. Du-plicate and near-duplicate articles were identified using MinHash locality-sensitive hashing and dis-carded. The resulting plain-text collection under-went sentence boundary detection using a rule-based system tuned to Marathi punctuation conven-tions (the Devanagari danda, a vertical bar charac-ter, as the primary sentence terminator, augmented by full stops in mixed-script contexts). 
+
+3.2 Preprocessing Pipeline 
+
+A four-stage preprocessing pipeline was applied uniformly across all data splits, as illustrated in Figure 1. 
+
+Stage 1 — Unicode Normalisation. All text was converted to Unicode NFC form. Zwj/Zwnj charac-ters appearing at morpheme boundaries—common artefacts of digital Marathi text—were retained where they alter character appearance but removed where they are semantically redundant. Visually identical but code-point-distinct Devanagari char-acters (e.g., anusvara variants) were canonicalised to a single form. 
+
+Stage 2 — Tokenisation. A Devanagari-aware tokeniser split text on whitespace and explicit punc-tuation boundaries. Compound postpositions and clitics attached to nominal stems without whites-pace (a frequent pattern in Marathi) were handled through a small exception lexicon developed by native-speaker annotators. English words embed-ded in Marathi sentences were treated as single tokens and assigned appropriate UD tags. 
+
+Stage 3 — Noise Filtering. Tokens consisting ex-clusively of numerals with currency symbols, URL fragments, email addresses, emoticons, or HTML residues were either normalised to placeholder to-kens ( <NUM> , <URL> ) or removed from the sen-tence, depending on whether their removal altered syntactic coherence. Sentences shorter than three tokens or longer than 120 tokens were excluded. 
+
+Stage 4 — POS Annotation. The cleaned token sequences were passed to the annotation workflow described in Section 3.4. 
+
+3.3 Annotation Scheme 
+
+We adopt a 16-category tag set aligned with the Universal Dependencies v2 framework, extended with a Marathi-specific postposition tag ( POSTP )that captures a grammatical class not cleanly dis-tinguished within the standard UD ADP category in Marathi. Table 1 provides the complete tag in-ventory with counts from the full corpus. While all 16 tags are present in the annotated data and used during model training, POSTP is excluded from pri-mary evaluation metrics owing to its extremely low corpus frequency (23 tokens total; 3 in the test set); the full rationale is provided in Section 4. The X tag (foreign or otherwise unclassifiable to-kens) was used during annotation but subsequently removed from model training: any sentence con-taining at least one X-tagged token was excluded entirely from all data splits, preserving label coher-ence. 
+
+3.4 Annotation Procedure 
+
+Annotation was performed entirely manually by a team of Marathi-proficient annotators. The full cor-pus of 32,354 sentences was divided into roughly equal portions and distributed across team mem-bers, each of whom tagged their assigned sentences independently. Before tagging began, all annota-tors were familiarised with a common set of written guidelines adapted from the UD annotation manual, supplemented with Marathi-specific decision trees covering postpositional clitics, verbal compounds, and code-mixed tokens. To assess annotation consistency, a subset of sen-tences was independently tagged by multiple team members. The primary sources of disagreement were ADJ /ADV ambiguity in participial construc-tions and NOUN /PROPN boundaries for institution-alised proper nouns. Disputed and ambiguous labels were resolved through group discussion among the annotators, with the majority label adopted. Decisions were recorded in an amendment log that was used to update the shared guidelines iteratively, improving consistency across later batches. A final validation pass flagged any token whose label conflicted with the majority label assigned to the same surface form in unambiguous contexts across the corpus. 
+
+3.5 Dataset Splits 
+
+The final L3Cube-MahaPOS corpus comprises 32,354 sentences across training (22,652), valida-tion (4,848), and test (4,854) splits, stratified to maintain proportional representation of all 16 tag classes and balanced domain coverage. Table 2 summarises key statistics. 
+
+4 Experimental Setup 
+
+4.1 Models 
+
+We evaluate six model configurations representing three methodological generations: 
+
+Classical Sequence Models. Hidden Markov Model (HMM): A first-order HMM with add-one smoothing for unseen emissions. Despite its sim-plicity, it provides a theoretically grounded lower bound. Conditional Random Field (CRF): A linear-chain CRF with a rich feature template comprising unigram and bigram surface forms, character suffix features of lengths 1–4, prefix features of lengths 1–3, and a binary indicator for digit-containing tokens. L-BFGS optimisation was used with L2 regularisation ( λ = 0 .1). 
+
+Neural Recurrent Models. BiLSTM: A two-layer Bidirectional LSTM operating over 100-dimensional word embeddings trained from scratch, Tag Description Count Eval                                                  
+
+> NOUN Common noun 144,597 ✓
+> VERB Main verb 58,837 ✓
+> PUNCT Punctuation 50,044 ✓
+> ADP Adposition 39,897 ✓
+> ADJ Adjective 35,527 ✓
+> ADV Adverb 28,127 ✓
+> AUX Auxiliary verb 23,155 ✓
+> NUM Numeral 15,711 ✓
+> DET Determiner 14,145 ✓
+> PRON Pronoun 14,091 ✓
+> PROPN Proper noun 10,126 ✓
+> CCONJ Coordinating conjunction 9,600 ✓
+> PART Particle 4,591 ✓
+> SCONJ Subordinating conjunction 3,254 ✓
+> INTJ Interjection 1,440 ✓
+> POSTP Postposition 23 —
+> Total tokens 453,165
+
+Table 1: Full tag set and token-level distribution across all splits of L3Cube-MahaPOS. Eval (✓) marks tags included in primary evaluation. POSTP (—) is present in training but excluded from reported macro-F1 due to critically low test support ( n = 3 ).                
+
+> Split Sentences Tokens Avg. Len.
+> Train 22,652 332,418 14.7 Validation 4,848 71,163 14.7 Test 4,854 68,878 14.2 Total 32,354 472,459 14.6
+
+Table 2: L3Cube-MahaPOS split statistics. Avg. Len. is mean sentence length in tokens. 
+
+with a CRF decoding head (BiLSTM-CRF). Dropout of 0.5 is applied after each LSTM layer. 
+
+BiLSTM + Character CNN: The above architec-ture augmented with character-level convolutional embeddings (filter sizes 3, 4, 5; 30 filters each) concatenated to the word embeddings before the LSTM. 
+
+Transformer-Based Models. L3Cube-MahaPOS-BERT (MahaBERT-v2): The 
+
+l3cube-pune/marathi-bert-v2 
+
+model (Joshi, 2022a) fine-tuned for token classification. This model was pre-trained on a large Marathi corpus and encodes subword representations via a WordPiece vocabulary. Alinear classification head over the final hidden state of the first subword of each token is used for prediction. MuRIL: Google’s Multilingual Representations for Indian Languages, included as a cross-lingual transfer baseline. 
+
+4.2 Training Details 
+
+All neural models were trained on an NVIDIA Tesla T4 GPU (15.6 GB). For L3Cube-MahaPOS-BERT, we used the following hyperparameters de-termined by a grid search over validation macro-F1: learning rate 5 × 10 −5, batch size 16, maximum sequence length 512, cosine learning rate schedule with 10% warmup, weight decay 0.01, and a maxi-mum of 10 training epochs with early stopping at patience 3. The model converged at epoch 3 (best validation macro-F1) and was restored from that checkpoint for final test evaluation. Subword-to-token label alignment follows the “first subword” strategy: the label of a word is as-signed to its first subword token; subsequent sub-word continuations receive the ignore label −100 
+
+and are excluded from loss computation and metric calculation. 
+
+4.3 Evaluation Protocol 
+
+Performance is reported using four metrics: 
+
+token-level accuracy , weighted macro precision ,
+
+weighted macro recall , and macro-F1 (unweighted across all classes). All primary results are re-ported over 15 tags , with POSTP excluded from evaluation. This decision is justified on statistical grounds: POSTP has a test-set support of only 3 to-kens (0.004% of the test set), making its per-class F1 estimate statistically meaningless—any single misclassification shifts its F1 by over 33 percent-age points. Including such an under-represented class in the macro average introduces noise rather than signal and would misrepresent the true tag-ging capability of the system across well-attested grammatical categories. Model Acc. P R F1 mac                         
+
+> HMM 72.1 63.4 61.8 63.1 CRF 80.6 72.9 71.5 72.8 BiLSTM-CRF 84.3 76.8 75.4 76.6 BiLSTM+CharCNN 85.7 78.2 77.1 78.3 MuRIL 86.9 79.4 78.8 79.7
+> MahaPOS-BERT †88.67 88.63 76.49 81.67
+
+Table 3: Test-set results (%) on L3Cube-MahaPOS. Macro-F1 over 15 tags ( POSTP excluded); see §4. 
+
+> †
+
+MahaPOS-BERT = marathi-bert-v2 fine-tuned on L3Cube-MahaPOS; 16-tag F1 = 76.57% (secondary reference). 
+
+For completeness and transparency, the full 16-tag macro-F1 (including POSTP ) is also reported in Table 3 as a secondary figure. 
+
+5 Results and Analysis 
+
+5.1 Overall Performance 
+
+Table 3 compares all model families on the test set. All macro-F1 figures are computed over 15 tags ( POSTP excluded). L3Cube-MahaPOS-BERT achieves the highest scores on all metrics, confirm-ing the value of large-scale Marathi-specific pre-training for this task. 
+
+5.2 Per-Tag Analysis 
+
+Table 4 details per-class precision, recall, and F1 for L3Cube-MahaPOS-BERT across the 15 eval-uated tags. High-frequency tags ( NOUN , VERB ,
+
+> PUNCT
+
+) achieve F1 scores above 91%, reflecting adequate training signal. Tags with moderate sup-port but morphological overlap— ADJ , ADV , PART —cluster around 75%, and PROPN and INTJ represent the principal sources of macro-F1 depression ow-ing to class imbalance and surface-form ambiguity, respectively. 
+
+5.3 Training Dynamics 
+
+Figure 2 visualises training loss, validation loss, and validation macro-F1 across ten epochs for L3Cube-MahaPOS-BERT. Training loss decreases monotonically, while validation loss exhibits a minimum at epoch 3 and gradually increases thereafter—a classic overfitting signature. Early stopping at patience 3 restores the epoch-3 check-point. 
+
+5.4 Confusion Matrix 
+
+Figure 3 shows the row-normalised confusion ma-trix for L3Cube-MahaPOS-BERT on the test set 
+
+1 2 3 4 5 6 7 8 9 10 
+
+0
+
+0.5
+
+1
+
+Epoch Value 
+
+> L3Cube-MahaPOS-BERT Training Dynamics
+> Train Loss
+> Val Loss
+> Val Macro-F1
+> Best Epoch (3)
+
+Figure 2: Training dynamics of L3Cube-MahaPOS-BERT over 10 epochs. Best validation macro-F1 of 81.87% is achieved at epoch 3 (orange dashed line), after which validation loss rises—a classic overfitting signature arrested by early stopping. 
+
+across all 16 tags. The diagonal entries con-firm strong performance on high-frequency classes:  
+
+> PUNCT
+
+(0.98), AUX (0.96), VERB (0.92), and NOUN 
+
+(0.92). The most prominent off-diagonal patterns are PROPN →NOUN (0.24), reflecting Marathi’s lack of capitalisation; INTJ →NOUN (0.16), due to sparse interjection training data; ADJ →NOUN 
+
+(0.12), from adjectival-nominal surface ambiguity; and PART →ADP (0.14). Notably, POSTP is clas-sified entirely as ADP (1.00), confirming its func-tional overlap with adpositions and the inadequacy of its 3-token test support. 
+
+5.5 Error Analysis 
+
+Examination of the confusion matrix (see Ap-pendix A) reveals three recurring error patterns: 
+
+Adjective–Adverb Confusion. Approximately 18% of ADJ errors involve tokens classified as 
+
+> ADV
+
+, and vice versa. In Marathi, several adjec-tival stems function as adverbs when they appear in a pre-verbal position without case agreement, pro-ducing surface forms identical to their adjectival counterparts. Integrating morphological features— specifically case and agreement marking—into the model’s input representation could alleviate this confusion. 
+
+Proper Noun Recognition. The PROPN class exhibits the second-lowest F1 (59.52%), with 31% of errors being PROPN tokens tagged as 
+
+> NOUN
+
+. Marathi lacks mandatory capitalisation, so the model must rely entirely on contextual cues. Named entity gazetteers or NER-joint training could provide complementary signal. 
+
+Interjection Recall. INTJ tokens are recalled at Tag Precision Recall F1-score Support                                                                   
+
+> PUNCT 96.96 97.96 97.45 7,679 AUX 94.73 95.97 95.35 3,503 VERB 93.65 92.43 93.04 8,816 ADP 91.87 93.57 92.71 6,051 NOUN 91.30 91.92 91.61 21,910 NUM 87.19 89.93 88.54 2,482 CCONJ 87.56 86.88 87.22 1,555 PRON 84.65 84.34 84.49 2,216 DET 83.33 83.84 83.59 2,141 SCONJ 80.00 81.91 80.94 503 ADV 75.76 76.09 75.93 4,203 PART 77.74 74.15 75.91 650 ADJ 77.68 71.27 74.34 5,426 PROPN 56.96 62.32 59.52 1,510 INTJ 48.22 41.30 44.50 230
+> Macro avg 82.51 80.91 81.67 —
+> Accuracy 88.67% 68,875
+
+Table 4: Per-tag classification report for L3Cube-MahaPOS-BERT on the test set (15 tags; POSTP excluded—test support = 3 tokens, F1 = 0.00). Support is token count per class. Primary metric: Macro-F1 = 81.67%. 
+
+only 41.3%, reflecting the class’s sparse representa-tion in the training data (1,440 total tokens, approx-imately 2% of the corpus). Data augmentation or class-weighted loss functions warrant investigation for minority-class tags.  
+
+> POSTP
+
+Class. With only 23 instances corpus-wide and 3 in the test split, POSTP is excluded from primary evaluation metrics. Its F1 of 0.00 on the test set confirms that no data-driven model can learn a reliable classifier from such minimal evi-dence. Future corpus revisions should either merge  
+
+> POSTP
+
+with ADP or undertake targeted collection of postpositional constructions. 
+
+6 System Architecture 
+
+Figure 4 illustrates the end-to-end architecture of the L3Cube-MahaPOS-BERT system. 
+
+Limitations 
+
+Several limitations warrant explicit acknowledge-ment. 
+
+Domain Scope. L3Cube-MahaPOS is drawn exclusively from formal news text. While this max-imises orthographic consistency, it limits generalis-ability to informal registers, social-media language, and domain-specific genres such as legal or scien-tific Marathi. 
+
+Class Imbalance and POSTP Exclusion. The  
+
+> POSTP
+
+class contains only 23 tokens across the en-tire corpus and 3 in the test split. This is not a modelling shortcut but a principled statistical deci-sion documented in the evaluation protocol. INTJ 
+
+similarly suffers from data scarcity, though its sup-port (230 test tokens) is sufficient for it to remain in primary evaluation. Future work should target stratified collection of both underrepresented cate-gories. 
+
+Morphological Ambiguity. Marathi’s inflec-tional richness means that many surface forms are compatible with multiple POS interpretations. The present system operates on surface tokens without access to morphological analysis. 
+
+Code-Mixed Text. Although the corpus con-tains English-origin tokens treated as single-token borrowings, systematic code-mixing is not explic-itly modelled. Performance on code-mixed inputs is expected to degrade significantly. 
+
+Computational Requirements. Fine-tuning L3Cube-MahaPOS-BERT requires a GPU with at least 12 GB of memory and approximately 37 minutes of training time. Lightweight alternatives for resource-constrained deployment remain unex-plored. 
+
+7 Conclusion 
+
+This paper has presented L3Cube-MahaPOS , a gold-standard POS tagging resource for Marathi— a morphologically rich, low-resource Indo-Aryan language—encompassing 32,354 manually anno-tated sentences and a benchmarking study span-ning six model families. The best-performing sys-tem, L3Cube-MahaPOS-BERT ( MahaBERT-v2 ), achieves 88.67% token-level accuracy and a macro-F1 of 81.67% over 15 well-supported tag classes. Error analysis reveals that class imbalance, mor-Figure 3: Row-normalised confusion matrix for L3Cube-MahaPOS-BERT on the test set (16 tags). Darker diagonal cells indicate correct classifications; off-diagonal mass reveals systematic confusion pairs. 
+
+phological surface-form ambiguity (particularly at the adjective–adverb boundary), and the absence of capitalisation cues for proper nouns are the domi-nant sources of residual error. These findings point to concrete directions for future work: expand-ing minority-class coverage through targeted data collection, integrating morphological analysis as auxiliary input, experimenting with class-weighted training objectives, and extending the corpus to informal and code-mixed domains. We believe that L3Cube-MahaPOS—together with the annotation guidelines, trained model checkpoints, and transparent evaluation protocol— will serve as a foundational infrastructure for Marathi NLP research and contribute meaningfully to the broader agenda of building inclusive, equi-table language technologies for the world’s under-resourced language communities. 
+
+Acknowledgements 
+
+This work was carried out under the mentorship of L3Cube, Pune. We would like to express our gratitude towards our mentor for his continuous support and encouragement. This work is a part of the L3Cube-MahaNLP project (Joshi, 2022b). 
+
+References 
+
+Thorsten Brants. 2000. TnT – a statistical part-of-speech tagger. In Sixth Applied Natural Language Processing Conference , pages 224–231, Seattle, Washington, USA. Eric Brill. 1992. A simple rule-based part of speech tagger. In Speech and Natural Language: Proceed-ings of a Workshop Held at Harriman, New York, February 23-26, 1992 .Harsh Vijay Chaudhari, Anuja Dinesh Patil, Dhanashree Lavekar, Pranav Khairnar, and Raviraj Joshi. 2023. L3Cube-MahaSocialNER: A social media based Marathi named entity recognition dataset and BERT models. In Proceedings of the 15th Annual Meeting of the Forum for Information Retrieval Evaluation ,pages 93–100. Alexis Conneau, Kartikay Khandelwal, Naman Goyal, Vishrav Chaudhary, Guillaume Wenzek, Francisco Guzmán, Edouard Grave, Myle Ott, Luke Zettle-moyer, and Veselin Stoyanov. 2020. Unsupervised cross-lingual representation learning at scale. In Pro-ceedings of the 58th Annual Meeting of the Asso-ciation for Computational Linguistics , pages 8440– 8451. Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. BERT: Pre-training of deep bidirectional transformers for language under-standing. In Proceedings of the 2019 Conference of Raw Marathi Sentence      
+
+> Preprocessing Pipeline (Normalise ·Tokenise)
+> WordPiece Tokenisation (Marathi-BERT vocab)
+> Marathi-BERT Encoder (12 layers, 768-dim hidden)
+> First-Subword Representation Pooling
+> Linear Classification Head (768 →15 classes)
+> Output POS Tag Se-quence (15 evaluated tags)
+
+Figure 4: End-to-end architecture of L3Cube-MahaPOS-BERT. The model produces logits over 15 evaluated classes; POSTP is retained in training weights but excluded from macro-F1 reporting owing to negligible test support (n = 3 ). 
+
+the North American Chapter of the Association for Computational Linguistics: Human Language Tech-nologies, Volume 1 (Long and Short Papers) , pages 4171–4186. Mona Diab, Kadri Hacioglu, and Daniel Jurafsky. 2004. Automatic tagging of Arabic text: From raw text to base phrase chunks. In Proceedings of HLT-NAACL 2004: Short Papers , pages 149–152, Boston, Mas-sachusetts, USA. S Hochreiter. 1997. Long short-term memory. Neural Computation MIT-Press .Raviraj Joshi. 2022a. L3cube-mahacorpus and ma-habert: Marathi monolingual corpus, marathi bert language models, and resources. In Proceedings of the WILDRE-6 workshop within the 13th language resources and evaluation conference , pages 97–101. Raviraj Joshi. 2022b. L3Cube-MahaNLP: Marathi natu-ral language processing datasets, models, and library. 
+
+arXiv preprint arXiv:2205.14728 .Nidhi Kowtal and Raviraj Bhuminand Joshi. 2025. L3Cube-MahaEmotions: A Marathi emotion recog-nition dataset with synthetic annotations using CoTR prompting and large language models. In Proceed-ings of the 39th Pacific Asia Conference on Language, Information and Computation , pages 419–427. Taku Kudo, Kaoru Yamamoto, and Yuji Matsumoto. 2004. Applying conditional random fields to Japanese morphological analysis. In Proceedings of the 2004 Conference on Empirical Methods in Natu-ral Language Processing , pages 230–237, Barcelona, Spain. Atharva Kulkarni, Meet Mandhane, Manali Likhitkar, Gayatri Kshirsagar, and Raviraj Joshi. 2021. L3Cube-MahaSent: A Marathi tweet-based sentiment analysis dataset. In Proceedings of the Eleventh Workshop on Computational Approaches to Subjectivity, Sentiment and Social Media Analysis , pages 213–220. John Lafferty, Andrew McCallum, and Fernando CN Pereira. 2001. Conditional random fields: Proba-bilistic models for segmenting and labeling sequence data. Gary Geunbae Lee, Jeongwon Cha, and Jong-Hyeok Lee. 2002. Syllable-pattern-based unknown-morpheme segmentation and estimation for hybrid part-of-speech tagging of Korean. Computational Linguistics , 28(1):53–70. Onkar Litake, Maithili Ravindra Sabane, Parth Sachin Patil, Aparna Abhijeet Ranade, and Raviraj Bhumi-nand Joshi. 2022. L3Cube-MahaNER: A Marathi named entity recognition dataset and BERT models. In Proceedings of the WILDRE-6 Workshop within the 13th Language Resources and Evaluation Con-ference , pages 29–34. Xuezhe Ma and Eduard Hovy. 2016. End-to-end se-quence labeling via bi-directional LSTM-CNNs-CRF. In Proceedings of the 54th Annual Meeting of the As-sociation for Computational Linguistics (Volume 1: Long Papers) , pages 1064–1074. Christopher D. Manning. 2011. Part-of-Speech tagging from 97% to 100%: Is it time for some linguistics? In 
+
+Computational Linguistics and Intelligent Text Pro-cessing , pages 171–189, Berlin, Heidelberg. Springer Berlin Heidelberg. Mitchell P. Marcus, Beatrice Santorini, and Mary Ann Marcinkiewicz. 1993. Building a large annotated cor-pus of English: The Penn Treebank. Computational Linguistics , 19(2):313–330. Hwee Tou Ng and Jin Kiat Low. 2004. Chinese part-of-speech tagging: One-at-a-time or all-at-once? word-based or character-based? In Proceedings of the 2004 Conference on Empirical Methods in Natural Language Processing , pages 277–284. Joakim Nivre, Marie-Catherine de Marneffe, Filip Gin-ter, Yoav Goldberg, Jan Hajiˇ c, Christopher D. Man-ning, Ryan McDonald, Slav Petrov, Sampo Pyysalo, Natalia Silveira, Reut Tsarfaty, and Daniel Zeman. 2016. Universal dependencies v1: A multilingual treebank collection. In Proceedings of the Tenth In-ternational Conference on Language Resources and Evaluation (LREC’16) , pages 1659–1666, Portorož, Slovenia. Martha Palmer, Rajesh Bhatt, Bhuvana Narasimhan, Owen Rambow, Dipti Misra Sharma, and Fei Xia. 2009. Hindi syntax: Annotating dependency, lexical predicate-argument structure, and phrase structure. In The 7th International Conference on Natural Lan-guage Processing , pages 14–17. Aabha Pingle, Aditya Vyawahare, Isha Joshi, Rahul Tangsali, and Raviraj Bhuminand Joshi. 2023. L3Cube-MahaSent-MD: A multi-domain Marathi sentiment analysis dataset and transformer models. In Proceedings of the 37th Pacific Asia Conference on Language, Information and Computation , pages 274–281. Adwait Ratnaparkhi. 1996. A maximum entropy model for part-of-speech tagging. In Conference on Empiri-cal Methods in Natural Language Processing , pages 133–142. Smriti Singh, Kuhoo Gupta, Manish Shrivastava, and Pushpak Bhattacharyya. 2006. Morphological rich-ness offsets resource demand – experiences in con-structing a POS tagger for Hindi. In Proceedings of the COLING/ACL 2006 Main Conference Poster Sessions , pages 779–786. Kristina Toutanova, Dan Klein, Christopher D. Man-ning, and Yoram Singer. 2003. Feature-rich part-of-speech tagging with a cyclic dependency network. In 
+
+Proceedings of the 2003 Human Language Technol-ogy Conference of the North American Chapter of the Association for Computational Linguistics , pages 252–259. Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. Advances in Neural Information Process-ing Systems , 30. 
+
+A Supplementary Material 
+
+A.1 Sample Annotated Sentences 
+
+The following examples illustrate token-level anno-tation with the 16-tag scheme: 
+
+Example 1 (transliterated): 
+
+Bh ¯arat /PROPN h ¯a/PRON ek /NUM 
+
+sundar /ADJ de´ s/NOUN ¯ahe /VERB ./PUNCT 
+
+Gloss: India is a beautiful country. 
+
+Example 2 (transliterated): 
+
+N ¯agp ¯ur /PROPN yethe /ADP 
+
+mo t. h ¯a/ADJ k ¯aryakram /NOUN 
+
+zh¯ al¯ a/VERB ./PUNCT 
+
+Gloss: A big event took place in Nagpur. 
+
+Example 3 (transliterated): 
+
+R ¯am /PROPN ¯an. i/CCONJ 
+
+S¯ıt ¯a/PROPN van ¯at /NOUN 
+
+gele /VERB ./PUNCT 
+
+Gloss: Ram and Sita went to the forest. 
+
+A.2 Confusion Matrix Observations 
+
+Row-normalised confusion analysis for L3Cube-MahaPOS-BERT on the test set (15 evaluated tags;  
+
+> POSTP
+
+omitted) reveals the following principal con-fusion pairs (off-diagonal mass > 5% ): • ADJ → ADV : 12.4% of ADJ tokens misclassi-fied as ADV .• PROPN → NOUN : 29.8% of PROPN tokens misclassified as NOUN .• INTJ → NOUN : 21.3% of INTJ tokens misclas-sified as NOUN .• PART → ADP : 14.7% of PART tokens misclas-sified as ADP .
+
+A.3 Preprocessing Decision Rules 
+
+Table 5 summarises the key preprocessing deci-sions for edge cases encountered during corpus construction. 
+
+A.4 Hyperparameter Search Space 
+
+The following hyperparameters were explored dur-ing validation-guided grid search for L3Cube-MahaPOS-BERT: • Learning rate: {1×10 −5, 3×10 −5, 5×10 −5}Token Type Decision 
+
+Pure numeral (e.g., 42 ) Retain as NUM Mixed numeral–unit (e.g., 42km )Split: NUM + NOUN URL / email Replace with <URL> ; tag as NOUN Emoticon / emoji Remove from sentence English word in Marathi context Retain; tag per context Danda (sentence-final mark) Retain as PUNCT Ellipsis (. . . ) Normalise to single PUNCT 
+
+Table 5: Preprocessing rules for edge-case token types in L3Cube-MahaPOS. 
+
+• Batch size: {8, 16 , 32 }
+
+• Warmup ratio: {0.06 , 0.10 , 0.15 }
+
+• Weight decay: {0.0, 0.01 , 0.1}
+
+The selected configuration ( lr = 5 × 10 −5,batch = 16 , warmup = 0.10 , decay = 0.01 )achieved the highest validation macro-F1 across the 3-epoch early-stopped runs.

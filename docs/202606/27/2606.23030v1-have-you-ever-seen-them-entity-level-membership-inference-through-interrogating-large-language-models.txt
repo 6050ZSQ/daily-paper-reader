@@ -1,0 +1,678 @@
+Title: Have You Ever Seen Them? Entity-level Membership Inference through Interrogating Large Language Models
+
+URL Source: https://arxiv.org/pdf/2606.23030v1
+
+Published Time: Tue, 23 Jun 2026 02:51:35 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# Have You Ever Seen Them? Entity-level Membership Inference through Interrogating Large Language Models 
+
+Yiran Zhu and Ziqi Yang Zhejiang University 
+
+Abstract —Large Language Models (LLMs) raise growing con-cerns about privacy leakage and copyright compliance. Mem-bership inference is a key tool for assessing such risks, but existing studies mainly focus on whether specific samples or sample-based data units are used for training. We argue that LLMs exhibit a human-memory-like behavior: an LLM may not memorize a specific sample verbatim, yet it can accumulate and reveal knowledge about a real-world entity from scattered mentions. This analogy motivates us to examine whether an LLM can be interrogated like a human interviewee to reveal its exposure to entity-related information. Motivated by this question, we propose entity-level membership inference, which determines whether information related to a target entity is used in LLM training. We study this task in the practical label-only black-box setting, where only generated texts are observable. We formalize the task under clue, input, and model constraints, establish the necessary and sufficient conditions for its feasibility, and instantiate five interrogation strategies based on this formalization. The strategies use limited entity clues to construct prompts, elicit entity-related responses, and infer membership from semantic features among the generated texts. We construct entity-level datasets and adapt state-of-the-art sample-level label-only methods to the entity-level setting as baselines. Experiments on person entities show that our methods achieve AUC up to 0.97 and bring gains of 6.0%– 17.5% in Balanced Accuracy over the best adapted baseline. 
+
+## 1. Introduction 
+
+The capabilities of Large Language Models (LLMs) [1] are typically built on pretraining over large-scale corpora [2], which raises concerns about privacy leakage [3], [4] and copyright compliance [5]–[8]. This issue is especially challenging because many state-of-the-art LLMs are closed-source or only partially disclosed [9], [10]. Therefore, in the absence of training-set visibility, determining whether privacy-sensitive or copyrighted data is used to train the model has become one of the central challenges in auditing privacy leakage and copyright risks in LLMs. Membership inference provides a representative technical framework for studying this problem, aiming to infer whether the given data belongs to the training dataset of a target model [11]. Existing membership inference studies are largely 
+
+sample-level : they typically assume that the adversary has access to one or more samples. Sample-level membership inference can be broadly classified into the following cat-egories. Early studies mainly consider individual samples, aiming to determine whether a given sample is used to train the target model [11]–[15]. Subsequent work extends this setting to user inference, which determines whether a collection of samples associated with a particular user is included in the model’s training data [16], [17]. Other stud-ies investigate dataset inference, where the goal is to infer whether a specific dataset is incorporated into the training process [18], [19]. Related work also studies whether the training data of generative models contain samples with a given property [20]. Although these settings differ in their inference targets, they generally use samples as the carriers of information. While sample-level membership inference has proven effective in auditing sample data exposure, LLMs exhibiting human-like capabilities drive us to rethink how privacy and copyright audits should be conducted under this new paradigm. Humans rarely acquire knowledge through the verbatim memorization of raw materials. Instead, we excel at abstracting rules and retaining high-level concepts. This raises a pivotal question: do LLMs, like humans, consolidate pre-training data into underlying concepts rather than merely retaining isolated training samples? Since “concepts” them-selves lack tractable mathematical boundaries, we draw on the classical theory of concepts 1 and make an initial attempt to use real-world entities (such as people, organizations, or events) as a concrete representation of concepts. Con-sequently, we pose a research question: can we interrogate an LLM like a human interviewee to reveal its exposure to information related to a specific entity? To address this question, we propose entity-level membership inference 
+
+under the most challenging label-only black-box setting, which aims to determine whether information related to a target entity has been used in LLM training. This human-like memory paradigm (i.e., adopting enti-ties rather than sample-level data units as inference targets) offers several advantages. First, entities better align with 
+
+> 1. “The classical theory holds that concepts are essentially definitions, each characterized by fixed rules determining to which entities the concept applies.” See: https://en.wikipedia.org/wiki/Concept.
+> arXiv:2606.23030v1 [cs.CL] 22 Jun 2026
+
+human semantic cognition and legal compliance assessment. Privacy and copyright concerns inherently center on entities (e.g., individuals, organizations/institutions, creative works) rather than isolated texts. Second, entity mentions are often short and can appear in multiple samples. Entity-level in-ference can thus help mitigate the distribution-shift problem in sample-level inference, such as temporal shifts in textual distributions, as well as the near-member problem arising from paraphrased or semantically similar texts [21]. Finally, the entity captures actual knowledge-memorization behavior. For example, a private individual may be mentioned across multiple sources, each revealing only partial information such as affiliation, address, or family relations. Even if the LLM cannot recall a specific sample, it may learn and reproduce facts, relations, and descriptive patterns associated with the individual. We present a formalization of this task and propose corresponding inference methods under clue, input, and model constraints. These constraints structurally mirror real-world interviewing scenarios where the investigator holds only incomplete, fragmented evidence and operates under limited responses. Grounded in the key intuition that the LLM exposed to an entity during training may reveal ad-ditional related information when prompted with specific information about that entity ( related information leakage ), we theoretically establish the necessary and sufficient con-ditions for the feasibility and theoretical boundaries of this task. To robustly approximate the boundary, we eschew dynamic dialogue loops due to their lack of reproducibility, feature intractability, and compounding error risks. Instead, we distill six classic paradigms from investigative interview-ing, instantiating an overarching prompt template and five independent interrogation strategies. We construct strategy-specific prompts using the target entity and its limited related clues to query the target LLM. To align with the specific elicitation logic of different strategies, the responses are paired via two pairing schemes to compute semantic similarity vectors, which are subsequently processed by a binary classifier to yield the final membership decision. We construct dedicated entity-level membership infer-ence datasets to evaluate our framework. Experiments show that our entity-level methods substantially outperform state-of-the-art sample-level label-only baselines (evaluated on samples constructed to encapsulate the target entities and their related clues). On person category entities, our five strategies surpass the strongest baseline by 6.0%–17.5% in Balanced Accuracy and 0.072–0.17 in AUC. On organi-zation category entities, our strategies consistently main-tain performance superiority, although all methods undergo performance degradation. Our framework has applicability across target LLMs of varying scales and architectures. Balanced Accuracy and AUC differences are kept within 5.0% and 0.036, respectively, although TPR@1%FPR re-mains model-dependent. Furthermore, we conduct an in-depth analysis of parameters that may affect inference per-formance. Finally, a realistic case study on the colossal LLM validates our real-world utility. We summarize our main contributions as follows:  
+
+> •
+
+To the best of our knowledge, we are the first to propose and formalize entity-level membership in-ference. For this task, we introduce an interrogation-based framework that conceptualizes LLMs as hu-man interviewees.  
+
+> •
+
+We theoretically establish the necessary and suf-ficient conditions for the feasibility of entity-level inference and instantiate five interrogation strategies to construct strategy-specific prompts.  
+
+> •
+
+We construct entity-level datasets to evaluate our methods. Experiments demonstrate the effectiveness of our methods. Furthermore, our empirical analysis reveals that localized biographical memories are eas-ier to audit than diffuse organizational knowledge. 
+
+## 2. Background 
+
+2.1. Large Language Models 
+
+LLMs acquire strong language modeling capabilities and substantial world knowledge through self-supervised pretraining on large-scale text corpora. Mainstream LLMs (such as the GPT family [9], Gemini [22], LLaMA [2], and Pythia [23]) typically adopt a decoder-only Transformer architecture [24]. At inference time, an LLM generates text by decoding from the conditional distribution pθ (ti | t<i ).Decoding can be deterministic (e.g., greedy decoding or beam search) or can incorporate additional heuristics such as contrastive decoding [25]. Alternatively, it can be stochastic, e.g., nucleus sampling, which samples from the smallest set of tokens whose cumulative probability mass exceeds a threshold [26]. When sampling is used, the temperature parameter controls the sharpness of the distribution: lower temperatures yield more peaked distributions and thus more deterministic outputs, whereas higher temperatures flatten the distribution and increase randomness and diversity. 
+
+2.2. Label-only Membership Inference 
+
+Since this paper studies membership inference under the most restrictive label-only black-box setting (where only the generated texts are observable), we focus on introducing existing label-only membership inference methods. Early label-only membership inference studies show that access to logits or probabilities is not strictly necessary for inferring membership [14]. The key intuition is that models tend to behave more consistently on training samples than on non-training samples, even when only discrete output labels are available. This work establishes the feasibility of membership inference under restricted black-box access, but it focuses on traditional classification models. Tang et al. [27] study label-only membership inference on fine-tuning datasets of personalized language models. In contrast, pretrained LLMs are trained on massive and diverse corpora and often exhibit stronger generalization ability. As a result, perturbations at the token level may be too coarse to cap-ture the tiny differences between member and non-member samples. He et al. [28] propose PETAL, which exploits the cor-relation between per-token semantic similarity and token probability to perform label-only membership inference on pretrained LLMs. PETAL first learns a linear mapping from semantic similarity to token probability using a surrogate model. It then queries the target model to obtain token-level semantic similarities for a target sample. Using the learned mapping, PETAL approximates the probabilities assigned by the target model to each token and computes an alternative perplexity score. Membership is then inferred by thresholding this score. Lu et al. [29] propose In-Context Probing (ICP) for membership inference on fine-tuned LLMs and provide a label-only variant. The main method uses probability-based black-box access. It constructs probing contexts and mea-sures changes in the target sample’s log-likelihood. Its label-only variant replaces log-likelihood with semantic similarity, following the intuition of He et al. [28]. It is experimen-tally compared against the PETAL method. ICP includes two probing strategies: reference-data-based (ICP-MIA-Ref) and self-perturbation probing (ICP-MIA-SP). The former retrieves semantically similar input-output pairs from public reference data, while the latter constructs probing contexts through generative or masking-based perturbations. Overall, existing label-only membership inference meth-ods improve practical applicability but remain sample-level. In contrast, we study entity-level label-only membership inference, which better aligns with real-world privacy and copyright concerns. 
+
+2.3. Modern Public Interrogation Techniques 
+
+In modern criminal justice and intelligence practice, the traditional confession-centered “interrogation” model is being replaced in many settings by “investigative interview-ing”. This newer approach prioritizes information gathering and the reliability of evidence. The PEACE model [30], [31] is one of the best-known procedural frameworks. It establishes predictable commu-nicative boundaries, encouraging a free narrative followed by targeted follow-up query verification. The Scharff tech-nique [32] is a cooperative intelligence-gathering approach that guides narratives by leaving deliberate information “gaps” and implying extensive prior knowledge to elicit detailed confirmations. CI/ECI [33] are mainly used with witnesses and victims. Grounded in memory-retrieval and cue-dependency theories, this framework optimizes external retrieval cues and reporting contexts to maximize recall volume and detail. SUE [34] is a tactical framework that focuses on evidence disclosure. It manipulates the timing and ordering of disclosing held external evidence to evaluate the consistency of the subject’s statement. For children and other vulnerable groups, the NICHD protocol [35] provides a structured approach to forensic interviewing. It maximizes open-ended narrative and minimizes suggestive biases by strictly controlling question types. Compared with these information-focused frameworks, the Reid technique [36] reflects a more confession-oriented tradition. It employs be-havioral analysis, leading questions, and escalating pressure to test compliance and elicit target admissions. The method is controversial. Critics argue that it can increase compliance and increase the risk of false confessions. To infer whether a target LLM has seen the specified entity object, we borrow from well-established human in-terrogation techniques used in real-world practice and adapt them to query the LLM. 
+
+## 3. Problem Statement 
+
+3.1. Problem Definition 
+
+Let M denote a target LLM trained on an unknown corpus Dtrain , I(e) denote the information related to a tar-get entity e, which may include textual mentions, factual descriptions, relations to other entities, or contextual de-scriptions associated with e. Given e, our goal is to infer whether I(e) is contained in Dtrain . We define the entity-level membership label as: 
+
+ye =
+
+(
+
+1, if I(e) ∈ D train ,
+
+0, otherwise . (1) We consider the label-only black-box setting. Thus, the adversary can only interact with M through prompts and observe generated texts. For each e, the adversary is given a clue set: Ce = {c1, c 2, . . . , c m}, where each ci is a piece of information associated with e, such as another related entity, a contextual hint, or a partial description. The adversary then conducts a sequence of prompt-based interactions with the LLM and uses the generated responses to infer ye.Inspired by real-world investigative interviewing, we identify three types of constraints that should be considered when designing entity-level membership inference methods: the clue, input, and model constraints. 
+
+The Clue Constraint. For the target entity e, the adver-sary can access only a limited number of clues related to e.Given the clue set Ce, we assume that its size is bounded by a clue budget: |C e| ≤ Bc. This constraint reflects the realistic situation where the adversary has only incomplete prior information about e.
+
+The Input Constraint. The adversary’s interaction with 
+
+M is restricted to the prompt p ∈ P HI , where PHI denotes the space of human-interpretable textual prompts. Since LLMs are trained primarily on human-generated content (such as natural language and code), human-interpretable prompts may more effectively elicit entity-related semantic associations. In addition, this constraint keeps the query process consistent with the principles of human interviews. 
+
+Model Constraints. The adversary’s operational space is limited by the access interface and usage conditions of 
+
+M. In the label-only setting, the adversary can only observe generated text responses r = M(p). The interaction is also constrained by the model’s supported capabilities (e.g., context length, format adherence) and practical interaction costs (e.g., budget, latency, rate limits). We denote the admissible set of interrogation strategies under these constraints as Πadm . Any feasible interrogation strategy must satisfy π ∈ Πadm .
+
+3.2. Motivation 
+
+The key intuition behind our framework is that an LLM may reveal entity-related information beyond what is ex-plicitly provided in the prompt when it has been exposed to such information during training. This is analogous to human investigative interviewing, where carefully designed questions may lead an interviewee to reveal additional rel-evant information that reflects their prior knowledge. We refer to this intuition as related information leak-age: under suitable prompt-based interactions, the model may generate additional information associated with e (e.g., related entities, factual descriptions, relations, or contextual details), even when such information is not directly provided in the prompt. We use ∆( e, Ce) to denote the entity-related information elicited from the model, which is observable in the model’s generated text. These observable traces can later be used to design statistics or decision rules (e.g., output sta-bility under perturbation, response consistency, behavioral differences relative to the public reference model) for entity-level membership inference under label-only access. 
+
+## 4. Method 
+
+4.1. Overview 
+
+The overview of our entity-level membership inference process is shown in Fig. 1. Guided by the theoretical bound-ary and classic paradigms from investigative interviewing, we construct strategy-specific prompts using a target entity and its limited related clues to query the target LLM. Based on the intuition of related information leakage, we map elicited response sequences into semantic similarity vectors via two pairing schemes. These vectors are subsequently processed by the binary classifier to yield the final member-ship decision. 
+
+4.2. Theoretical Analysis 
+
+Before designing the entity-level membership inference method, we first theoretically establish the necessary and sufficient conditions for the feasibility of this task. 
+
+Assumption 1 (Hermetic Parameterization and Factual Non-Hallucination) . We assume that the target model M,parameterized by θ, operates under a strictly closed knowl-edge boundary. It does not utilize external retrieval mech-anisms, tool/API executions, test-time memory updates, or any other form of knowledge injection, meaning that under a fixed architecture, training objective, and optimization pro-cess, any factual knowledge encoded in θ derives solely from the training corpus Dtrain . We further assume the principle of factual non-hallucination for out-of-distribution entities. For any target entity e, if I(e) ∩ D train = ∅, the probability Target Entity :     
+
+> Estelle May Hurll
+> Related Entities :
+> the early twentieth century, Hurll, 25 July 1863, New Bedford, Massachusetts
+> ei
+> Estelle May Hurll: the early twentieth century; Hurll; 25 July
+> 1863; New Bedford; Massachusetts; Q: Who is Estelle May Hurll?
+> Estelle May Hurll: the early twentieth century; Massachusetts; 25
+> July 1863; Hurll; New Bedford; Q: Who is Estelle May Hurll?
+> Estelle May Hurll: the early twentieth century ;Massachusetts ; Q:
+> Who is Estelle May Hurll?
+> construct
+> query
+
+Target LLM               
+
+> Multirole
+> Interrogation
+> Strategy
+> Prompt
+> Example
+> ... τ
+> Repeated
+> Multiangle
+> Gradual Estelle May Hurll: Q: Who is Estelle May Hurll? →
+> Estelle May Hurll: the early twentieth century; Q: Who is Estelle
+> May Hurll? →
+> Estelle May Hurll: the early twentieth century; Hurll; Q: Who is
+> Estelle May Hurll? →
+> ......
+> eiej
+> e1e4e2e3
+> {} →
+> {e1}→
+> {e1,e 2}→
+> ......
+> Misleading Estelle May Hurll: April 14, 2000; Hurll; 25 July 1863; New
+> Bedford; Massachusetts; Q: Who is Estelle May Hurll? eiei’
+> Pairwise Consistency
+> r1r2
+> rn
+> Sequential Transition
+> r1r2rn
+> sim
+> sim
+> text
+> response
+> similarity
+> vector
+
+Binary 
+
+Classifier 
+
+> Member
+> Non-member
+> prediction
+
+Figure 1: Overview of entity-level membership inference. 
+
+of M generating facts regarding e that are not explicitly provided in the query prompt is zero, thereby preventing the model from consistently synthesizing accurate factual configurations of unseen entities by pure chance. 
+
+Under Assumption 1, we present Theorem 1 as follows: 
+
+Theorem 1 (Necessary Condition) . If I(e) /∈ D train (i.e., the information related to the target entity e never appeared in the LLM’s training data), then there exists no interrogation strategy π satisfying π ∈ Πadm that can induce the model to output information related to e. Formally: 
+
+∀π (π ∈ Πadm ) = ⇒ ∆( e, Ce)̸ ∈ M (π(e, Ce)) (2) The proof of Theorem 1 is in Appendix A. We observe that Theorem 1 is necessary but not sufficient: even if I(e) ∈Dtrain , the adversary still needs to know an interrogation strategy π from e to pt that can reliably extract I(e). A sufficient condition (ideal scenario) is the adversary’s ability to arbitrarily control the prompt space, i.e., to construct a perfect prompt for any internal knowledge. 
+
+Theorem 2 (Sufficient Condition) . Assume there exists a “perfect prompt mapping function” F satisfying: 
+
+1) For any internal entity-related information I(e) ∈Dtrain , p∗ = F(e, Ce) satisfies p∗ ∈ P HI ;
+
+2) M(p∗) = ∆( e, Ce) = I(e), i.e., upon receiving p,
+
+M outputs information ∆( e, Ce) exactly matching 
+
+I(e).Then for any entity-related information I(e) (as long as 
+
+I(e) ∈ D train ), there exists an interrogation strategy π such that ∆( e, Ce) ∈ M (π(e, Ce)) .
+
+The proof of Theorem 2 is in Appendix A. This theorem describes the theoretical upper bound on what can be achieved: if there existed a way to losslessly map any internal knowledge to a safe prompt, then any information could be extracted. In practice, such a perfect mapping F
+
+is extremely difficult (or impossible) to construct, because there is a non-linear, non-invertible gap between the model’s internal representations and human-interpretable texts. Con-sequently, the central goal of practical interrogation is to 
+
+approximate this ideal limit. Through multiple and indirect questioning, piece together and infer the target information from the model’s outputs. 
+
+4.3. Interrogation-specific Prompt Construction 
+
+To approximate the theoretical upper bound of interroga-tion, one might intuitively propose a dynamic conversational feedback loop similar to human interviews. However, open-ended conversational loops introduce severe methodolog-ical challenges. (1) Lack of reproducibility, as dynamic intermediate responses generate massive non-deterministic branching across models. (2) Feature intractability, as dy-namic conversations yield variable-length, highly unstruc-tured dialogue trajectories that are difficult to align. (3) Semantic drift and compounding errors, where a single early incorrect generation or hallucination permanently derails the subsequent questioning path. Consequently, to robustly approximate the theoretical elicitation threshold, we eschew active dialogue and instead propose a standardized, prede-fined static prompting scheme. To systematically construct this interrogation framework, we refer to the rich literature of investigative interviewing and distill six classic paradigms: the PEACE model [30], the Cognitive Interview and Enhanced Cognitive Interview (CI/ECI) [33], the Strategic Use of Evidence (SUE) tech-nique [34], the NICHD Protocol [35], the Scharff technique [32], and the Reid technique [36]. We leverage the Scharff technique as our overarching prompt template construction guideline, while instantiating the remaining five specialized techniques into our five distinct interrogation strategies (i.e., 
+
+multirole , repeated , multiangle , gradual , and misleading 
+
+interrogation). All five strategies follow the same clue and input con-straints: given a target entity, the adversary uses only a limited set of related entities as clues and formulates human-interpretable prompts. They also share the same label-only model constraint, where the adversary observes only gen-erated texts. The only optional capability we consider is whether the adversary is allowed to adjust the generation temperature, a commonly exposed hyperparameter that con-trols output randomness and creativity in many commercial LLM APIs [37]. In contrast, the default text generation mode is greedy decoding, which selects only the tokens with the highest probability. In addition, inspired by the questioning principle in the Scharff technique, where blanks are deliberately left for the informant to fill in [32], we construct prompts using only the given information (i.e., the target entity e and its limited related entities Cee =
+
+{ce
+
+> 1
+
+, c e
+
+> 2
+
+, . . . , c em}) rather than introducing additional external knowledge. Therefore, the initial prompt p0 is constructed as: “ e: ce
+
+> 1
+
+; ce
+
+> 2
+
+; . . . ; cem; Q: Who/What is e?”. To establish a stable benchmark for subsequent comparisons, we define the global baseline response rbase generated under the default greedy decoding setting ( τ = 0 ) as: 
+
+rbase = M(p0, τ = 0) (3) 
+
+Multirole interrogation queries the target LLM as if it were multiple witnesses with different response styles. The investigative interviewing guidelines based on the PEACE model suggest that, when multiple witnesses are present, they should be separated immediately and interviewed indi-vidually [38], [39]. Inspired by this principle, we simulate different “witnesses” by adjusting the temperature τ of the target LLM, which induces different generations for the same prompt. Formally, the adversary constructs a set of 
+
+n prompt–temperature pairs {(p0, τ i)}ni=1 with distinct tem-peratures ( τi̸ = τj for i̸ = j). This corresponds to the least restrictive variant of our label-only setting: the adversary still observes only the generated texts, but is additionally allowed to control the temperature during generation. 
+
+Repeated interrogation repeatedly questions the target LLM with the same set of clues while varying their order. In CI/ECI, techniques such as change order and reverse order encourage interviewees to recall events [33]. Similarly, the SUE framework suggests that the timing and order of evidence disclosure can influence an interviewee’s statement [34]. Motivated by these observations, we construct a set of 
+
+n prompts {pi}ni=1 using distinct permutations of the related entity sequence (denoted as si where si̸ = sj for i̸ = j), thereby obtaining different generated texts. 
+
+Multiangle interrogation aims to elicit responses from the target LLM under different contextual angles. CI/ECI emphasizes changing perspectives [33], while SUE encour-ages examining the consistency of statements across dif-ferent evidence-based perspectives [34]. Following these principles, we construct a set of n prompts {pi}ni=1 us-ing randomly sampled subsets of the related entity set Cee
+
+(denoted as Cei ⊆ C ee where Cei̸ = Cej for i̸ = j). Each subset provides a distinct contextual angle for interrogating the target LLM. 
+
+Gradual interrogation progressively reveals clues to guide the target LLM. This design is inspired by SUE’s strategic or late disclosure of evidence [34] and the PEACE model’s practice of eliciting an initial free narrative be-fore using follow-up questions for detail elicitation and consistency checking [30]. We initially construct a prompt using only the target entity, and then gradually append related entities to the prompt. This produces a sequence of prompts with increasing amounts of information. Formally, the adversary constructs a sequence of prompts {pi}|C ee |+1 
+
+> i=1
+
+by incrementally appending related entities to the target entity e (denoted as Cei ⊂ C ej for 1 ≤ i < j ≤ |C ee | + 1 ,where Cei represents the subset of appended related entities in pi, and Ce 
+
+> 1
+
+= ∅). 
+
+Misleading interrogation examines whether fabricated or perturbed clues can steer the target LLM toward different generations. Traditional confession-oriented methods, such as the Reid technique, often involve false-evidence tactics [36], which have been highly controversial in human interro-gation. We explore whether a similar idea has an effect when interrogating LLMs. To reduce the risk of inducing halluci-nations [40], we introduce only minimal perturbations when constructing the prompts, rather than fabricating entirely new contexts. Formally, the adversary constructs a set of prompts {pi}|C ee | 
+
+> i=1
+
+. The adversary generates a corresponding set of new entities (unrelated to e) eCee , and constructs each prompt pi by replacing ei with eei ∈ eCee (where eei̸ = eej for 
+
+i̸ = j). In practice, the theoretical prompt space size Nπ varies significantly across different interrogation strategies, which determines our query count nπ for each strategy. For the first three strategies, exhaustively traversing their theoretical search spaces is computationally infeasible due to continu-ous domains or combinatorial explosion:  
+
+> •
+
+Multirole: since generation temperatures τ are drawn from a continuous range, the theoretical prompt space is infinite.  
+
+> •
+
+Repeated: the number of unique permutations of related entities scales factorial as |C ee |!. 
+
+> •
+
+Multiangle: the power set of related entities leads to 2|C ee | possible subsets. When |C ee | is large, traversing these spaces is prohibitive. Thus, for the three strategies, we restrict the practical query count to a fixed number nπ = n prompts (where n is a hyperparameter). Conversely, the remaining two strategies can be exhaustively traversed within linear bounds, yield-ing exactly |C ee | + 1 prompts for incremental appending (π = gradual ) and |C ee | prompts for entity perturbation (π = misleading ). 
+
+4.4. Membership Inference based on Related Infor-mation Leakage 
+
+Based on the intuition of related-information leakage, we perform membership inference using the sequence of 
+
+nπ textual responses obtained by querying the target LLM 
+
+M with nπ constructed prompts. A naive idea would be to directly quantify the amount of entity-related information elicited from M. However, defining and compiling a com-plete, closed-form set of ground-truth reference texts for any given target entity is inherently impractical. To overcome this hurdle, we instead pair the generated responses and cal-culate their semantic similarities, which serves as a tractable, indirect proxy. Notably, while the multirole interrogation strategy yields n texts across n temperatures, the greedy-decoded response rbase (representing an additional witness’s response generated under the same prompt) is also integrated into the pairing process. Thus, we define the text sequence to be paired Rπ as [rπ 
+
+> 1
+
+, . . . , r πnπ ] where π̸ = multirole and 
+
+[rbase , r π 
+
+> 1
+
+, . . . , r πnπ ] where π = multirole .To align with the specific elicitation logic of different strategies, we introduce two distinct text pairing schemes (i.e., Pairwise Consistency and Sequential Transition) to calculate the semantic similarity of the texts and construct the similarity vector vπ for e. Pairwise Consistency. In-spired by previous membership inference [37], we evalu-ate the overall semantic consistency across all responses for four strategies except gradual interrogation, yielding a vector of dimension |R π |(|R π |− 1) 2 . This scheme operates on the premise that if e is a member, M’s responses across different prompts will consistently gravitate toward the same underlying factual core, yielding high global similarity. For non-members, the lack of a shared knowledge base will instead result in low pairwise similarity. Sequential Transition. For gradual interrogation, we track the step-by-step marginal effect of gradually increasing information. Hence, we only compare each response rπi with its im-mediate predecessor rπi−1, yielding a vector of dimension 
+
+|R π |− 1 = |C ee |. This sequential pairing allows us to capture how the similarity of the model’s responses shifts as clue density increases. Thus, we define vπ as: 
+
+vπ =
+
+( sim (rπi , r πj )  
+
+> 1≤i<j ≤|R π|
+
+, for π̸ = gradual 
+
+sim (rπi−1, r πi )|R π | 
+
+> i=2
+
+, for π = gradual (4) where sim (·, ·) is a semantic similarity function. Finally, the similarity vector vπ is used as input to a binary classifier BC , which returns a prediction for the membership status of the target entity e. Specifically, we consider three widely-adopted classification models for BC 
+
+representing distinct machine learning paradigms, namely Random Forest (RF), Logistic Regression (LR), and Multi-Layer Perceptron (MLP), along with a simple thresholding classifier based on the Mean Value (MV) of similarity scores. For each strategy, we train BC on a training set consisting of known member and non-member entities, and subsequently evaluate its binary classification performance on a disjoint set of unseen testing entities. 
+
+## 5. Evaluation 
+
+In this section, we first outline our experimental setup and evaluate the effectiveness of our entity-level member-ship inference. We then assess its applicability across target LLMs of varying scales and architectures, followed by a parameter analysis. Finally, we present a case study to demonstrate its practical utility. 
+
+5.1. Experimental Setup 
+
+The experiments are conducted on a desktop com-puter with Ubuntu 22.04LTS operating system, 3.0 GHz Intel® Xeon® Gold 6248R CPU, 251GB memory, and two NVIDIA RTX A6000 GPUs. 
+
+5.1.1. Datasets. To evaluate the effectiveness of our pro-posed methods in inferring entity-level membership, we apply the Named Entity Recognition (NER) technique [41], [42] to identify entities from texts and target two representa-tive categories of entities: PERSON and ORG . The selection of these categories is rooted in contemporary privacy and copyright concerns. Specifically, the exposure of PERSON 
+
+related information may not only compromise individual privacy (such as PII leakage), but also infringe upon intellec-tual property (such as proprietary roles within copyrighted textual works). Similarly, the exposure of ORG related information may jeopardize corporate confidentiality (e.g., sensitive user data) and violate institutional copyrighted assets. For each entity type, we create a balanced dataset containing a fixed number of member entities alongside an equal number of constructed non-member entities. 
+
+Member Entity Recognition. Identifying member enti-ties is relatively straightforward, as many LLMs are pre-trained on widely used corpora. Inspired by document inference [43], we focus on a representative benchmark, RedPajama-Data-1T [44]. It comprises seven distinct data sources, such as Wikipedia [45], C4 [46], GitHub [47], Books (Project Gutenberg [48] and Books3 [49], [50]). RedPajama-Data-1T is released as an open-source dataset, with the sole exception of the Books3 subset, which has been removed from public distribution due to copyright infringement complaints. Specifically, we first use the en core web trf model of the spaCy library [51] (which is a widely used NLP tool [52]–[55]) to extract entities from Wikipedia in RedPajama-Data-1T (a total of 6,630,651 Wikipedia pages in English). For each page, if the first extracted entity em within the body text belongs to PERSON or ORG and shares a lexical overlap with the page’s title (to accommodate partial name matches in either the title or the text), we consider the page to be primarily centered around em. Thereby, we designate em as a candidate member entity and all other entities co-occurring within the same body text as candidate related entities (serving as contextual cues). For each entity category, we randomly sample 1,000 entities to constitute the set of member entities within our dataset. To guarantee data quality, each candidate target entity is subjected to a secondary verification process via Gemini 3 Flash [22]. Any entity deemed mismatched with its assigned category (e.g., an entity under the PERSON category classified as non-
+
+PERSON by Gemini 3 Flash) is filtered out. Furthermore, we select the first 20 unique entities that appear chronologically in the text as the related entity set Ceem for PERSON and the first 25 for ORG (see Section 5.4.1 for details on the selection of the number of Ceem ). 
+
+Non-member Entity Construction. Constructing non-member entities is more challenging. To minimize distri-bution shift and near-member effects, we construct non-member target entities from member entities, ensuring that the resulting entities remain close to the members while being unlikely to appear in the training data. Specifically, to construct a candidate non-member target entity enm , we randomly sample two pages and extract a sin-gle target-category entity from each, denoted as e1 
+
+> m
+
+and e2
+
+> m
+
+.We partition both entities at their respective midpoints based on space-delimited word counts, utilizing floor division (⌊L/ 2⌋, where L represents the word length) to determine the boundary. We then concatenate the first half of e1 
+
+> m
+
+and the second half of e2 
+
+> m
+
+to yield the new combined entity enm .Next, we collect entities from different Wikipedia pages as clues Ceenm to enm . Pages are randomly selected one at a time, with only a single entity being extracted from each page, until the total counts of 20 for PERSON and 25 for 
+
+ORG are reached. Consistent with the processing of member entities, we employ Gemini 3 Flash to perform a secondary verifica-tion on each enm . Additionally, to mitigate potential false positives, we search through the publicly available sub-datasets within RedPajama-Data-1T, filtering out any can-didate cases where enm and its associated clues Ceenm co-occur in the same text. In practice, we observe that this filter is highly stringent: searching with merely enm alongside five entities in Ceenm already yields zero co-occurrences. We note one exception regarding the Books3 subset: due to its official withdrawal from public distribution, we are unable to perform this search-based filtering on its raw texts. Out of strict respect for copyright compliance and to uphold reproducible research standards, we refrain from utilizing unauthorized external mirrors. Nevertheless, given that zero co-occurrences are consistently achieved across the other massive subsets, we are confident that the probability of 
+
+enm and Ceenm accidentally co-occurring in Books3 is sta-tistically negligible and does not compromise our evaluation framework. 
+
+Training and Evaluation Set Partitioning. For each entity category, we randomly partition the dataset of 1,000 members and 1,000 non-members D1 
+
+> e
+
+into training and evaluation sets in a 4:1 ratio. The training set is used both to train the binary classifier BC and to perform hyperparameter tuning. Detailed hyperparameter configurations for BC are provided in Appendix B. Specifically, we perform a K-fold cross-validation ( K = 5) for each hyperparameter configuration, evaluating each candidate set by averaging its scores (we use AUC) in the K validation folds. The configuration that yields the highest average score is selected as the optimal hyperparameter set. Using these optimal hy-perparameters, we then retrain the final model on the entire training dataset. In contrast, the evaluation set is reserved strictly for a single, final evaluation to rigorously assess the model’s generalization capability on entirely unseen data. Additionally, we randomly sample 10% each of the member and non-member entities from the training set to form the dataset D2 
+
+> e
+
+⊂ D1 
+
+> e
+
+for our parameter analysis. 
+
+5.1.2. Target Models. For our evaluations, we use two distinct families of open-source LLMs pretrained only on RedPajama-Data-1T [44]: OpenLLaMA [56] and the base model of RedPajama-INCITE [44]. OpenLLaMA is a fully open-source reproduction of Meta’s LLaMA [2]. It is pub-licly available in three parameter scales: 3B, 7B, and 13 B. The base model of RedPajama-INCITE adopts the Pythia model architecture [23]. It has two scaled variants consisting of 3B and 7B parameters. 
+
+5.1.3. Other Parameter and Implementation Details. The following are the four parameter details and two implemen-tation details of our proposed methods. 
+
+Parameter Details. (a) For the multirole interrogation strategy, we employ the designated temperature set {0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8 } proposed by Hu et al. [37]. In their work, the authors evaluate the outputs of Vision-Language Models on target samples across various temperatures. (b) The number of related entities for PERSON and ORG is set to 20 and 25, respectively (see Section 5.4.1 for details). (c) The maximum token generation length for the target LLM is capped at 256 (see Section 5.4.2 for details). (d) In Sec-tion 4.3, we analyze that the theoretical prompt spaces of the three interrogation strategies (i.e., multirole, repeated, and multiangle) are either continuous or subject to combinatorial explosion. In our experiments, we restrict the actual number of prompts to 14 (see Section 5.4.3 for details). 
+
+Implementation Details. (a) For the misleading strat-egy, we generate a new entity set eCee for each target entity 
+
+e. For a member entity em, we randomly select a page text (excluding its source text tm) and extract a random entity 
+
+e′ from it in each iteration. Under the condition that e′
+
+does not appear in tm, we append it to eCeem . We enforce the constraint | eCeem | = |C eem |, thereby ensuring that the replacement entities utilized to construct misleading prompts are unique. Similarly, for a non-member entity enm , we randomly select a page text, extract a random entity, and add it to eCeenm provided that it is absent from both the original clue set Ceenm and the growing set eCeenm itself. (b) We generate embeddings for paired texts and compute their semantic similarity using the sentence-transformers/all-MiniLM-L6-v2 model [57], which is widely adopted for measuring text semantic similarity [28], [29], [58]. 
+
+5.1.4. Baseline Methods. To the best of our knowledge, we are the first to propose entity-level membership inference, leaving no direct baselines for comparison. To establish benchmarks, we leverage state-of-the-art label-only sample-level membership inference methods (i.e., PETAL [28] and the label-only variant of ICP-MIA [29], see Section 2.2 for details). To accommodate their sample-level input require-ment, we convert each target entity and its related entities into a 256-word text sample. Specifically, for member entities, we retrieve the Wikipedia source text housing the target and its related entities, retaining only the first 256 words. Since the target is the first identified entity and its related entities are captured chronologically thereafter, this 256-word window is guar-anteed to encompass the entire entity set. For non-member entities, inspired by ICP-MIA [29], we employ Qwen-2.5-72B-Instruct to generate synthetic text containing the target and its related entities (prompts are detailed in Appendix C). We set max new tokens to 512 and subsequently truncate the generated output to the first 256 words to maintain length consistency. Notably, because member samples originate from genuine human-written Wikipedia entries while non-member samples are synthesized by Qwen, the sample-level methods might exploit subtle stylistic discrepancies as a classification shortcut, thereby granting the baselines an additional inference advantage. See Appendix D for detailed configuration information of baselines. 
+
+5.1.5. Metrics. We adopt three common metrics to evaluate MIAs. Balanced Accuracy measures the attack’s perfor-mance on a balanced set of members and non-members [11], [14]. It is defined as the average of the true positive rate (TPR) and true negative rate (TNR). The area under the receiver operating characteristic curve ( AUC ) is a threshold-independent metric widely used for membership inference [28], [37], [43] that summarizes the attack’s ability to dis-tinguish members from non-members across all decision thresholds. Following prior work [12], we also report the TPR at a low false positive rate ( TPR@low FPR ). It characterizes the attack success under a stringent false-alarm constraint and thus reflects high-confidence privacy leakage of the LLM’s training data. 
+
+5.2. Main Results 
+
+5.2.1. Comparison to Baselines. This experiment details the performance of our proposed entity-level membership inference on OpenLLaMA-7B across two representative en-tity categories ( PERSON and ORG ), comparing it with three state-of-the-art label-only sample-level membership infer-ence methods: PETAL [28], Masking-based ICP-MIA-SP [29], and Generation-based ICP-MIA-SP [29]. To facilitate evaluation, these sample-level baselines are performed on text samples constructed to encapsulate the target entities and their related clues. As shown in Table 1, our entity-level inference significantly outperforms the label-only sample-level baselines. On the PERSON category, our framework utilizing all five strategies outperforms the strongest baseline (PETAL) by 6.0%–17.5% in Balanced Accuracy and by 0.072– 0.17 in AUC. Specifically, the repeated strategy with MLP achieves the highest Balanced Accuracy of 93.0%, while the same strategy with RF yields a peak AUC of 0.97. In TPR@1%FPR, our multirole and multiangle strate-gies significantly surpass PETAL (which scores 38.0%) by 21%–34.5%, whereas the remaining three strategies show lower utility. In TPR@10%FPR, four strategies outperform TABLE 1: Results of various inference targets and label-only inference methods on entity category labels PERSON and 
+
+ORG . The target LLM is OpenLLaMA-7B. (MV: Mean Value, RF: Random Forest, LR: Logistic Regression)                                                                                                                                                                                                     
+
+> Inference Target Inference Method
+> PERSON ORG
+> Balanced AUC TPR@FPR Balanced AUC TPR@FPR Acc FPR=1% FPR=10% Acc FPR=1% FPR=10% Sample-level PETAL [28] 0.755 0.800 0.380 0.585 0.673 0.685 0.190 0.390 ICP-MIA-SP (Masking-based) [29] 0.603 0.598 0.020 0.190 0.558 0.548 0.005 0.050 ICP-MIA-SP (Generation-based) [29] 0.675 0.715 0.235 0.395 0.650 0.708 0.085 0.370 Entity-level multirole interrogation MV 0.913 0.964 0.695 0.910 0.835 0.886 0.160 0.720 RF 0.915 0.962 0.590 0.925 0.823 0.885 0.260 0.730 LR 0.915 0.965 0.685 0.915 0.838 0.889 0.200 0.770
+> MLP 0.915 0.964 0.675 0.915 0.825 0.889 0.265 0.740 repeated interrogation MV 0.920 0.967 0.305 0.920 0.805 0.861 0.025 0.610 RF 0.928 0.970 0.265 0.925 0.828 0.877 0.050 0.560 LR 0.923 0.967 0.290 0.915 0.808 0.861 0.025 0.605 MLP 0.930 0.965 0.250 0.940 0.810 0.859 0.015 0.565 multiangle interrogation MV 0.905 0.968 0.695 0.885 0.825 0.883 0.060 0.585 RF 0.913 0.968 0.725 0.910 0.830 0.892 0.100 0.635 LR 0.910 0.969 0.705 0.905 0.828 0.886 0.085 0.615 MLP 0.913 0.967 0.700 0.920 0.820 0.886 0.105 0.625 gradual interrogation MV 0.830 0.872 0.215 0.535 0.750 0.807 0.065 0.490 RF 0.823 0.885 0.095 0.660 0.775 0.826 0.035 0.455 LR 0.815 0.879 0.170 0.560 0.740 0.807 0.060 0.460 MLP 0.823 0.881 0.240 0.540 0.750 0.814 0.035 0.465 misleading interrogation MV 0.847 0.910 0.050 0.725 0.723 0.760 0.030 0.275 RF 0.885 0.943 0.105 0.855 0.733 0.801 0.160 0.425 LR 0.878 0.934 0.150 0.810 0.713 0.766 0.050 0.320 MLP 0.878 0.931 0.060 0.830 0.725 0.755 0.000 0.235
+
+PETAL by 14%–35.5%, while the gradual strategy performs comparably to the baseline. Among the baselines, PETAL is the strongest, followed by generation-based ICP-MIA-SP. The masking-based variant performs worst due to random masking’s severe semantic destruction. In addition, the performance of all inference methods is lower on ORG than on PERSON . We attribute this cross-category performance gap to the differing data profiles of these entities in LLMs’ pre-training corpora. Biographi-cal information surrounding specific individuals is typically highly localized, unique, and concentrated within cohesive narrative structures (e.g., biography books). In contrast, organizational data frequently appears in scattered, diverse, and generic contexts (e.g., financial reports and news aggre-gators). This dispersion leads to weaker factual association networks in the model, making memory retrieval more difficult. Despite this, our entity-level inference maintains its superiority on ORG . All five proposed strategies con-sistently outperform baselines in both Balanced Accuracy and AUC. In TPR@1%FPR, the multirole strategy excels over the strongest baseline across RF, LR, and MLP. In TPR@10%FPR, four of our proposed strategies exceed the best baseline. 
+
+5.2.2. Effectiveness Analysis of Different Interrogation Strategies. We delve into the performance discrepancies among our five proposed interrogation strategies. As shown in Table 1, on the PERSON category, multirole, repeated, and multiangle strategies exhibit outstanding and compara-ble performance. Specifically, the repeated strategy dom-inates in Balanced Accuracy, AUC, and TPR@10%FPR. However, its TPR@1%FPR is over 28.5% lower than the other two, while the multiangle strategy achieves the peak performance of 72.5%. We hypothesize that while the mul-tiangle strategy alters the semantic substance of the queries, the repeated strategy merely permutes the order of identical lexical components. LLMs are sensitive to identical con-text permutations (known as permutation instability [59]), which occasionally trigger erratic attention shifts and pro-duce highly divergent response outliers for a minor sub-set of member samples. These outliers heavily penalize TPR@1%FPR but have a negligible impact on average met-rics like AUC. The second tier is occupied by the misleading strategy, followed by the gradual strategy at the bottom. In contrast, on the ORG category, the same top three strategies maintain their dominance, while the second and third tiers swap. This shift is rooted in the highly diffuse and weakly bounded nature of ORG training data, making the model susceptible to the adversarial suggestibility of the misleading strategy. To intuitively investigate these performance discrepan-cies, we project the semantic similarity vectors of D2 
+
+> e
+
+for multirole repeated multiangle gradual misleading (a) PCA multirole repeated multiangle gradual misleading (b) t-SNE 
+
+Figure 2: PCA and t-SNE visualizations of semantic similarity vectors for generated texts of member vs. non-member entities on PERSON across five strategies. Red data points: members. Green data points: non-members. 
+
+PERSON using PCA [60] (Fig. 2a) and t-SNE [61] (Fig. 2b), where red and green points denote member and non-member entities, respectively. Across both visualizations, members and non-members exhibit distinct regional clustering, par-ticularly under the top-performing multirole, repeated, and multiangle strategies. While the remaining two strategies show weaker partitioning, the misleading strategy exhibits a visibly cleaner separation than the gradual strategy. This arises because the gradual strategy (utilizing Sequential Transition) captures the trajectory of shifting similarities rather than the absolute similarity levels evaluated under Pairwise Consistency. Overall, this geometric separation aligns with the performance ranking in Table 1, confirming that our generated similarity vectors are highly discrimina-tive, which simplifies the decision boundary. Notably, non-member points display significantly higher spatial dispersion than member points (Fig. 2a). This occurs because querying a memorized entity consistently activates a cohesive internal memory, producing stable and coherent outputs that cluster tightly in the vector space. Conversely, for an unmemorized entity, the model lacks the corresponding internal knowledge representation and fails to produce consistent, entity-specific information, leading to scattered vector coordinates. 
+
+5.3. Applicability to Different Target LLMs 
+
+In this experiment, we compare target LLMs across varying parameter scales and neural architectures to as-sess the applicability of our proposed entity-level infer-ence. The hyperparameters of our method are optimized on OpenLLaMA-7B and transferred to other target LLMs without additional tuning. As shown in Table 2, within the same architecture, OpenLLaMA-7B delivers the best overall performance in most cases. A notable exception occurs under the repeated strategy, where OpenLLaMA-13B exceeds OpenLLaMA-7B in both AUC and TPR@1%FPR. This exception arises because while hyperparameter transfer slightly pe-nalizes performance, the superior learning and memoriza-tion capacity of the 13B model provides a countervail-ing gain. This capacity-driven benefit is further corrobo-rated by the fact that OpenLLaMA-13B consistently out-performs OpenLLaMA-3B. Across different architectures, OpenLLaMA-7B and RedPajama-INCITE-7B-Base exhibit highly comparable and competitive performance. Overall, our framework maintains stability in Balanced Accuracy and AUC when transferring across model scales and architectures, with maximum discrepancies of 5.0% and 0.036, respectively. However, TPR@1%FPR is more sensi-tive to these variations, exhibiting a maximum discrepancy of up to 32.0%. This indicates that while overall discrimi-native power (e.g., AUC and Accuracy) generalizes robustly across diverse model scales and architectures, precise low-FPR decision boundaries would benefit from model-specific hyperparameter calibration. 
+
+5.4. Parameter Analysis 
+
+In this section, we investigate the impact of three key hyperparameters on entity-level inference performance: the number of related entities |C ee |, the maximum generation token length max new tokens , and the constructed prompt number np. We report the optimal K-fold cross-validation AUC scores for MV and RF classifiers. 
+
+5.4.1. Number of Related Entities. We evaluate |C ee | from 5 to 30 at intervals of 5 (Fig. 3). Generally, AUC rises with 
+
+|C ee | as more clues activate latent memory pathways. For 
+
+PERSON (Figs. 3a and 3b), performance rises sharply before 20 (and we select |C ee |=20). For ORG (Figs. 3c and 3d), most strategies peak or stabilize at |C ee |=25. Note that the multiangle strategy lacks data at |C ee |=5 because 5 clues can yield at most 10 unique combinations, failing to meet our default prompt count requirement of 14. 
+
+5.4.2. Maximum Length of Generated Tokens. We an-alyze 11 exponentially scaled values of max new tokens 
+
+from 1 to 1024 (Fig. 4). AUC increases with the token limit and stabilizes after 128. We select max new tokens 
+
+= 256 for both categories to capture marginal performance gains in most strategies (despite a slight drop in the weaker gradual strategy). Values beyond 256 unnecessarily increase API latency and costs without yielding substantial perfor-mance gains. We observe localized performance dips at 
+
+max new tokens = 8 ( PERSON ) and 16 ( ORG ). We suspect that tight token limits truncate responses into incomplete fragments, inducing semantic instability. 
+
+5.4.3. Number of Prompts. We examine the impact of np
+
+(from 1 to 16) on the multirole, repeated, and multiangle strategies (Fig. 5). While AUC scales with np, repeated and multiangle strategies reach their performance elbows early (around np=4 and 6, respectively), whereas multirole plateaus later. This delayed saturation is because multirole TABLE 2: Results on Different Target LLMs. The entity category label is PERSON .
+
+Interrogation Target Balanced Acc AUC TPR@1%FPR Strategy LLM MV RF LR MLP MV RF LR MLP MV RF LR MLP multirole OpenLLaMA-3B 0.888 0.885 0.885 0.885 0.955 0.956 0.958 0.954 0.630 0.670 0.665 0.590 OpenLLaMA-7B 0.913 0.915 0.915 0.915 0.964 0.962 0.965 0.964 0.695 0.590 0.685 0.675 OpenLLaMA-13B 0.895 0.900 0.898 0.898 0.957 0.956 0.960 0.961 0.535 0.635 0.630 0.650 RedPajama-INCITE-Base-3B-v1 0.913 0.913 0.920 0.905 0.964 0.959 0.963 0.955 0.460 0.475 0.470 0.485 RedPajama-INCITE-7B-Base 0.903 0.905 0.903 0.893 0.963 0.963 0.961 0.949 0.730 0.565 0.640 0.560 repeated OpenLLaMA-3B 0.895 0.895 0.895 0.898 0.947 0.954 0.947 0.947 0.105 0.380 0.110 0.170 OpenLLaMA-7B 0.920 0.928 0.923 0.930 0.967 0.970 0.967 0.965 0.305 0.265 0.290 0.250 OpenLLaMA-13B 0.915 0.923 0.918 0.920 0.970 0.973 0.970 0.971 0.495 0.495 0.495 0.530 RedPajama-INCITE-Base-3B-v1 0.890 0.890 0.888 0.890 0.953 0.961 0.952 0.949 0.395 0.595 0.395 0.375 RedPajama-INCITE-7B-Base 0.908 0.900 0.908 0.905 0.960 0.961 0.960 0.958 0.285 0.430 0.265 0.065 multiangle OpenLLaMA-3B 0.895 0.900 0.900 0.903 0.953 0.954 0.955 0.955 0.450 0.405 0.455 0.455 OpenLLaMA-7B 0.905 0.913 0.910 0.913 0.968 0.968 0.969 0.967 0.695 0.725 0.705 0.700 
+
+OpenLLaMA-13B 0.898 0.903 0.905 0.893 0.968 0.970 0.970 0.966 0.720 0.700 0.690 0.585 RedPajama-INCITE-Base-3B-v1 0.895 0.890 0.895 0.888 0.950 0.947 0.952 0.949 0.450 0.405 0.460 0.470 RedPajama-INCITE-7B-Base 0.913 0.913 0.915 0.918 0.968 0.973 0.969 0.968 0.575 0.695 0.585 0.655 gradual OpenLLaMA-3B 0.790 0.790 0.785 0.788 0.851 0.856 0.855 0.858 0.105 0.220 0.080 0.155 OpenLLaMA-7B 0.830 0.823 0.815 0.823 0.872 0.885 0.879 0.881 0.215 0.095 0.170 0.240 OpenLLaMA-13B 0.780 0.813 0.775 0.785 0.864 0.879 0.864 0.866 0.325 0.295 0.375 0.355 RedPajama-INCITE-Base-3B-v1 0.803 0.828 0.820 0.820 0.864 0.885 0.875 0.878 0.115 0.130 0.070 0.110 RedPajama-INCITE-7B-Base 0.815 0.825 0.813 0.820 0.858 0.886 0.866 0.860 0.000 0.140 0.000 0.000 misleading OpenLLaMA-3B 0.800 0.845 0.845 0.830 0.876 0.916 0.906 0.895 0.085 0.285 0.060 0.120 OpenLLaMA-7B 0.847 0.885 0.878 0.878 0.910 0.943 0.934 0.931 0.050 0.105 0.150 0.060 OpenLLaMA-13B 0.823 0.855 0.853 0.845 0.885 0.929 0.910 0.897 0.235 0.225 0.195 0.145 RedPajama-INCITE-Base-3B-v1 0.833 0.878 0.863 0.860 0.888 0.926 0.914 0.908 0.130 0.265 0.195 0.180 RedPajama-INCITE-7B-Base 0.855 0.880 0.873 0.885 0.922 0.939 0.933 0.933 0.225 0.415 0.290 0.340 5 10 15 20 25 30 
+
+> Number of Name Entitys
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> 0.90
+> 0.95
+> 1.00
+> AUC (cv best score)
+> multirole
+> repeated
+> multiangle
+> gradual
+> misleading
+
+(a) PERSON : Mean Value 5 10 15 20 25 30  
+
+> Number of Name Entitys
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> 0.90
+> 0.95
+> 1.00
+> AUC (cv best score)
+
+(b) PERSON : Random Forest 5 10 15 20 25 30  
+
+> Number of Name Entitys
+> 0.60
+> 0.65
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> 0.90
+> AUC (cv best score)
+
+(c) ORG : Mean Value 5 10 15 20 25 30  
+
+> Number of Name Entitys
+> 0.60
+> 0.65
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> 0.90
+> AUC (cv best score)
+
+(d) ORG : Random Forest 
+
+Figure 3: Impact of different numbers of related entities on entity category labels PERSON and ORG .1 2 4 8 16 32 64 128 256 512 1024 
+
+> Value of "max_new_tokens"
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> AUC (cv best score)
+> multirole
+> repeated
+> multiangle
+> gradual
+> misleading
+
+(a) PERSON : Mean Value 1 2 4 8 16 32 64 128 256 512 1024  
+
+> Value of "max_new_tokens"
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> AUC (cv best score)
+
+(b) PERSON : Random Forest 1 2 4 8 16 32 64 128 256 512 1024  
+
+> Value of "max_new_tokens"
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> AUC (cv best score)
+
+(c) ORG : Mean Value 1 2 4 8 16 32 64 128 256 512 1024  
+
+> Value of "max_new_tokens"
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> AUC (cv best score)
+
+(d) ORG : Random Forest 
+
+Figure 4: Impact of different maximum lengths of generated tokens on entity category labels PERSON and ORG .requires more queries to statistically isolate genuine memo-ries from temperature-induced stylistic noise. We set np=14 as our default, at which point all strategies generally achieve peak or near-optimal values. 2 4 6 8 10 12 14 16 
+
+> Number of prompts
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> AUC (cv best score)
+> multirole
+> repeated
+> multiangle
+
+(a) PERSON : Mean Value 2 4 6 8 10 12 14 16  
+
+> Number of prompts
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> AUC (cv best score)
+
+(b) PERSON : Random Forest 2 4 6 8 10 12 14 16  
+
+> Number of prompts
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> AUC (cv best score)
+
+(c) ORG : Mean Value 2 4 6 8 10 12 14 16  
+
+> Number of prompts
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> AUC (cv best score)
+
+(d) ORG : Random Forest 
+
+Figure 5: Impact of different numbers of prompts on entity category labels PERSON and ORG .TABLE 3: Qwen2.5-72B-Instruct results on PERSON .
+
+Metrics Strategy MV RF LR MLP Balanced Acc multirole 0.813 0.825 0.818 0.808 repeated 0.863 0.860 0.883 0.865 
+
+multiangle 0.773 0.800 0.835 0.833 gradual 0.773 0.788 0.760 0.773 misleading 0.698 0.833 0.773 0.785 AUC multirole 0.870 0.878 0.876 0.869 repeated 0.930 0.927 0.938 0.928 
+
+multiangle 0.841 0.859 0.895 0.885 gradual 0.839 0.855 0.840 0.842 misleading 0.752 0.887 0.834 0.843 TPR@1%FPR multirole 0.250 0.165 0.260 0.205 repeated 0.445 0.455 0.495 0.470 
+
+multiangle 0.115 0.265 0.210 0.115 gradual 0.185 0.130 0.130 0.185 misleading 0.005 0.335 0.100 0.025 
+
+5.5. Case Study 
+
+Inspired by ICP-MIA [29], which demonstrates that Qwen-2.5-72B-Instruct can match or even exceed the gen-eration performance of some commercial closed-source LLMs, we deploy it locally to prevent our non-member datasets from being logged, cached, or ingested into external training pipelines. Although its 18T-token training corpus precludes direct verification, following PETAL [28], such a black-box evaluation represents a realistic case study to validate the utility of our framework in the real-world. As shown in Table 3, the overall inference perfor-mance on Qwen-2.5-72B-Instruct degrades compared to OpenLLaMA-7B. This degradation is expected: colossal LLMs possess superior generalization and abstract com-pression capabilities, which naturally diffuse specific entity memories across massive representation pathways, making membership traces harder to isolate. Under this challeng-ing setting, the repeated strategy emerges as the superior paradigm, achieving a peak Balanced Accuracy of 88.3% and an AUC of 0.938. Intriguingly, under the repeated strategy, Qwen-2.5-72B-Instruct achieves a TPR@1%FPR of 49.5%, significantly surpassing OpenLLaMA-7B’s peak of 30.5%. This counter-intuitive reversal (where the massive model excels under a previously outlier-prone strategy) re-veals a scaling-driven behavioral shift. While OpenLLaMA suffered from permutation instability, Qwen’s colossal scale and advanced instruction-tuning render its attention mecha-nism robust to context permutations. Furthermore, we observe an interesting qualitative phe-nomenon in Qwen’s non-member generations that is absent in smaller models like OpenLLaMA. When queried with non-member targets with actually unrelated clues, Qwen exhibits high-level cognitive introspection, frequently gen-erating explicit meta-disclaimers such as: “The list appears to be a random assortment of names and dates without any clear relationship or context” or recognizing them as 
+
+“unrelated terms” . While this sophisticated comprehension highlights a cognitive leap in massive models, it introduces a paradox for membership inference. Because Qwen consis-tently generates uniform diagnostic disclaimers across dif-ferent unmemorized entities, the semantic similarity of non-member responses increases, slightly narrowing the overall decision margin. 
+
+## 6. Discussion 
+
+Factual Deviations and Robustness. While our the-oretical analysis assumes an idealized scenario where the model does not hallucinate factual details of unseen en-tities (Assumption 1), practical LLMs frequently exhibit stochastic hallucinations or draw from loose semantic cor-relations. However, this deviation is naturally mitigated by our multi-prompt design. Because factual hallucinations are fundamentally chaotic and highly sensitive to prompt pertur-bations, non-members are mathematically and empirically unlikely to maintain a stable, structurally aligned seman-tic core across repeated, gradual, or misleading prompts. Consequently, our consistency-based decision-making acts as a robust semantic filter, explaining why our framework preserves high AUC and low FPR even when the theoretical assumption of perfect non-hallucination is relaxed in real-world deployments. 
+
+Query Overhead. Although our framework introduces slightly higher query overhead (at most 25 queries per target entity) than single-level baselines, this trade-off is justified. Auditing of proprietary commercial models is typically a post-hoc, forensic process where precision and low FPR out-weigh the cost of API queries. Crucially, as a purely query-only black-box method requiring neither model weights nor reference models, our approach remains highly practical. Fu-ture work can further optimize this overhead by integrating adaptive early-stopping mechanisms. 
+
+Static Prompts. We acknowledge that while real-world human interviewing is an inherently dynamic and contin-uous two-way interaction, our framework relies on a fixed suite of pre-constructed prompts. Although this static de-sign does not fully capture the adaptive feedback loops of live human dialogue and is thus not entirely exhaustive of communicative complexity, it provides a crucial and highly reproducible starting point. By evaluating the model across five distinct, strategically designed static dimensions, our approach robustly approximates the multi-faceted nature of dynamic questioning in a standardized and scalable man-ner, laying a foundation for future conversational auditing paradigms. 
+
+Feature Integration. This work evaluates each of the five interrogation strategies independently, and integrating these diverse strategic signals represents a compelling di-rection for further investigation. At the decision level, pre-dictions from the separate binary classifiers could be ag-gregated via late-fusion ensemble techniques such as hard voting (majority rule), soft voting (probability averaging), or performance-weighted configurations. Alternatively, feature-level orchestration could be explored without incurring ad-ditional query overhead. 
+
+Defenses. Existing defenses face severe limitations against our framework: non-text schemes (e.g., MemGuard [62]) are fundamentally bypassed; sample-level methods (e.g., deduplication and paraphrasing) cannot erase consoli-dated entity memories; and differential privacy (e.g., DP-SGD [63]) remains computationally prohibitive for LLM pre-training. Viable mitigation strategies instead include stricter data curation (such as redacting/anonymizing sen-sitive entities and deduplicating high-frequency mentions), real-time output filtering of sensitive details, and monitoring repetitive entity-targeted queries. 
+
+## 7. Related Work 
+
+In this section, we introduce a broader landscape of membership inference by discussing two dimensions: the inference target and the access permission. 
+
+7.1. Inference Targets 
+
+From the perspective of inference targets, existing mem-bership inference studies are largely sample-level. They typically assume that the adversary has access to one or more samples associated with the target of inference. The most common formulation is to determine whether a given data sample belongs to the training set of a target model. This problem is first formalized by Shokri et al. [11]. Subsequent methods characterize the model’s memorization of individual samples using various signals, such as shadow or reference models [12], loss thresholds [13], confidence scores [15], and output labels [14]. Beyond individual sam-ples, user inference aims to determine whether samples associated with a particular user have been used for model training. This setting typically requires access to a collection of samples from the user. Song and Shmatikov [16] study auditing generative text models to detect whether texts from a specific user are used for training. Kandpal et al. [17] further investigate whether data from a particular user is included in the fine-tuning data of LLMs. Another line of work studies dataset inference. Dziedzic et al. [18] propose dataset inference for self-supervised models. Their goal is to determine whether a model is trained on a particular private dataset, which can support model provenance ver-ification and defenses against model stealing. Maini et al. [19] propose dataset inference for LLMs to detect whether a given dataset is included in an LLM’s training corpus. Related work also studies whether the training data of a generative model contains samples with a given property, such as images of a specific car brand [20]. 
+
+7.2. Access Permissions beyond Label-only 
+
+Since label-only membership inference has been dis-cussed in Section 2.2, we briefly review methods that assume stronger access to the target model. Existing approaches mainly include white-box methods and score-based black-box methods. In the white-box setting, the adversary can access model parameters, gradients, internal activations, or other internal information, enabling inference based on loss distributions, gradients, or parameter updates [64]–[67]. However, such assumptions are rarely realistic for commercial LLM ser-vices. In the score-based black-box setting, the adversary can query the target model and obtain output information such as confidence scores, logits, probabilities, or token-level likelihoods [11]–[13], [29], [68]–[72]. Reference-based methods compare the loss of a target sample with a refer-ence distribution estimated from shadow models, reference models, or public auxiliary data [12], while reference-free methods extract membership signals directly from the target model’s likelihood patterns [73], [74]. Nevertheless, score-based black-box access still exceeds what many commercial LLM APIs provide [75]–[78], motivating the stricter label-only setting discussed earlier. 
+
+## 8. Conclusion 
+
+In this paper, we propose the paradigm of entity-level membership inference by establishing the necessary and suf-ficient conditions for its feasibility. By distilling six classic interviewing techniques, we constructed an auditing frame-work consisting of an overarching prompt template guideline and five interrogation strategies that map responses to dis-criminative similarity vectors via two pairing schemes. Our extensive evaluations on constructed entity-level datasets show that our framework substantially outperforms state-of-the-art label-only sample-level baselines (achieving a peak AUC of 0.97), despite an inherent performance gap where localized biographical memories remain easier to audit than diffuse organizational knowledge. We verify its applicabil-ity across model scales and architectures. Furthermore, a realistic case study on Qwen-2.5-72B-Instruct validates the real-world utility of our reference-free, query-only approach. 
+
+## References 
+
+[1] M. A. K. Raiaan, M. S. H. Mukta, K. Fatema, N. M. Fahad, S. Sakib, M. M. J. Mim, J. Ahmad, M. E. Ali, and S. Azam, “A review on large language models: Architectures, applications, taxonomies, open issues and challenges,” IEEE access , vol. 12, pp. 26 839–26 874, 2024. [2] H. Touvron, T. Lavril, G. Izacard, X. Martinet, M.-A. Lachaux, T. Lacroix, B. Rozi` ere, N. Goyal, E. Hambro, F. Azhar et al. , “Llama: Open and efficient foundation language models,” arXiv preprint arXiv:2302.13971 , 2023. [3] A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, I. Sutskever et al. ,“Language models are unsupervised multitask learners,” OpenAI blog ,vol. 1, no. 8, p. 9, 2019. [4] N. Carlini, F. Tramer, E. Wallace, M. Jagielski, A. Herbert-Voss, K. Lee, A. Roberts, T. Brown, D. Song, U. Erlingsson et al. , “Ex-tracting training data from large language models,” in 30th USENIX security symposium (USENIX Security 21) , 2021, pp. 2633–2650. [5] Matthew Butterick and Joseph Saveri Law Firm, “Github copilot litigation,” GitHub Copilot Litigation Website, 2022. [Online]. Available: https://githubcopilotlitigation.com/ [6] A. Guild, “More than 15,000 authors sign authors guild letter calling on ai industry leaders to protect writers,” Authors Guild (Blog), 2023. [Online]. Available: https://authorsguild.org/news/thousands-sign-aut hors-guild-letter-calling-on-ai-industry-leaders-to-protect-writers/ [7] The Verge, “Sarah silverman is suing openai and meta for copyright infringement,” The Verge (Blog), 2023. [Online]. Available: https://www.theverge.com/2023/7/9/23788741/sarah-silverman-ope nai-meta-chatgpt-llama-copyright-infringement-chatbots-artificial-i ntelligence-ai [8] The New York Times, “The times sues openai and microsoft over a.i. use of copyrighted work,” The New York Times , 2023. [Online]. Available: https://www.nytimes.com/2023/12/27/business/media/ne w-york-times-open-ai-microsoft-lawsuit.html [9] J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Aleman, D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat et al. , “Gpt-4 technical report,” arXiv preprint arXiv:2303.08774 , 2023. [10] H. Touvron, L. Martin, K. Stone, P. Albert, A. Almahairi, Y. Babaei, N. Bashlykov, S. Batra, P. Bhargava, S. Bhosale et al. , “Llama 2: Open foundation and fine-tuned chat models,” arXiv preprint arXiv:2307.09288 , 2023. [11] R. Shokri, M. Stronati, C. Song, and V. Shmatikov, “Membership inference attacks against machine learning models,” in 2017 IEEE symposium on security and privacy (SP) . IEEE, 2017, pp. 3–18. [12] N. Carlini, S. Chien, M. Nasr, S. Song, A. Terzis, and F. Tramer, “Membership inference attacks from first principles,” in 2022 IEEE symposium on security and privacy (SP) . IEEE, 2022, pp. 1897– 1914. [13] S. Yeom, I. Giacomelli, M. Fredrikson, and S. Jha, “Privacy risk in machine learning: Analyzing the connection to overfitting,” in 2018 IEEE 31st computer security foundations symposium (CSF) . IEEE, 2018, pp. 268–282. [14] C. A. Choquette-Choo, F. Tramer, N. Carlini, and N. Papernot, “Label-only membership inference attacks,” in International confer-ence on machine learning . PMLR, 2021, pp. 1964–1974. [15] J. Mattern, F. Mireshghallah, Z. Jin, B. Sch¨ olkopf, M. Sachan, and T. Berg-Kirkpatrick, “Membership inference attacks against language models via neighbourhood comparison,” in Findings of the Associ-ation for Computational Linguistics: ACL 2023 , 2023, pp. 11 330– 11 343. [16] C. Song and V. Shmatikov, “Auditing data provenance in text-generation models,” in Proceedings of the 25th ACM SIGKDD Inter-national Conference on Knowledge Discovery & Data Mining , 2019, pp. 196–206. [17] N. Kandpal, K. Pillutla, A. Oprea, P. Kairouz, C. A. Choquette-Choo, and Z. Xu, “User inference attacks on large language models,” in 
+
+Proceedings of the 2024 conference on empirical methods in natural language processing , 2024, pp. 18 238–18 265. [18] A. Dziedzic, H. Duan, M. A. Kaleem, N. Dhawan, J. Guan, Y. Cattan, F. Boenisch, and N. Papernot, “Dataset inference for self-supervised models,” Advances in Neural Information Processing Systems , vol. 35, pp. 12 058–12 070, 2022. [19] P. Maini, H. Jia, N. Papernot, and A. Dziedzic, “Llm dataset inference: Did you train on my dataset?” Advances in Neural Information Processing Systems , vol. 37, pp. 124 069–124 092, 2024. [20] L. Wang, J. Wang, J. Wan, L. Long, Z. Yang, and Z. Qin, “Property existence inference against generative models,” in 33rd USENIX Security Symposium (USENIX Security 24) , 2024, pp. 2423–2440. [21] M. Duan, A. Suri, N. Mireshghallah, S. Min, W. Shi, L. Zettlemoyer, Y. Tsvetkov, Y. Choi, D. Evans, and H. Hajishirzi, “Do membership inference attacks work on large language models?” arXiv preprint arXiv:2402.07841 , 2024. [22] G. Team, R. Anil, S. Borgeaud, J.-B. Alayrac, J. Yu, R. Soricut, J. Schalkwyk, A. M. Dai, A. Hauth, K. Millican et al. , “Gem-ini: a family of highly capable multimodal models,” arXiv preprint arXiv:2312.11805 , 2023. [23] S. Biderman, H. Schoelkopf, Q. G. Anthony, H. Bradley, K. O’Brien, E. Hallahan, M. A. Khan, S. Purohit, U. S. Prashanth, E. Raff et al. ,“Pythia: A suite for analyzing large language models across train-ing and scaling,” in International conference on machine learning .PMLR, 2023, pp. 2397–2430. [24] T. Wolf, L. Debut, V. Sanh, J. Chaumond, C. Delangue, A. Moi, P. Cistac, T. Rault, R. Louf, M. Funtowicz et al. , “Transformers: State-of-the-art natural language processing,” in Proceedings of the 2020 conference on empirical methods in natural language processing: system demonstrations , 2020, pp. 38–45. [25] Y. Su, T. Lan, Y. Wang, D. Yogatama, L. Kong, and N. Collier, “A contrastive framework for neural text generation,” Advances in Neural Information Processing Systems , vol. 35, pp. 21 548–21 561, 2022. [26] A. Holtzman, J. Buys, L. Du, M. Forbes, and Y. Choi, “The curious case of neural text degeneration,” in International Conference on Learning Representations , 2020. [27] R. Tang, G. Lueck, R. Quispe, H. Inan, J. Kulkarni, and X. Hu, “Assessing privacy risks in language models: A case study on sum-marization tasks,” in Findings of the Association for Computational Linguistics: EMNLP 2023 , 2023, pp. 15 406–15 418. [28] Y. He, B. Li, L. Liu, Z. Ba, W. Dong, Y. Li, Z. Qin, K. Ren, and C. Chen, “Towards {Label-Only } membership inference attack against pre-trained large language models,” in 34th USENIX Security Symposium (USENIX Security 25) , 2025, pp. 1609–1628. [29] Z. Lu, H. Chi, N. Baracaldo, S. R. Kadhe, Y. Jeon, and L. Yu, “In-context probing for membership inference in fine-tuned language models,” in Proceedings of the 33rd Network and Distributed System Security Symposium (NDSS 2026), San Diego, CA, USA, February ,2026. [30] E. Shepherd and A. Griffiths, Investigative interviewing: The conver-sation management approach . Oxford University Press, 2021. [31] R. Bull, Investigative interviewing . Springer Science & Business Media, 2014. [32] P. A. Granhag, S. M. Kleinman, and S. Oleszkiewicz, “The scharff technique: On how to effectively elicit intelligence from human sources,” International Journal of Intelligence and CounterIntelli-gence , vol. 29, no. 1, pp. 132–150, 2016. [33] A. Memon, C. A. Meissner, and J. Fraser, “The cognitive interview: A meta-analytic review and study space analysis of the past 25 years.” 
+
+Psychology, public policy, and law , vol. 16, no. 4, p. 340, 2010. [34] M. Hartwig, P. A. Granhag, and T. Luke, “Strategic use of evidence during investigative interviews: The state of the science,” Credibility assessment , pp. 1–36, 2014. [35] M. E. Lamb, Y. Orbach, I. Hershkowitz, P. W. Esplin, and D. Horowitz, “A structured forensic interview protocol improves the quality and informativeness of investigative interviews with children: A review of research using the nichd investigative interview protocol,” 
+
+Child abuse & neglect , vol. 31, no. 11-12, pp. 1201–1231, 2007. [36] F. Inbau, J. Buckley, and B. Jayne, Criminal interrogation and confessions . Jones & Bartlett Publishers, 2013. [37] Y. Hu, Z. Li, Z. Liu, Y. Zhang, Z. Qin, K. Ren, and C. Chen, “Membership inference attacks against {Vision-Language } models,” in 34th USENIX Security Symposium (USENIX Security 25) , 2025, pp. 1589–1608. [38] New Zealand Police, “Investigative interviewing witness guide,” Proactively released by New Zealand Police. [Online]. Available: ht tps://fyi.org.nz/request/21325/response/80666/attach/html/3/Harris%2 0JA%20IR%2001%2022%2037549%20signed%20response.pdf.html [39] Brainscape, “Investigative interviewing witness guide flashcards,” Brainscape flashcards. [Online]. Available: https://www.brainscape.c om/flashcards/investigative-interviewing-witness-guide-4681473/pac ks/6928724 [40] L. Huang, W. Yu, W. Ma, W. Zhong, Z. Feng, H. Wang, Q. Chen, W. Peng, X. Feng, B. Qin et al. , “A survey on hallucination in large language models: Principles, taxonomy, challenges, and open questions,” ACM Transactions on Information Systems , vol. 43, no. 2, pp. 1–55, 2025. [41] G. Lample, M. Ballesteros, S. Subramanian, K. Kawakami, and C. Dyer, “Neural architectures for named entity recognition,” in 
+
+Proceedings of the 2016 conference of the North American chapter of the association for computational linguistics: human language technologies , 2016, pp. 260–270. [42] J. Li, A. Sun, J. Han, and C. Li, “A survey on deep learning for named entity recognition,” IEEE transactions on knowledge and data engineering , vol. 34, no. 1, pp. 50–70, 2020. [43] M. Meeus, S. Jain, M. Rei, and Y.-A. de Montjoye, “Did the neurons read your book? document-level membership inference for large language models,” in 33rd USENIX Security Symposium (USENIX Security 24) , 2024, pp. 2369–2385. [44] M. Weber, D. Y. Fu, Q. Anthony, Y. Oren, S. Adams, A. Alexandrov, X. Lyu, H. Nguyen, X. Yao, V. Adams et al. , “Redpajama: an open dataset for training large language models,” Advances in neural information processing systems , vol. 37, pp. 116 462–116 492, 2024. [45] Wikimedia Foundation, “Wikipedia: The free encyclopedia,” Wikime-dia Foundation, 2001. [Online]. Available: https://www.wikipedia.org/ [46] C. Raffel, N. Shazeer, A. Roberts, K. Lee, S. Narang, M. Matena, Y. Zhou, W. Li, and P. J. Liu, “Exploring the limits of transfer learning with a unified text-to-text transformer,” Journal of machine learning research , vol. 21, no. 140, pp. 1–67, 2020. [47] GitHub, “Github: Where the world builds software,” GitHub, Inc., 2008. [Online]. Available: https://github.com/ [48] Project Gutenberg Literary Archive Foundation, “Project gutenberg: Free ebooks,” Project Gutenberg, 1971. [Online]. Available: https://www.gutenberg.org/ [49] A. Reisner, “These 183,000 books are fueling the biggest fight in publishing and tech,” The Atlantic , vol. 25, 2023. [50] K. Knibbs, “The battle over books3 could change ai forever,” Wired, September , 2023. [51] Explosion AI, “spacy: Industrial-strength natural language processing,” Explosion AI, 2015. [Online]. Available: https://spacy.io/ [52] S. Prasad, T. Dunlap, A. Ross, and B. Reaves, “Diving into robocall content with {SnorCall },” in 32nd USENIX Security Symposium (USENIX Security 23) , 2023, pp. 427–444. [53] M. Shoaib, A. Suh, and W. U. Hassan, “Principled and automated ap-proach for investigating {AR/VR } attacks,” in 34th USENIX Security Symposium (USENIX Security 25) , 2025, pp. 4325–4344. [54] J. Yan, S. Liao, M. Aldeen, L. Xing, D. Yao, L. Cheng, and V. Tech, “Skillpov: Towards accessible and effective privacy notice for amazon alexa skills.” in NDSS , 2025. [55] J. Yan, S. Liao, J. Ma, M. Aldeen, S. Kumar, and L. Cheng, “No way to sign out? unpacking {Non-Compliance } with google play’s app account deletion requirements,” in 34th USENIX Security Symposium (USENIX Security 25) , 2025, pp. 3277–3296. [56] X. Geng and H. Liu, “Openllama: An open reproduction of llama,” 2023. [57] N. Reimers and I. Gurevych, “Sentence-bert: Sentence embeddings using siamese bert-networks,” in Proceedings of the 2019 confer-ence on empirical methods in natural language processing and the 9th international joint conference on natural language processing (EMNLP-IJCNLP) , 2019, pp. 3982–3992. [58] R. Wen, Z. Li, M. Backes, and Y. Zhang, “Membership inference attacks against in-context learning,” in Proceedings of the 2024 on ACM SIGSAC Conference on Computer and Communications Secu-rity , 2024, pp. 3481–3495. [59] Y. Lu, M. Bartolo, A. Moore, S. Riedel, and P. Stenetorp, “Fantasti-cally ordered prompts and where to find them: Overcoming few-shot prompt order sensitivity,” in Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 2022, pp. 8086–8098. [60] A. Ma´ ckiewicz and W. Ratajczak, “Principal components analysis (pca),” Computers & Geosciences , vol. 19, no. 3, pp. 303–342, 1993. [61] L. Van der Maaten and G. Hinton, “Visualizing data using t-sne.” 
+
+Journal of machine learning research , vol. 9, no. 11, 2008. [62] J. Jia, A. Salem, M. Backes, Y. Zhang, and N. Z. Gong, “Mem-guard: Defending against black-box membership inference attacks via adversarial examples,” in Proceedings of the 2019 ACM SIGSAC conference on computer and communications security , 2019, pp. 259– 274. [63] M. Abadi, A. Chu, I. Goodfellow, H. B. McMahan, I. Mironov, K. Talwar, and L. Zhang, “Deep learning with differential privacy,” in Proceedings of the 2016 ACM SIGSAC conference on computer and communications security , 2016, pp. 308–318. [64] M. Nasr, R. Shokri, and A. Houmansadr, “Comprehensive privacy analysis of deep learning: Passive and active white-box inference attacks against centralized and federated learning,” in 2019 IEEE symposium on security and privacy (SP) . IEEE, 2019, pp. 739– 753. [65] A. Sablayrolles, M. Douze, C. Schmid, Y. Ollivier, and H. J´ egou, “White-box vs black-box: Bayes optimal strategies for member-ship inference,” in International Conference on Machine Learning .PMLR, 2019, pp. 5558–5567. [66] K. Leino and M. Fredrikson, “Stolen memories: Leveraging model memorization for calibrated {White-Box } membership inference,” in 
+
+29th USENIX security symposium (USENIX Security 20) , 2020, pp. 1605–1622. [67] X. Tan, H. Luan, M. Luo, Z. Yu, J. Dai, X. Sun, and P. Chen, “Was my data used for training? membership inference in open-source llms via neural activations,” in Proceedings of the 33rd Network and Distributed System Security Symposium (NDSS 2026), San Diego, CA, USA, February , 2026. [68] A. Salem, Y. Zhang, M. Humbert, P. Berrang, M. Fritz, and M. Backes, “Ml-leaks: Model and data independent membership inference attacks and defenses on machine learning models,” arXiv preprint arXiv:1806.01246 , 2018. [69] L. Watson, C. Guo, G. Cormode, and A. Sablayrolles, “On the importance of difficulty calibration in membership inference attacks,” 
+
+arXiv preprint arXiv:2111.08440 , 2021. [70] Y. Liu, Z. Zhao, M. Backes, and Y. Zhang, “Membership inference attacks by exploiting loss trajectory,” in Proceedings of the 2022 ACM SIGSAC conference on computer and communications security , 2022, pp. 2085–2098. [71] J. Ye, A. Maddi, S. K. Murakonda, V. Bindschaedler, and R. Shokri, “Enhanced membership inference attacks against machine learning models,” in Proceedings of the 2022 ACM SIGSAC conference on computer and communications security , 2022, pp. 3093–3106. [72] Y. He, B. Li, Y. Wang, M. Yang, J. Wang, H. Hu, and X. Zhao, “Is difficulty calibration all we need? towards more practical membership inference attacks,” in Proceedings of the 2024 on ACM SIGSAC Conference on Computer and Communications Security , 2024, pp. 1226–1240. [73] W. Shi, A. Ajith, M. Xia, Y. Huang, D. Liu, T. Blevins, D. Chen, and L. Zettlemoyer, “Detecting pretraining data from large language models,” in International Conference on Learning Representations ,vol. 2024, 2024, pp. 51 826–51 843. [74] J. Zhang, J. Sun, E. Yeats, Y. Ouyang, M. Kuo, J. Zhang, H. Yang, and H. Li, “Min-k%++: Improved baseline for pre-training data detection from large language models,” in International Conference on Learning Representations , vol. 2025, 2025, pp. 64 845–64 862. [75] Google, “Gemini api documentation,” Google AI for Developers, 2024. [Online]. Available: https://ai.google.dev/ [76] Anthropic, “Claude api documentation,” Anthropic Documentation, 2023. [Online]. Available: https://docs.anthropic.com/ [77] Mistral AI, “Mistral api documentation,” Mistral AI Documentation, 2023. [Online]. Available: https://docs.mistral.ai/ [78] OpenAI, “Openai api documentation,” OpenAI Platform Documen-tation, 2020. [Online]. Available: https://platform.openai.com/docs/ [79] T. Akiba, S. Sano, T. Yanase, T. Ohta, and M. Koyama, “Optuna: A next-generation hyperparameter optimization framework,” in Pro-ceedings of the 25th ACM SIGKDD international conference on knowledge discovery & data mining , 2019, pp. 2623–2631. 
+
+## Appendix A. Theorem Proofs 
+
+Proof of Theorem 1. We prove by contradiction. Suppose the theorem is false, i.e., there exists a strategy π∗ that satisfies π∗ ∈ Πadm and for which ∆( e, Ce) ∈ M (π(e)) .Thus, M successfully produces information related to e
+
+under that strategy. Deductive Derivation. By the fundamental nature of gen-erative models, every output of M is a statistical modeling and recombination of its training data Dtrain . Therefore, if the model can generate information related to e, this information must have been encoded in the model’s parameters, which necessitates that I(e) ∈ Dtrain (or at least there exists 
+
+gI(e) ∈ D train such that gI(e) is semantically indistinguishable from I(e)). This contradicts the premise I(e) /∈ D train . Hence, the assumption is false, and the theorem holds. 
+
+Proof of Theorem 2. We give a constructive proof. For an arbitrary I(e) ∈ D train , construct the interrogation strategy 
+
+π(e, Ce) = F(e, Ce), which means directly send the per-fect prompt to the model. From the assumptions on F:
+
+M(F(e, Ce)) = I(e), so the model outputs the target in-formation I(e) exactly. Therefore ∆( e, Ce) ∈ M (π(e, Ce)) .Since I(e) is arbitrary, the statement holds. 
+
+## Appendix B. Hyperparameter Configurations for Binary Classifiers 
+
+We optimize hyperparameters for four classifiers us-ing the Optuna Bayesian framework [79]. For RF, we search integers for n estimators (200 –1500 ), max depth 
+
+(3–25 ), min samples leaf (1–20 ), and min samples split 
+
+(2–30 ), alongside categorical selections for max features 
+
+(sqrt /log2 /None ) and class weight (None /balanced ). For LR, we tune the inverse regularization strength C loga-rithmically from 10 −4 to 10 4. For MLP, we categorically select the network topology hidden layer sizes from five configurations— (50,) , (100,) , (200,) , (100, 50) , and (200, 100) —while optimizing the L2 penalty alpha (10 −6 to 
+
+10 −1) and initial learning rate learning rate init (10 −4 to 
+
+10 −2) logarithmically. For the custom MV Classifier, we logarithmically tune the Sigmoid mapping’s temperature parameter scale (0.5–50 .0). Appendix C. Prompt for Target Sample Generation 
+
+For PERSON 
+
+System: “You are an expert AI text generator specializing in encyclopedic writing. Your behavior is strictly governed by this law: You MUST write a coherent, fluent, and logically structured biographical profile in a strict, neutral Wikipedia-style tone. You are FORBIDDEN from altering the sequential order, rearranging, or omitting any entity words provided by the user. Word order preservation is your highest priority.” 
+
+User: “Please seamlessly integrate the following entities into the biography according to the system rules. Ensure the text flows naturally. Entities to include in exact order: 
+
+{ordered words }
+
+Begin generating now:” For ORG 
+
+System: “You are an expert AI text generator specializing in encyclopedic writing. Your behavior is strictly governed by this law: You MUST write a coherent, fluent, and logically structured organizational profile in a strict, neutral Wikipedia-style tone. You are FORBIDDEN from altering the sequential order, rearranging, or omitting any entity words provided by the user. Word order preservation is your highest priority.” 
+
+User: “Please seamlessly integrate the following entities into the organizational profile according to the system rules. Ensure the text flows naturally. Entities to include in exact order: 
+
+{ordered words }
+
+Begin generating now:” 
+
+## Appendix D. Configuration Information of Baselines 
+
+For the baselines, we use the following configurations:  
+
+> •
+
+PETAL. We employ OpenLLaMA-7B as the tar-get model and OpenLLaMA-3B as the reference model, utilizing sentence-transformers/all-MiniLM-L6-v2 to compute the semantic similarity between predicted and ground-truth tokens. Notably, we af-ford PETAL three additional inference advantages in total. (1) The aforementioned sample stylistic discrepancy. (2) While the original work relies on GPT-2 XL [3] as the reference model (reasoning that smaller versions of the target model are often inaccessible in real-world scenarios), we assume a stronger adversary who has access to a smaller version of the target model. (3) The original work truncates samples to 32 words while demonstrating that longer contexts enhance inference performance. We set a longer truncation threshold of 256 words.  
+
+> •
+
+ICP-MIA. We employ OpenLLaMA-7B as the target model to evaluate ICP-MIA-SP, which is demonstrated in the original study to outperform ICP-MIA-Ref under label-only settings. We config-ure the method with 5 candidate probe contexts. For masking-based perturbations, we adopt random masking with a mask rate of 0.7 to generate the probe contexts (the original paper shows that random masking outperforms log-likelihood-based mask-ing). For generation-based perturbations, we utilize Qwen-2.5-72B-Instruct at a temperature of 0.7, ad-hering to the perturbation generation prompts of the original work. In addition, the semantic similarity between the generated and ground-truth responses is computed using sentence-transformers/all-MiniLM-L6-v2.
