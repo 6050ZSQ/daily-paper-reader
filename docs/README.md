@@ -6,53 +6,44 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-28
-- 运行时间：2026-06-28 21:35:42 UTC
+- 最新运行日期：2026-06-29
+- 运行时间：2026-06-29 21:32:06 UTC
 - 运行状态：成功
-- 本次总论文数：11
-- 精读区：4
+- 本次总论文数：8
+- 精读区：1
 - 速读区：7
 
 ### 今日简报（AI）
-今日推荐11篇论文，精选2篇高分（9.0/10）精读：Transformer首词广播机制与稀疏自编码器揭示泛化极限。重点关注Transformer语言身份根源及模型理解边界，速读推荐中NL2Scratch编程基准与好奇心干预学习值得浅尝。普通读者可优先精读两篇高分论文以把握大模型机制与局限，速读则按兴趣选读。
-- 详情：[/202606/28/README](/202606/28/README)
+今日精读解析LLM判断优于生成的任务不对称性，速读覆盖语言代理不敏感性、不确定性估计及随机语言模型。最值得关注：LLM在上下文问答中判断能力与生成能力的差异，以及语言代理对任务变化的鲁棒性诊断。建议优先阅读精读论文《Can LLMs Judge Better Than They Generate?》，并关注语言模型任务适应性与不确定性评估方法。
+- 详情：[/202606/29/README](/202606/29/README)
 
 ### 精读区论文标签
-1. [First-Token Broadcasters: Mechanistic Origins of Language Identity and Distributed Robustness in Transformers](/202606/28/2606.22361v1-first-token-broadcasters-mechanistic-origins-of-language-identity-and-distributed-robustness-in-transformers)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：多语言Transformer中语言标识头的机制分析
-2. [At the Edge of Understanding: Sparse Autoencoders Trace The Limits of Transformer Generalization](/202606/28/2606.26396v1-at-the-edge-of-understanding-sparse-autoencoders-trace-the-limits-of-transformer-generalization)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：使用稀疏自编码器对transformer语言表征进行机械可解释性分析
-3. [Latent Confidence Alignment for LLM Self-Assessment](/202606/28/2606.21937v1-latent-confidence-alignment-for-llm-self-assessment)  
+1. [Can LLMs Judge Better Than They Generate? Evaluating Task Asymmetry, Mechanistic Interpretability and Transferability for In-Context QA](/202606/29/2606.28050v1-can-llms-judge-better-than-they-generate-evaluating-task-asymmetry-mechanistic-interpretability-and-transferability-for-in-context-qa)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：大语言模型自信度校准方法
-4. [Do Encoders Suffice? A Systematic Comparison of Encoder and Decoder Safety Judges for LLM Adversarial Evaluation](/202606/28/2606.25782v1-do-encoders-suffice-a-systematic-comparison-of-encoder-and-decoder-safety-judges-for-llm-adversarial-evaluation)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：比较编码器和解码器安全裁判用于LLM对抗评估
+   evidence：LLM作为评判者及自我评估的评估研究
 
 ### 速读区论文标签
-1. [NL2Scratch: An Executable Benchmark and Evaluation for Block-Based Programming](/202606/28/2606.22061v1-nl2scratch-an-executable-benchmark-and-evaluation-for-block-based-programming)  
+1. [Diagnosing Task Insensitivity in Language Agents](/202606/29/2606.26918v1-diagnosing-task-insensitivity-in-language-agents)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：诊断语言代理的任务不敏感性，一种评估中的失败模式
+2. [From Signals to Transfer: A Factorised Study of Probe-Based Uncertainty Estimation in Large Language Models](/202606/29/2606.27679v1-from-signals-to-transfer-a-factorised-study-of-probe-based-uncertainty-estimation-in-large-language-models)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：基于探针的不确定性估计分析内部表示，用于可解释性
+3. [Scaling limit of the Random Language Model](/202606/29/2606.28105v1-scaling-limit-of-the-random-language-model)  
+   标签：评分：7.0/10、query:llm-ling
+   evidence：语言模型的语言学理论
+4. [Towards Fast Domain Adaptation and Fine-Grained User Simulation for Evaluating Conversational Recommender Systems](/202606/29/2606.22803v1-towards-fast-domain-adaptation-and-fine-grained-user-simulation-for-evaluating-conversational-recommender-systems)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：面向自然语言到Scratch代码生成的可执行基准和新评估指标
-2. [The Score Granularity Gap in Black-Box LLM Classification: A Comparative Study of Confidence Constructions](/202606/28/2606.22179v1-the-score-granularity-gap-in-black-box-llm-classification-a-comparative-study-of-confidence-constructions)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：LLM置信度分数粒度与选择性预测
-3. [Curiosity as Linguistic Intervention: Using LLM Tutoring Dialogues to Influence Exploratory Learning Behavior](/202606/28/2606.22349v1-curiosity-as-linguistic-intervention-using-llm-tutoring-dialogues-to-influence-exploratory-learning-behavior)  
+   evidence：通过基于LLM的用户模拟器评估CRS，涉及LLM评估方法
+5. [DREAM: Dense Retrieval Embeddings via Autoregressive Modeling](/202606/29/2606.24667v1-dream-dense-retrieval-embeddings-via-autoregressive-modeling)  
+   标签：评分：6.0/10、query:llm-lang-rep
+   evidence：利用LLM自回归目标学习稠密检索嵌入作为语义表示
+6. [ReaORE: Reasoning-Guided Progressive Open Relation Extraction Empowered by Large Reasoning Models](/202606/29/2606.26986v1-reaore-reasoning-guided-progressive-open-relation-extraction-empowered-by-large-reasoning-models)  
    标签：评分：6.0/10、query:llm-ling
-   evidence：利用LLM辅导对话研究探索性学习与好奇心
-4. [LangMAP: A Language-Adaptive Approach to Tokenization](/202606/28/2606.23566v2-langmap-a-language-adaptive-approach-to-tokenization)  
+   evidence：利用LLM推理进行开放关系抽取，处理语义关系区分
+7. [From Black-Box to Clinical Insight: A Multi-Stage Explainable Framework for Speech-Based Cognitive Impairment Detection](/202606/29/2606.27973v1-from-black-box-to-clinical-insight-a-multi-stage-explainable-framework-for-speech-based-cognitive-impairment-detection)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：语言自适应分词方法
-5. [The Topology of Ill-Posed Questions: Persistent Homology for Detection and Steering in LLMs](/202606/28/2606.23590v1-the-topology-of-ill-posed-questions-persistent-homology-for-detection-and-steering-in-llms)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：分析LLM内部状态几何特征以检测不当问题，贡献于语言表示的可解释性
-6. [Probing the Misaligned Thinking Process of Language Models](/202606/28/2606.24251v1-probing-the-misaligned-thinking-process-of-language-models)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：使用线性探针从LLM内部激活检测不对齐指标，是语言表示可解释性的一种形式
-7. [Reasoning as Attractor Dynamics: Latent Memory Retrieval via Gibbs-Weighted Energy Minimization](/202606/28/2606.24543v1-reasoning-as-attractor-dynamics-latent-memory-retrieval-via-gibbs-weighted-energy-minimization)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：LLM推理作为吸引子动力学，可解释的能量景观
+   evidence：结合SHAP和语言学特征的可解释框架
 
 
 <div class="dpr-home-promo-card">

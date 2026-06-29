@@ -1,0 +1,466 @@
+Title: From Signals to Transfer: A Factorised Study of Probe-Based Uncertainty Estimation in Large Language Models
+
+URL Source: https://arxiv.org/pdf/2606.27679v1
+
+Published Time: Mon, 29 Jun 2026 00:20:52 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+## From Signals to Transfer: A Factorised Study of Probe-Based Uncertainty Estimation in Large Language Models 
+
+Ponhvoan Srey 1 Xiaobao Wu 2* Cong-Duy Nguyen 3
+
+Quang Minh Nguyen 4 Duc Anh Vu 1 Anh Tuan Luu 1,3 *1Nanyang Technological University 2Shanghai Jiao Tong University 
+
+> 3
+
+VinUniversity 4KAIST 
+
+{ponhvoan002, vuducanh001, anhtuan.luu}@ntu.edu.sg xiaobaowu@sjtu.edu.cn duy.ntc@vinuni.edu.vn qm.nguyen@kaist.ac.kr 
+
+Abstract 
+
+Probe-based uncertainty estimation (UE) has emerged as a prominent approach to detect hal-lucinations in Large Language Models (LLMs) by learning uncertainty from internal model signals. Yet, recent methods vary simulta-neously across feature design, training data construction, and evaluation setting, obscur-ing what actually drives performance. To ad-dress this issue, we propose a factorised study of probe-based UE under matched conditions. Our results show that raw hidden states and attention features are difficult to outperform in-domain. However, under distribution shift, structured and compressed features are more robust, suggesting that in-domain performance alone is insufficient to measure progress. Fur-thermore, prompting and label construction significantly affect probe behaviour. Build-ing on these best-practice findings, we train benchmark-based pretrained probes that trans-fer reasonably well to open-ended factual gen-eration, providing a stable off-the-shelf base-line. Our work encourages more deployment-oriented evaluation of probe-based uncertainty estimators. The code repository is available at 
+
+https://github.com/ponhvoan/ProbeUE .
+
+1 Introduction 
+
+Hallucination in Large Language Models (LLMs), the tendency to generate fictitious information, re-mains a persistent barrier to reliable deployment in real-world applications (Sahoo et al., 2024; Huang et al., 2025a; Zhang et al., 2025b). This necessi-tates the development of robust uncertainty estima-tion (UE) to accurately flag potentially erroneous generations for users (Vashurin et al., 2025). Re-cent work suggests that probe-based UE, which leverages internal model states, provides among 
+
+> *Corresponding Authors.
+
+the most effective signals for hallucination detec-tion (Mahaut et al., 2024; Tan et al., 2025). This has led to a growing body of work that engineers pro-gressively more structured and informative internal features and integrates them into more sophisti-cated optimisation protocols (Chuang et al., 2024; He et al., 2024; Vazhentsev et al., 2025; Shelmanov et al., 2025). However, despite this progress, two questions remain unresolved: what accounts for the gains reported, and whether these gains translate beyond matched benchmark settings. First, current evaluations conflate multiple design choices, such as training data acquisition, feature representation, supervision, and probe architecture, making it un-clear what actually accounts for the observed gains. This motivates our first central research question: 
+
+What truly drives performance in probe-based un-certainty estimation? 
+
+At the same time, a critical bottleneck of probe-based UE is limited generalisability. Even though probes are highly effective under matched train-test conditions, their performance often degrades when applied to new domains or generation set-tings (CH-Wang et al., 2024; Chuang et al., 2024). This limits their utility in real use cases, where un-certainty estimators must handle open-ended gen-erations, rather than only the benchmark format on which they were trained. Although some prior work evaluates transfer across datasets, such eval-uations are restricted to benchmark-to-benchmark transfer (Chuang et al., 2024), or remain within comparable long form and claim-level generation setup (Han et al., 2025; Shelmanov et al., 2025). In these settings, probes are tested under distribution shift, but the generation format, answer structure, supervision signal, and evaluation protocol remain relatively constrained. This leaves open whether probes can generalise to less standardised deploy-1
+
+> arXiv:2606.27679v1 [cs.CL] 26 Jun 2026
+
+ment settings, where outputs are open-ended, vary significantly in length and style, and contain more diverse factual errors. This formulates our sec-ond research question: Can probes trained under controlled benchmark settings generalise to open-ended generation tasks? 
+
+To answer these questions, we conduct a con-trolled study of probe-based UE across three pri-mary dimensions: feature representations, train-ing data construction, and transfer settings. Our study covers a wide range of recently proposed fea-ture representations, spanning latent embeddings, output probabilities, attention patterns, and their combinations (Azaria and Mitchell, 2023; Chuang et al., 2024; He et al., 2024; Huang et al., 2025b; Shelmanov et al., 2025), evaluated with differ-ent probe architectures, supervision sizes, prompt-ing strategies, and automated correctness labels. We further study benchmark-to-benchmark trans-fer and a deployment-oriented setting in which probes pretrained on benchmark data are applied to open-ended long-form factual generation. To-gether, these allow us to identify which design choices drive in-domain performance, which re-main robust under shift, and which best prac-tices support reusable pretrained factuality probes. Our findings challenge several common assump-tions. First, simple linear probes over raw hid-den states and attention features are surprisingly difficult to outperform, even with limited supervi-sion. Second, data construction choices strongly shape probe behaviour: reasoning-based prompt-ing and lexical matching-based labels substantially degrade performance. Finally, structured and com-pressed features offer better trade-offs under dis-tribution shift. These findings yield a practical recipe: use simple probe architectures, concise generations with semantic correctness labels, and transfer-robust feature representations. Building on these best practices, we show that benchmark-pretrained probes transfer to open-ended factual generation, approaching task-specific supervised probes without target-task training data. Collectively, our work pushes probe-based UE beyond in-domain benchmark comparison toward deployment-oriented practice. Rather than pursu-ing increasingly complex internal state representa-tion features in isolation, the field should prioritise simple and transferable probe configurations that maintain reliability beyond benchmarks. In sum-mary, our contributions are threefold: • We propose a factorised evaluation framework to disentangle the design factors behind probe-based UE performance. • We introduce practical best practices for training lightweight uncertainty/factuality probes under different constraints. • We demonstrate how these best practices support deployment of pretrained probes for open-ended generation, providing a stable baseline for future work. 
+
+2 Related Work 
+
+Probe-based Uncertainty Estimation (UE) 
+
+trains lightweight probes on top of LLM internal signals to predict factuality or correctness, or con-versely, hallucination risk. This paradigm is attrac-tive because it typically requires only a single LLM forward pass, unlike expensive sampling-based methods, and often achieves strong in-domain per-formance. Early work showed that truth-related information can be extracted from hidden activa-tions, often from the final layer and final token, using simple classifiers (Azaria and Mitchell, 2023; Burns et al., 2022; Marks and Tegmark, 2023). Sub-sequent methods extend this paradigm by deriving more informative hidden state representations in several ways. Some works steer the prompting or generation procedure to elicit responses, and hence internal states, that are more discriminative for fac-tual verification (Zhang et al., 2025a; Srey et al., 2025). Other methods expose the probe to more information, for example by pooling hidden states across all layers (CH-Wang et al., 2024), or by modelling hidden states from all generated tokens as sequential inputs (Shelmanov et al., 2025; Srey et al., 2026b; Zhu et al., 2024), or by integrating cross-model hidden states (Tan et al., 2025). An-other approach transforms hidden states into struc-tured features intended to capture uncertainty- and hallucination-relevant geometry, such as density-based features across layers (Vazhentsev et al., 2025), or cross-layer dynamics (Srey et al., 2026b). A parallel line of work explores internal signals beyond hidden states alone. Attention-based meth-ods, for example, use patterns such as the look-back ratio (Chuang et al., 2024), the relative at-tention paid to source context compared to gen-erated tokens. Related works also incorporate probability-space information, such as token prob-abilities (Vazhentsev et al., 2025), entropy (Srey 20.0 0.2 0.4 0.6 0.8               
+
+> AUROC
+> Attention + MSP
+> Embedding (mean)
+> Lookback Ratio
+> Embedding (last)
+> Attention
+> Embedding (all)
+> Layer Top-mProb.
+> Top-mProb.
+> Internal Variance
+> SATMD + MSP
+> SATMD
+> CoE-C
+> Perplexity
+> Energy
+> CoE-R
+> Cov. Determinant
+> Circular Variance
+> Max. Seq. Prob.
+> Entropy
+> Qwen-3-8B
+> 0.0 0.2 0.4 0.6 0.8
+> AUROC
+> Qwen-3.5-9B
+> 0.0 0.2 0.4 0.6 0.8
+> AUROC
+> Gemma-3-12B-Instruct
+> 0.0 0.2 0.4 0.6 0.8
+> AUROC
+> Mean
+> Attention
+> Embedding
+> Logit
+> Combined
+
+(a) Average AUROC 0.0 0.1 0.2 0.3 0.4 0.5               
+
+> ECE
+> Internal Variance
+> Top-mProb.
+> Lookback Ratio
+> Embedding (last)
+> Attention
+> Layer Top-mProb.
+> Attention + MSP
+> Embedding (mean)
+> Energy
+> Embedding (all)
+> CoE-C
+> Circular Variance
+> CoE-R
+> Max. Seq. Prob.
+> Perplexity
+> Cov. Determinant
+> Entropy
+> SATMD + MSP
+> SATMD
+> Qwen-3-8B
+> 0.0 0.2 0.4 0.6
+> ECE
+> Qwen-3.5-9B
+> 0.0 0.2 0.4 0.6
+> ECE
+> Gemma-3-12B-Instruct
+> 0.0 0.1 0.2 0.3 0.4 0.5 0.6
+> ECE
+> Mean
+> Attention
+> Embedding
+> Logit
+> Combined
+
+(b) Average ECE 
+
+Figure 1: Main results: In-domain performance averaged across all benchmark datasets. 
+
+et al., 2026b), or logit-derived features, such as top-k output indices (He et al., 2024). These recent hybrid methods combine hidden states, attention maps, and probability-based signals through di-rect concatenation (Shelmanov et al., 2025; Srey et al., 2025; Vazhentsev et al., 2025), or through specialised submodules (He et al., 2024). Related calibration methods learn post-hoc mappings from heuristic UE scores to correctness-aligned esti-mates with a model-specific corrector (Li et al., 2025), further extending internal-state probes. Overall, probe-based UE has increasingly been framed as a search for richer features, better cal-ibrated signals, and higher-capacity optimisation pipelines. However, these methods often vary si-multaneously in many design factors, making it unclear which choices actually account for the ob-served gains. Our work clarifies when such en-gineering is necessary, when simple hidden state probes suffice, and which design choices remain robust under transfer. 
+
+Toolkits, Benchmarks, and Evaluation. Recent work emphasises standardised evaluation for LLM uncertainty estimation. LM-Polygraph (Fadeeva et al., 2023) provides a unified toolkit for compar-ing UE methods, with follow-up work benchmark-ing them under consistent protocols (Vashurin et al., 2025). Similarly, UQLM (Bouchard et al., 2026) offers an off-the-shelf package for response-level hallucination detection using black-box, white-box, LLM-as-a-judge, and ensemble scorers. Other eval-uation works study various aspects, for example, by investigating long form factuality (Han et al., 2025) and real-time entity-level hallucination de-tection with token-level annotations (Obeso et al., 32025), incorporating uncertainty into LLM bench-marking (Ye et al., 2024), analysing robustness to semantically equivalent inputs (Mahaut et al., 2024), comparing in-domain and out-of-domain settings (Wang et al., 2025a), and re-examining evaluation choices in hallucination detection (Ja-niak et al., 2025). Furthermore, confidence esti-mates are sensitive to reasoning and prompting: reasoning models may more accurately express their verbalised confidence in some setups (Yoon et al., 2026), but not consistently (Mei et al., 2026), and reasoning may inflate probability-based con-fidence (Fu et al., 2025). These efforts improve evaluation practice for UE broadly, but leave the space of supervised internal-state probes compar-atively underexamined, motivating our factorised study of probe performance and transfer. 
+
+3 What Drives Probe Performance? 
+
+In this section, we answer our first research ques-tion: What truly drives performance in probe-based uncertainty estimation? To this end, we perform a factorised analysis by varying impor-tant design choices while keeping other conditions fixed, namely feature representation, data and su-pervision construction, and transfer setting. We find that raw hidden state and attention features are strong in-domain (Section 3.2), response elicita-tion and groundtruth annotation strategy choices can substantially affect probe quality (Section 3.3), and more structured features are more robust un-der transfer (Section 3.4). We clarify that Sec-tion 3.4 represents a benchmark-to-benchmark transfer analysis, where training and test data differ, but they are both from the benchmark pool (Sec-tion 3.1). In Section 4, we emulate a more open-ended generation setting and evaluate our probes pretrained only on the benchmark datasets. 
+
+3.1 Experimental Setup Datasets. We evaluate on seven datasets span-ning three tasks: (i) Question Answering (QA): 
+
+we use TriviaQA (Joshi et al., 2017), SciQ (Welbl et al., 2017), and PopQA (Mallen et al., 2023) as fact-heavy short-answer QA datasets, encompass-ing general trivia, science knowledge, and long-tail entity knowledge, respectively; (ii) Verification :we include BoolQ (Clark et al., 2019) and Strate-gyQA (Geva et al., 2021) as factual and logical ver-ification tasks that often require understanding and implicit reasoning; (iii) Multiple-Choice Ques-tions (MCQ) : we use CommonsenseQA (CSQA; Talmor et al., 2019) and ARC (Clark et al., 2018). These datasets cover diverse topics, answer formats, and reasoning demands. To obtain correctness la-bels of LLM generations for the QA datasets which require comparing with reference answers, we utilise Gemini-3.1-Flash-Lite (Google DeepMind, 2026) as the default LLM-as-a-judge groundtruth annotator. We discuss the effects of different anno-tation strategies in Section 3.3. 
+
+Language Models. For the main experiment, we evaluate with five popular LLMs across three model families: Llama-3.1-8B (Grattafiori et al., 2024), Qwen-3-4B, Qwen-3-8B (Yang et al., 2025), Qwen-3.5-9B (Qwen Team, 2026), Gemma-3-12B (Kamath et al., 2025). We use the instruction-tuned version for all models except for Qwen-3-8B. For more detailed analysis, we work with Qwen-3-8B. LLama and Qwen-3-4B are deferred to Section B for better presentation. 
+
+Evaluation Metrics. To evaluate our results, we report two complementary metrics that capture key desiderata of uncertainty estimation: (i) Area Un-der the Receiver-Operating characteristics Curve (AUROC; Davis and Goadrich, 2006), which mea-sures discriminability, or the probe’s ability to sep-arate positive (correct) from negative classes, with 
+
+1.0 indicating perfect discrimination and 0.5 no better than chance; and (ii) Expected Calibration Error (ECE; Guo et al., 2017), which measures cali-bration, i.e. how closely the predicted probabilities align with real-world outcomes, with 0.0 indicat-ing perfect calibration. We follow the standard 10 equal-width bins implementation. 
+
+Feature Representations. For each query, we run greedy decoding and extract 19 feature rep-resentations from the LLM’s internal generation trace, grouped into four information levels. First, we use hidden state representation summaries: Em-bedding (last) , Embedding (mean) , and Embed-ding (all) (Azaria and Mitchell, 2023; Su et al., 2024); trajectory-based CoE-R and CoE-C (Wang et al., 2025b); dispersion-based Circular Variance 
+
+and Cov. Determinant (Srey et al., 2026b); and density-based SATMD (Vazhentsev et al., 2025). Second, probability features capture output-side uncertainty: Max. Seq. Prob. (MSP) , Entropy ,
+
+Perplexity (Huang et al., 2025b), Energy (Liu et al., 2020), Top-m Prob. (He et al., 2024), with m = 10 
+
+as default. Third, we include attention features 4Figure 2: Effect of probe architecture on AUROC. 
+
+that reflects attention allocation between input and generated tokens, namely recent-token Attention 
+
+(Vazhentsev et al., 2025), and Lookback Ratio 
+
+(Chuang et al., 2024). Finally, combined features concatenate complementary signals into Layer Top-
+
+m Prob (He et al., 2024), Attention + MSP , Internal Variance , and SATMD + MSP . We provide more details on feature representation in Section A. 
+
+Probe Training. We train lightweight binary probes on top of each feature representation to pre-dict whether a generated response is correct. Our default is a linear probe, and we evaluate two non-linear variants (see Section 3.2): an MLP probe with one ReLU-activated hidden layer, and a CNN that applies 1D convolutions over the flattened fea-ture vector before pooling and classification. We adopt the binary cross-entropy loss, optimised us-ing Adam, with feature normalisation and early stopping based on validation AUROC. 
+
+3.2 Simple Features Are Difficult to Outperform Simple Signals Win. Under a fixed linear-probe setting, more complex feature engineering does not consistently improve in-domain uncertainty estima-tion. As shown in Figure 1, simple hidden state and attention-based features, namely Embedding (mean), Embedding (last), Lookback Ratio, and Attention, are consistently competitive across all models, with Lookback Ratio standing out for its smaller input dimension. Additionally, in line with previous findings, concatenating embeddings from all layers does not always improve performance (Chuang et al., 2024; Su et al., 2024). In contrast, augmenting hidden state features with logit-based signals, such as MSP and Entropy, or vice versa for Top-m Prob., does reliably increase discriminabil-ity, suggesting that fusing complementary signal types are more useful than simply adding more of the same type of hidden state features. 
+
+Linear Probes Are Stable. We further test whether stronger probe architectures would affect the feature ranking. Figure 2 shows that MLP and CNN probes can improve weaker feature represen-tations, especially low-dimensional and scalar fea-tures, e.g. Internal Variance and Energy, but bring limited gains for strong hidden state and attention-based signals. We observe a similar trend in calibra-tion (Figure 9). However, under the transfer setting (see Figure 8), higher-capacity probes generally worsen performance, suggesting that they may cap-ture dataset-specific patterns that hurt generalisa-tion. Thus, probe complexity is not uniformly ben-eficial: once feature representation is sufficiently informative, linear probes are often competitive and more stable. 
+
+> Figure 3: Dependence on number of training examples.
+
+Limited Supervision Is Sufficient. Next, we vary the number of labelled training examples to determine how much supervision is required. Fig-ure 3 visualises AUROC for a strong set of features. Performance steadily improves with more labelled data, but satisfactory performance is recovered with relatively few labels, with average AUROC plateau-ing at around 128–256 examples. In particular, higher dimensional features such as last-token em-beddings can perform better with fewer training examples, with less gains beyond 128 instances. Overall, these results suggest that factuality in-formation is largely linearly accessible in the hid-den states even with limited supervision. The main benefit of recent feature engineering may therefore not be stronger in-domain discrimination, but bet-ter performance under other constraints, such as calibration and transfer. For instance, ECE results in Figure 1 show that internal variance is relatively well-calibrated despite lower AUROC. This mo-tivates our further examination in transfer tasks rather than treating in-domain AUROC as the sole indicator of progress. 5Figure 4: Effects of inducing reasoning. 
+
+3.3 Data Construction Strongly Shapes Performance 
+
+To obtain data for training the uncertainty probes, there are two crucial design choices to consider: prompting, which affects response elicitation and thus the internal states, and groundtruth annotation strategy. 
+
+Reasoning Hurts Performance. We test three different prompting options on ARC and CSQA to induce long, short, and no reasoning. For long rea-soning, we prompt with Chain-of-Thought (CoT; Wei et al., 2022), and for short reasoning, we adapt CoT and enforce the model to provide only a con-cise one-sentence reasoning before answering. We find that prompt format has a substantial effect on probe performance. In Figure 4, reasoning reduces AUROC across most features on both CSQA and ARC, despite LLM accuracy remaining compara-ble, with the degradation especially pronounced for lower-dimensional probability-based and internal-variance features. This suggests that, despite possi-ble improvements in answer generation, reasoning traces can alter the feature representations used by probes, potentially diluting their factuality signals. Therefore, for probe-based UE, concise and direct generations are preferable. 
+
+Groundtruth Annotation Matters. We study how the choice of correctness annotation for gen-eration with reference answers affects probe eval-uation. Since it is too costly to obtain gold hu-                  
+
+> Figure 5: Impact of various automated annotation op-tions on probe performance.
+> Annotator Trivia SciQ PopQa
+> Rouge-1 .684 (85%) .237 (56%) .756 (95%) Rouge-2 .245 (66%) .069 (32%) .319 (89%) Rouge-L .684 (85%) .228 (55%) .756 (95%) AlignScore .728 (87%) .220 (60%) .756 (95%) LLM-as-a-judge .960 (98%) .820 (94%) .879 (97%)
+> Table 1: Cohen’s kappa (agreement %) for automated labels and human judgement.
+
+man annotations, we resort to automated scorers, a common practice in the field (Duan et al., 2024; Janiak et al., 2025; Kuhn et al., 2023; Vazhent-sev et al., 2025). Specifically, we examine three types of labelling strategies on TriviaQA, SciQ, and PopQa: Rouge (Lin, 2004), AlignScore (Zha et al., 2023), and LLM-as-a-judge with Gemini-3.1-Flash-Lite. We binarise Rouge and AlignScore using a generic decision threshold of 0.5, consis-tent with prior work (Duan et al., 2024; Lei et al., 2023). To assess the fidelity of the automatically generated labels, we randomly select 100 genera-tions from each dataset, and measure agreement of correctness label between the automated scorer and a human annotator, who was instructed to perform web search as needed. Table 1 presents Cohen’s kappa and percentage of agreed labels between the automated and human scorer. Consistent with findings by Janiak et al. (2025), LLM-as-a-judge aligns much more closely with human judgement, with AlignScore as second-best but still subpar by a large margin. Due to its high agreement, we utilise LLM-as-a-judge labels as the groundtruth. Then, in Figure 5, we investigate the effect of varying the 60.0 0.2 0.4 0.6 0.8                 
+
+> AUROC
+> Internal Variance
+> Cov. Determinant
+> Embedding (mean)
+> Embedding (all)
+> Embedding (last)
+> Top-mProb.
+> Circular Variance
+> Max. Seq. Prob.
+> Attention + MSP
+> Layer Top-mProb.
+> Lookback Ratio
+> Attention
+> Energy
+> SATMD + MSP
+> CoE-C
+> CoE-R
+> Perplexity
+> SATMD
+> Entropy
+> QA
+> 0.0 0.2 0.4 0.6 0.8
+> AUROC
+> Verification
+> 0.0 0.2 0.4 0.6 0.8
+> AUROC
+> MCQ
+> 0.0 0.2 0.4 0.6 0.8
+> AUROC
+> Mean
+> In-domain Out-of-domain (same task) Out-of-domain (cross task)
+
+Figure 6: Benchmark-transfer performance. Average AUROC across In-domain, Out-of-domain (same task), and Out-of-domain (cross task) configurations. 
+
+labelling choice for the training data, and we find that LLM-as-a-judge labels more consistent with the chosen evaluation labels. These results caution against relying on lexical-based metrics to obtain groundtruths, and instead advocate for LLM-as-a-judge labelling, which better captures semantic correctness. 
+
+3.4 Structured Features Are More Robust Under Transfer 
+
+For this benchmark-to-benchmark transfer setting, we report average performance within the three broader task groups: QA, Verification, and MCQ. Further, we distinguish between in-domain, out-of-domain (OOD) (same task), and OOD (cross task) performance. By OOD (same task), we mean testing on a different dataset from the same task group, e.g. Trivia → SciQ, and OOD (cross task) refers to all remaining train-test configurations. On average, Figure 6 shows a clear gap between in-domain and transfer performance, especially across tasks. This confirms that probes are brit-tle, and strong in-domain alone is not sufficient evidence they will be useful in deployment. hid-den state embeddings remain strong in-domain, but their advantage narrows considerably OOD as they may encode task- or data-specific biases that inhibit generalisation. In comparison, more structured fea-tures, such as Internal Variance, Lookback Ratio, and Top-m Prob., retain more of their performance under same task and cross task transfer. As a prac-tical takeaway, pretrained probes should not be selected solely by in-domain performance, but also, by its robustness to dataset shift. 
+
+4 Pretrained Probes on Open-Ended Generation 
+
+In this section, we answer our second research ques-tion: Can probes trained under controlled bench-mark settings generalise to open-ended generation tasks? We find that benchmark-pretrained probes based on structured features transfer effectively, in some cases outperforming supervised baselines trained with limited in-domain labels. This sup-ports pretrained probes as a practical starting point for factuality estimation. 
+
+4.1 Experimental Setup Evaluation Datasets. We sample 100 entities from the dataset used in (Min et al., 2023), and 50 from each domain in (Shelmanov et al., 2025). In total, we have 950 entities spanning across nine domains: Biographies (in-domain) , Biographies (OOD) , Artworks , Books , Cities , Events , Inventions ,
+
+Landmarks , Movies . Using Qwen-3-8B, we apply the same simple prompting by Shelmanov et al. (2025) to generate texts for each entity for up to a maximum of 512 tokens. Similar to Han et al. (2025), we utilise Gemini-3.1-Flash-Lite to auto-matically decompose the long form continuation into atomic factual claims, resulting in approxi-mately 600–800 claims per domain. From each 7Probe Biographies (in-domain) Biographies (OOD) Artworks Books Cities Events Inventions Landmarks Movies OOD Average                                                                                                                                                                                                                                                                                                             
+
+> Baseline  Linear (#64) 64.83 (±2.04) 60.19 (±2.16) 59.57 (±3.11) 56.87 (±3.57) 54.51 (±2.25) 53.75 (±3.67) 59.56 (±3.03) 58.27 (±2.72) 62.44 (±2.63) 58.14 (±1.04)
+> Linear (#128) 72.43 (±2.01) 62.61 (±2.10) 64.89 (±3.01) 53.53 (±3.74) 61.8 (±2.18) 57.22 (±3.91) 60.81 (±3.1) 61.24 (±2.82) 64.45 (±2.47) 60.82 (±1.05)
+> MLP (#128) 73.69 (±1.91) 58.65 (±2.14) 62.15 (±2.94) 48.06 (±3.48) 58.97 (±2.24) 54.40 (±3.55) 58.03 (±3.15) 57.51 (±2.59) 60.06 (±2.51) 57.23 (±1.01)
+> Linear (#256) 78.15 (±2.06) 64.72 (±2.04) 64.72 (±2.81) 56.30 (±3.55) 64.37 (±2.13) 57.30 (±3.42) 61.63 (±3.19) 61.28 (±2.68) 65.55 (±2.41) 61.98 (±1.00)
+> Pretrained
+> Embedding (last) 54.85 (±2.42) 60.51 (±2.12) 52.11 (±2.97) 57.17 (±3.39) 54.68 (±2.49) 50.93 (±3.68) 59.29 (±3.08) 61.01 (±2.59) 66.25 (±2.41) 57.74 (±1.02)
+> Lookback Ratio 64.02 (±2.32) 61.68 (±2.14) 63.12 (±2.81) 59.87 (±2.97) 58.23 (±2.30) 56.60 (±3.80) 57.08 (±3.20) 62.72 (±2.44) 71.97 (±2.31) 61.41 (±0.99)
+> Layer Top-mProb. 66.16 (±2.26) 68.60 (±1.99) 66.44 (±3.07) 64.11 (±3.56) 66.48 (±2.14) 61.77 (±3.29) 72.96 (±3.03) 69.31 (±2.48) 80.14 (±1.93) 68.73 (±0.97)
+> Internal Variance 67.27 (±2.27) 70.19 (±1.96) 68.49 (±2.96) 64.46 (±3.34) 67.24 (±2.09) 59.28 (±3.48) 69.90 (±3.12) 67.74 (±2.57) 77.80 (±2.05) 68.14 (±0.97)
+> Ensemble (probe) 73.76 (±2.03) 70.18 (±2.00) 63.72 (±3.20) 58.88 (±3.42) 65.67 (±2.26) 55.00 (±3.57) 68.08 (±3.36) 64.46 (±2.76) 73.17 (±2.43) 64.90 (±1.04)
+> Ensemble (task) 68.38 (±2.27) 70.85 (±1.86) 65.38 (±3.02) 64.53 (±3.25) 63.44 (±2.24) 56.79 (±3.64) 70.23 (±3.06) 69.25 (±2.46) 77.93 (±2.03) 67.30 (±0.98)
+
+Table 2: AUROC with bootstrapped standard errors. Baselines are indicated with probe architecture and number of training examples from Biographies (in-domain). 
+
+claim, we obtain the features and labels in the same manner as in Section 3, but we replace the judge LLM with GPT-5.4-Mini (OpenAI, 2026). Accord-ing to Table 4, GPT-5-4-Mini is considerably more reliable in atomic claim factuality verification. As their agreement with human labels are similar for the benchmark tasks, with Gemini marginally bet-ter aligned, we keep Gemini’s labels for the previ-ous section. As baselines, we train simple linear and MLP probes on Embedding (last) with 64, 128, and 256 training instances, randomly selected from claims generated with Biographies (in-domain) en-tities. 
+
+Pretrained Probes. We retain probes pretrained on a dataset pooled from all seven benchmarks. Carrying forward our best practices from Section 3, we employ the simple linear architecture, direct answer without reasoning, and LLM-as-a-judge la-belling. In terms of feature representations, we select Lookback Ratio, Layer Top-m, Prob., and Internal Variance for their displayed robustness in benchmark-to-benchmark transfer, and we addi-tionally bring forward Embedding (last) for com-parison. Furthermore, we consider two simple en-sembles: Ensemble (probe), which averages from three Internal variance probes trained separately on QA, Verification, and MCQ; and Ensemble (task), which averages predictions from probes trained on pooled data using the three features. 
+
+4.2 Results and Discussion 
+
+Table 2 presents AUROC with bootstrapped standard errors (SE). Pretrained probes transfer strongly to open-ended factual generation, despite requiring no task-specific target-domain training data. While the supervised Linear (#256) base-line performs best in-domain, its OOD average is markedly below the best pretrained probes. These results reinforce our benchmark-transfer findings. Raw last-token embeddings transfer poorly to open-ended generation, suggesting that they encode task-specific variation. In contrast, structured features such as Layer Top-m, Internal Variance, and Look-back Ratio are more robust across domains. Mean-while, simple ensembling provides mixed benefit. The bootstrapped SEs are relatively small given that each domain contains 600–800 claims, indi-cating that the estimates are sufficiently stable. On balance, pretrained probes do not replace target-domain supervision, but they offer a practical base-line when labels are scarce. Thus, a deployment-oriented recipe is to start with pretrained probes based on structured or hybrid features, then adapt them as target-domain labels become available. 
+
+5 Conclusion 
+
+In this work, we examine the influence of fea-ture representation, training data construction, and transfer on probe-based UE. Our results indicate that raw features are surprisingly strong in-domain. However, under distribution shift, compressed and structured features are more robust, suggesting that in-domain discriminability alone is insufficient for assessing progress. Then, we distill best practices to train probes on benchmark data. Even without task-specific supervision, these pretrained probes demonstrate reasonable performance when trans-ferred to long form open-ended factual generation, providing a stable off-the-shelf baseline. We hope this work encourages the field to move beyond matched benchmark comparison and towards probe configurations that remain useful under realistic distribution shifts. Future work can improve this direction by adapting pretrained probes with small 8amounts of target-domain supervision, enabling stronger performance in low-label deployment set-tings. 
+
+Limitations 
+
+Although our work has derived best practices to train uncertainty/factuality probes and has shown how these can support deployment-oriented open-ended generation, it has the following limitations: 
+
+Constrained Open-Ended Generation. We sim-ulate a more realistic setting by considering long form generation involving an entity. However, there are many other uncovered use cases, such as unconstrained dialogue and multi-turn interac-tion. Thus, our conclusions about pretrained probe transfer should be interpreted as evidence for entity-centric factual generation, rather than universal claim of robustness across all open-ended settings. 
+
+Model and Feature Coverage. Our study cov-ers a broad set of LLMs, probe features, and de-sign factors, but it is not exhaustive. We focus on popular open-weight LLMs and internal sig-nals. In particular, we conduct our detailed analy-sis with base Qwen-3-8B. Future work can assess how broadly the observed best practices apply to larger instruction-tuned LLMs and other feature representations. 
+
+Hallucination Mitigation. We focus on halluci-nation detection using probes. We leave the area of probe-guided hallucination mitigation underex-plored. Future work can investigate whether the probe configurations identified here also support effective mitigation strategies. 
+
+References 
+
+Amos Azaria and Tom Mitchell. 2023. The internal state of an LLM knows when it’s lying. In Find-ings of the Association for Computational Linguistics: EMNLP 2023 , pages 967–976, Singapore. Associa-tion for Computational Linguistics. Dylan Bouchard, Mohit Singh Chauhan, David Skar-brevik, Ho-Kyeong Ra, Viren Bajaj, and Zeya Ah-mad. 2026. Uqlm: A python package for uncertainty quantification in large language models. Journal of Machine Learning Research , 27(13):1–10. Collin Burns, Haotian Ye, Dan Klein, and Jacob Stein-hardt. 2022. Discovering latent knowledge in lan-guage models without supervision. arXiv preprint arXiv:2212.03827 .Sky CH-Wang, Benjamin Van Durme, Jason Eisner, and Chris Kedzie. 2024. Do androids know they’re only dreaming of electric sheep? In Findings of the As-sociation for Computational Linguistics: ACL 2024 ,pages 4401–4420, Bangkok, Thailand. Association for Computational Linguistics. Yung-Sung Chuang, Linlu Qiu, Cheng-Yu Hsieh, Ran-jay Krishna, Yoon Kim, and James R. Glass. 2024. Lookback lens: Detecting and mitigating contextual hallucinations in large language models using only attention maps. In Proceedings of the 2024 Con-ference on Empirical Methods in Natural Language Processing , pages 1419–1436, Miami, Florida, USA. Association for Computational Linguistics. Christopher Clark, Kenton Lee, Ming-Wei Chang, Tom Kwiatkowski, Michael Collins, and Kristina Toutanova. 2019. BoolQ: Exploring the surprising difficulty of natural yes/no questions. In Proceedings of the 2019 Conference of the North American Chap-ter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers) , pages 2924–2936, Minneapolis, Min-nesota. Association for Computational Linguistics. Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa Schoenick, and Oyvind Tafjord. 2018. Think you have solved question an-swering? try arc, the ai2 reasoning challenge. arXiv preprint arXiv:1803.05457 .Jesse Davis and Mark Goadrich. 2006. The relationship between precision-recall and roc curves. In Proceed-ings of the 23rd international conference on Machine learning , pages 233–240. Jinhao Duan, Hao Cheng, Shiqi Wang, Alex Zavalny, Chenan Wang, Renjing Xu, Bhavya Kailkhura, and Kaidi Xu. 2024. Shifting attention to relevance: To-wards the predictive uncertainty quantification of free-form large language models. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 5050–5063, Bangkok, Thailand. Association for Computational Linguistics. Ekaterina Fadeeva, Roman Vashurin, Akim Tsvigun, Artem Vazhentsev, Sergey Petrakov, Kirill Fedyanin, Daniil Vasilev, Elizaveta Goncharova, Alexander Panchenko, Maxim Panov, Timothy Baldwin, and Artem Shelmanov. 2023. LM-polygraph: Uncer-tainty estimation for language models. In Proceed-ings of the 2023 Conference on Empirical Methods in Natural Language Processing: System Demon-strations , pages 446–461, Singapore. Association for Computational Linguistics. Tairan Fu, Javier Conde, Gonzalo Martínez, María Grandury, and Pedro Reviriego. 2025. Multiple choice questions: Reasoning makes large language models (llms) more self-confident even when they are wrong. arXiv preprint arXiv:2501.09775 .Mor Geva, Daniel Khashabi, Elad Segal, Tushar Khot, Dan Roth, and Jonathan Berant. 2021. Did aristotle 
+
+9use a laptop? a question answering benchmark with implicit reasoning strategies. Transactions of the Association for Computational Linguistics , 9:346– 361. Google DeepMind. 2026. Gemini 3.1 flash-lite. 
+
+https://ai.google.dev/gemini-api/docs/ models/gemini-3.1-flash-lite . Accessed: May 22, 2026. Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, and 1 others. 2024. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 .Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q Wein-berger. 2017. On calibration of modern neural net-works. In International conference on machine learn-ing , pages 1321–1330. PMLR. Jiatong Han, Neil Band, Muhammed Razzak, Jannik Kossen, Tim G. J. Rudner, and Yarin Gal. 2025. Sim-ple factuality probes detect hallucinations in long-form natural language generation. In Findings of the Association for Computational Linguistics: EMNLP 2025 , pages 16209–16226, Suzhou, China. Associa-tion for Computational Linguistics. Jinwen He, Yujia Gong, Zijin Lin, Cheng’an Wei, Yue Zhao, and Kai Chen. 2024. LLM factoscope: Un-covering LLMs’ factual discernment through mea-suring inner states. In Findings of the Association for Computational Linguistics: ACL 2024 , pages 10218–10230, Bangkok, Thailand. Association for Computational Linguistics. Lei Huang, Weijiang Yu, Weitao Ma, Weihong Zhong, Zhangyin Feng, Haotian Wang, Qianglong Chen, Weihua Peng, Xiaocheng Feng, Bing Qin, and Ting Liu. 2025a. A survey on hallucination in large lan-guage models: Principles, taxonomy, challenges, and open questions. ACM Trans. Inf. Syst. , 43(2). Yuheng Huang, Jiayang Song, Zhijie Wang, Sheng-ming Zhao, Huaming Chen, Felix Juefei-Xu, and Lei Ma. 2025b. Look before you leap: An exploratory study of uncertainty analysis for large language mod-els. IEEE Transactions on Software Engineering ,51(2):413–429. Denis Janiak, Jakub Binkowski, Albert Sawczyn, Bog-dan Gabrys, Ravid Shwartz-Ziv, and Tomasz Jan Kajdanowicz. 2025. The illusion of progress: Re-evaluating hallucination detection in LLMs. In Pro-ceedings of the 2025 Conference on Empirical Meth-ods in Natural Language Processing , pages 34728– 34745, Suzhou, China. Association for Computa-tional Linguistics. Mandar Joshi, Eunsol Choi, Daniel Weld, and Luke Zettlemoyer. 2017. TriviaQA: A large scale distantly supervised challenge dataset for reading comprehen-sion. In Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics (Vol-ume 1: Long Papers) , pages 1601–1611, Vancouver, Canada. Association for Computational Linguistics. Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin, Tatiana Matejovicova, Alexandre Ramé, Morgane Rivière, Louis Rouillard, and 1 others. 2025. Gemma 3 tech-nical report. arXiv preprint arXiv:2503.19786 , 4. Lorenz Kuhn, Yarin Gal, and Sebastian Farquhar. 2023. Semantic uncertainty: Linguistic invariances for un-certainty estimation in natural language generation. 
+
+arXiv preprint arXiv:2302.09664 .Deren Lei, Yaxi Li, Mengya Hu, Mingyu Wang, Vin-cent Yun, Emily Ching, and Eslam Kamal. 2023. Chain of natural language inference for reducing large language model ungrounded hallucinations. 
+
+arXiv preprint arXiv:2310.03951 .Rui Li, Jing Long, Muge Qi, Heming Xia, Lei Sha, Peiyi Wang, and Zhifang Sui. 2025. Towards harmonized uncertainty estimation for large language models. In 
+
+Proceedings of the 63rd Annual Meeting of the As-sociation for Computational Linguistics (Volume 1: Long Papers) , pages 22938–22953, Vienna, Austria. Association for Computational Linguistics. Chin-Yew Lin. 2004. ROUGE: A package for auto-matic evaluation of summaries. In Text Summariza-tion Branches Out , pages 74–81, Barcelona, Spain. Association for Computational Linguistics. Weitang Liu, Xiaoyun Wang, John Owens, and Yixuan Li. 2020. Energy-based out-of-distribution detection. 
+
+Advances in neural information processing systems ,33:21464–21475. Matéo Mahaut, Laura Aina, Paula Czarnowska, Mom-chil Hardalov, Thomas Müller, and Lluis Marquez. 2024. Factual confidence of LLMs: on reliability and robustness of current estimators. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 4554–4570, Bangkok, Thailand. Association for Computational Linguistics. Alex Mallen, Akari Asai, Victor Zhong, Rajarshi Das, Daniel Khashabi, and Hannaneh Hajishirzi. 2023. When not to trust language models: Investigating effectiveness of parametric and non-parametric mem-ories. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Vol-ume 1: Long Papers) , pages 9802–9822, Toronto, Canada. Association for Computational Linguistics. Samuel Marks and Max Tegmark. 2023. The geometry of truth: Emergent linear structure in large language model representations of true/false datasets. arXiv preprint arXiv:2310.06824 .Zhiting Mei, Christina Zhang, Tenny Yin, Justin Lidard, Ola Sho, and Anirudha Majumdar. 2026. Reason-ing about uncertainty: Do reasoning models know when they don’t know? In Findings of the Asso-ciation for Computational Linguistics: EACL 2026 ,pages 3408–3458, Rabat, Morocco. Association for Computational Linguistics. 
+
+10 Sewon Min, Kalpesh Krishna, Xinxi Lyu, Mike Lewis, Wen-tau Yih, Pang Koh, Mohit Iyyer, Luke Zettle-moyer, and Hannaneh Hajishirzi. 2023. FActScore: Fine-grained atomic evaluation of factual precision in long form text generation. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , Singapore. Oscar Obeso, Andy Arditi, Javier Ferrando, Joshua Free-man, Cameron Holmes, and Neel Nanda. 2025. Real-time detection of hallucinated entities in long-form generation. arXiv preprint arXiv:2509.03531 .OpenAI. 2026. Introducing gpt -5.4 mini and nano. https://openai.com/index/ introducing-gpt-5-4-mini-and-nano// .Accessed: May 25, 2026. Qwen Team. 2026. Qwen3.5: Towards Native Multi-modal Agents. https://qwen.ai/blog?id=qwen3. 5. Accessed: May 22, 2026. Pranab Sahoo, Prabhash Meharia, Akash Ghosh, Sri-parna Saha, Vinija Jain, and Aman Chadha. 2024. A comprehensive survey of hallucination in large lan-guage, image, video and audio foundation models. In Findings of the Association for Computational Linguistics: EMNLP 2024 , pages 11709–11724, Mi-ami, Florida, USA. Association for Computational Linguistics. Artem Shelmanov, Ekaterina Fadeeva, Akim Tsvigun, Ivan Tsvigun, Zhuohan Xie, Igor Kiselev, Nico Da-heim, Caiqi Zhang, Artem Vazhentsev, Mrinmaya Sachan, Preslav Nakov, and Timothy Baldwin. 2025. A head to predict and a head to question: Pre-trained uncertainty quantification heads for hallucination detection in LLM outputs. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 35712–35731, Suzhou, China. Association for Computational Linguistics. Ponhvoan Srey, Quang Minh Nguyen, Xiaobao Wu, and Anh Tuan Luu. 2026a. Towards reliable truth-aligned uncertainty estimation in large language mod-els. arXiv preprint arXiv:2604.00445 .Ponhvoan Srey, Xiaobao Wu, and Anh Tuan Luu. 2025. Unsupervised hallucination detection by inspecting reasoning processes. In Proceedings of the 2025 Con-ference on Empirical Methods in Natural Language Processing , pages 22117–22129, Suzhou, China. As-sociation for Computational Linguistics. Ponhvoan Srey, Xiaobao Wu, Cong-Duy Nguyen, and Anh Tuan Luu. 2026b. Learning uncertainty from se-quential internal dispersion in large language models. 
+
+arXiv preprint arXiv:2604.15741 .Weihang Su, Changyue Wang, Qingyao Ai, Yiran Hu, Zhijing Wu, Yujia Zhou, and Yiqun Liu. 2024. Un-supervised real-time hallucination detection based on the internal states of large language models. In 
+
+Findings of the Association for Computational Lin-guistics: ACL 2024 , pages 14379–14391, Bangkok, Thailand. Association for Computational Linguistics. Alon Talmor, Jonathan Herzig, Nicholas Lourie, and Jonathan Berant. 2019. CommonsenseQA: A ques-tion answering challenge targeting commonsense knowledge. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Tech-nologies, Volume 1 (Long and Short Papers) , pages 4149–4158, Minneapolis, Minnesota. Association for Computational Linguistics. Hexiang Tan, Fei Sun, Sha Liu, Du Su, Qi Cao, Xin Chen, Jingang Wang, Xunliang Cai, Yuanzhuo Wang, Huawei Shen, and Xueqi Cheng. 2025. Too consis-tent to detect: A study of self-consistent errors in LLMs. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing ,pages 4755–4765, Suzhou, China. Association for Computational Linguistics. Roman Vashurin, Ekaterina Fadeeva, Artem Vazhentsev, Lyudmila Rvanova, Daniil Vasilev, Akim Tsvigun, Sergey Petrakov, Rui Xing, Abdelrahman Sadallah, Kirill Grishchenkov, Alexander Panchenko, Timothy Baldwin, Preslav Nakov, Maxim Panov, and Artem Shelmanov. 2025. Benchmarking uncertainty quan-tification methods for large language models with LM-polygraph. Transactions of the Association for Computational Linguistics , 13:220–248. Artem Vazhentsev, Lyudmila Rvanova, Ivan Lazichny, Alexander Panchenko, Maxim Panov, Timothy Bald-win, and Artem Shelmanov. 2025. Token-level density-based uncertainty quantification methods for eliciting truthfulness of large language models. In 
+
+Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Com-putational Linguistics: Human Language Technolo-gies (Volume 1: Long Papers) , pages 2246–2262, Albuquerque, New Mexico. Association for Compu-tational Linguistics. Kevin Wang, Subre Abdoul Moktar, Jia Li, Kangshuo Li, and Feng Chen. 2025a. Measuring aleatoric and epis-temic uncertainty in llms: Empirical evaluation on id and ood qa tasks. arXiv preprint arXiv:2511.03166 .Yiming Wang, Pei Zhang, Baosong Yang, Derek Wong, and Rui Wang. 2025b. Latent space chain-of-embedding enables output-free llm self-evaluation. In International Conference on Learning Representa-tions , volume 2025, pages 70938–70970. Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, and 1 others. 2022. Chain-of-thought prompting elic-its reasoning in large language models. Advances in neural information processing systems , 35:24824– 24837. Johannes Welbl, Nelson F. Liu, and Matt Gardner. 2017. Crowdsourcing multiple choice science questions. In Proceedings of the 3rd Workshop on Noisy User-generated Text , pages 94–106, Copenhagen, Den-mark. Association for Computational Linguistics. 
+
+11 An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, and 1 others. 2025. Qwen3 technical report. arXiv preprint arXiv:2505.09388 .Fanghua Ye, Mingming Yang, Jianhui Pang, Longyue Wang, Derek F. Wong, Emine Yilmaz, Shuming Shi, and Zhaopeng Tu. 2024. Benchmarking llms via uncertainty quantification. In Proceedings of the 38th International Conference on Neural Information Processing Systems , NIPS ’24, Red Hook, NY, USA. Curran Associates Inc. Dongkeun Yoon, Seungone Kim, Sohee Yang, Sunky-oung Kim, Soyeon Kim, Yongil Kim, Eunbi Choi, Yireun Kim, and Minjoon Seo. 2026. Reasoning models better express their confidence. Advances in Neural Information Processing Systems , 38:103869– 103896. Yuheng Zha, Yichi Yang, Ruichen Li, and Zhiting Hu. 2023. AlignScore: Evaluating factual consistency with a unified alignment function. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 11328–11348, Toronto, Canada. Association for Computational Linguistics. Fujie Zhang, Peiqi Yu, Biao Yi, Baolei Zhang, Tong Li, and Zheli Liu. 2025a. Prompt-guided internal states for hallucination detection of large language models. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 21806–21818, Vienna, Austria. Association for Computational Linguistics. Yue Zhang, Yafu Li, Leyang Cui, Deng Cai, Lemao Liu, Tingchen Fu, Xinting Huang, Enbo Zhao, Yu Zhang, Yulong Chen, Longyue Wang, Anh Tuan Luu, Wei Bi, Freda Shi, and Shuming Shi. 2025b. Siren’s song in the ai ocean: A survey on hallucination in large language models. Computational Linguistics ,51(4):1373–1418. Derui Zhu, Dingfan Chen, Qing Li, Zongxiong Chen, Lei Ma, Jens Grossklags, and Mario Fritz. 2024. PoLLMgraph: Unraveling hallucinations in large lan-guage models via state transition dynamics. In Find-ings of the Association for Computational Linguis-tics: NAACL 2024 , pages 4737–4751, Mexico City, Mexico. Association for Computational Linguistics. 
+
+12 A Feature Representation Details 
+
+Table 3 summarises the feature representations used in our factorised study. We follow the origi-nal formulation proposed in the respective papers and use sequence-level aggregation where needed. In particular, for embedding- and logit-based UE scores, we apply TAC (Srey et al., 2026a) to bet-ter align raw confidence with truthfulness, and we adapt Internal Variance to sequence-level internal-dispersion feature. 
+
+B Supplementary Experiments 
+
+Here, we provide supplementary experiments. 
+
+Additional Model Results. Figure 7 reports in-domain AUROC and ECE for Qwen-3-4B-Instruct and Llama-3.1-8B-Instruct. The overall trends are consistent with the main results: hidden state and attention-based features remain strong in-domain. 
+
+Calibration under Transfer. Figure 10 reports ECE under the same in-domain, OOD same-task, and OOD cross-task settings. This shows that dis-criminability and calibration do not always move together. Features with strong AUROC are not necessarily the best calibrated, and some lower-dimensional structured features remain compara-tively stable under shift. 
+
+Per-dataset Transfer. Figure 11 and Figure 12 provide per-dataset transfer results for AUROC and ECE, respectively. While the degree of transfer degradation varies across datasets, hidden state fea-tures generally remain strong in-domain, whereas structured features tend to retain performance more consistently under OOD evaluation. 
+
+Probe Architecture and Training Size. Figure 8 and Figure 9 provide average OOD performance for different probe architectures and effect of probe architecture on ECE, respectively. Higher-capacity probes can improve some weak feature represen-tations, but do not consistently improve transfer performance, supporting our use of linear probes as the default architecture. Figure 13 presents per-dataset performance with different training set sizes, showing that performance often improves rapidly with limited supervision and begins to sat-urate around 128–256 examples for many feature representations. 
+
+LLM-as-a-judge Validation. Table 4 compares the agreement between automated LLM-as-a-judge and human labels. We select 100 examples from each of Trivia, SciQ, and PopQA, and 105 from Bi-ographies (in-domain). To obtain gold groundtruth labels for Trivia, SciQ, and PopQA, we instruct the human annotator to compare the generated answer with the reference answer, and to use web search if a further check is required. For Biographies (in-domain), similar to Min et al. (2023), the human annotator uses the Wikipedia article of each entity as evidence to check the factuality of the gener-ated claims. GPT-5.4-Mini shows stronger agree-ment on the biography claim-level setting, while Gemini-3.1-Flash-Lite remains competitive on the short-answer benchmark datasets. We therefore use Gemini labels for the benchmark experiments and GPT-5.4-Mini labels for the open-ended factual generation experiments. 13 Type Name Description Citation 
+
+Hidden State Embedding (last) Last generated token, last layer embedding (Azaria and Mitchell, 2023) Embedding (mean) Mean generated token, last layer embedding (Su et al., 2024) Embedding (all) All-layer hidden state of last generated token pooled together (Su et al., 2024) CoE-R, CoE-C Geometry of hidden state trajectory across successive layers (Wang et al., 2025b) Circular Variance, Cov. Determinant Cross-layer internal dispersion (Srey et al., 2026b) SATMD Layer-wise token deviations from the distribution of correct generations (Vazhentsev et al., 2025) Logit MSP, Entropy, Perplexity, Energy Logit-derived uncertainty score (Huang et al., 2025b; Liu et al., 2020) Top-m m-highest predicted probability values. (He et al., 2024) Attention Attention Attention maps to previous tokens. (Shelmanov et al., 2025) Lookback Ratio Relative attention paid to input context versus generated tokens. (Chuang et al., 2024) Combined Layer Top-m Prob. Concatenation of Top-m Prob. from all layers. (He et al., 2024) Internal Variance, Attention + MSP, SATMD + MSP Combination via concatenation. —
+
+Table 3: Feature representations used in our study. 0.0 0.2 0.4 0.6 0.8   
+
+> AUROC
+> Lookback Ratio
+> Attention + MSP
+> Attention
+> Embedding (mean)
+> Embedding (last)
+> Layer Top-mProb.
+> Embedding (all)
+> Top-mProb.
+> Internal Variance
+> SATMD + MSP
+> SATMD
+> Cov. Determinant
+> Energy
+> Perplexity
+> Entropy
+> CoE-R
+> Circular Variance
+> CoE-C
+> Max. Seq. Prob.
+
+Qwen-3-4B-Instruct     
+
+> 0.0 0.2 0.4 0.6 0.8
+> AUROC
+
+Llama-3.1-8B-Instruct      
+
+> Attention
+> Embedding
+> Logit
+> Combined 0.0 0.2 0.4 0.6
+> ECE
+> Internal Variance
+> Layer Top-mProb.
+> Lookback Ratio
+> Top-mProb.
+> Embedding (mean)
+> Attention + MSP
+> Embedding (last)
+> Attention
+> Cov. Determinant
+> Perplexity
+> Entropy
+> Energy
+> Circular Variance
+> Embedding (all)
+> Max. Seq. Prob.
+> CoE-C
+> CoE-R
+> SATMD
+> SATMD + MSP
+
+Qwen-3-4B-Instruct      
+
+> 0.0 0.1 0.2 0.3 0.4 0.5
+> ECE
+
+Llama-3.1-8B-Instruct 
+
+> Attention
+> Embedding
+> Logit
+> Combined
+
+Figure 7: AUROC and ECE of Llama-3.1-8B-Instruct and Qwen-3-4B-Instruct. 
+
+Figure 8: Average OOD performance with different probe architectures. 
+
+LLM-Judge Trivia SciQ PopQa Bio (ID) 
+
+Gemini-3.1-Flash-Lite .960 (98%) .820 (94%) .879 (97%) .715 (89%) GPT-5.4-Mini .940 (97%) .702 (90%) .917 (98%) .836 (93%) 
+
+Table 4: Cohen’s kappa (agreement %) between Gemini and GPT LLM judges. 
+
+Figure 9: Effect of probe architecture on ECE. 
+
+14 0.0 0.1 0.2 0.3 0.4 0.5 
+
+ECE 
+
+CoE-R 
+
+Max. Seq. Prob. 
+
+Top-m Prob. 
+
+Embedding (last) 
+
+Energy 
+
+Cov. Determinant 
+
+Internal Variance 
+
+Circular Variance 
+
+Attention + MSP 
+
+CoE-C 
+
+Attention 
+
+Perplexity 
+
+Embedding (mean) 
+
+Lookback Ratio 
+
+Entropy 
+
+Layer Top-m Prob. 
+
+Embedding (all) 
+
+SATMD 
+
+SATMD + MSP 
+
+QA 
+
+0.0 0.2 0.4 0.6 
+
+ECE 
+
+Verification 
+
+0.0 0.2 0.4 0.6 0.8 
+
+ECE 
+
+MCQ 
+
+0.0 0.2 0.4 0.6 
+
+ECE 
+
+Mean 
+
+In-domain Out-of-domain (same task) Out-of-domain (cross task) Figure 10: Benchmark-transfer performance. Average ECE across In-domain, Out-of-domain (same task), and Out-of-domain (cross task) configurations. 
+
+Figure 11: In-domain AUROC against OOD setting for individual benchmarks with Qwen-3-8B. 
+
+15 Figure 12: In-domain ECE against OOD setting for individual benchmarks with Qwen-3-8B. 
+
+16 Figure 13: AUROC for individual dataset with varying training set size. 
+
+17
