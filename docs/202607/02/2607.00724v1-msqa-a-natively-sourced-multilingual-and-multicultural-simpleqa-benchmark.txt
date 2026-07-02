@@ -1,0 +1,781 @@
+Title: MSQA: A Natively Sourced Multilingual and Multicultural SimpleQA Benchmark
+
+URL Source: https://arxiv.org/pdf/2607.00724v1
+
+Published Time: Thu, 02 Jul 2026 00:50:25 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# M-A-PMSQA: A Natively Sourced Multilingual and Multicultural SimpleQA Benchmark 
+
+M-A-P Xianru Chen 1*, Yukai Huang 2*, Mingxiang Chen 2*, Xinping Lei ,3 *,Fangbing Deng 1†, Jin Chen 1†, Ge Zhang †, Wenhao Huang †, Jiaheng Liu ,3 †
+
+M-A-P 1ByteDance Seed 2Beijing University of Posts and Telecommunications 3Nanjing University GitHub: https://github.com/huayuankou333/MSQA Website: https://huayuankou333.github.io/MSQA Dataset: https://huggingface.co/datasets/m-a-p/MSQA 
+
+# Abstract 
+
+The multilingual fluency of large language models (LLMs) invites a seductive assumption: a model that speaks your language must understand your culture. We term this the Illusion of Cultural Alignment and demonstrate that it is systematically false. To expose this illusion, we introduce MSQA, a benchmark of 1,064 natively sourced questions spanning 11 language groups, five cultural dimensions, and three difficulty tiers, designed so that cross-lingual transfer from English cannot substitute for genuine cultural knowledge. Evaluating 18 leading LLMs, we show that strong multilingual performance masks severe cultural degradation, with a pronounced Locality Effect revealing that cultural competence is bound to pre-training distri-bution rather than general reasoning. We further characterize three mechanisms that sustain the illusion: overconfidence , where high certainty in unfamiliar cultural domains deprives users of unreliability signals; stochastic competence , where repeated sampling simulates knowledge that is unstable rather than reliable; and unequal retrieval , where retrieval-augmented generation fails precisely for the long-tail cultural facts it is most needed for. These findings establish that the gap is structural and cannot be patched by inference-time interventions alone. 
+
+1. Introduction 
+
+When a user asks in Thai about local mourning customs or in Korean about honorific conven-tions, a fluent answer carries an implicit promise: the model understands the cultural setting behind the language. This promise is difficult to verify from surface form alone, because an answer can be idiomatic while still missing the local facts, norms, or historical references that make it correct. We call this failure mode the Illusion of Cultural Alignment : multilingual LLMs project cultural competence through surface fluency while masking gaps in culturally grounded knowledge.  
+
+> *Equal contribution.
+> †Corresponding authors.
+> arXiv:2607.00724v1 [cs.CL] 1 Jul 2026 English
+> Amer.
+> Brit.
+> Aust.
+> Anglo.
+> Chinese
+> Chinese Sino.
+> Thai
+> Russian
+> Korean
+> French
+> French
+> Franco.
+> Japanese
+> Malay
+> Indonesian
+> Spanish
+> Hispanic
+> LatAm
+> Spanish
+> Portuguese
+
+MSQA 
+
+(a) Language-Cultural Circle Coverage     
+
+> 0% 25% 50% 75% 100%
+> Proportion within dimension
+> History & Memory
+> Beliefs & Values
+> Social Norms
+> Language &
+> Communication
+> Cultural Artifacts
+> 15%
+> 13%
+> 13%
+> 14%
+> 16%
+> 12%
+> 16%
+> 19%
+> 15%
+> 10%
+> 13%
+> 8%
+> 9%
+> 7%
+> 6%
+> 7%
+> 8%
+> 10%
+> 9%
+> 11%
+> 8%
+> 7%
+> 7%
+> 10%
+> 7%
+> 10%
+> 6%
+> 5%
+> 7%
+> 10%
+> 6%
+> 9%
+> 9%
+> 7%
+> 9%
+> 8%
+> 8%
+> 5%
+> 7%
+> 9%
+> 8%
+> 8%
+> 10%
+> 7%
+> 6%
+> 8%
+> 7%
+> 6%
+> 8%
+> 8%
+> 5%
+> 8%
+> 7%
+> 10%
+> 8%
+
+(b) Category-wise Language Composition          
+
+> Languages
+> English
+> Japanese
+> Chinese
+> Malay
+> Thai
+> Indonesian
+> Russian
+> Spanish
+> Korean
+> Portuguese
+> French
+> Encyclopedia
+> 37%
+> Academic
+> article
+> 14%
+> Official
+> doc.
+> 9%
+> Dictionary
+> 8%
+> Web-blogger
+> 3%
+> Other
+> 29%
+> Source
+> (c) Question Source Types
+> Easy
+> 23%
+> Medium
+> 41%
+> Hard
+> 36%
+> Difficulty
+> (d) Difficulty Distribution
+> History
+> Beliefs
+> Social
+> Language
+> Artifacts
+> 0
+> 100
+> 200
+> 300
+> # Questions
+> 261
+> 189 186
+> 220 208
+> (e) Cultural Dimensions
+> English
+> Spanish
+> Chinese
+> French
+> Thai
+> Russian
+> Korean
+> Japanese
+> Malay
+> Indon.
+> Portug.
+> 0
+> 1
+> 2
+> 3
+> 4
+> # Circles
+> 4
+> 3
+> 22
+> 1111111
+> (f) Circle Coverage
+
+Figure 1. Dataset overview of MSQA. The information panel summarizes the benchmark’s cultural dimensions, language-group coverage, and category-wise composition. 
+
+Multilingual ≠ Multicultural. This distinction matters because multilingual ability and multi-cultural competence are not the same capability. A multilingual model can process and generate text across languages; a multicultural model can reason about the beliefs, norms, histories, and communicative conventions embedded in those languages. Current LLMs often achieve the former without the latter [Kim et al., 2024, Hasan et al., 2025]. They learn cross-lingual token mappings, but the cultural knowledge carried by those tokens—local social hierarchies, regionally salient histories, institutional practices, and conventionalized expressions—remains unevenly represented. 
+
+Why existing benchmarks reinforce the illusion. Translation-based multilingual evaluation can reinforce the same illusion. Translating English benchmarks such as MMLU asks whether a model can answer Western-centric questions expressed in another language, not whether it possesses knowledge native to that language’s cultural setting. A model can therefore appear robust across languages while relying on cultural knowledge inherited from English-dominant data. As Figure 2 shows, rankings shift sharply when evaluation moves from English-origin factuality (SimpleQA) to native cultural QA, indicating that multilingual performance is not a reliable proxy for multicultural competence. 
+
+Piercing the illusion: the MSQA benchmark. To measure this gap directly, we introduce 
+
+MSQA , a multilingual and multicultural SimpleQA benchmark of 1,064 natively sourced questions across 11 language groups: English, Chinese, Portuguese, Thai, Russian, Korean, French, Japanese, Malay, Indonesian, and Spanish. Each item has a single verifiable answer grounded in local cultural evidence, is organized into one of five cultural dimensions, and is stratified into three difficulty tiers. This design makes it harder for models to succeed through English-centric transfer alone while preserving objective scoring. Figure 1 summarizes the 2Gemini-3.1 
+
+> Qwen-3.5+
+> GPT-5.4
+> Doubao-Pro-M
+> Doubao-Pro-H
+> GLM-5
+> GPT-5.2
+> Gemini-2.5
+> Doubao-Lite
+> Minimax-M2.7
+> Minimax-M2.5
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10 
+
+12 
+
+> Rank
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> 7
+> 8
+> 9
+> 11
+> 10
+> 1
+> 2
+> 7
+> 3
+> 4
+> 6
+> 8
+> 9
+> 5
+> 11
+> 10
+> 1
+> 8
+> 2
+> 7
+> 4
+> 5
+> 3
+> 6
+> 9
+> 10
+> 11
+
+SQA CSQA MSQA Figure 2. Model ranking shifts between SQA (SimpleQA; English-centric factuality), CSQA (Chinese SimpleQA; Chinese factuality), and MSQA (native cultural QA). The dramatic reordering demonstrates that multilingual fluency does not imply multicultural competence—the core manifestation of the Illusion of Cultural Alignment. benchmark. Our code, an interactive project website, and the dataset are publicly available. ‡
+
+Three dimensions of the illusion. Evaluating 18 LLMs on MSQA, we first find a strong Locality Effect: models perform best where their pre-training exposure is likely richest, and degrade sharply on culturally dense or lower-coverage settings. We then examine why the illusion persists even after the aggregate performance gap is visible, through three mechanisms: 
+
+overconfidence , where models remain highly certain on unfamiliar cultural questions; stochas-tic competence , where repeated sampling produces occasional correct answers without stable knowledge; and unequal retrieval , where retrieval helps unevenly and fails on long-tail facts. Together, these findings show that the gap is structural and rooted in data coverage rather than a simple inference-time limitation. 
+
+Contributions. This paper makes three contributions. First, we name and characterize the Illusion of Cultural Alignment as a systematic failure mode in current LLMs. Second, we intro-duce MSQA, a natively sourced benchmark designed to measure the gap between multilingual fluency and multicultural understanding. Third, we provide a diagnostic framework showing that confidence-based filtering, test-time sampling, and retrieval augmentation do not reliably bridge this gap, suggesting that cultural competence requires intervention at the level of data coverage and model training. 
+
+2. Related Work 
+
+The Illusion of Cultural Alignment sits at the intersection of factuality benchmarking, multilin-gual evaluation, and cross-cultural assessment.    
+
+> ‡Code: https://github.com/huayuankou333/MSQA ; Project website: https://huayuankou333.github .io/MSQA ; Dataset: https://huggingface.co/datasets/m-a-p/MSQA .
+
+3Table 1. Comparison with prior factuality, multilingual, and cultural benchmarks. Lan. denotes the number of native QA languages, i.e., languages in which questions are originally constructed rather than translated from an English source. Format distinguishes multiple-choice (MCQ) from open-ended free-form generation. Native Cultural QA indicates whether the benchmark evaluates knowledge grounded in the target cultural context. Cultural Taxonomy indicates whether questions are organized by an explicit cultural categorization scheme.                                                                 
+
+> Benchmark Size Lan. Data Source Format Domain Native Cultural QA Cultural Taxonomy Metric
+> Factuality and Knowledge Benchmarks
+> SimpleQA 4,326 EN Human writers Open-ended Knowledge ✗✗LLM judge Chinese SimpleQA 3,000 ZH Human writers Open-ended Knowledge ✓✗LLM judge MMLU 15,908 EN Exams & textbooks MCQ Knowledge ✗✗Accuracy Global-MMLU 15,908 EN Translated MMLU MCQ Knowledge ✗✗Accuracy
+> Native and Culture-Aware Benchmarks
+> MultiLoKo 15,500 31 Local sources MCQ Knowledge ✓✗Accuracy CulturalBench 1,227 EN Human writers MCQ Culture ✓✓Accuracy
+> MSQA (Ours) 1,064 11 Native sources Open-ended Culture ✓✓LLM judge
+
+2.1. Factuality Benchmarks 
+
+Factuality benchmarks such as SimpleQA [Wei et al., 2024] and FActScore [Min et al., 2023] provide clean signals for evidence-supported answers, while Chinese SimpleQA [He et al., 2025] shows that rankings shift when factuality is measured outside English. However, these datasets cover only one or two cultural-linguistic settings, leaving the multilingual cultural gap under-specified. 
+
+2.2. Multilingual Evaluation and Its Limitations 
+
+Translated multilingual benchmarks such as MMLU [Hendrycks et al., 2020] and Global-MMLU [Singh et al., 2025b] improve language coverage but preserve English-centric knowledge distributions. They therefore test whether models can process Western knowledge in other languages, not whether they know facts native to those languages. 
+
+2.3. Cross-Cultural and Natively Sourced Benchmarks 
+
+Natively sourced benchmarks address this limitation. MultiLoKo [Hupkes and Bogoychev, 2025], CLIcK [Kim et al., 2024], and NativQA [Hasan et al., 2025] show that translated eval-uations miss locality-specific knowledge. WorldValuesBench [Zhao et al., 2024], Cultural-Bench [Chiu et al., 2025], NormAd [Rao et al., 2025], INDICA [Madhusudan et al., 2026], BLEnD [Myung et al., 2024], and INCLUDE [Romanou et al., 2025] further demonstrate that cultural variation spans values, routines, regions, and institutions. These benchmarks establish that multilinguality is not a translation problem, but many rely on open-ended generation, subjective judgments, or multiple valid answers. MSQA combines strict factual verification with broad native multicultural coverage, allowing us to isolate failures of cultural knowledge while avoiding cross-lingual shortcuts. Table 1 provides a systematic comparison. 41. Source Extraction 2. QA Generation 3. Verification & Filtering 4. Quality Control 5. Human Validation
+
+> Wikipedia
+> Government
+> Data
+> Books
+> (Gutenberg)
+> News
+> Articles
+> Common
+> Crawl
+
+...     
+
+> NativeContextMining
+> Context-grounded
+> QAGeneration
+> NativeQA
+> Pairs
+> RAG-based
+> Verification
+> LLM-assisted
+> Verification
+> Difficulty
+> Assessment
+> Stratification
+> HumanReview
+> Consistency
+> Check
+> Final
+> MSQA
+> Dataset
+> Native-speaking
+> Annotators
+> Multi-round
+> Validation
+
+Evaluation
+
+(by LLMs)     
+
+> BenchmarkLLMs
+> (GPT-5.4/Claude/etc.)
+
+...     
+
+> 1.Multi-step
+> Reasoning
+> 2.Cross-domain
+> Accuracy
+> 3.Adversarial
+> RobustnessFinalResults
+
+Figure 3. Overview of the MSQA construction and evaluation pipeline. The upper row shows the five-stage data construction process; the lower row shows the evaluation protocol applied to benchmark LLMs. 
+
+3. MSQA: A Diagnostic Instrument for Cultural Alignment 
+
+MSQA separates what a model can say in a language from what it knows about the culture that language encodes. It contains 1,064 questions across 11 language groups, each with a single objectively verifiable answer grounded in native cultural evidence. Unlike translation-based benchmarks that inadvertently reward cross-lingual transfer, MSQA eliminates this pathway by construction: every item is natively sourced so that a model cannot answer by retrieving an English-language fact and mapping it into the target language. 
+
+3.1. Question Design Principles 
+
+Every candidate item must satisfy five design principles: (i) Single objective answer —each question admits exactly one short, factual, unambiguous response; (ii) Temporal invariance —the answer must be static and not change over time; (iii) Cultural specificity —the knowledge point must be deeply tied to a particular cultural context and cannot be understood without its historical, social, or linguistic setting; (iv) Knowledge cutoff —all facts must have been established on or before December 31, 2023; and (v) High difficulty —the item should challenge current frontier models rather than test widely known facts. 
+
+3.2. Construction Pipeline 
+
+Figure 3 illustrates the five-stage construction pipeline and the evaluation protocol. Each stage is designed to ensure that retained items require genuine cultural knowledge inaccessible through cross-lingual transfer. 
+
+Stage 1: Source Extraction. Native-language materials are collected from six categories of sources targeting knowledge outside typical English-centric pre-training pipelines: encyclope-dias and knowledge bases (Wikipedia, Encyclopedia Britannica, JapanKnowledge); academic 5publications (PubMed, Semantic Scholar, CyberLeninka, National Diet Library of Japan); official and institutional sources (e.g., France’s Legifrance); dictionaries and language resources (Oxford English Dictionary, National Institute of the Korean Language); media and native communities (CNN Indonesia, Zhihu, regional forums); and vertical culture and folklore websites. 
+
+Stage 2: QA Generation. Native-speaker annotators perform context-grounded mining of the extracted sources to identify culturally embedded knowledge points, then formulate each as a question–answer pair in the original language. Each item is accompanied by at least one authoritative source URL. Annotators are encouraged to pre-test items against commercial LLMs to gauge difficulty before submission. 
+
+Stage 3: Verification and Filtering. Candidate items undergo three parallel checks. RAG-based verification retrieves external evidence to confirm answer correctness. LLM-assisted verification 
+
+uses a dedicated quality-check prompt to validate that the answer is unique and unambiguous; items flagged as ambiguous or incorrect are returned for revision until confirmed. Difficulty assessment and stratification evaluates each item with three LLMs (GPT-5 [Singh et al., 2025a], DeepSeek-V3 [Liu et al., 2024], and Doubao [Guo et al., 2025]) across five independent runs; items answered correctly in more than three runs are flagged as insufficiently challenging and returned for replacement or reclassification. 
+
+Stage 4: Quality Control. Expert quality inspectors review each item for cultural specificity, depth, linguistic accuracy, and source reliability. Inspectors perform a consistency check and provide one to two additional independent sources to cross-validate the reference answer. Items with flaws in phrasing, factual accuracy, or source credibility are returned with detailed revision notes. 
+
+Stage 5: Human Validation. Native-speaking annotators conduct multi-round validation on all items that pass quality control, verifying that questions are culturally appropriate, answers are correct in the target cultural context, and items do not contain content that could be perceived as disrespectful toward any cultural group. The full annotation workflow and data schema are detailed in Appendix C. 
+
+3.3. Dataset Overview 
+
+The final benchmark comprises 1,064 items organized along two axes (Figure 1). Five cultural dimensions probe progressively deeper layers of embedded knowledge: History and Collective Memory (261), Beliefs, Values, and Knowledge Systems (189), Social Norms and Customs (186), Language Expression and Communication Arts (220), and Cultural Products and Symbols (208). Three difficulty tiers measure where the illusion breaks: Easy covers cultural common sense, Medium targets regional nuance, and Hard requires obscure institutional or folkloric knowledge. Appendix D provides the detailed sub-category taxonomy. 
+
+3.4. Evaluation Protocol 
+
+As shown in the lower row of Figure 3, the evaluation pipeline applies the final MSQA bench-mark to 18 frontier LLMs spanning the Gemini [Team et al., 2023], Claude [Anthropic, 2026], GPT [Singh et al., 2025a], Doubao [Guo et al., 2025], GLM [Zeng et al., 2025], Qwen [Yang et al., 2025], DeepSeek [Liu et al., 2024], Kimi [Team et al., 2025], and MiniMax [Chen et al., 2025] families. Each model receives the question in its native language and generates a free-form 6Table 2. Main MSQA results (Part I): aggregate metrics and cultural-dimension F-scores for models with complete 11-language coverage. Cultural-dimension abbreviations are BVKS: Beliefs, Values, and Knowledge Systems; HCM: History and Collective Memory; CPS: Cultural Products and Symbols; SNC: Social Norms and Customs; LECA: Language Expression and Communication Arts. All values are percentages over five runs. Bold and underlined values mark the best and second-best results. 
+
+(a) Aggregate and cultural-dimension performance                                                                                                                                                                                                      
+
+> Model Aggregate metrics Cultural-dimension F-score CO ↑NA ↓IN ↓CGA ↑F↑BVKS HCM CPS SNC LECA
+> Questions 1,064 items / 5,320 runs 189 261 208 186 220 Gemini-3.1-Pro 67.9 2.6 29.6 69.6 68.7 71.4 68.5 66.1 67.0 70.7
+> GPT-5.5 55.1 1.7 43.2 56.1 55.6 55.7 52.5 55.0 54.3 60.7 Claude-Opus-4.6 48.1 17.8 34.1 58.5 52.8 58.2 48.7 50.6 51.6 55.9 GPT-5.4 50.1 3.4 46.6 51.8 50.9 52.1 45.9 49.2 51.1 57.3 DeepSeek-V4 50.4 1.6 48.0 51.2 50.8 53.1 50.8 46.2 49.5 54.1 Claude-Opus-4.7 39.5 38.8 21.7 64.5 49.0 50.2 51.0 45.6 48.5 49.2 GPT-5.2 44.5 4.1 51.4 46.4 45.4 44.3 40.7 46.7 43.0 52.5 Doubao-2.0-Pro-H 43.6 3.1 53.3 45.0 44.3 48.5 45.1 38.9 45.6 43.6 GLM-5 41.0 5.0 53.9 43.2 42.1 43.7 42.2 39.8 40.8 43.8 Doubao-2.0-Pro-M 40.7 2.4 56.9 41.7 41.2 45.2 39.7 38.4 42.0 41.3 Gemini-2.5-Flash 39.8 3.8 56.3 41.4 40.6 43.3 38.2 38.2 40.4 43.5 Qwen3.5-Plus 39.6 3.8 56.6 41.2 40.4 45.0 36.4 41.4 38.6 41.8 DeepSeek-V3.2 39.0 6.8 54.2 41.9 40.4 45.6 36.3 38.7 44.1 39.1 Kimi-k2.5 38.9 3.0 58.0 40.1 39.5 43.9 38.1 38.7 37.7 39.9 Doubao-2.0-Lite 38.3 1.9 59.8 39.0 38.6 40.9 39.3 34.1 41.3 38.0 Minimax-M2.7 27.6 9.8 62.6 30.6 29.0 34.6 27.8 25.2 27.0 30.9 Qwen3-Next 24.9 10.1 64.9 27.8 26.3 33.7 27.5 25.4 20.6 24.1 Minimax-M2.5 24.9 9.8 65.3 27.6 26.2 33.2 22.9 24.7 24.4 26.9
+
+response. Responses are scored by an LLM judge (Gemini-3.1-Pro) using the prompt in Ap-pendix A, which determines whether the predicted answer contains the gold target in meaning. We report five metrics: CO (share of fully correct answers), NA (non-committal answers), IN (concretely wrong answers), CGA (correctness given attempt, excluding NA), and F (harmonic mean of CO and CGA). F serves as the primary ranking score because it rewards correctness while penalizing both wrong answers and excessive abstention. 
+
+4. Experiments and Analysis 
+
+We evaluate MSQA in three stages: the gap between multilingual fluency and multicultural understanding (§4.1), three mechanisms behind the Illusion of Cultural Alignment (§4.2), and qualitative error patterns (§4.3). 
+
+4.1. Revealing the Gap 
+
+Eighteen prominent LLMs—ranging from proprietary frontier models to open-weights architectures— were evaluated across the 11 language subsets of MSQA using the evaluation protocol described in §3.4. 
+
+4.1.1. Overall Performance and the Locality Effect 
+
+Table 2 reports aggregate metrics and cultural-dimension F-scores; Table 3 reports language-level F-scores for the same models. The results expose a Locality Effect : cultural knowledge is tied to pre-training distribution 7Table 3. Main MSQA results (Part II): language-level F-scores for the same models as Table 2. Models with similar aggregate scores can have sharply different language profiles, a pattern masked by monolingual or translation-based benchmarks. 
+
+(b) Language F-score                                                                                                                                                                                                                             
+
+> Model EN ZH FR ID KO JA PT TH RU ES MS
+> Questions 151 150 84 81 86 83 80 95 92 80 82 Gemini-3.1-Pro 74.9 56.8 79.7 62.9 73.9 52.8 70.7 71.0 77.1 68.2 70.4
+> GPT-5.5 58.8 44.5 66.5 45.4 62.4 48.0 59.4 58.5 65.3 54.8 51.8 Claude-Opus-4.6 62.1 43.9 67.8 48.5 56.4 35.5 50.0 51.0 59.0 63.9 39.6 GPT-5.4 57.2 38.3 60.8 45.0 59.7 38.6 57.3 48.6 62.6 52.2 43.6 DeepSeek-V4 60.5 50.9 55.1 43.1 45.8 34.9 59.0 49.5 57.5 56.1 37.9 Claude-Opus-4.7 58.4 11.3 68.9 61.3 62.8 42.0 67.3 16.9 30.8 61.6 39.1 GPT-5.2 51.0 32.0 58.5 37.3 46.6 30.1 57.5 45.1 55.3 51.3 39.3 Doubao-2.0-Pro-H 53.3 55.7 48.0 42.6 34.0 27.6 56.1 30.9 39.8 52.1 33.4 GLM-5 53.0 43.5 52.2 36.7 29.3 17.7 54.1 34.8 47.0 51.8 33.6 Doubao-2.0-Pro-M 50.3 50.2 48.2 37.3 32.6 25.9 53.1 26.6 36.2 50.8 30.1 Gemini-2.5-Flash 44.3 30.6 42.8 40.6 41.2 23.7 58.6 40.2 46.3 48.0 35.7 Qwen3.5-Plus 47.7 34.9 53.2 38.9 31.7 16.9 54.4 39.3 48.3 51.2 25.6 DeepSeek-V3.2 50.7 45.3 41.7 42.8 24.6 21.8 55.7 34.8 37.7 50.7 27.1 Kimi-k2.5 51.4 41.5 50.4 36.3 25.3 16.5 52.0 27.9 35.9 54.3 35.1 Doubao-2.0-Lite 47.1 42.2 47.0 33.6 28.7 22.5 47.7 34.3 37.3 49.2 27.2 Minimax-M2.7 33.9 26.7 36.0 32.0 16.8 15.3 40.3 23.2 32.4 42.9 17.6 Qwen3-Next 39.8 30.3 31.0 28.8 14.1 10.2 35.6 22.5 17.0 28.6 16.9 Minimax-M2.5 32.4 27.0 34.7 30.0 12.6 10.3 34.4 18.7 29.3 34.6 18.4
+
+rather than general reasoning ability. Gemini-3.1-Pro leads with a 68.7 F-score and remains strong across divergent languages, including Portuguese (70.7) and Russian (77.1). GPT-5.5 (55.6), Claude-Opus-4.6 (52.8), GPT-5.4 (50.9), DeepSeek-V4 (50.8), and Claude-Opus-4.7 (49.0) form the next tier, but their language profiles differ sharply. Claude-Opus-4.7 is strong on French (68.9), Indonesian (61.3), Korean (62.8), Portuguese (67.3), and Spanish (61.6), yet collapses on Chinese (11.3) and Thai (16.9), showing that high aggregate capability does not imply stable multicultural coverage. Some Chinese-origin models remain more localized: Doubao-2.0-Pro-H is competitive on Chinese (55.7) and Portuguese (56.1), yet drops on Thai (30.9), Korean (34.0), and Japanese (27.6). The two tables also reveal different failure granularities. Table 3 shows that models with similar aggregate scores can have sharply different language profiles, a behavior masked by monolingual or translation-based benchmarks. Table 2 shows that belief and value systems are generally easier, whereas history, cultural symbols, and social norms remain harder across most models. Figure 4 visualizes the language-wise performance profile of four representative models. Each radar chart makes it easier to inspect whether a model’s aggregate score reflects broad multilingual robustness or is driven by strength on only a subset of languages. 
+
+4.1.2. Cross-Benchmark Comparison: What Existing Benchmarks Miss 
+
+To demonstrate that MSQA captures failures invisible to existing evaluations, we compare model rankings on the overlapping subset of MSQA, SimpleQA [Wei et al., 2024] (SQA), and Chinese SimpleQA [He et al., 2025] (CSQA). The comparison tracks how each model’s position on SQA/CSQA changes when evaluation moves to MSQA. The ranking shifts are substantial. Qwen-3.5-plus-thinking ranks second on both SQA and CSQA but drops to eighth on MSQA; Doubao-2.0-pro-medium ranks third on CSQA but seventh on MSQA. Conversely, GPT-5.2-high ranks third on MSQA despite placing seventh 8EN  
+
+> ZH
+> FR
+> ID
+> KO
+> JA
+> PT
+> TH
+> RU ES
+> MS
+
+Gemini-3.1-Pro  
+
+> 73.9
+> 56.1
+> 79.0
+> 62.2
+> 73.7
+> 50.6
+> 70.0
+> 70.3
+> 76.5
+> 67.8
+> 69.0
+> EN
+> ZH
+> FR
+> ID
+> KO
+> JA
+> PT
+> TH
+> RU ES
+> MS
+
+GPT-5.2  
+
+> 49.9
+> 31.3
+> 57.1
+> 36.3
+> 28.7
+> 46.0
+> 56.8
+> 44.0
+> 55.0
+> 50.7
+> 38.3
+> EN
+> ZH
+> FR
+> ID
+> KO
+> JA
+> PT
+> TH
+> RU ES
+> MS
+
+Doubao-2.0  
+
+> 46.6
+> 41.3
+> 46.7
+> 33.3
+> 28.6
+> 22.2
+> 46.8
+> 34.1
+> 37.2
+> 49.0
+> 27.1
+> EN
+> ZH
+> FR
+> ID
+> KO
+> JA
+> PT
+> TH
+> RU ES
+> MS
+
+DeepSeek-V3.2 
+
+> 50.3
+> 43.5
+> 40.7
+> 41.7
+> 23.7
+> 20.7
+> 54.8
+> 33.3
+> 37.2
+> 48.0
+> 24.9
+
+Figure 4. Model-wise radar profiles of representative MSQA performance. Each small radar chart corresponds to one model, and its 11 vertices report accuracy on the subsets. The aligned radar layout complements Table 2 by showing each model’s cross-lingual balance rather than only its aggregate accuracy. on SQA. Single-language factual strength can therefore overstate—or understate—a model’s multicultural competence. 
+
+4.1.3. Difficulty as Illusion Gradient 
+
+Figure 5. Average model performance by difficulty tier (Easy, Medium, Hard). The consistent decay confirms that surface-level cultural recall does not extend to deep cultural reasoning. Figure 5 decomposes scores by difficulty tier. Performance degrades consistently from Easy to Hard across all models, showing that superficial recall does not translate to deep cultural reasoning. Thai and Portuguese yield high absolute scores partly because their subsets skew easier, while Japanese is harder due to its heavier share of deep historical and belief-system items. 94.2. Three Dimensions of the Illusion 
+
+The aggregate gap in §4.1 shows that models lack cultural knowledge, but not why the illu-sion of cultural alignment survives once that gap is in plain sight. A user interacting with a model receives no accuracy table—only individual answers—so the illusion persists through the everyday signals that users actually rely on to gauge trustworthiness. We isolate three such signals and show that each is compromised in unfamiliar cultural domains. First, over-confidence : models report high certainty even when wrong, so verbalized confidence cannot be used to discount unreliable answers (§4.2.1). Second, stochastic competence : repeated sampling occasionally surfaces a correct answer, but this reflects stochastic variation around an unstable representation rather than stable knowledge (§4.2.2). Third, unequal retrieval :retrieval augmentation helps unevenly and fails precisely on the long-tail cultural facts for which it is most needed (§4.2.3). Together, these mechanisms explain why fluency continues to be mistaken for cultural competence, and why inference-time remedies—calibration, sampling, and retrieval—do not dissolve the gap. 
+
+4.2.1. Overconfidence: Models Don’t Know They Don’t Know 
+
+If models could reliably signal uncertainty on culturally unfamiliar questions, users could discount unreliable answers. We test whether this self-awareness exists by measuring Expected Calibration Error [Tian et al., 2023] (ECE): ECE =
+
+> 𝐾
+
+∑︁ 
+
+> 𝑘 =1
+
+|𝐵 𝑘 |
+
+𝑛 |acc (𝐵 𝑘 ) − conf (𝐵 𝑘 )| , (1) where acc (𝐵 𝑘 ) and conf (𝐵 𝑘 ) are empirical accuracy and average reported confidence within bin 
+
+𝐵 𝑘 , using 𝐾 =10 equal-width bins. 0 20 40 60                  
+
+> ECE (%)
+> GPT-5.2 34.1
+> Gemini-3.1 39.1
+> Doubao-2.0-lite 56.8
+> DeepSeek-V3.2 58.9
+> Qwen3-Next 68.2
+> Expected Calibration Error
+> 050 100
+> 0
+> 50
+> 100
+> Accuracy (%)
+> Gemini-3.1 | ECE 39.1
+> 050 100
+> 0
+> 50
+> 100
+> GPT-5.2 | ECE 34.1
+> 050 100
+> 0
+> 50
+> 100
+> Accuracy (%)
+> Doubao-2.0-lite | ECE 56.8
+> 050 100
+> 0
+> 50
+> 100
+> DeepSeek-V3.2 | ECE 58.9
+> 050 100
+> Confidence (%)
+> 0
+> 50
+> 100
+> Accuracy (%)
+> Qwen3-Next | ECE 68.2
+> Ideal calibration Aggregate point Bucket count
+
+Figure 6. Calibration curves on MSQA. The dashed line is ideal calibration. Curves far below it indicate “cultural overconfidence”. As shown in Figure 6, most models exhibit severe cultural overconfidence : accuracy remains between 20–50% even when reported confidence exceeds 90%. Only GPT-5.2-high shows rea-sonable calibration (ECE = 34.1). Models like Doubao-2.0-lite (ECE = 56.8), DeepSeek-V3.2 (ECE = 58.9), and Qwen3-Next (ECE = 68.2) pre-serve a high-confidence style regardless of cul-tural familiarity—what we term “language ar-rogance.” Even Gemini-3.1-Pro, the strongest model overall, exhibits an ECE of 39.1. Thus, the illusion is active : models do not merely fail silently, they fail loudly and confidently, depriv-ing users of any signal that their cultural claims are unreliable. 
+
+4.2.2. Stochastic Competence: Occasional Cor-rectness ≠ Stable Knowledge 
+
+Can scaling test-time compute [Snell et al., 2024] compensate for missing cultural knowledge? We prompt each model to sample up to 100 inde-pendent responses per question and compare two extremes: Best-of-N, which selects the best answer across all samples (upper bound), and 10 1 2 4 8 16 32 
+
+> N
+> 20%
+> 40%
+> 60%
+> 80%
+> 100%
+> Accuracy (%)
+
+(a) Best-of-N      
+
+> 124816 32
+> N
+> 0%
+> 10%
+> 20%
+> 30%
+> 40%
+> 50%
+> 60%
+> 70%
+> Accuracy (%)
+
+(b) Worst-of-N   
+
+> Gemini-3.1 GPT-5.2 Qwen-80B
+
+Figure 7. Best-of-N vs. Worst-of-N under repeated sampling on MSQA. The left panel shows Best-of-N (upper bound) and the right panel shows Worst-of-N (lower bound) across up to 100 samples per question. The gap between the two indicates representational instability rather than stable cultural knowledge. Worst-of-N, which selects the worst (lower bound). Figure 7 shows the results. Additional sam-pling raises the ceiling when partial knowledge exists. For example, Gemini-3.1-Pro’s Best-of-N score substantially exceeds its single-sample accuracy. However, the wide gap between Best-of-N and Worst-of-N reveals that this improvement is stochastic rather than stable : the model samples around an unstable internal representation, occasionally hitting the correct answer without reliably encoding it. For questions where cultural knowledge is entirely absent, both bounds remain low, confirming that test-time scaling does not close the cultural knowledge gap. The illusion of competence arises because users see only one sample, so occasional correctness is mistaken for genuine understanding. 
+
+4.2.3. Unequal Retrieval: Retrieval Cannot Bridge the Gap 
+
+Figure 8. Performance with and without RAG on MSQA. RAG is a standard remedy for knowl-edge gaps, but Figure 8 shows that its benefits are distributed unequally across cultural settings. We implement RAG by enabling each model’s built-in web search capability, allowing it to re-trieve external evidence before answer-ing. Prior work has shown that para-metric memory is unreliable for less popular entities [Mallen et al., 2023]; our results extend this finding to the cultural domain. GPT-5.2 and Doubao-2.0-lite gain 4–5 percentage points, but DeepSeek-V3.2 remains stagnant at 18.5%. This inequality has two sources: 
+
+retrieval-side sparsity, where long-tail cultural facts appear in poorly indexed local sources, and 
+
+generation-side integration failures, where retrieved evidence is not aligned with the question’s cultural frame. RAG therefore creates an accessibility illusion: external knowledge exists but cannot be reliably accessed and integrated for culturally grounded reasoning. 11 Taken together, the three dimensions form a coherent mechanism: overconfidence gives users no warning, stochastic sampling makes occasional success look like knowledge, and retrieval fails where external evidence is most needed. The gap between multilingual fluency and multicultural understanding is therefore structural , not a limitation that can be patched by inference-time or retrieval-time interventions alone. 
+
+4.3. Qualitative Error Analysis 
+
+We categorize wrong responses into six recurring error types. Table 4 (Appendix) reports the overall distribution, while Figure 9 shows the model-wise distribution for Table 2. The dominant failure is not generic inability to answer, but failure to resolve culturally specific referents: Cultural Practice, Belief, or Symbol Misidentification accounts for 20,614 wrong responses (47.3%). The next largest groups are Historical Event or Chronology Confusion (9,205, 21.1%) and Localized Term or Idiom Mismatch (8,272, 19.0%). This pattern clarifies why multilingual fluency should not be equated with multicultural competence. As Figure 9 shows, the absolute number of errors varies with overall accuracy, but their composition is stable: cultural-symbol misidentification is the largest segment for every model, followed by historical confusion and localized term mismatch. Native cultural evaluation therefore exposes errors hidden by surface-level multilingual generation and translation-centric benchmarks. 0 500 1,000 1,500 2,000 2,500 3,000 3,500 
+
+> Error Count
+> Gemini-3.1-Pro
+> Claude-Opus-4.6-thinking
+> GPT-5.2
+> Doubao-2.0-pro-high
+> Qwen3.5-plus-thinking
+> Qwen3-next-80b-thinking
+> 48%
+> 46%
+> 49%
+> 48%
+> 46%
+> 47%
+> 19%
+> 22%
+> 21%
+> 21%
+> 23%
+> 21%
+> 18%
+> 19%
+> 17%
+> 19%
+> 18%
+> 19%
+> 9%
+> 7%
+> 7%
+> 6%
+> 7%
+> 6%
+> 1,574
+> 1,815
+> 2,736
+> 2,837
+> 3,011
+> 3,454
+
+MSQA Error-Type Distribution Across Models 
+
+> Error Category
+> Cultural practice,
+> belief, or symbol
+> Historical event
+> or chronology
+> Localized term
+> or idiom
+> Numeric, temporal,
+> or statistical
+> Literal translation
+> or expression trap
+> Institutional or legal
+> reference
+
+Figure 9. Model-wise distribution of recurring error types for six representative models. Bar length indicates the number of wrong responses across five runs, and colors indicate the primary error type. 
+
+5. Conclusion 
+
+This paper introduces MSQA, a holistic multilingual and multicultural QA benchmark designed to expose the Illusion of Cultural Alignment : the false impression that linguistic fluency implies cultural understanding. Across 11 languages, five cultural dimensions, and three difficulty tiers, our results show that current LLMs still suffer from substantial cultural knowledge gaps, often answering unfamiliar cultural questions with high confidence, unstable correctness, or limited 12 benefit from retrieval. These findings suggest that cultural competence cannot be reliably inferred from multilingual performance alone, and that future models require more diverse native cultural data, stricter culturally grounded evaluation, and stronger mechanisms for recognizing the limits of their own knowledge. 
+
+Limitations 
+
+While MSQA advances the evaluation of multilingual cultural knowledge, several limitations should be acknowledged. First, the benchmark currently covers 11 language groups, which, although typologically diverse, excludes many widely spoken languages such as Arabic, Hindi, Swahili, and Turk-ish. Extending MSQA to these and other underrepresented languages remains an important direction for broader cultural coverage. Second, with 1,064 questions the dataset is relatively modest in scale compared to large-scale benchmarks like MMLU. Although our questions are natively sourced and carefully validated, the smaller size limits fine-grained statistical analyses within individual language–dimension combinations. Third, the three-tier difficulty stratification relies on annotator judgments calibrated through pilot testing, which may introduce subjectivity despite our multi-annotator agreement protocol. Future iterations could benefit from empirically grounded difficulty estimation based on item response theory. Fourth, our evaluation measures accuracy on closed-form factual questions. This design choice prioritizes objectivity but does not capture important aspects of cultural competence such as the ability to generate nuanced open-ended explanations or to navigate culturally sensitive topics with appropriate pragmatic framing. Fifth, the RAG experiments were conducted with a limited set of models and a single retrieval pipeline. Broader evaluation across retrieval architectures and multilingual corpora would strengthen the generalizability of our findings on retrieval inequality. Finally, our characterization of the Illusion of Cultural Alignment identifies three sustaining mechanisms (confidence, competence, and accessibility), but these may not be exhaustive. Other factors—such as the role of RLHF in shaping culturally biased response styles, or the interaction between multilingual tokenization and cultural knowledge retrieval—merit further investigation. 
+
+Ethics Statement 
+
+All questions in MSQA are sourced from publicly available materials, including encyclopedias, government websites, academic publications, and openly accessible cultural platforms. No private or personally identifiable information is collected or included in the dataset. Cultural content was reviewed by native speakers of each target language to minimize misrepresentation, stereotyping, or the reinforcement of cultural biases. Questions that could be perceived as disrespectful toward any cultural or ethnic group were excluded during the validation process. We acknowledge that any benchmark encoding cultural knowledge inevitably reflects the perspectives and interpretive frameworks of its annotators. We have sought to mitigate this through diverse annotator recruitment and multi-round review, but residual biases may remain. We encourage users to interpret MSQA results in context and to treat the benchmark as one 13 component of a broader evaluation framework rather than a definitive measure of cultural competence. 
+
+References 
+
+Anthropic. Claude models overview. https://docs.anthropic.com/en/docs/about-claude/mo dels/overview , 2026. A. Chen, A. Li, B. Gong, B. Jiang, B. Fei, B. Yang, B. Shan, C. Yu, C. Wang, C. Zhu, et al. Minimax-m1: Scaling test-time compute efficiently with lightning attention. arXiv preprint arXiv:2506.13585 , 2025. Y. Y. Chiu, L. Jiang, B. Y. Lin, C. Y. Park, S. S. Li, S. Ravi, M. Bhatia, M. Antoniak, Y. Tsvetkov, V. Shwartz, et al. Culturalbench: A robust, diverse and challenging benchmark for measuring lms’ cultural knowledge through human-ai red-teaming. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 25663–25701, 2025. D. Guo, F. Wu, F. Zhu, F. Leng, G. Shi, H. Chen, H. Fan, J. Wang, J. Jiang, J. Wang, et al. Seed1. 5-vl technical report. arXiv preprint arXiv:2505.07062 , 2025. M. A. Hasan, M. Hasanain, F. Ahmad, S. R. Laskar, S. Upadhyay, V. N. Sukhadia, M. Kutlu, S. A. Chowdhury, and F. Alam. Nativqa: Multilingual culturally-aligned natural query for llms. In Findings of the Association for Computational Linguistics: ACL 2025 , pages 14886–14909, 2025. Y. He, S. Li, J. Liu, Y. Tan, W. Wang, H. Huang, X. Bu, H. Guo, C. Hu, B. Zheng, et al. Chinese simpleqa: A chinese factuality evaluation for large language models. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 19182–19208, 2025. D. Hendrycks, C. Burns, S. Basart, A. Zou, M. Mazeika, D. Song, and J. Steinhardt. Measuring massive multitask language understanding. arXiv preprint arXiv:2009.03300 , 2020. D. Hupkes and N. Bogoychev. Multiloko: a multilingual local knowledge benchmark for llms spanning 31 languages. arXiv preprint arXiv:2504.10356 , 2025. E. Kim, J. Suk, P. Oh, H. Yoo, J. Thorne, and A. Oh. Click: A benchmark dataset of cultural and linguistic intelligence in korean. In Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024) , pages 3335–3346, 2024. A. Liu, B. Feng, B. Xue, B. Wang, B. Wu, C. Lu, C. Zhao, C. Deng, C. Zhang, C. Ruan, et al. Deepseek-v3 technical report. arXiv preprint arXiv:2412.19437 , 2024. S. Madhusudan, T. S. More, S. Buongiorno, R. Dividino, J. Kabbara, and A. Emami. Common to whom? regional cultural commonsense and llm bias in india. arXiv preprint arXiv:2601.15550 , 2026. A. Mallen, A. Asai, V. Zhong, R. Das, D. Khashabi, and H. Hajishirzi. When not to trust language models: Investigating effectiveness of parametric and non-parametric memories. In Proceedings of the 61st annual meeting of the association for computational linguistics (volume 1: Long papers) , pages 9802–9822, 2023. S. Min, K. Krishna, X. Lyu, M. Lewis, W.-t. Yih, P. Koh, M. Iyyer, L. Zettlemoyer, and H. Hajishirzi. Factscore: Fine-grained atomic evaluation of factual precision in long form text generation. In 
+
+Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , pages 12076– 12100, 2023. J. Myung, N. Lee, Y. Zhou, J. Jin, R. A. Putri, D. Antypas, H. Borkakoty, E. Kim, C. Perez-Almendros, A. A. Ayele, et al. Blend: A benchmark for llms on everyday knowledge in diverse cultures and languages. 
+
+Advances in Neural Information Processing Systems , 37:78104–78146, 2024. A. S. Rao, A. Yerukola, V. Shah, K. Reinecke, and M. Sap. Normad: A framework for measuring the cultural adaptability of large language models. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 2373–2403, 2025. 
+
+14 A. Romanou, N. Foroutan, A. Sotnikova, S. H. Nelaturu, S. Singh, R. Maheshwary, M. Altomare, Z. Chen, M. Haggag, A. Amayuelas, et al. Include: Evaluating multilingual language understanding with regional knowledge. In International Conference on Learning Representations , volume 2025, pages 83291– 83322, 2025. A. Singh, A. Fry, A. Perelman, A. Tart, A. Ganesh, A. El-Kishky, A. McLaughlin, A. Low, A. Ostrow, A. Ananthram, et al. Openai gpt-5 system card. arXiv preprint arXiv:2601.03267 , 2025a. S. Singh, A. Romanou, C. Fourrier, D. I. Adelani, J. G. Ngui, D. Vila-Suero, P. Limkonchotiwat, K. Marchi-sio, W. Q. Leong, Y. Susanto, et al. Global mmlu: Understanding and addressing cultural and linguistic biases in multilingual evaluation. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 18761–18799, 2025b. C. Snell, J. Lee, K. Xu, and A. Kumar. Scaling llm test-time compute optimally can be more effective than scaling model parameters. arXiv preprint arXiv:2408.03314 , 2024. G. Team, R. Anil, S. Borgeaud, J.-B. Alayrac, J. Yu, R. Soricut, J. Schalkwyk, A. M. Dai, A. Hauth, K. Milli-can, et al. Gemini: a family of highly capable multimodal models. arXiv preprint arXiv:2312.11805 ,2023. K. Team, Y. Bai, Y. Bao, Y. Charles, C. Chen, G. Chen, H. Chen, H. Chen, J. Chen, N. Chen, et al. Kimi k2: Open agentic intelligence. arXiv preprint arXiv:2507.20534 , 2025. K. Tian, E. Mitchell, A. Zhou, A. Sharma, R. Rafailov, H. Yao, C. Finn, and C. D. Manning. Just ask for calibration: Strategies for eliciting calibrated confidence scores from language models fine-tuned with human feedback. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , pages 5433–5442, 2023. J. Wei, N. Karina, H. W. Chung, Y. J. Jiao, S. Papay, A. Glaese, J. Schulman, and W. Fedus. Measuring short-form factuality in large language models. arXiv preprint arXiv:2411.04368 , 2024. A. Yang, A. Li, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Gao, C. Huang, C. Lv, et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388 , 2025. A. Zeng, X. Lv, Q. Zheng, Z. Hou, B. Chen, C. Xie, C. Wang, D. Yin, H. Zeng, J. Zhang, et al. Glm-4.5: Agentic, reasoning, and coding (arc) foundation models. arXiv preprint arXiv:2508.06471 , 2025. W. Zhao, D. Mondal, N. Tandon, D. Dillion, K. Gray, and Y. Gu. Worldvaluesbench: A large-scale benchmark dataset for multi-cultural value awareness of language models. In Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024) , pages 17696–17706, 2024. 
+
+A. Prompts Used in Experiments 
+
+We use three prompts across the evaluation pipeline. The main-experiment judge prompt instructs the LLM judge (Gemini-3.1-Pro) to determine whether a model’s free-form response contains the gold answer in meaning. The multilingual calibration prompt elicits both an answer and a self-reported confidence score (0–100) for the calibration analysis in §4.2. The retrieval-augmented answering prompt guides models to fuse internal knowledge with retrieved evidence in the RAG experiment. 
+
+B. Error Case Analysis 
+
+B.1. Error Case Taxonomy and Representative Failures 
+
+We assign each wrong response to one primary error type according to the question target, reference answer format, and culturally specific cues in the item. The labels are intended as diagnostic tags rather than claims about the model’s internal mechanism. Table 5 summarizes the taxonomy, and Table 6 gives representative high-coverage cases. 15 Main-Experiment Judge Prompt 
+
+Determine whether the predicted answer correctly contains the gold target in meaning. 
+
+Scoring rules. CORRECT if the predicted answer contains the same factual answer as the gold target. The predicted answer may include additional explanations, descriptions, or context. Extra information does not make the predicted answer incorrect if the core answer is correct. If the gold target is a short fact, such as a month, date, number, name, or location, the predicted answer is CORRECT as long as it clearly includes that fact and its overall meaning does not contradict the gold target. INCORRECT if the predicted answer gives a different answer or fails to include the gold target. 
+
+Process. Fully understand the intent of the prompt; identify the final answer stated in the predicted answer; compare the final answer of the predicted answer with the gold target. 
+
+Examples. Answer: May. Prediction: The festival is celebrated in May and marks the beginning of spring. Score: 1. Explanation: The predicted answer includes the correct month. Answer: May. Prediction: The festival takes place in June. Score: 0. Explanation: The predicted answer gives a different month. Answer: May. Prediction: It is a traditional festival celebrated with dances. Score: 0. Explanation: The predicted answer does not mention the month. 
+
+Output format. First line: 0 or 1, where 1 = CORRECT and 0 = INCORRECT. Following lines: brief explanation of the scoring decision. 
+
+Multilingual Calibration Prompt 
+
+Character. You are a multilingual cultural expert with encyclopedic knowledge of multiple languages and their corresponding cultural domains. Your task is to answer multilingual cultural questions and provide a subjective confidence score. Remain objective and rigorous throughout the response, recognize possible cross-cultural knowledge blind spots, do not overstate your knowledge, and present your true level of knowledge from a professional perspective. 
+
+Goal. Based on the provided multilingual cultural question, answer the question and evaluate your subjective confidence in the correctness of your answer. The confidence score must be an integer from 0 to 100, where 0 means completely uncertain and the answer is highly likely to be wrong or based on guessing, and 100 means completely certain and based on sufficient and reliable knowledge. Strictly follow the output format. Return only JSON, with no extra text, comments, or explanations. Output only two fields: response , your professional answer to the multilingual question, and confidence , your subjective confidence score. 
+
+Process. 1. Question understanding: precisely identify the core request of the multilingual question, the language involved, the cultural scenario, and the relevant knowledge domain, and determine whether you have a knowledge blind spot. 2. Language identification and matching: identify the language used in the question and answer in that language. 3. Professional answer: provide a professional answer based on your knowledge. 4. Confidence assessment: objectively assign a confidence score according to the 0–100 scale, ensuring that the score matches the likely accuracy of the answer and is neither blindly high nor blindly low. 
+
+Output. { “response”: “”, “confidence”: “” } 
+
+Retrieval-Augmented Answering Prompt 
+
+Role. You are a cultural expert with multilingual encyclopedic knowledge. Your task is to combine your internal knowledge with external retrieved data to provide accurate, hallucination-free answers. 
+
+Task Strategy. 1. Knowledge fusion: answer by combining your native memory, the user question {{prompt}}, and the retrieved data {{search_result}}. 2. Autonomous decision-making: you may refer to both your native knowledge and {{search_result}}; independently evaluate their accuracy and relevance, and provide the answer you judge to be most correct. 3. Supplemental grounding: when your native knowledge is weak in a particular language context, use details from {{search_result}} to enrich and verify your answer. 4. Language adaptation: respond in exactly the same language as the user question. 
+
+Input Context. User question: {{prompt}}. Retrieved data: {{search_result}}. 
+
+Output Requirement. Directly answer the question. Do not output any preamble or explanation. Strictly follow the format below and do not output any extra content: [write your answer here] 
+
+16 Error type Count Share 
+
+Cultural Practice, Belief, or Symbol Misidentification 20,614 47.3% Historical Event or Chronology Confusion 9,205 21.1% Localized Term or Idiom Mismatch 8,272 19.0% Numeric, Temporal, or Statistical Error 2,862 6.6% Literal Translation or Expression Trap 1,447 3.3% Institutional or Legal Reference Error 1,136 2.6% 
+
+Table 4. Distribution of recurring error types among wrong MSQA responses. 
+
+Error type Definition Interpretation 
+
+Cultural Practice, Belief, or Symbol Misidentification The model substitutes a nearby but in-correct custom, ritual, belief, artifact, symbol, dish, craft, or social meaning. Broad cultural priors are present, but the local referent is missing or unstable. Historical Event or Chronology Confusion The model confuses a specific event, pe-riod, figure, place, or historical interpre-tation with an adjacent narrative. Historical fluency masks weak retrieval of local an-chors. Localized Term or Idiom Mismatch The model fails to produce the exact na-tive term, proverb, slang, dialectal form, or lexicalized expression. Native lexicalized knowl-edge is not reducible to semantic paraphrase. Numeric, Temporal, or Sta-tistical Error The model gives an incorrect date, year, count, percentage, ordinal, or survey statistic. Surrounding explanation may be plausible while exact factual precision fails. Literal Translation or Ex-pression Trap The model interprets a fixed expression compositionally or translates it too liter-ally. Translation-like reasoning fails for conventionalized local usage. Institutional or Legal Refer-ence Error The model misidentifies a legal article, official system, institutional category, or formal document reference. Formal local knowledge is brittle and near-miss refer-ences are objectively wrong. 
+
+Table 5. Taxonomy of recurring error types observed in MSQA wrong responses. 
+
+Representative cases. The most common failure type across all evaluated models is cultural-symbol misidentification, which often appears when the model knows the broad region or topic but selects a globally more familiar substitute. Historical and lexical failures form the second tier: models can write coherent explanations of a historical period or idiom family, yet still miss the exact event, proverb, or culturally fixed phrase. The smaller categories are also important because they reveal high-precision bottlenecks: dates and statistics, formal institutional references, and non-compositional expressions are all cases where near misses cannot be accepted as culturally competent answers. 
+
+C. Annotation Workflow and Data Schema 
+
+The construction of MSQA follows the five-stage pipeline illustrated in Figure 3. 
+
+Stage 1: Question creation. Native-speaker annotators design questions bound to specific cultural contexts, each accompanied by a reference answer and at least one authoritative source URL. Annotators pre-test items against commercial LLMs (GPT, DeepSeek, Doubao) to gauge difficulty before submission. 17 Error type Case ID Lang. Question (abridged) Reference answer Why it matters 
+
+Cultural Practice, Belief, or Symbol Misidentifica-tion PT-82 PT Em Portugal, como se chama a técnica de bordado luxuoso, realizada à mão com fios de ouro e prata sobre veludo ou tecido de algodão, frequentemente associada a uma tradição local? Bordado de Castelo Branco Shows that models replace local cul-tural symbols with globally familiar but incorrect substitutes. Cultural Practice, Belief, or Symbol Misidentifica-tion 88474215-1a43-46ee-ad19-0ab7d657afcd EN From which work does the emotional quality of the Statue of Liberty origi-nate? The Lion of Belfort Shows that models replace local cul-tural symbols with globally familiar but incorrect substitutes. Historical Event or Chronology Confusion PT-05 PT Qual evento histórico brasileiro foi reinterpretado pela República como símbolo de luta contra a monarquia, apesar de ter sido elitista? A Proclamação da República Shows confusion among adjacent historical narratives despite fluent explanation. Historical Event or Chronology Confusion 0115c63c-edfb-467a-b2e2-5665e9c36585 RU Russian item asking in which city and on which date the first congress of Tver zemstvo doctors opened. Tver, June 7, 1871. Shows confusion among adjacent historical narratives despite fluent explanation. Localized Term or Idiom Mismatch PT-80 PT Qual é a expressão idiomática brasileira usada para expressar raiva e irritação? Estar com os azeites trocados Demonstrates failure on exact native lexical retrieval rather than general semantic understanding. Localized Term or Idiom Mismatch 2ce51935-e30d-4e33-aabc-cbc8c0c5311c EN In 1947, the British ceramics manufac-turer Wade Pottery introduced a spe-cific maker’s mark (backstamp) that explicitly incorporated which sym-bol? An owl. Demonstrates failure on exact native lexical retrieval rather than general semantic understanding. Numeric, Temporal, or Statistical Error PT-13 PT Quando é que o Brasil foi elevado à categoria de Reino Unido? 1916 Demonstrates brittle precision on dates/counts/statistics within oth-erwise familiar cultural topics. Numeric, Temporal, or Statistical Error ae4387f8-2267-429d-bdad-2c36a98ce4c0 MS Dalam adat pemakaman suku Murut Kolor, jika si mati adalah lelaki, be-rapa kali gong taliwi diketuk pada akhirnya? Jika perempuan, berapa kali? Lelaki satu kali; Perempuan dua kali Demonstrates brittle precision on dates/counts/statistics within oth-erwise familiar cultural topics. Literal Translation or Ex-pression Trap PT-66 PT Qual expressão portuguesa significa pessoa calada? o gato comeu sua lín-gua Highlights the limitation of literal or translation-based reasoning for con-ventional expressions. Literal Translation or Ex-pression Trap 491a1457-2c8f-4734-97b1-bc04fbd82ce4 ZH Chinese item asking for the two mean-ings of a Northern Shaanxi dialect ex-pression. To tidy up or ar-range; to scold or ad-monish. Highlights the limitation of literal or translation-based reasoning for con-ventional expressions. Institutional or Legal Ref-erence Error 5bf30cf3-9d74-44e5-851e-36cb481880db FR Quel article du Code de la sécurité sociale français oblige les organismes payeurs à comparer chaque mois leurs données avec celles des organismes compétents? L’article L. 262-16 de Code de l’action so-ciale et des familles Tests formal local reference knowl-edge where near-miss article/system names are objectively wrong. Institutional or Legal Ref-erence Error 6f1478df-b38d-450b-a6b6-149267d375dd EN Which term is used instead of M ¯aori English, avoiding the controversy that M ¯aori English can also be spoken by non-M¯ aori people? Aotearoa English Tests formal local reference knowl-edge where near-miss article/system names are objectively wrong. 
+
+Table 6. Representative wrong responses illustrating the six MSQA error types. Questions are abridged for readability. 
+
+Stage 2: Answer verification. Each item undergoes automated answer-accuracy verification using a dedicated quality-check prompt (shown below). If the answer is found to be ambiguous or incorrect, the item is returned for revision until confirmed unique and unambiguous. 
+
+Stage 3: Automated difficulty testing. Verified items are evaluated by three LLMs (GPT-5, DeepSeek-V3, and Doubao) across five independent runs. Items answered correctly in more than three runs are flagged as insufficiently challenging and returned for replacement. 
+
+Stage 4: Expert quality inspection. Quality inspectors review each item for cultural specificity, depth, linguistic accuracy, and source reliability. Inspectors provide one to two additional independent sources to cross-validate the reference answer. Items with flaws are returned with detailed revision notes. 
+
+Stage 5: Final acceptance. A project lead conducts a final review of all approved items, checking format consistency, logical coherence, and overall quality before inclusion. 18 Data schema. Each item is stored with the following fields: a unique prompt_id ; the 
+
+culture_circle to which the knowledge belongs; a category label from the five-dimension taxonomy; the question and answer in the native language ( prompt , answer ); a Chinese trans-lation pair ( question_zh , answer_zh ) for cross-reference; the primary source_url with description; and additional quality-check sources contributed during inspection. 
+
+D. Cultural Dimension Sub-Categories 
+
+Each cultural dimension encompasses several sub-categories that guide annotators toward knowledge requiring genuine cultural familiarity. 
+
+History and Collective Memory. (1) Founding institutions and nation-defining events; (2) multi-generational social movements and collective projects; (3) era-specific economic impacts and policy responses; (4) domestic political turning points that shaped national identity. 
+
+Beliefs, Values, and Knowledge Systems. (1) Core philosophical or religious terminology specific to a tradition; (2) key concepts within traditional knowledge systems (e.g., traditional medicine); (3) mythological figures, locations, or artifacts; (4) material symbols that embody cultural values. 
+
+Social Norms and Customs. (1) Festival-specific rituals and traditions; (2) dining and hospital-ity etiquette; (3) unwritten rules of daily social interaction; (4) life-cycle ceremonies (weddings, funerals, coming-of-age); (5) culturally specific body language meanings; (6) traditional games and their rules. 
+
+Language Expression and Communication Arts. (1) Untranslatable words with no direct equivalent in other languages; (2) culturally grounded idioms and proverbs; (3) culture-specific humor, puns, and wordplay; (4) high-context communication subtexts and implicit refusals. 
+
+Cultural Products and Symbols. (1) Iconic local brands, products, or national dishes; (2) tradi-tional crafts, textiles, and clothing with specific names; (3) named literary, cinematic, or musical genres unique to a culture; (4) contemporary internet culture terms and slang. 19
