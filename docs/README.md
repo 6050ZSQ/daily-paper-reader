@@ -6,71 +6,68 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-02
-- 运行时间：2026-07-02 22:03:54 UTC
+- 最新运行日期：2026-07-04
+- 运行时间：2026-07-04 21:34:33 UTC
 - 运行状态：成功
-- 本次总论文数：17
-- 精读区：7
+- 本次总论文数：16
+- 精读区：6
 - 速读区：10
 
 ### 今日简报（AI）
-今日17篇论文精读2篇高分之选，重点聚焦语法性别方向与口语评估新方法。最值得关注的是《Estimating Grammatical Gender Directions》和《LOPA》，分别从语境嵌入中解析语法性别规律，以及通过潜在序数原型对齐提升口语评估精度。建议优先阅读这两篇高分论文，并关注其对可控与自然语境的差异化处理。
-- 详情：[/202607/02/README](/202607/02/README)
+今日共推荐16篇论文，精读6篇，速读10篇，重点聚焦多模态大模型与大型语言模型理解两大方向。最值得关注的是两篇9.0分精读论文：《多模态大模型中可靠性优先的细粒度生成》与《理解大型语言模型》，此外速读中《Transformer中通过层特定位置嵌入缩放缓解位置偏差》也具参考价值。建议优先精读高分论文，再结合《面向学术文本的检索增强生成分块策略评估》深化理论与实践结合。
+- 详情：[/202607/04/README](/202607/04/README)
 
 ### 精读区论文标签
-1. [Estimating Grammatical Gender Directions in Contextual Embeddings under Controlled and Natural Contexts](/202607/02/2606.30152v1-estimating-grammatical-gender-directions-in-contextual-embeddings-under-controlled-and-natural-contexts)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：上下文嵌入中语法性别的神经表征
-2. [LOPA: Enhancing Spoken Language Assessment via Latent Ordinal Prototype Alignment](/202607/02/2606.31310v1-lopa-enhancing-spoken-language-assessment-via-latent-ordinal-prototype-alignment)  
+1. [Reliability-Prioritized Fine-Grained Generation in Multimodal Large](/202607/04/2606.29573v2-reliability-prioritized-fine-grained-generation-in-multimodal-large)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：提出使用序数原型和LLM表征的口语评估方法
-3. [Prototype Language Models](/202607/02/2607.00510v1-prototype-language-models)  
+   evidence：细粒度生成可靠性基准与评估
+2. [Understanding Large Language Models](/202607/04/2607.01006v1-understanding-large-language-models)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：基于原型的可解释语言模型揭示语言表示
-4. [Understanding Large Language Models](/202607/02/2607.01006v1-understanding-large-language-models)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：全面综述LLM的机制、能力以及与人类认知的关系
-5. [SemRF: A Semantic Reference Frame for Residual-Stream Dynamics in Language Models](/202607/02/2606.32022v1-semrf-a-semantic-reference-frame-for-residual-stream-dynamics-in-language-models)  
+   evidence：LLM机制、涌现能力及与人类语言表征关系的全面概述
+3. [Search for Truth from Reasoning: A Dynamic Representation Editing Framework for Steering LLM Trajectories](/202607/04/2606.28589v2-search-for-truth-from-reasoning-a-dynamic-representation-editing-framework-for-steering-llm-trajectories)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：语义参考框架；可解释性；残差流分析；语义表示
-6. [Harnessing the Latent Space: From Steering Vectors to Model Calibrators for Control and Trust](/202607/02/2607.00083v1-harnessing-the-latent-space-from-steering-vectors-to-model-calibrators-for-control-and-trust)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：通过转向向量和校准器理解潜在空间
-7. [ALEE: Any-Language Evaluation of Embeddings via English-Centric Minimal Pairs](/202607/02/2607.00171v1-alee-any-language-evaluation-of-embeddings-via-english-centric-minimal-pairs)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：通过最小对评估文本嵌入的语义相似性
+   evidence：探究LLM推理中的真理表征，属于语义表征范畴
+4. [Beyond Clean Text: Evaluating Encoder and Decoder Robustness for Bangla Event Detection in Noisy Text](/202607/04/2606.30914v1-beyond-clean-text-evaluating-encoder-and-decoder-robustness-for-bangla-event-detection-in-noisy-text)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：提供在噪声文本上评估LLM事件检测性能的基准和方法
+5. [MultiSynt/MT: Trillion-Token Multi-Parallel Pre-Training Data Translated Across 36 Languages](/202607/04/2607.00890v1-multisyntmt-trillion-token-multi-parallel-pre-training-data-translated-across-36-languages)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：用于LLM预训练评估的多语言基准套件
+6. [On the Role of Directionality in Structural Generalization](/202607/04/2607.02307v1-on-the-role-of-directionality-in-structural-generalization)  
+   标签：评分：8.0/10、query:llm-ling
+   evidence：使用CCG方向类型和BERT编码器研究结构泛化
 
 ### 速读区论文标签
-1. [What LLMs explain is not what they believe: Evaluating explanation sufficiency under models' own input beliefs](/202607/02/2606.28615v1-what-llms-explain-is-not-what-they-believe-evaluating-explanation-sufficiency-under-models-own-input-beliefs)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：评估LLM解释在模型自身输入信念下的充分性
-2. [A Theoretical Interpretation of In-Context Learning via Probabilistic Modeling](/202607/02/2606.28926v1-a-theoretical-interpretation-of-in-context-learning-via-probabilistic-modeling)  
+1. [Mitigating Position Bias in Transformers via Layer-Specific Positional Embedding Scaling](/202607/04/2606.27705v1-mitigating-position-bias-in-transformers-via-layer-specific-positional-embedding-scaling)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：上下文学习的概率模型解释LLM中的语义表示
-3. [Reliability-Prioritized Fine-Grained Generation in Multimodal Large](/202607/02/2606.29573v1-reliability-prioritized-fine-grained-generation-in-multimodal-large)  
+   evidence：通过层特定位置嵌入缩放缓解位置偏差，与编码机制相关
+2. [Cross-lingual Relation Extraction with Large Language Models: Zero-Shot, Few-Shot, and Fine-Tuned Evaluation on Romanian](/202607/04/2606.31718v1-cross-lingual-relation-extraction-with-large-language-models-zero-shot-few-shot-and-fine-tuned-evaluation-on-romanian)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：细粒度生成评估基准
-4. [Smooth Scaling Laws Hide Stepwise Token Learning](/202607/02/2606.29858v1-smooth-scaling-laws-hide-stepwise-token-learning)  
-   标签：评分：7.0/10、query:llm-lang-rep
-   evidence：词元级学习动态揭示LLM如何表征语言模式
-5. [Test-Time Verification for Text-to-SQL via Outcome Reward Models](/202607/02/2606.30851v1-test-time-verification-for-text-to-sql-via-outcome-reward-models)  
+   evidence：利用翻译基准评估LLM在跨语言关系抽取上的表现
+3. [Evaluating Chunking Strategies for Retrieval-Augmented Generation on Academic Texts](/202607/04/2607.01852v1-evaluating-chunking-strategies-for-retrieval-augmented-generation-on-academic-texts)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：LLM在Text-to-SQL任务中的测试时验证与评测
-6. [MSQA: A Natively Sourced Multilingual and Multicultural SimpleQA Benchmark](/202607/02/2607.00724v1-msqa-a-natively-sourced-multilingual-and-multicultural-simpleqa-benchmark)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：多语言多文化LLM语言能力基准
-7. [AURORA: Asymmetry and Update-Induced Rotation for Robust Hallucination Detection in Large Language Models](/202607/02/2606.29545v1-aurora-asymmetry-and-update-induced-rotation-for-robust-hallucination-detection-in-large-language-models)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：面向LLM的幻觉检测框架，提供评估方法
-8. [Truth or Sophistry? LoFa: A Benchmark for LLM Robustness Against Logical Fallacies](/202607/02/2606.31039v1-truth-or-sophistry-lofa-a-benchmark-for-llm-robustness-against-logical-fallacies)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：评估LLM对逻辑谬误鲁棒性的基准，提供评估方法
-9. [Robust Text Watermarking for Large Language Models via Dual Semantic Embeddings](/202607/02/2606.31602v2-robust-text-watermarking-for-large-language-models-via-dual-semantic-embeddings)  
+   evidence：使用LLM评估框架对RAG分块策略进行评测
+4. [Search for Truth from Reasoning: A Dynamic Representation Editing Framework for Steering LLM Trajectories](/202607/04/2606.28589v1-search-for-truth-from-reasoning-a-dynamic-representation-editing-framework-for-steering-llm-trajectories)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：利用语义嵌入进行LLM水印，间接涉及语言表征
-10. [When LLMs Read Tables Carelessly: Measuring and Reducing Data Referencing Errors](/202607/02/2606.32029v1-when-llms-read-tables-carelessly-measuring-and-reducing-data-referencing-errors)  
+   evidence：研究LLM推理链中真理的几何结构以进行表示编辑
+5. [Evaluating LLMs on Java Code Snippet Adaptation Using a Mutation-Injection Framework](/202607/04/2606.28618v1-evaluating-llms-on-java-code-snippet-adaptation-using-a-mutation-injection-framework)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：LLM在表格任务中数据引用错误的系统评估
+   evidence：使用突变注入框架评估LLM在代码适配上的表现，提供基准方法
+6. [MOSAIC: Orchestrating Collaborative Knowledge Tracing with Hierarchical Semantic Alignment](/202607/04/2606.29049v1-mosaic-orchestrating-collaborative-knowledge-tracing-with-hierarchical-semantic-alignment)  
+   标签：评分：6.0/10、query:llm-lang-rep
+   evidence：LLM驱动的语义对齐用于知识追踪
+7. [LOPA: Enhancing Spoken Language Assessment via Latent Ordinal Prototype Alignment](/202607/04/2606.31310v1-lopa-enhancing-spoken-language-assessment-via-latent-ordinal-prototype-alignment)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：通过隐序数原型对齐评估口语语言理解能力
+8. [DiscoLoop: Looping Discrete Embeddings and Continuous Hidden States for Multi-hop Reasoning](/202607/04/2607.00341v1-discoloop-looping-discrete-embeddings-and-continuous-hidden-states-for-multi-hop-reasoning)  
+   标签：评分：6.0/10、query:llm-lang-rep
+   evidence：Transformer内部记忆与推理步骤
+9. [Understanding Why Language Models Hallucinate: Testing Reasoning Against Priors](/202607/04/2607.00447v1-understanding-why-language-models-hallucinate-testing-reasoning-against-priors)  
+   标签：评分：6.0/10、query:llm-lang-rep
+   evidence：将幻觉解释为推理错位，为LLM推理提供可解释性分析
+10. [DRIFTLENS: Measuring Memory-Induced Reasoning Drift in Personalized Language Models](/202607/04/2607.02374v1-driftlens-measuring-memory-induced-reasoning-drift-in-personalized-language-models)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：测量个性化LLM中推理漂移的框架
 
 
 <div class="dpr-home-promo-card">
