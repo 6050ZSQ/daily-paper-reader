@@ -6,68 +6,68 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-04
-- 运行时间：2026-07-04 21:34:33 UTC
+- 最新运行日期：2026-07-05
+- 运行时间：2026-07-05 21:30:45 UTC
 - 运行状态：成功
 - 本次总论文数：16
-- 精读区：6
-- 速读区：10
+- 精读区：8
+- 速读区：8
 
 ### 今日简报（AI）
-今日共推荐16篇论文，精读6篇，速读10篇，重点聚焦多模态大模型与大型语言模型理解两大方向。最值得关注的是两篇9.0分精读论文：《多模态大模型中可靠性优先的细粒度生成》与《理解大型语言模型》，此外速读中《Transformer中通过层特定位置嵌入缩放缓解位置偏差》也具参考价值。建议优先精读高分论文，再结合《面向学术文本的检索增强生成分块策略评估》深化理论与实践结合。
-- 详情：[/202607/04/README](/202607/04/README)
+今日共推荐16篇论文，其中精读2篇最高分聚焦于模糊逻辑与语法检测、序列推理深度评估，速读涉及比喻翻译评估、手语生成及语义博弈机制。值得重点关注模糊逻辑在语言处理中的可解释性突破，以及面向深度扩展的推理基准测试。建议优先阅读精读文章获取前沿方法论，再通过速读拓展跨领域应用视角。
+- 详情：[/202607/05/README](/202607/05/README)
 
 ### 精读区论文标签
-1. [Reliability-Prioritized Fine-Grained Generation in Multimodal Large](/202607/04/2606.29573v2-reliability-prioritized-fine-grained-generation-in-multimodal-large)  
+1. [Explicit Fuzzy Logic in the Feed-Forward Layer: Self-Forgetting Quantifiers Discover Legible Grammatical-Licensing Detectors](/202607/05/2606.31845v1-explicit-fuzzy-logic-in-the-feed-forward-layer-self-forgetting-quantifiers-discover-legible-grammatical-licensing-detectors)  
+   标签：评分：10.0/10、query:llm-lang-rep
+   evidence：在FFN中使用显式模糊逻辑发现语法许可检测器，揭示语言结构的神经表征
+2. [The Complexity Ceiling Benchmark: A Multi-Domain Evaluation of Sequential Reasoning Under Depth Scaling](/202607/05/2606.29278v1-the-complexity-ceiling-benchmark-a-multi-domain-evaluation-of-sequential-reasoning-under-depth-scaling)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：细粒度生成可靠性基准与评估
-2. [Understanding Large Language Models](/202607/04/2607.01006v1-understanding-large-language-models)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：LLM机制、涌现能力及与人类语言表征关系的全面概述
-3. [Search for Truth from Reasoning: A Dynamic Representation Editing Framework for Steering LLM Trajectories](/202607/04/2606.28589v2-search-for-truth-from-reasoning-a-dynamic-representation-editing-framework-for-steering-llm-trajectories)  
+   evidence：LLM推理能力评测基准
+3. [On the Role of Directionality in Structural Generalization](/202607/05/2607.02307v1-on-the-role-of-directionality-in-structural-generalization)  
+   标签：评分：9.0/10、query:llm-ling
+   evidence：基于CCG的方向性句法泛化
+4. [Understanding Evaluation Illusion in Diffusion Large Language Models](/202607/05/2606.29228v1-understanding-evaluation-illusion-in-diffusion-large-language-models)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：揭示了扩散LLM中由于提示模板敏感导致的评估幻觉
+5. [Understanding Evaluation Illusion in Diffusion Large Language Models](/202607/05/2606.29228v2-understanding-evaluation-illusion-in-diffusion-large-language-models)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：扩散LLM评估幻觉
+6. [MSQA: A Natively Sourced Multilingual and Multicultural SimpleQA Benchmark](/202607/05/2607.00724v2-msqa-a-natively-sourced-multilingual-and-multicultural-simpleqa-benchmark)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：多语言多文化LLM评估基准
+7. [Understanding Large Language Models](/202607/05/2607.01006v1-understanding-large-language-models)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：探究LLM推理中的真理表征，属于语义表征范畴
-4. [Beyond Clean Text: Evaluating Encoder and Decoder Robustness for Bangla Event Detection in Noisy Text](/202607/04/2606.30914v1-beyond-clean-text-evaluating-encoder-and-decoder-robustness-for-bangla-event-detection-in-noisy-text)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：提供在噪声文本上评估LLM事件检测性能的基准和方法
-5. [MultiSynt/MT: Trillion-Token Multi-Parallel Pre-Training Data Translated Across 36 Languages](/202607/04/2607.00890v1-multisyntmt-trillion-token-multi-parallel-pre-training-data-translated-across-36-languages)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：用于LLM预训练评估的多语言基准套件
-6. [On the Role of Directionality in Structural Generalization](/202607/04/2607.02307v1-on-the-role-of-directionality-in-structural-generalization)  
-   标签：评分：8.0/10、query:llm-ling
-   evidence：使用CCG方向类型和BERT编码器研究结构泛化
+   evidence：对LLM机制和语言表示的综合理解
+8. [BamiBERT: A New BERT-based Language Model for Vietnamese](/202607/05/2607.02259v1-bamibert-a-new-bert-based-language-model-for-vietnamese)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：越南语预训练语言模型，学习语言表示
 
 ### 速读区论文标签
-1. [Mitigating Position Bias in Transformers via Layer-Specific Positional Embedding Scaling](/202607/04/2606.27705v1-mitigating-position-bias-in-transformers-via-layer-specific-positional-embedding-scaling)  
+1. [MetaHOPE: A Metaphor-Oriented Evaluation Framework for Analysing MT and LLM Translation Errors](/202607/05/2607.00848v1-metahope-a-metaphor-oriented-evaluation-framework-for-analysing-mt-and-llm-translation-errors)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：LLM隐喻翻译评估框架
+2. [BackTranslation2.0 -- A Linguistically Motivated Metric to Assess Sign Language Production](/202607/05/2606.28673v1-backtranslation20----a-linguistically-motivated-metric-to-assess-sign-language-production)  
+   标签：评分：7.0/10、query:llm-ling
+   evidence：利用LLM的语言学驱动的手语生成评估指标
+3. [LLM Semantic Signaling Game and Mechanism Design: Systematic Blindness, Awareness Shaping, and Mindset Dynamics](/202607/05/2606.29113v1-llm-semantic-signaling-game-and-mechanism-design-systematic-blindness-awareness-shaping-and-mindset-dynamics)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：通过层特定位置嵌入缩放缓解位置偏差，与编码机制相关
-2. [Cross-lingual Relation Extraction with Large Language Models: Zero-Shot, Few-Shot, and Fine-Tuned Evaluation on Romanian](/202607/04/2606.31718v1-cross-lingual-relation-extraction-with-large-language-models-zero-shot-few-shot-and-fine-tuned-evaluation-on-romanian)  
+   evidence：语义信号博弈建模了LLM中语言特征的感知
+4. [Auditing Forgetting in Limited Memory Language Models](/202607/05/2607.00605v1-auditing-forgetting-in-limited-memory-language-models)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：利用翻译基准评估LLM在跨语言关系抽取上的表现
-3. [Evaluating Chunking Strategies for Retrieval-Augmented Generation on Academic Texts](/202607/04/2607.01852v1-evaluating-chunking-strategies-for-retrieval-augmented-generation-on-academic-texts)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：使用LLM评估框架对RAG分块策略进行评测
-4. [Search for Truth from Reasoning: A Dynamic Representation Editing Framework for Steering LLM Trajectories](/202607/04/2606.28589v1-search-for-truth-from-reasoning-a-dynamic-representation-editing-framework-for-steering-llm-trajectories)  
+   evidence：遗忘评估的因果审计框架
+5. [The State-Prediction Separation Hypothesis](/202607/05/2607.01218v1-the-state-prediction-separation-hypothesis)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：Transformer的状态预测分离假说
+6. [Role-Aware Neural Convex Divergence Heads for Asymmetric Representation Learning](/202607/05/2607.01762v1-role-aware-neural-convex-divergence-heads-for-asymmetric-representation-learning)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：面向语义关系的非对称表示学习
+7. [BERTomelo: Your Portuguese Encoder Best Friend](/202607/05/2606.28999v1-bertomelo-your-portuguese-encoder-best-friend)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：研究LLM推理链中真理的几何结构以进行表示编辑
-5. [Evaluating LLMs on Java Code Snippet Adaptation Using a Mutation-Injection Framework](/202607/04/2606.28618v1-evaluating-llms-on-java-code-snippet-adaptation-using-a-mutation-injection-framework)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：使用突变注入框架评估LLM在代码适配上的表现，提供基准方法
-6. [MOSAIC: Orchestrating Collaborative Knowledge Tracing with Hierarchical Semantic Alignment](/202607/04/2606.29049v1-mosaic-orchestrating-collaborative-knowledge-tracing-with-hierarchical-semantic-alignment)  
+   evidence：单语编码器捕捉词汇和句法细微差别
+8. [Ghost in the Kernel: In-Context Learning with Efficient Transformers via Domain Generalization](/202607/05/2607.00479v1-ghost-in-the-kernel-in-context-learning-with-efficient-transformers-via-domain-generalization)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：LLM驱动的语义对齐用于知识追踪
-7. [LOPA: Enhancing Spoken Language Assessment via Latent Ordinal Prototype Alignment](/202607/04/2606.31310v1-lopa-enhancing-spoken-language-assessment-via-latent-ordinal-prototype-alignment)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：通过隐序数原型对齐评估口语语言理解能力
-8. [DiscoLoop: Looping Discrete Embeddings and Continuous Hidden States for Multi-hop Reasoning](/202607/04/2607.00341v1-discoloop-looping-discrete-embeddings-and-continuous-hidden-states-for-multi-hop-reasoning)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：Transformer内部记忆与推理步骤
-9. [Understanding Why Language Models Hallucinate: Testing Reasoning Against Priors](/202607/04/2607.00447v1-understanding-why-language-models-hallucinate-testing-reasoning-against-priors)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：将幻觉解释为推理错位，为LLM推理提供可解释性分析
-10. [DRIFTLENS: Measuring Memory-Induced Reasoning Drift in Personalized Language Models](/202607/04/2607.02374v1-driftlens-measuring-memory-induced-reasoning-drift-in-personalized-language-models)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：测量个性化LLM中推理漂移的框架
+   evidence：研究高效变压器中的上下文学习机制，与LLM语言编码相关
 
 
 <div class="dpr-home-promo-card">
