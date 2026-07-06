@@ -1,0 +1,476 @@
+Title: "Don't Say It!": Constraints, Compliance, and Communication when Language Models Play Taboo
+
+URL Source: https://arxiv.org/pdf/2607.00601v1
+
+Published Time: Thu, 02 Jul 2026 00:42:38 GMT
+
+Number of Pages: 21
+
+Markdown Content:
+# "Don’t Say It!": Constraints, Compliance, and Communication when Language Models Play Taboo 
+
+Sara Candussio 1,†, Francesca Padovani 2,†, Daniel Scalena 2,3 ,† and Malvina Nissim 2
+
+> 1
+
+AILab, MIGe, Univeristy of Trieste, Italy 
+
+> 2
+
+Center for Language and Cognition (CLCG), University of Groningen, The Netherlands 
+
+> 3
+
+University of Milano - Bicocca, Italy 
+
+Abstract 
+
+The game of Taboo requires describing a target word without using a set of forbidden words, so that other players can guess it. This deceptively simple task combines strict lexical constraints with the need for communicatively effective descriptions, making it a compelling playground for examining how LLMs navigate competing demands at inference time. We evaluate two open-weight models under conditions that intervene at progressively deeper levels of the generative process, from prompting to generation-time constraints to internal representations manipulations. We assess their outputs through forbidden word violation detection, LLM-as-a-judge measuring the degree to which generated descriptions successfully evoke the target concept for both human and machine guessers, and examining whether the strategies models adopt under constraint align with those of human players. Our results show that compliance with the rules of the game and communicative effectiveness trade off differently across conditions, and that models remain substantially weaker than humans as guessers, suggesting that lexical grounding under constraint is an open challenge for current language models 1.
+
+Keywords 
+
+taboo, prompting, constrained generation, word-guessing, SAEs 
+
+# 1. Introduction 
+
+The game of Taboo requires a player to describe a target word without using a set of forbidden words, so that another player can guess it. Beyond its appeal as a parlour game, Taboo instantiates a linguistically interesting challenge: the speaker must suppress some lexically and conceptually salient words while simultaneously producing a description that is informative enough to identify the target. This combination of constraint satisfaction and communicative effectiveness makes it a particularly suitable setting for probing language models in a setting that goes beyond standard instruction-following benchmarks. In particular, it remains unclear whether descriptions generated under constraint conform to the demands of the task — namely whether 
+
+> 1
+
+Code and data can be found at https://github.com/DanielSc4/LMtaboo/ 
+
+CLiC-it 2026: Twelfth Italian Conference on Computational Linguistics, September 14 — 16, 2026, Palermo, Italy 
+
+> *
+
+Corresponding author. 
+
+> †
+
+These authors contributed equally. 
+
+$ sara.candussio@phd.units.it (S. Candussio); f.padovani@rug.nl (F. Padovani); d.scalena@rug.nl (D. Scalena); m.nissim@rug.nl (M. Nissim) 
+
+ 0009-0004-5198-6970 (S. Candussio); 0009-0007-3489-9631 (F. Padovani); 0009-0006-0518-6504 (D. Scalena); 0000-0001-5289-0971 (M. Nissim)  
+
+> ©2026 Copyright for this paper by its authors. Use permitted under Creative Commons License Attribution 4.0 International (CC BY 4.0).
+
+they are sufficiently detailed, salient enough to evoke the target concept, and communicatively effective enough for the game to be successfully completed. In this paper we investigate how LLMs play Taboo in Italian, evaluating two open-weight models under conditions that intervene at progressively deeper levels of the generative process: from prompting, to generation-time constraints, to the manipulation of internal representations. To ground our evaluation in an actual game-play, we conduct a human study in which the roles are reversed in both directions: human evaluators read model-generated descriptions and attempt to guess the target word, and vice versa. This bidirectional design allows us to directly assess how well descriptions produced succeed in conveying the target concept, and whether the descriptive choices adopted by models and humans are mutually interpretable. Our findings reveal that the relationship between rule compliance and description quality varies substantially across conditions, and that models fall considerably short of human perfor-mance in the guessing role, pointing to lexical grounding under constraint as an open challenge for current language models. 
+
+# 2. Related works 
+
+Language games as NLP benchmarks Word-based games have been exploited as play-grounds for NLP, offering well-defined rules and measurable objectives suitable for benchmark-ing. Within the Italian NLP community, language games have attracted growing attention as probes for linguistic competence: the TV game La Ghigliottina has been tackled both with dedicated NLP systems [ 1 ] and used to benchmark LLMs [ 2 ], while studies on rebus and cross-word solving reveal consistent limitations in tasks requiring compositional, phonological, and lateral reasoning [ 3 , 4, 5, 6 ]. Beyond Italian, benchmarks such as NYT Connections [ 7 ] and Codenames [ 8 ] consistently show a substantial gap between LLM and human performance on tasks requiring deliberate reasoning and theory of mind. Word games have also been studied as training environments: Horst et al. [9] show that LLMs can learn from dialogue game self-play feedback, with Taboo among the training games. Closest to our work, Cywiński et al. [10] study Taboo specifically in the context of LLM interpretability, using the game as a test for eliciting latent knowledge. Our work differs in scope: rather than focusing on a single intervention, we systematically compare constraint enforcement strategies at multiple levels of the generative process and we furthermore ground the evaluation in an actual human game-play. 
+
+Constrained text generation Comprehensive evaluations of constrained text generation across open-source LLMs show that models exhibit systematic deficiencies even on relatively simple lexical constraints. Prompt-based approaches suffer from position bias and struggle with morphologically complex forms, and stricter format constraints have been demonstrated to cause performance degradation [ 11 , 12 ]. Ciaccio et al. [13] evaluate several Italian LLMs on their ability to generate sentences adhering to morpho-syntactic specifications, finding systematic deficiencies across models and constraint types. Calderaro et al. [14] further show that even state-of-the-art proprietary models consistently fall short when faced with fine-grained linguistic restrictions in Italian and that stricter requirements tend to degrade output quality more severely. These findings motivate our decision to go beyond prompting and to opt for different types of interventions. 
+
+Mechanistic interpretability and SAEs Beyond prompting, a more direct approach to output control is logit masking, i.e. forcing forbidden token probabilities to −∞ at every decoding step, as implemented in frameworks such as that proposed by Willard and Louf [15] and its predecessors Hokamp and Liu [16] . At a deeper level, concept manipulation via internal model representations offers an alternative approach. Rather than suppressing surface tokens, it targets the concepts encoded in the model’s latent space using Sparse AutoEncoders (SAEs) [ 17 ]. They decompose dense LLM activations into sparse, monosemantic features [ 18 ] that can be ablated at inference time without modifying model weights. Furthermore, a feature’s interpretability does not guarantee its effectiveness as a steering target: features that cleanly represent a concept may have little causal influence on the model’s output – a gap whose limits we help characterise in the context of lexical avoidance. 
+
+# 3. Methodology 
+
+3.1. Data and models Sicilia 
+
+# Arancin* 
+
+# Mondello Cannolo CliC-it 
+
+# Palermo 
+
+Figure 1: An example of a Taboo card. The word to be guessed is on top. The five words below are forbidden from appear-ing in the description. The datasets consists of 194 italian Taboo cards man-ually transcribed from a physical version of the board game. Each example contains a target word and a list of forbidden words that cannot be used in the description. We experiment with two open-weight models.  
+
+> google/gemma-3-4b-it
+
+[ 19 ] is a lightweight instruction-tuned model selected for its strong general performance and for the availability of pre-trained SAEs 1 compatible with our interpretability-based experimental condition. openai/gpt-oss-20b [ 21 ]is a Mixture-of-Experts reasoning model post-trained with chain-of-thought reinforcement learning, chosen to assess the role of explicit reasoning in constrained description generation, evaluated with and without reasoning. Generating an effective Taboo description requires implicitly planning ahead: the model must produce a description that is semantically informative while simultaneously avoiding a set of lexically related forbidden words. We therefore expect explicit reasoning to play a meaningful role in this task. 
+
+3.2. Forbidding experiments 
+
+We investigate three degrees of forbidding, each intervening at a different level of the model’s behaviour. In the first condition, models are prompted with the target word and the list of  
+
+> 1google/gemma-scope-2-4b-it [20]
+
+forbidden words, analogously to how human players are instructed before their turn. The second condition moves the intervention downstream, constraining the model during generation 
+
+so as to directly block forbidden tokens from being produced. The third condition operates at the level of internal representations, manipulating the model’s latent space to suppress the encoded concepts corresponding to the forbidden words. 
+
+3.2.1. Prompting 
+
+The prompt is constructed programmatically for each card, embedding the list of forbidden words and the target word directly into the user message. To ensure clean and comparable outputs, we additionally provide output instructions specifying that the model should return only the description, with no surrounding text, and within a limit of 30 words. The prompt explicitly instructs the model to avoid not only the forbidden words verbatim, but also any word derived from the same morphological root, in order to fully comply with the rules of the game. The full prompt structure is provided in Table ?? of Appendix A. Notably, the prompt does not explicitly instruct the model to avoid using the target word itself in the description, an error that would trivially make the model wrong at the game. We deemed it preferable to assess the extent to which this occurs empirically, and defer this analysis to Section 3.3. In Appendix A we additionally report results obtained with a relaxed prompt variant that omits the morphological constraint, discussing the impact of this simplification on model behaviour. 
+
+3.2.2. Generation-time constraints A priori stems censorship Before generation begins, we compute a static set of banned token from the forbidden word list. For each forbidden word, we extract all stems and ban any vocabulary token whose surface form is a prefix of any such stem or lemma, or vice versa. The banned token are then masked by forcing their logits to −∞ at every decoding step, making them impossible to sample regardless of context. A key design choice is the use of morphological normalisation rather than exact string matching: the censorship extends beyond the literal forbidden words to their inflected and derived forms. As a consequence, the model is forced to use synonyms or periphrases to express the forbidden elements. Complete freedom is left to the reasoning process. 
+
+Inference-time constrained generation A limitation of the a-priori approach is that it cannot condition the ban on generation context, occasionally suppressing tokens that would be appropriate in the description but happen to share a morphological root with a forbidden word. A practical example of its aggressiveness can be found in Appendix B. We address this by constraining the reasoning process dynamically. Rather than banning tokens upfront, we allow the model to generate freely and intervene only when a complete word is detected; its stem is then compared against the forbidden ones. If a match is found, generation backtracks to the first token of the offending word, which is added to a persistent position-level mask, and generation resumes from that position with the triggering token suppressed. Compared to the apriori approach, it operates on complete surface forms in place of subword fragments, avoiding spurious bans and higher computational overhead due to potential backtracing. 3.2.3. Model Manipulations 
+
+We also explore a representation-based approach that intervenes directly on the model’s residual stream at generation time. The intervention operates in two stages: feature identification and steered generation. 
+
+Feature identification For each forbidden word 𝑤 𝑖 , we identify the SAE feature most strongly associated with it by running the model on the short natural prompt " La parola vietata è 𝑤 𝑖 "(translated: " The forbidden word is 𝑤 𝑖 ") and extracting the residual-stream activations at layer 29 of google/gemma-3-4b-it 2. These activations are passed through a pre-trained JumpReLU SAE from google/gemma-scope-2-4b-it [ 20 ], using a residual-post hook at width 65k. The feature with the highest activation across the token span corresponding to 𝑤 𝑖 is selected as its representative. This process is applied to all forbidden words in a card, yielding a set of feature indices {𝑓 1, . . . , 𝑓 𝑘 }.
+
+Steered generation At generation time, we register a forward hook on the same residual-stream layer. At each decoding step, we compute the mean decoder vector 𝑑 = 1
+
+> 𝑘
+
+∑︀ 𝑗 wdec 
+
+> 𝑓 𝑖
+
+across the selected features and apply an activation-norm-scaled intervention: 
+
+h′ = h + 𝛼 · ‖ h‖2 · d
+
+steering the residual stream away from the direction associated with the forbidden concepts. The model is otherwise prompted without any mention of forbidden words, receiving only the target word and the standard output instructions. The entire process operates at inference time without modifying model weights. 
+
+3.3. Evaluation 
+
+Exact amount of violations We evaluate constraint compliance in the description generation through a number of metrics. Accuracy measures the percentage of valid descriptions that fully comply with the rules of the game, i.e. outputs that contain neither verbatim forbidden words nor any morphologically related form. Share of Exact Violations reports the percentage of descriptions in which the model uses one of the forbidden words verbatim. Share of Morphological Violations reports the percentage of descriptions in which the model produces a word sharing the same stem or lemma as a forbidden word 3. Share of no <eot> applies exclusively to  
+
+> openai/gpt-oss-20b
+
+in reasoning mode and it measures the proportion of cases in which the model exhausts its 2048-token reasoning budget without producing a final description. Finally, as anticipated in Section 3.2.1, the prompt does not explicitly instruct the model to avoid using the target word itself in the description. Share of Target Leaked Words reports the percentage of outputs in which the model nevertheless commits this error, inadvertently revealing the answer it was supposed to help guess.        
+
+> 2Layer 29 corresponds to ∼85% network depth, where representations are richer in semantic content (see Ap-pendix C).
+> 3Detected using the it_core_news_sm spaCy model [22] and the nltk Italian Snowball stemmer [23].
+
+LLM-as-a-judge To assess the communicative effectiveness of the generated descriptions, we employ an LLM-as-a-judge evaluation [ 24 ] as a complement to human evaluation. We use both google/gemma-3-4b-it and openai/gpt-oss-20b as automatic judges, evaluating descriptions generated by each model with both judges — that is, each model judges its own outputs as well as those of the other. Each judge is presented with the generated description alone, with no access to the forbidden words or the target word, and asked to guess the word being described. Instead of generating a free-form answer, we extract the judge’s next-token probability distribution immediately after reading the description and measure how much probability mass is assigned to the first token of the target word. This allows for a fine-grained, continuous assessment of how strongly the description evokes the target concept, rather than a binary correct/incorrect judgment. We derive two metrics from this distribution: Pass@ 𝑘 measures whether the target word’s first token falls within the top-𝑘 most likely tokens, 𝑘 ∈ { 1, 2, 3, 5, 10 }; the Raw token likelihood 
+
+reports the actual probability assigned to the target. 
+
+Human Evaluation We conduct a human evaluation study involving 8 annotators, structured into two phases on disjoint sets of cards. In the guessing phase (80 cards), annotators are presented with model-generated descriptions and asked to guess the target word as if playing an actual game of Taboo, albeit without the interactive component. Each annotator sees 20 cards, with system conditions distributed randomly across annotators to ensure balanced coverage of all evaluated systems, and each card evaluated under two different conditions by two different annotators. In the description phase (100 cards, disjoint from the guessing phase), each annotator receives 20 cards. For 5 of these, they produce a spontaneous, oral-style description; for the other 5, they write a deliberate, carefully worded description. This design mirrors the without thinking and with thinking regimes observed in model experiments respectively. These 10 descriptions of unique items produced by each annotator are then presented to the other annotators for guessing, with the oral description setting being the closest to the actual Taboo game. The last 10 cards are held constant across all annotators: every participant describes the same items, enabling future analysis of inter-annotator variability in description strategies, which we leave for future work. 
+
+# 4. Results 
+
+4.1. Models are quite good at following given constraints 
+
+Figure 2 provides an overview of model performance across forbidding experiments, compared against a baseline in which models generate target word descriptions without any forbidden word constraint. 4 Baseline accuracy varies considerably across models, ranging from 24.7% for  
+
+> openai/gpt-oss-20b
+
+without reasoning to 34.0% for google/gemma-3-4b-it , reflecting how readily each model would spontaneously use the forbidden words for descriptive purposes, even without knowing they are banned.            
+
+> 4Prompt in Appendix A; full results in Tables 4–6 in Appendix E. Baseline Prompt Const.
+> a priori
+> Const.
+> online
+> SAEs
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> Compliance (%)
+> gemma-3-4b-it
+> Baseline Prompt Const.
+> a priori
+> Const.
+> online
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> gpt-oss-20b
+> (no reasoning)
+> Baseline Prompt Const.
+> a priori
+> Const.
+> online
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> gpt-oss-20b
+> Pass Exact errors Morph. errors Leaked targets No <EOT> Mixed errors
+
+Figure 2: Compliance breakdown by method and model. Bars are partitioned into mutually exclusive categories summing to 100%; outputs with multiple error types are grouped into Mixed. The Baseline frequently violates taboo rules, while prompting substantially reduces errors. Constrained decoding achieves near-perfect compliance by construction, with residual failures almost exclusively due to target-word leaks. For gpt-oss-20b , enabling reasoning further improves compliance. 
+
+Under the prompting constraint, accuracy rises markedly for both google/gemma-3-4b-it 
+
+(91.2%) and openai/gpt-oss-20b with reasoning (97.4%). For google/gemma-3-4b-it , a small proportion of exact and morphological violations persist; openai/gpt-oss-20b with reasoning exhibits only morphological violations, suggesting that chain-of-thought is effective at suppressing verbatim forbidden words but less reliable on morphologically related forms. When reasoning is disabled, accuracy drops to 72.2%, with a higher share of both violation types, confirming that the reasoning process plays an active role in enforcing lexical constraints. In the constrained generation setting, all three models achieve high accuracy, with 
+
+google/gemma-3-4b-it reaching near-perfect compliance under both a priori (98.5%) and online (96.4%) settings. openai/gpt-oss-20b with reasoning performs similarly under a priori constraints (92.3%), though accuracy drops in the online condition (87.1%), accompanied by a higher rate of target word leaks. Without reasoning, the model’s accuracy reaches 82.5% and 82.0% respectively, with a markedly higher proportion of leaked target words in both cases. Finally, the SAE-based approach (Section 2), evaluated on google/gemma-3-4b-it only, reaches 55.7%, well below both prompting (91.2%) and constrained generation (98.5% and 96.4%), confirming that representation-based interventions alone cannot match explicit lexical guidance, though the result remains well above the unconstrained baseline (34.0%). 
+
+4.2. The type of constraining strategy shapes description informativeness 
+
+Having established that constraining strategy shapes compliance, we now ask whether it also affects how informative the resulting descriptions are as measured by the ability of a judge model to identify the target word. The two judge models agree on the broad ordering of conditions but differ substantially in sen-sitivity: openai/gpt-oss-20b assigns near-zero probability to the target word across almost all conditions, with pass@10 never exceeding 10%; google/gemma-3-4b-it is consistently 50 100     
+
+> Compliance (%)
+> 0
+> 10
+> 20
+> pass@10 (%)
+> gemma-3-4b-it
+> Baseline
+> Prompt
+> Const. online
+> SAE
+> 50 100
+> Compliance (%)
+> gpt-oss-20b
+> Default / No reasoning
+> Reasoning
+> 50 100
+> Compliance (%)
+> gemma-3-4b-it
+> 50 100
+> Compliance (%)
+> gpt-oss-20b
+> Gemma is guessing GPT is guessing
+
+Figure 3: Compliance vs. pass@10 across models, methods, and evaluators. All three proposed methods (Prompt, Constrained, SAE) substantially increase compliance over the Baseline, confirming their effectiveness at enforcing the Taboo constraint. Pass@10 remains broadly stable across methods, suggesting compliance gains do not come at the cost of description quality. Gemma, in the guesser role, consistently achieves higher pass@10 than GPT both in- and out-of-distribution. Finally, enabling reasoning in gpt-oss-20b does not yield consistent improvements in its description effectiveness. 
+
+more generous, reaching up to 24.7% on the same descriptions (Figure 3). Despite this gap, both judges agree that the constraining strategy matters. Descriptions produced under inference-time constrained generation are in most conditions easier to guess than prompt-based ones: for google/gemma-3-4b-it as clue-giver, constrained online gen-eration yields pass@10 of 17.0% and 8.8% against 11.3% and 3.6% for prompting under the 
+
+google/gemma-3-4b-it and openai/gpt-oss-20b judge respectively. A likely explana-tion is that forcing the model away from forbidden tokens at decoding time pushes it toward less obvious but more semantically precise paraphrases, whereas an instructed model tends toward overly cautious, informationally sparse descriptions. SAE-based steering presents the most striking dissociation: compliance is low (56.7% strict accuracy) yet communicative effectiveness is competitive, with pass@10 reaching 21.1% under the google/gemma-3-4b-it judge, also exceeding constrained generation for the same clue-giver. This suggests that blocking surface tokens at decoding time imposes a descriptive cost that representation-level intervention avoids: the model loses access to forbidden words but retains the underlying conceptual associations needed to produce an informative description. 
+
+4.3. Models are weak guessers 
+
+We generated descriptions for 10 shared Taboo cards using google/gemma-3-4b-it ,
+
+openai/gpt-oss-20b (with and without reasoning), Claude Sonnet-4.6 (max effort) [ 25 ], Gemini-3.1 Pro [ 26 ]5, along with human-generated ones. These are passed to 
+
+openai/gpt-oss-20b and google/gemma-3-4b-it in order to be guessed and the results are reported in Figure 4. openai/gpt-oss-20b assigns near-zero probability to the correct target across virtually all clue givers, reaching at most 1.2% at pass@10 on human descrip-tions. google/gemma-3-4b-it is substantially more capable, yet still requires between 5 and 10 guesses to approach a decent accuracy: on human-written descriptions, its pass@1 
+
+> 5
+
+Proprietary models are used in their chat version. @1 @2 @3 @5 @10                                                     
+
+> gemma-3-4b-it
+> gpt-oss-20b
+> (no reasoning)
+> gpt-oss-20b
+> Sonnet-4.6
+> Gemini-3.1-Pro
+> Human
+> 0.0% 0.0% 10.0% 10.0% 10.0%
+> 0.0% 0.0% 10.0% 10.0% 10.0%
+> 0.0% 0.0% 0.0% 0.0% 0.0%
+> 0.0% 0.0% 0.0% 1.2% 1.2%
+> 0.0% 0.0% 10.0% 10.0% 10.0%
+> 0.0% 0.0% 0.0% 0.0% 20.0%
+> Judge: gpt-oss-20b
+> @1 @2 @3 @5 @10
+> gemma-3-4b-it
+> gpt-oss-20b
+> (no reasoning)
+> gpt-oss-20b
+> Sonnet-4.6
+> Gemini-3.1-Pro
+> Human
+> 0.0% 0.0% 0.0% 0.0% 20.0%
+> 0.0% 0.0% 10.0% 10.0% 40.0%
+> 0.0% 10.0% 20.0% 20.0% 30.0%
+> 0.0% 7.5% 12.5% 18.8% 30.0%
+> 0.0% 20.0% 30.0% 30.0% 40.0%
+> 0.0% 10.0% 20.0% 30.0% 40.0%
+> Judge: gemma-3-4b-it
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> 35
+> 40
+> 45
+> pass@k (%)
+> Pass@k guessing accuracy across different models
+
+Figure 4: Pass@ 𝑘 guessing accuracy on 10 shared Taboo cards, for all clue-givers evaluated by 
+
+openai/gpt-oss-20b (left) and google/gemma-3-4b-it (right). Each cell reports the fraction of cards for which the judge ranked the target word within its top 𝑘 guesses. 
+
+is 0.0% while pass@10 reaches 30.0%. The same asymmetry holds when models guess from model-written descriptions, with Claude Sonnet-4.6 and Gemini-3.1-Pro as clue givers yielding comparable pass@10 of 25.0% and 30.0% respectively under google/gemma-3-4b-it judge, while openai/gpt-oss-20b remains at or below 20.0% across all clue givers. 
+
+4.4. Humans versus models; models versus humans 
+
+Humans as guessers. We asked human annotators to read model-generated descriptions and guess the target word. Overall, annotators correctly identified the target in 30.77% of cases (weighted average across annotators and conditions), with performance varying considerably by constraining strategy: constrained generation yields the highest human accuracy (38.10%), followed by the SAE-based condition (31.03%), with prompting producing the lowest (23.44%). This ordering mirrors the pattern observed in Section 4.3 for model judges, suggesting that the informativeness advantage of constrained generation generalises beyond automatic evaluation. Beyond aggregate accuracy, qualitative inspection reveals recurring failure patterns in model-generated descriptions, including referential failures, category mismatches, and code-switching under the SAE condition, which we discuss in Appendix D. 
+
+Humans as descriptors. We also collected human-generated descriptions across three con-ditions that differ in prior exposure and time constraints (see description phase in Section 3.3): 
+
+spontaneous (no preparation, 5 cards), deliberate (time to reflect before writing, 5 cards), and 
+
+shared (all annotators describe privately the same ten words, enabling direct comparison with models). For the spontaneous and deliberate conditions, we assessed how accurately other annotators could guess the target word from the description: deliberate descriptions achieve 85% accuracy, while spontaneous descriptions yield a higher rate of 95%. The gap between these two reflects the interactive nature of oral description, where players could refine in real time, versus the deliberate setting, which more closely mirrors the constraints imposed on models. If we ask the models to guess the human-described words, we can spot a clear ordering: shared > deliberate > spontaneous at all values of 𝑘 (Table 1). At pass@10, shared de-scriptions yield 15.6%, deliberate 13.8%, and spontaneous only 5.1%. As observed through-out, openai/gpt-oss-20b almost never guesses correctly (pass@10 ≤ 2.5%), whereas  
+
+> google/gemma-3-4b-it
+
+reaches up to 30.0% on shared descriptions, yet still requiring be-tween 5 and 10 guesses to rival what a human achieves at pass@1. This contrast is revealing: humans benefit from spontaneous descriptions that, though fragmented, are iteratively refined towards the referent in real time. When presented to models as static text (without the interactive context that makes them effective for human guessers) such descriptions yield substantially lower pass@ 𝑘 rates, while models are better suited to process the structured, fixed outputs of the deliberate and shared conditions.                                                 
+
+> Table 1
+> Human clue-giver evaluation. Accuracy computed on strict criterion (no exact + no morphological violations).
+> Condition Judge pass@ 𝑘 Accuracy
+> @1 @2 @3 @5 @10 loose strict Spontaneous (𝑛 = 39 )
+> gpt-oss-20b 0.0% 0.0% 0.0% 0.0% 0.0% 97.4% 82.1%
+> gemma-3-4b-it 0.0% 2.6% 5.1% 7.7% 10.3% Deliberate (𝑛 = 40 )
+> gpt-oss-20b 0.0% 0.0% 0.0% 0.0% 2.5% 100.0% 97.5%
+> gemma-3-4b-it 0.0% 5.0% 7.5% 10.0% 25.0% Shared (𝑛 = 80 )
+> gpt-oss-20b 0.0% 0.0% 0.0% 1.2% 1.2% 100.0% 91.2%
+> gemma-3-4b-it 0.0% 7.5% 12.5% 18.8% 30.0%
+
+# 5. Discussion 
+
+Our results reveal a consistent tension between constraint adherence and descriptive informa-tiveness that cuts across all conditions. The three families of constraining strategies we examine operate at qualitatively different levels (instruction, decoding, and internal representation) and this difference determines not only how reliably the model avoids forbidden words, but also how it describes the target item. Prompting achieves high compliance at the cost of information-ally sparse output; constrained generation forces the model toward more semantically precise paraphrases, at the cost of occasionally leaking the target word; SAE-based steering sits at the opposite extreme, preserving conceptual associations at the cost of surface compliance. This trade-off suggests that lexical avoidance and communicative effectiveness are not independently controllable, and that the mechanism through which a constraint is imposed shapes the output in ways that go beyond mere compliance. A second thread concerns the asymmetry between humans and models as players. On the descriptor side, reasoning does help models: openai/gpt-oss-20b with chain-of-thought reaches 97.4% accuracy versus 72.2% without, a substantial gain. For humans, the picture is more nuanced: spontaneous oral descriptions, despite being unplanned, yield higher guessing accuracy (95.0%) than deliberate written ones (85.0%), likely because the interactive oral setting allows real-time refinement. This suggests that planning confers different benefits depending on the medium and the player: for models it primarily enforces compliance, whereas for humans it is the interactivity of the setting, rather than deliberation per se , that drives performance. On the guesser side, the asymmetry is starker: both judge models struggle to identify target words, with google/gemma-3-4b-it requiring between 5 and 10 guesses to approach the accuracy a human achieves at pass@1. This gap suggests that models do not share the same network of salient lexical associations that makes Taboo intuitive for humans, and that guessing from indirect descriptions remains a genuinely hard task for current language models. This gap is also reminiscent of the distinction between fast, associative System 1 processing and deliberate System 2 reasoning [ 27 ]: humans navigate Taboo by rapidly activating and suppressing salient lexical associates, a mode of processing that current language models do not appear to replicate, at least not in the guessing direction. Our study has however several limitations. The benchmark is currently Italian-only, and it is unclear how results generalise to languages with different morphological profiles or lexical structures. The shared evaluation set covers only 10 words, limiting the statistical power of cross-model comparisons in Section 4.3. SAE-based steering was evaluated on  
+
+> google/gemma-3-4b-it
+
+only, and extending it to other architectures remains open. The two judge models differ substantially in sensitivity, raising questions about which better reflects human guessing behaviour, a question our human evaluation begins to address but does not fully resolve. 
+
+# 6. Conclusions and Future Work 
+
+We presented a framework that operationalises lexical constraint following as a communicative game, and used it to evaluate three families of constraining strategies across multiple models and human annotators. Our results show that compliance and communicative effectiveness are not independently controllable: the mechanism through which a constraint is imposed (instruction, decoding, or internal representation) shapes the output in ways that go beyond mere rule adherence, with constrained generation and SAE-based steering producing qualitatively different trade-offs. Beyond the specific findings, our work supports the broader argument that games constitute a natural and underexplored testbed for language model capabilities: they impose well-defined rules, require communicative grounding, and admit quantitative evaluation while remaining ecologically valid. LMtaboo in particular is inherently interactive, yet we have evaluated models only in a single-turn, single-agent setting. Extending the benchmark to multi-turn and multi-agent configurations (where models iteratively refine descriptions based on guesser feedback, or negotiate meaning across turns) would more faithfully reflect the dynamics of the original game and probe capabilities, such as pragmatic adaptation and collaborative grounding, that current evaluations leave largely untested. Acknowledgments 
+
+The authors sincerely thank Valentina, Frida, Daniel, and Arianna for their invaluable contribu-tion to the annotation process. The work of Daniel Scalena has been partially funded by MUR under the grant ReGAInS, Dipartimenti di Eccellenza 2023-2027 of the Department of Informatics, Systems and Communication at the University of Milano-Bicocca. The work of Sara Candussio has been funded by Fondo Sociale Europeo Plus of Regione Autonoma Friuli Venezia Giulia. We also thank the Center for Information Technology of the University of Groningen for providing access to the Hábrók high-performance computing cluster used for part of the experiments. 
+
+# Declaration on Generative AI 
+
+During the preparation of this work, the authors used Claude (Anthropic) in order to improve writing style , grammar and spelling check , paraphrase and reword , drafting content 
+
+(including experimental code). After using this tool/service, the authors reviewed and edited the content as needed and take full responsibility for the publication’s content. 
+
+# References 
+
+[1] F. Sangati, A. Pascucci, J. Monti, The challenge of the TV game la ghigliottina to NLP, in: S. M. Lukin (Ed.), Workshop on Games and Natural Language Processing, European Language Resources Association, Marseille, France, 2020, pp. 34–38. URL: https://aclanthology.org/2020.gamnlp-1.5/. [2] R. Manna, M. P. di Buono, J. Monti, Riddle me this: Evaluating large language models in solving word-based games, in: C. Madge, J. Chamberlain, K. Fort, U. Kruschwitz, S. Lukin (Eds.), Proceedings of the 10th Workshop on Games and Natural Language Processing @ LREC-COLING 2024, ELRA and ICCL, Torino, Italia, 2024, pp. 97–106. URL: https://aclanthology.org/2024.games-1.11/. [3] G. Sarti, T. Caselli, M. Nissim, A. Bisazza, Non verbis, sed rebus: Large language mod-els are weak solvers of Italian rebuses, in: F. Dell’Orletta, A. Lenci, S. Montemagni, R. Sprugnoli (Eds.), Proceedings of the Tenth Italian Conference on Computational Lin-guistics (CLiC-it 2024), CEUR Workshop Proceedings, Pisa, Italy, 2024, pp. 888–897. URL: https://aclanthology.org/2024.clicit-1.96/. [4] G. Sarti, T. Caselli, A. Bisazza, M. Nissim, EurekaRebus - verbalized rebus solving with LLMs: A CALAMITA challenge, in: F. Dell’Orletta, A. Lenci, S. Montemagni, R. Sprugnoli (Eds.), Proceedings of the Tenth Italian Conference on Computational Linguistics (CLiC-it 2024), CEUR Workshop Proceedings, Pisa, Italy, 2024, pp. 1202–1208. URL: https:// aclanthology.org/2024.clicit-1.132/. [5] C. Ciaccio, G. Sarti, A. Miaschi, F. Dell’Orletta, Crossword space: Latent manifold learning for Italian crosswords and beyond, in: C. Bosco, E. Jezek, M. Polignano, M. Sanguinetti (Eds.), Proceedings of the Eleventh Italian Conference on Computational Linguistics (CLiC-it 2025), CEUR Workshop Proceedings, Cagliari, Italy, 2025, pp. 245–255. URL: https://aclanthology.org/2025.clicit-1.26/. [6] C. Ciaccio, G. Sarti, A. Miaschi, F. Dell’Orletta, M. Nissim, Cruciverb-IT at EVALITA 2026: Overview of the crossword solving in italian task, in: Proceedings of the 9th Evaluation Campaign of Natural Language Processing and Speech Tools for Italian (EVALITA 2026), volume 4195, CEUR Workshop Proceedings, Bari, Italy, 2026. URL: https://ceur-ws.org/ Vol-4195/62.pdf. [7] A. Y. Loredo Lopez, T. McDonald, A. Emami, NYT-connections: A deceptively simple text classification task that stumps system-1 thinkers, in: O. Rambow, L. Wanner, M. Apidianaki, H. Al-Khalifa, B. D. Eugenio, S. Schockaert (Eds.), Proceedings of the 31st International Conference on Computational Linguistics, Association for Computational Linguistics, Abu Dhabi, UAE, 2025, pp. 1952–1963. URL: https://aclanthology.org/2025.coling-main.134/. [8] M. Stephenson, M. Sidji, B. Ronval, Codenames as a benchmark for large language models, 2025. URL: https://arxiv.org/abs/2412.11373. arXiv:2412.11373 .[9] N. Horst, D. Mazzaccara, A. Schmidt, M. Sullivan, F. Momentè, L. Franceschetti, P. Sadler, S. Hakimov, A. Testoni, R. Bernardi, R. Fernández, A. Koller, O. Lemon, D. Schlangen, M. Giulianelli, A. Suglia, Playpen: An environment for exploring learning from dialogue game feedback, in: C. Christodoulopoulos, T. Chakraborty, C. Rose, V. Peng (Eds.), Pro-ceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, Association for Computational Linguistics, Suzhou, China, 2025, pp. 29854–29891. URL: https://aclanthology.org/2025.emnlp-main.1517/. doi: 10.18653/v1/2025.emnlp-main. 1517 .[10] B. Cywiński, E. Ryd, S. Rajamanoharan, N. Nanda, Towards eliciting latent knowledge from llms with mechanistic interpretability, 2025. URL: https://arxiv.org/abs/2505.14352. 
+
+> arXiv:2505.14352
+
+.[11] S. Yao, H. Chen, A. W. Hanjie, R. Yang, K. R. Narasimhan, COLLIE: Systematic construction of constrained text generation tasks, in: The Twelfth International Conference on Learning Representations, 2024. URL: https://openreview.net/forum?id=kxgSlyirUZ. [12] Z. R. Tam, C.-K. Wu, Y.-L. Tsai, C.-Y. Lin, H.-y. Lee, Y.-N. Chen, Let me speak freely? a study on the impact of format restrictions on large language model performance., in: F. Der-noncourt, D. Preoţiuc-Pietro, A. Shimorina (Eds.), Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing: Industry Track, Association for Com-putational Linguistics, Miami, Florida, US, 2024, pp. 1218–1236. URL: https://aclanthology. org/2024.emnlp-industry.91/. doi: 10.18653/v1/2024.emnlp-industry.91 .[13] C. Ciaccio, F. Dell’orletta, A. Miaschi, G. Venturi, Controllable text generation to eval-uate linguistic abilities of Italian LLMs, in: F. Dell’Orletta, A. Lenci, S. Montemagni, R. Sprugnoli (Eds.), Proceedings of the Tenth Italian Conference on Computational Lin-guistics (CLiC-it 2024), CEUR Workshop Proceedings, Pisa, Italy, 2024, pp. 221–232. URL: https://aclanthology.org/2024.clicit-1.27/. [14] S. Calderaro, A. Miaschi, F. Dell’Orletta, The OuLiBench benchmark: Formal constraints as a lens into LLM linguistic competence, in: C. Bosco, E. Jezek, M. Polignano, M. Sanguinetti (Eds.), Proceedings of the Eleventh Italian Conference on Computational Linguistics (CLiC-it 2025), CEUR Workshop Proceedings, Cagliari, Italy, 2025, pp. 124–133. URL: https://aclanthology.org/2025.clicit-1.14/. [15] B. T. Willard, R. Louf, Efficient guided generation for large language models, 2023. URL: https://arxiv.org/abs/2307.09702. arXiv:2307.09702 .[16] C. Hokamp, Q. Liu, Lexically constrained decoding for sequence generation using grid beam search, in: R. Barzilay, M.-Y. Kan (Eds.), Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), Association for Computational Linguistics, Vancouver, Canada, 2017, pp. 1535–1546. URL: https:// aclanthology.org/P17-1141/. doi: 10.18653/v1/P17-1141 .[17] H. Cunningham, A. Ewart, L. Riggs, R. Huben, L. Sharkey, Sparse autoencoders find highly interpretable features in language models, 2023. URL: https://arxiv.org/abs/2309.08600. 
+
+> arXiv:2309.08600
+
+.[18] A. Templeton, et al., Scaling monosemanticity: Extracting interpretable features from Claude 3 Sonnet, Transformer Circuits Thread, 2024. URL: https://transformer-circuits. pub/2024/scaling-monosemanticity/index.html. [19] G. Team, Gemma 3 (2025). URL: https://goo.gle/Gemma3Report. [20] T. Lieberum, S. Rajamanoharan, A. Conmy, L. Smith, N. Sonnerat, V. Varma, J. Kramar, A. Dragan, R. Shah, N. Nanda, Gemma scope: Open sparse autoencoders everywhere all at once on gemma 2, in: Y. Belinkov, N. Kim, J. Jumelet, H. Mohebbi, A. Mueller, H. Chen (Eds.), Proceedings of the 7th BlackboxNLP Workshop: Analyzing and Interpreting Neural Networks for NLP, Association for Computational Linguistics, Miami, Florida, US, 2024, pp. 278–300. URL: https://aclanthology.org/2024.blackboxnlp-1.19/. doi: 10.18653/v1/ 2024.blackboxnlp-1.19 .[21] OpenAI, gpt-oss-120b & gpt-oss-20b model card, 2025. URL: https://arxiv.org/abs/2508. 10925. arXiv:2508.10925 .[22] M. Honnibal, I. Montani, S. Van Landeghem, A. Boyd, spaCy: Industrial-strength natural language processing in python, 2020. doi: 10.5281/zenodo.1212303 .[23] S. Bird, E. Loper, NLTK: The natural language toolkit, in: Proceedings of the ACL Interactive Poster and Demonstration Sessions, Association for Computational Linguistics, Barcelona, Spain, 2004, pp. 214–217. URL: https://aclanthology.org/P04-3031/. [24] A. Bavaresco, R. Bernardi, L. Bertolazzi, D. Elliott, R. Fernández, A. Gatt, E. Ghaleb, M. Giulianelli, M. Hanna, A. Koller, A. Martins, P. Mondorf, V. Neplenbroek, S. Pezzelle, B. Plank, D. Schlangen, A. Suglia, A. K. Surikuchi, E. Takmaz, A. Testoni, LLMs instead of human judges? a large scale empirical study across 20 NLP evaluation tasks, in: W. Che, J. Nabende, E. Shutova, M. T. Pilehvar (Eds.), Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers), Association for Computational Linguistics, Vienna, Austria, 2025, pp. 238–255. URL: https://aclanthology. org/2025.acl-short.20/. doi: 10.18653/v1/2025.acl-short.20 .[25] Anthropic, System Card: Claude Sonnet 4.6, Technical Report, Anthropic, 2026. URL: https://www.anthropic.com/claude-sonnet-4-6-system-card. [26] Google DeepMind, Gemini 3.1 pro model card, Google DeepMind, 2026. URL: https:// deepmind.google/models/model-cards/gemini-3-1-pro/. [27] D. Kahneman, Thinking, Fast and Slow, Farrar, Straus and Giroux, New York, 2011. [28] O. Skean, M. R. Arefin, D. Zhao, N. N. Patel, J. Naghiyev, Y. LeCun, R. Shwartz-Ziv, Layer by layer: Uncovering hidden representations in language models, in: Forty-second International Conference on Machine Learning, 2025. URL: https://openreview.net/forum? id=WGXb7UdvTX. A. Appendix A: prompt details, generation parameters and repetition penalty 
+
+This appendix reports the prompt templates used in our experiments, together with the genera-tion hyperparameters adopted for each model and condition. 
+
+A.1. Prompt Templates 
+
+Two prompt variants were used. The baseline prompt asks the model to describe the target word freely, with no mention of forbidden words. The prompted condition additionally instructs the model to avoid the forbidden words and their morphological relatives. 
+
+User Message — Baseline 
+
+Descrivi la seguente parola in modo che qualcuno possa indovinarla. Parola da descrivere: [target word] 
+
+Scrivi in output solamente la descrizione senza nessun testo di contorno. Considera che hai un limite di 30 parole, quindi cerca di dare una descrizione quanto più breve possibile. Descrizione: 
+
+Describe the following word so that someone can guess it. Word to describe: [target word] 
+
+Output only the description with no surrounding text. You have a limit of 30 words, so try to give as brief a description as possible. Description: 
+
+User Message — Prompted condition 
+
+Descrivi la seguente parola in modo che qualcuno possa indovinarla, ma NON usare nessuna di queste parole o nessuna parola con la stessa radice: [fw 1, fw 2, . . . ] .Parola da descrivere: [target word] 
+
+Scrivi in output solamente la descrizione senza nessun testo di contorno. Considera che hai un limite di 30 parole, quindi cerca di dare una descrizione quanto più breve possibile. Descrizione: 
+
+Describe the following word so that someone can guess it, but do NOT use any of these words or any word with the same root: [fw 1, fw 2, ...] .Word to describe: [target word] 
+
+Output only the description with no surrounding text. You have a limit of 30 words, so try to give as brief a description as possible. Description: 
+
+Table 2 
+
+Prompt templates for the baseline (top) and prompted (bottom) conditions. English translation in italics. A.2. Generation parameters and repetition penalty 
+
+All models were run in greedy decoding mode ( do_sample=False ). Table 3summarises the generation parameters used per model and condition.           
+
+> Model max_new_tokens rep. penalty
+> gemma-3-4b-it 80 1.0
+> gpt-oss-20b (reasoning) 2048 1.2
+> gpt-oss-20b (no reasoning) 80 1.0
+> Table 3
+> Generation hyperparameters per model and condition.
+
+For openai/gpt-oss-20b in the reasoning condition, the assistant turn was left open so the model could produce a chain-of-thought trace before committing to a final answer. In the no-reasoning condition, the assistant turn was instead prefilled with a channel token that routes the model directly to its final-answer channel, bypassing the reasoning trace. A repetition penalty of 1.2 was applied exclusively in the reasoning condition to mitigate degenerate repetition loops that can arise during long generations; no penalty was applied otherwise. 
+
+# B. Appendix B: a priori constrained generation vs online 
+
+Both the a priori and the inference-time (online) approaches enforce the taboo constraint by operating on stems and lemmas of the forbidden words, using the same morphological pipeline (spaCy it_core_news_sm + nltk Italian Stemmer). They differ fundamentally in when and 
+
+how broadly the constraint is applied. 
+
+A priori censorship Before generation begins, the method computes a static set of banned token IDs: for each forbidden word, all stems and lemmas are extracted, and every vocabulary token whose surface form shares a prefix with any of them (in either direction) is masked by forcing its logit to −∞ for the entire generation. This static mask is context-free: a token is banned regardless of whether its occurrence in the output would actually constitute a violation. The consequences can be severe. Consider the target word accipicchia (an Italian exclamation of surprise), whose forbidden list includes per la miseria (a common interjection meaning "what a misery"). Because the phrase contains the function words per ("for") and la ("the"), the stemmer extracts them as forbidden stems, causing 2171 vocabulary tokens to be masked — including common prepositions, determiners, and unrelated content words that merely share a surface prefix with per or la (e.g. tokens such as _permitting , _lancé , larghezza ). Across the full dataset of 194 items, the a priori approach bans a cumulative total of 90 957 tokens (on average 
+
+469 per item, out of a vocabulary of 262 145 ). 
+
+Inference-time constrained generation The online approach bans no tokens before gen-eration begins. Instead, it generates freely token by token, accumulates tokens into complete words, and only when a word boundary is detected checks whether the completed word matches any forbidden stem or lemma. If a match is found, the method backtracks to the first token of the offending word and re-samples, blocking only that specific token at that position. For 
+
+accipicchia , the online approach evaluates each generated word against the forbidden forms at runtime, and only intervenes if a word such as meraviglia or caspita is actually produced — leaving per , la , and all other innocent tokens freely available. Across the same 194 items, the model produces on average 19 .3 words per output, all of which are checked at runtime — yet zero violations are recorded, confirming that the online constraint intervenes surgically only when needed rather than preemptively suppressing large portions of the vocabulary. 
+
+# C. Appendix C: SAE implementation details 
+
+SAE configuration We use JumpReLU SAE from google/gemma-scope-2-4b-it [ 20 ], applied to the residual stream of google/gemma-3-4b-it , which has 34 transformers layers in its text module. The Gemma Scope 2 checkpoints provides SAEs at four depths: layer 9, 17, 22 and 29 (approximately 25% , 50% , 65% and 85% of network depth). We select layer 29, as later layers are known to carry richer semantic representation compared to early layers [ 28 ], making them better suited for identifying concept-level features associated with specific words. The SAE uses a dictionary width of 65k features and medium L0 sparsity, with weights loaded in  
+
+> bfloat16
+
+and kept frozen throughout. Feature identification runs once per forbidden word per card and is cached to avoid redundant forward passes across items sharing the same forbidden word. The feature prompt template "La parola vietata è: {word}" is tokenized with special tokens; the token span of 𝑤 𝑖 is located by matching the tokenized word (with and without a leading space) against the full input sequence, falling back to the final token if no march is found. 
+
+# D. Appendix E: Failure Patterns in Model-Generated Descriptions 
+
+Beyond aggregate accuracy, qualitative inspection of the guessing phase reveals several recurring failure patterns in model-generated descriptions. 
+
+Code-switching While descriptions generated under the prompting condition remain consis-tently in Italian, constrained generation introduces a small but noticeable rate of language shifts (6.35%), which becomes far more pronounced under the SAE condition (44.83%), with English, French, and Spanish being the most frequent alternates. This suggests that intervening on internal representations disrupts the model’s linguistic behaviour in ways that explicit lexical guidance does not. 
+
+Referential failure A significant proportion of descriptions are nonsensical or semantically detached from the target word, making guessing effectively impossible. Out of 160 ground-truth entries evaluated, 25 (15.62%) were flagged as containing an inappropriate description. A striking example is the word semolino (semolina), described under two conditions by the same model as follows: • gemma_sae : “Piccola protuberanza dura e rotonda, spesso presente sulla pelle, solitamente causata da irritazione o crescita di foruncoli.” (“A small, hard, round bump, often found on the skin, usually caused by irritation or the growth of pimples.” )
+
+• gemma_constrained : “Piccola goccia di liquido, spesso salata, che si stacca da una fonte, come una lacrima o una pioggia leggera.” (“A small drop of liquid, often salty, that detaches from a source, such as a tear or light rain.” )Neither description bears any semantic relation to the target word: the generated text is fluent and well-formed, but lacks any associative link to the intended referent. 
+
+Category mismatch In several cases, the model describes a semantically related but categor-ically distinct concept — for instance, foregrounding the activity rather than the agent, or the domain rather than the practitioner. An example is the word falegname (carpenter), described by gpt_think_constrained as: 
+
+• gpt_think_constrained : “Arte che trasforma il legno: taglia, intaglia, costruisce mobili e strutture con seghe, scalpelli e martelli.” (“The art of transforming wood: cutting, carving, building furniture and structures with saws, chisels and hammers.” )By framing the description around the craft ( arte ) rather than the practitioner, the model effectively steers the guesser away from the intended referent. E. Tables 
+
+Note on evaluation metrics. The metrics reported in the Eval section of each table are independent counters and do not sum to 100%. A single output may simultaneously trigger multiple error categories (e.g., a target leak and a filter failure), so the categories are not mutually exclusive. 
+
+Prompting Constrained Manip. Baseline 
+
+Section Metric a priori online SAEs no forb. 
+
+Eval 
+
+True accuracy 91.20 98.50 96.40 55.70 34.00 % exact viol. 2.60 0.00 0.00 31.40 52.10 % only morphol. viol. 4.60 0.00 0.00 11.90 12.30 % no <eot> 0.00 0.00 0.00 0.00 0.00 % target leaked 1.50 1.50 3.60 1.00 1.50 
+
+gpt-oss judge 
+
+pass@1 0.00 0.00 0.00 0.00 0.00 pass@2 0.00 0.50 0.50 0.00 0.50 pass@3 1.00 1.50 2.60 1.00 3.60 pass@5 1.50 3.60 5.20 3.10 5.70 pass@10 3.60 7.70 8.80 5.70 9.30 min 4e-6 4e-6 4e-6 1e-6 4e-6 p25 1.1e-5 3.0e-5 2.6e-5 1.0e-5 2.7e-5 median 1.9e-5 6.9e-5 6.2e-5 1.9e-5 1.2e-4 avg 1.9e-3 3.4e-3 4.5e-3 1.8e-3 5.0e-3 p75 1.3e-4 3.5e-4 6.1e-4 1.6e-4 1.3e-3 max 0.1143 0.1564 0.1765 0.0576 0.1437 
+
+gemma judge 
+
+pass@1 0.00 0.00 0.00 0.00 0.00 pass@2 1.50 2.10 4.60 4.10 3.10 pass@3 4.10 4.60 7.70 7.20 7.20 pass@5 6.20 9.80 9.80 13.90 11.90 pass@10 11.30 17.50 17.00 21.10 24.70 min 0 0 0 0 0p25 0 0 0 0 0median 0 0 0 0 0avg 6.9e-4 0 1.4e-4 4.5e-4 1.9e-4 p75 4e-6 3e-6 2e-6 1.2e-5 2e-6 max 0.1272 3.2e-3 1.8e-2 4.7e-2 1.8e-2 
+
+Table 4 
+
+Evaluation results – gemma-3-4b-it Prompting Constrained Baseline 
+
+Section Metric a priori online no forb. 
+
+Eval 
+
+True accuracy 72.20 82.50 82.00 24.70 % exact viol. 16.00 0.00 0.00 55.20 % only morphol. viol. 8.70 0.00 0.50 14.90 % no <eot> 0.00 0.00 0.00 0.00 % target leaked 3.10 17.50 17.50 12.90 
+
+gpt-oss judge 
+
+pass@1 0.00 0.00 0.00 0.00 pass@2 0.00 0.00 0.00 0.00 pass@3 0.50 0.50 0.50 1.00 pass@5 1.00 0.50 0.50 2.60 pass@10 3.60 2.10 2.10 6.20 min 2e-6 2e-6 1e-6 1e-6 p25 1.1e-5 1.1e-5 1.1e-5 1.2e-5 median 2.5e-5 1.6e-5 1.5e-5 3.2e-5 avg 8.6e-4 8.7e-5 9.0e-5 1.8e-3 p75 1.4e-4 3.0e-5 2.6e-5 3.9e-4 max 0.0635 3.3e-3 5.6e-3 0.1416 
+
+gemma judge 
+
+pass@1 0.00 0.00 0.00 0.00 pass@2 2.10 6.70 6.70 3.10 pass@3 4.10 11.30 13.90 7.70 pass@5 10.30 17.50 19.10 11.30 pass@10 18.60 24.20 24.70 17.50 min 0 0 0 0p25 0 0 0 0median 0 0 0 0avg 4.4e-4 2.8e-3 1.1e-3 1.1e-3 p75 4e-6 3.7e-5 4.3e-5 4e-6 max 0.0366 0.2456 0.0498 0.1358 
+
+Table 5 
+
+Evaluation results – gpt-oss-20b (no reasoning) Prompting Constrained Baseline 
+
+Section Metric a priori online no forb. 
+
+Eval 
+
+True accuracy 97.40 92.30 87.10 34.00 % exact viol. 1.00 0.00 1.00 45.90 % only morphol. viol. 0.50 0.00 0.50 17.50 % no <eot> 1.00 2.10 2.10 0.00 % target leaked 2.10 7.70 12.40 4.10 
+
+gpt-oss judge 
+
+pass@1 0.00 0.50 0.00 0.00 pass@2 0.00 1.00 0.50 0.50 pass@3 0.00 1.50 0.50 0.50 pass@5 0.50 2.10 1.00 4.60 pass@10 1.50 5.70 4.60 6.70 min 1e-6 2e-6 2e-6 1e-6 p25 1.0e-5 1.1e-5 1.0e-5 1.4e-5 median 1.8e-5 2.7e-5 2.2e-5 3.8e-5 avg 3.4e-4 3.5e-3 1.9e-3 2.3e-3 p75 6.1e-5 1.6e-4 1.9e-4 2.5e-4 max 0.0269 0.2779 0.1916 0.1281 
+
+gemma judge 
+
+pass@1 0.50 0.00 0.00 0.00 pass@2 4.60 5.20 4.10 4.10 pass@3 6.70 7.70 7.70 9.80 pass@5 11.30 13.90 10.30 17.50 pass@10 16.50 19.60 20.60 21.60 min 0 0 0 0p25 0 0 0 0median 0 0 0 0avg 2.2e-3 7.0e-4 3.6e-4 4.7e-4 p75 5e-6 8e-6 8e-6 9e-6 max 0.2870 0.0746 0.0228 0.0309 
+
+Table 6 
+
+Evaluation results – gpt-oss-20b
