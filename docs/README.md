@@ -6,82 +6,85 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-07
-- 运行时间：2026-07-07 22:20:15 UTC
+- 最新运行日期：2026-07-11
+- 运行时间：2026-07-11 21:20:13 UTC
 - 运行状态：成功
-- 本次总论文数：20
+- 本次总论文数：21
 - 精读区：8
-- 速读区：12
+- 速读区：13
 
 ### 今日简报（AI）
-今日20篇文献聚焦LLM几何表示与理解，精读8篇中两篇高分论文揭示共享概念空间与模型本质。  
-最值得关注：《Language Models Represent and Transform Concepts with Shared Geometry》（10.0分）与《Understanding Large Language Models》（9.0分）分别深入概念空间结构与整体模型理解框架。  
-普通读者可优先精读这两篇高分论文，快速把握LLM核心机制与前沿进展。
-- 详情：[/202607/07/README](/202607/07/README)
+1) 今日精读两篇9分高影响力论文，分别构建因果与掩码语言模型上下文学习统一框架、提出高预测效度的语言模型关联评估指标RPAM。
+2) 重点关注《A Unified Framework》中统一框架方法的创新性，以及《RPAM》中高预测效度评估指标的实际应用价值。
+3) 建议优先阅读PredicateLongBench对长上下文任务难度的系统性分析，以及基于激活聚合的提示压缩技术，实用性强。
+- 详情：[/202607/11/README](/202607/11/README)
 
 ### 精读区论文标签
-1. [Language Models Represent and Transform Concepts with Shared Geometry](/202607/07/2607.04525v1-language-models-represent-and-transform-concepts-with-shared-geometry)  
-   标签：评分：10.0/10、query:llm-lang-rep
-   evidence：研究大语言模型如何以共享几何表示和转换概念
-2. [Understanding Large Language Models](/202607/07/2607.01006v1-understanding-large-language-models)  
+1. [A Unified Framework for In-Context Learning with Causal and Masked Language Models](/202607/11/2607.04081v1-a-unified-framework-for-in-context-learning-with-causal-and-masked-language-models)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：概述LLM的机制和能力，涉及人类认知和语言表征
-3. [Can Dialects Be Steered Like Languages? Sparse Neurons and Distributed Directions in Arabic LLMs](/202607/07/2607.03936v1-can-dialects-be-steered-like-languages-sparse-neurons-and-distributed-directions-in-arabic-llms)  
+   evidence：提出了统一框架分析因果和掩码语言模型中的上下文学习，揭示了上下文表示机制
+2. [RPAM: A Principled Metric for Evaluating Associations in Language Models with High Predictive Validity in Downstream Outputs](/202607/11/2607.05679v1-rpam-a-principled-metric-for-evaluating-associations-in-language-models-with-high-predictive-validity-in-downstream-outputs)  
+   标签：评分：9.0/10、query:llm-eval
+   evidence：用于评估语言模型中关联的上游指标
+3. [Comprehensive Evaluation of Large Language Model Responses: A Multi-Factor Scoring System](/202607/11/2607.06940v1-comprehensive-evaluation-of-large-language-model-responses-a-multi-factor-scoring-system)  
+   标签：评分：9.0/10、query:llm-eval
+   evidence：提出多因素评分系统评估LLM响应质量，直接针对自然语言生成评估度量
+4. [Riemannian Geometry for Pre-trained Language Model Embeddings](/202607/11/2607.07047v1-riemannian-geometry-for-pre-trained-language-model-embeddings)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：阿拉伯LLM中方言编码的神经元级分析
-4. [Geometry of Ordinal Representations in Language Models](/202607/07/2607.04167v1-geometry-of-ordinal-representations-in-language-models)  
+   evidence：基于黎曼几何的LLM嵌入可解释性
+5. [Towards Mechanistically Understanding Why Memorized Knowledge Fails to Generalize in Large Language Model Finetuning](/202607/11/2607.08393v1-towards-mechanistically-understanding-why-memorized-knowledge-fails-to-generalize-in-large-language-model-finetuning)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：研究语言模型中序数表示的几何结构
-5. [Legible-by-Construction: Attention and End-to-End Transformers](/202607/07/2607.04319v1-legible-by-construction-attention-and-end-to-end-transformers)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：可解释的注意力与Transformer内部机制
-6. [How Much is Left? LLMs Linearly Encode Their Remaining Output Length](/202607/07/2607.05316v1-how-much-is-left-llms-linearly-encode-their-remaining-output-length)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：线性探针揭示LLM内部编码剩余输出长度
-7. [Punching Above Their Weight: Classification-Head Fine-Tuning of Tiny Language Models (TLMs) for Verifiable Multiple-Choice Tasks](/202607/07/2607.03801v1-punching-above-their-weight-classification-head-fine-tuning-of-tiny-language-models-tlms-for-verifiable-multiple-choice-tasks)  
+   evidence：LLM语言表征的机制可解释性
+6. [MTEB-BR: A Text Embedding Benchmark for Brazilian Portuguese](/202607/11/2607.04581v2-mteb-br-a-text-embedding-benchmark-for-brazilian-portuguese)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：LLM评估基准与方法
-8. [Unsupervised Features Mining via Activation Geometry](/202607/07/2607.04222v1-unsupervised-features-mining-via-activation-geometry)  
+   evidence：LLM文本嵌入评估基准
+7. [PolyWorkBench: Benchmarking Multilingual Long-Horizon LLM Agents](/202607/11/2607.06008v2-polyworkbench-benchmarking-multilingual-long-horizon-llm-agents)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：评估多语言LLM智能体的基准
+8. [Eigenvalue Calibration for Semantic Embeddings of Large Language Models](/202607/11/2607.08377v1-eigenvalue-calibration-for-semantic-embeddings-of-large-language-models)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：通过激活几何无监督挖掘LLM特征的可解释性方法
+   evidence：校准LLM语义嵌入的特征值以量化不确定性
 
 ### 速读区论文标签
-1. [Spectral Signatures of Large Language Models](/202607/07/2607.03377v1-spectral-signatures-of-large-language-models)  
+1. [Understanding Axes of Difficulty For Long Context Tasks Via PredicateLongBench](/202607/11/2607.08284v1-understanding-axes-of-difficulty-for-long-context-tasks-via-predicatelongbench)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：LLM长上下文推理基准
+2. [Prompt Compression via Activation Aggregation](/202607/11/2607.08399v1-prompt-compression-via-activation-aggregation)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：将指令提示压缩为单个激活向量揭示编码机制
+3. [Estimating Uncertainty from Reasoning: A Large-Scale Study of Multi- and Crosslingual MCQA Performance in LLMs](/202607/11/2607.06327v1-estimating-uncertainty-from-reasoning-a-large-scale-study-of-multi--and-crosslingual-mcqa-performance-in-llms)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：基于谱特征的LLM评估与量化方法
-2. [Aligning Language Models with Selective Prediction](/202607/07/2607.03528v1-aligning-language-models-with-selective-prediction)  
+   evidence：评估多语言MCQA中的不确定性估计方法
+4. [Data Analysis in the Wild: Benchmarking Large Language Models Against Real-World Data Complexities](/202607/11/2607.06482v1-data-analysis-in-the-wild-benchmarking-large-language-models-against-real-world-data-complexities)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：提出通过选择性预测对齐来改善LLM的风险-覆盖率权衡
-3. [Beyond Multilingual Averages: MTEB-PT, a Benchmark for Portuguese Sentence Encoders](/202607/07/2607.04071v1-beyond-multilingual-averages-mteb-pt-a-benchmark-for-portuguese-sentence-encoders)  
+   evidence：提出评估LLM在真实数据分析中的基准
+5. [Interpretable Uncertainty for Adaptive Retrieval and Reasoning in Question Answering](/202607/11/2607.07380v1-interpretable-uncertainty-for-adaptive-retrieval-and-reasoning-in-question-answering)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：利用LLM内部表示导出可解释的不确定性信号以指导自适应检索
+6. [DiaLLM: An Investigation into the Robustness-Generation Gap in English Dialect Adaptation](/202607/11/2607.07669v1-diallm-an-investigation-into-the-robustness-generation-gap-in-english-dialect-adaptation)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：葡萄牙语句子编码器评估基准
-4. [SPEARBench: A Benchmark for Naturalness Evaluation in Streaming Speech-to-Speech Language Models](/202607/07/2607.05365v1-spearbench-a-benchmark-for-naturalness-evaluation-in-streaming-speech-to-speech-language-models)  
+   evidence：评估LLM方言鲁棒性和生成基准
+7. [Holographic Neural PCFG for Unsupervised Parsing](/202607/11/2607.08063v1-holographic-neural-pcfg-for-unsupervised-parsing)  
+   标签：评分：7.0/10、query:llm-ling
+   evidence：使用全息嵌入进行无监督句法分析的语法规则评分
+8. [Validity of LLMs as data annotators: AMALIA on authority](/202607/11/2607.08731v1-validity-of-llms-as-data-annotators-amalia-on-authority)  
+   标签：评分：7.0/10、query:llm-ling
+   evidence：评估LLM是否遵循语言学理论或使用捷径
+9. [The Illusion of Equivalency: Statistical Characterization of Quantization Effects in LLMs](/202607/11/2607.08734v1-the-illusion-of-equivalency-statistical-characterization-of-quantization-effects-in-llms)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：提出用于评估语音到语音LLM自然度的基准
-5. [MedCalc-Pro: Solving Complex Medical Calculations with LLM Agents](/202607/07/2607.02879v1-medcalc-pro-solving-complex-medical-calculations-with-llm-agents)  
+   evidence：提出正确性一致性度量用于评估量化引起的行为变化，涉及LLM评估指标
+10. [Revisiting the Relation Between Language Model Perplexity and ASR Word Error Rate for Modern End-to-End Speech Recognition](/202607/11/2607.05612v1-revisiting-the-relation-between-language-model-perplexity-and-asr-word-error-rate-for-modern-end-to-end-speech-recognition)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：LLM医疗计算评估基准
-6. [Where do LLMs Fall Short in CBT-Guided Affective Reasoning?](/202607/07/2607.02885v1-where-do-llms-fall-short-in-cbt-guided-affective-reasoning)  
+   evidence：研究困惑度作为LLM在语音识别中的评估指标
+11. [SpanUQ: Span-Level Uncertainty Quantification for Large Language Model Generation](/202607/11/2607.05721v1-spanuq-span-level-uncertainty-quantification-for-large-language-model-generation)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：评估LLM在CBT引导的情感推理中的不足
-7. [Learning Taxonomic Trees with Hierarchical Representation Regularization for Large Multimodal Models](/202607/07/2607.02909v1-learning-taxonomic-trees-with-hierarchical-representation-regularization-for-large-multimodal-models)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：通过层次分类树正则化学习语义表示
-8. [Text as Partial Constraint: Core-Residual Alignment for Robust Vision-Language Learning](/202607/07/2607.03143v1-text-as-partial-constraint-core-residual-alignment-for-robust-vision-language-learning)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：提出核心-残差对齐学习鲁棒的视觉-语言语义表示
-9. [APeB: Benchmarking Personalization Ability of Large Language Model Agents](/202607/07/2607.03162v1-apeb-benchmarking-personalization-ability-of-large-language-model-agents)  
+   evidence：LLM生成的片段级不确定性评估
+12. [Spider 2.0-AIFunc: Extending Real-World Text-to-SQL to AI-Native SQL Workflows](/202607/11/2607.06229v1-spider-20-aifunc-extending-real-world-text-to-sql-to-ai-native-sql-workflows)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：对LLM代理的个性化能力进行基准测试
-10. [Attending to Multimodal Generation One Token at a Time](/202607/07/2607.03738v1-attending-to-multimodal-generation-one-token-at-a-time)  
+   evidence：用于评估LLM在AI原生SQL生成上的基准
+13. [Hierarchical Acoustic-Semantic Modeling: Modality Separation and Semantic Coherence for Full-Duplex SLMs](/202607/11/2607.06540v2-hierarchical-acoustic-semantic-modeling-modality-separation-and-semantic-coherence-for-full-duplex-slms)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：多模态LLM生成过程中注意力动态的可解释性
-11. [Fidelity-Diversity Metrics for Text](/202607/07/2607.04563v1-fidelity-diversity-metrics-for-text)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：用于评估文本保真度和多样性的度量标准，可应用于LLM生成
-12. [LP-SFT: Local-Preserving Supervised Fine-Tuning via Multimodal Entropy Structure](/202607/07/2607.04733v1-lp-sft-local-preserving-supervised-fine-tuning-via-multimodal-entropy-structure)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：分析大语言模型中的多模态熵结构以保留局部偏好
+   evidence：口语语言模型中的语义表示
 
 
 <div class="dpr-home-promo-card">

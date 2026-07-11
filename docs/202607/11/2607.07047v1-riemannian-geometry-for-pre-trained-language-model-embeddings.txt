@@ -1,0 +1,605 @@
+Title: Riemannian Geometry for Pre-trained Language Model Embeddings
+
+URL Source: https://arxiv.org/pdf/2607.07047v1
+
+Published Time: Thu, 09 Jul 2026 00:31:34 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+## Riemannian Geometry for Pre-trained Language Model Embeddings 
+
+Szczepan Konior 1 Alexandre Quemy 2 Przemysław Klocek 1
+
+Grégoire Cattan 1 Bartłomiej Sobieski 3,41IBM Automation and AI, Krakow, Poland 2Hother, Krakow, Poland 
+
+> 3
+
+University of Warsaw 4Centre for Credible AI, Warsaw University of Technology 
+
+> {name.surname}@ibm.com alexandre@hother.io sobieski.bartlomiej.jan@gmail.com
+
+Abstract 
+
+Understanding the geometric structure of pre-trained language model embeddings matters for interpretability and safety. We ask whether sentence-level classification signal lives in the Riemannian geometry of contextual token em-beddings, and probe it by extracting per-token pullback metrics from a learned en-coder’s analytical Jacobian and aggregating them with the Fréchet mean on the sym-metric positive definite (SPD) manifold; we call this procedure Riemannian Mean Pooling 
+
+(RMP). Across three datasets with non-trivial linguistic structure (CoLA, CREAK, RTE), RMP outperforms Euclidean mean pooling, while on FEVER-Symmetric, a benchmark constructed to remove annotation-driven lex-ical artifacts, the method correctly stays at chance. Ablations show that a randomly ini-tialised encoder combined with Fréchet ag-gregation already beats Euclidean pooling on two of the three signal-bearing datasets, lo-calising the source of the gain to the geomet-ric aggregation rather than to learned manifold structure; the trained encoder contributes addi-tional signal specifically on CREAK, the most knowledge-heavy of the three signal-bearing datasets. 
+
+1 Introduction 
+
+Pre-trained language models achieve remarkable success in natural language understanding, yet the geometric structure of their internal representa-tions remains an open challenge. Most analy-ses treat token embeddings as points in flat Eu-clidean space, but three lines of evidence moti-vate departing from that assumption: hierarchi-cal structure in language admits lower-distortion embeddings in negatively curved spaces (Nickel and Kiela, 2017, 2018; Sala et al., 2018; Park et al., 2025) and is reflected in non-standard in-ner products on the embedding space (Park et al., 2024; Marks and Tegmark, 2024); contextualized representations in BERT, ELMo, and GPT-2 are strongly anisotropic, occupying narrow cones not invariant under Euclidean transformation (Etha-yarajh, 2019; Kataiwa et al., 2025); and token em-bedding spaces may fail to form smooth manifolds globally, even if local-manifold-like structure still supports geometric analysis at the neighbourhood level (Robinson et al., 2025). This work investigates whether sentence-level classification signal lives in the Riemannian ge-ometry of token embeddings. We address three questions: (1) Do embeddings exhibit local geo-metric structure accessible via pullback metrics? (2) Does this geometric structure carry signal be-yond what flat Euclidean aggregation extracts? (3) Which component of a geometric aggregation pipeline is responsible for any observed gain: the encoder, the metric, or the aggregation? We evaluate our approach, Riemannian Mean Pooling (RMP), on four diverse NLP tasks: fact verification (FEVER-Symmetric), textual entail-ment (RTE), grammatical acceptability (CoLA), and commonsense reasoning (CREAK). FEVER-Symmetric is included specifically as a negative control: it was constructed to remove lexical and annotation artifacts (Schuster et al., 2019), and we expect any method relying solely on claim-surface geometry to perform at chance. Any differentiable encoder yields a pullback metric through its Jacobian, but the metric’s ge-ometric interpretability depends on the training objective. We use Intrinsic Green’s Learning (IGL) (Quemy, 2026) 1: a closed-form kernel read-out replaces the learned decoder, constraining the encoder to coordinates aligned with the smooth structure of the data manifold rather than with arbitrary nonlinear features. Our ablations (Sec-tion 5) test this choice by comparing IGL against  
+
+> 1Reference implementation: https://github.com/ hotherio/intrinsic-green-learning .
+
+1arXiv:2607.07047v1 [cs.CL] 8 Jul 2026 random and untrained encoders. 
+
+Contributions 
+
+• We instantiate a pipeline that extracts per-token pullback metrics from a learned en-coder’s Jacobian, aggregates them on the SPD manifold via the Fréchet mean, and clas-sifies in the tangent space at the population Riemannian mean. • Across three signal-bearing datasets (RTE, CoLA, CREAK), Riemannian aggregation consistently outperforms Euclidean mean pooling under a controlled comparison on identical embeddings; on FEVER-Symmetric, included as a negative control, the method correctly stays at chance. • A randomly initialised encoder combined with Fréchet aggregation already beats Eu-clidean pooling, localising the source of the geometric signal to the aggregation rather than to learned manifold structure. The trained encoder contributes additional signal specifically on CREAK, the most knowledge-heavy of the three signal-bearing datasets. 
+
+2 Related work 
+
+Riemannian Methods in Neuroscience Rie-mannian geometry is an ubiquitous machine learn-ing technique in brain-computer interfaces (BCIs) and signal processing (Congedo et al., 2017). Barachant et al. (2012) introduced the use of sym-metric positive definite (SPD) matrices as a de-scriptor for electroencephalography time series, demonstrating that geometric methods can capture the intrinsic structure of signals better than Eu-clidean approaches. The riemannian minimum-distance-to-means (MDM) and tangent space (TS) classifiers have become ubiquitous tools for neu-rosciences application, still unbeaten even by the most recent deep learning algorithms (Chevallier et al., 2024), while remaining simple, determin-istic, robust to noise, computationally efficient, and prone to transfer learning (Andreev et al., 2025). Beyond the BCI setting, SPD-manifold deep learning has matured: differentiable Fréchet-mean layers (Lou et al., 2020), Riemannian batch normalisation for SPD networks (Brooks et al., 2019), and Riemannian extensions of logistic re-gression (Chen et al., 2024) now provide standard components for end-to-end SPD pipelines, with recent surveys covering the area (Ju et al., 2024). 
+
+Geometric Approaches in NLP In modern NLP architectures, tokens are represented as vec-tors in a high-dimensional latent space. As to-kens propagate through the network layers, their representations evolve inside the Residual Stream, the model’s dynamic internal state. This evolu-tion is not purely linear or syntactic, but can be de-scribed as a structured trajectory whose geometry changes depending on the semantic context (Man-son, 2025). Concrete instances of this structure have been demonstrated empirically: linear di-rections in LLM representations encode space, time, and other conceptual attributes (Gurnee and Tegmark, 2024), and architectural variants explic-itly equip attention with non-Euclidean geome-try, either via mixed-curvature transformers (Cho et al., 2023) or via parallel-transport-based atten-tion on manifolds (Ji, 2025). Recent work has also proposed that the latent space itself can be mod-elled as a curved spacetime whose curvature re-flects linguistic structure (Di Sipio et al., 2025). Current approaches estimate local tangent spaces from k-nearest-neighbor (kNN) patches and derive curvature information from varia-tions between neighboring tangent directions (e.g., (Gao and Liang, 2011; Li, 2017)). However, these methods often suffer from numerical insta-bility and sensitivity to sampling density, with metric estimates degrading as the local sample size shrinks (Brand, 2003; Singer, 2006). A dif-ferent style of approach first projects the data to a lower-dimensional space (for example via UMAP (McInnes et al., 2018)) and computes met-rics in the projection, but UMAP preserves local topology rather than metric structure: distances af-ter UMAP are unsuitable as approximations of dis-tances on the original manifold, so subsequent ge-ometric computations operate on a non-isometric image of the data. Recent work has also ques-tioned whether token embeddings form a single connected manifold at all (Robinson et al., 2025); the question we ask here is whether aggregated to-ken geometry nevertheless carries class signal at the sentence level, regardless of whether global manifold structure holds. 
+
+Intrinsic Dimension and Manifold Learning 
+
+Sobieski et al. (2026) showed that local intrinsic dimension (LID) reveals hallucinations in diffu-sion models by identifying instabilities on model-induced manifolds. Their work treats hallucina-tions as geometric instabilities, proposing Intrinsic 2Quenching to correct these anomalies. Similarly, Damirchi et al. (2026) introduced "Truth as a Tra-jectory," analysing LLM reasoning through layer-wise geometric metrics rather than static activa-tions. By examining how representations evolve across layers, they uncover geometric invariants distinguishing valid reasoning from spurious be-haviour. Beyond these layer-wise trajectory anal-yses, a body of recent work uses intrinsic dimen-sion as a probe of how LLMs process information across layers: representations expand in early lay-ers and compress in later layers (Valeriani et al., 2023), with characteristic per-layer profiles that include a high-dimensional abstraction phase in the middle layers (Cheng et al., 2025). ID has also been used to compare learning paradigms such as supervised fine-tuning and in-context learn-ing (Janapati and Ji, 2025). Our work comple-ments these perspectives. 
+
+Sentence Representation Learning Standard sentence-representation approaches such as mean pooling of token embeddings and the BERT 
+
+[CLS] token implicitly assume flat Euclidean ge-ometry. We replace arithmetic averaging with an SPD-manifold Fréchet aggregation. Recent work has also highlighted the entanglement of pooled sentence representations (Tehenan et al., 2025), motivating geometric alternatives. 
+
+3 Material & Method 
+
+3.1 Datasets 
+
+We evaluate on four binary-classification bench-marks. FEVER-Symmetric (Schuster et al., 2019) contains 316 fact-verification claims, de-biased by Schuster et al. against the annota-tion artifacts of the original FEVER (Thorne et al., 2018) by pairing each claim with its nega-tion against shared evidence; we include it as a negative control , since methods relying solely on claim-surface features cannot exceed chance by construction. RTE (Wang et al., 2018): 2,490 premise–hypothesis pairs for textual en-tailment. CoLA (Warstadt et al., 2018): 3,000 sentences labelled for grammatical acceptability. 
+
+CREAK (Onoe et al., 2021): 3,000 commonsense statements requiring world knowledge to verify. 
+
+3.2 Baseline Method: Linear Probe 
+
+We use Linear Probe (Alain and Bengio, 2017) as the headline baseline, referring to this baseline as the Linear Probe throughout and reserving the term Euclidean mean pooling for the underlying aggregation operation when contrasting it with the Riemannian alternative. The baseline operates en-tirely on internal states of the pre-trained model, isolating the contribution of geometric aggrega-tion from any additional trainable parameters or external information sources. 
+
+Token embeddings and pooling. We extract token-level embeddings from the ninth hid-den layer of BERT-base-uncased (Devlin et al., 2019), yielding 768-dimensional repre-sentations per token. The layer choice is mo-tivated by prior work showing that upper lay-ers encode more abstract semantic features while lower layers capture syntactic information (Rogers et al., 2020). For single-sentence datasets (FEVER, CoLA, CREAK) we encode the input directly; for the textual-entailment task (RTE) we concatenate premise and hypothesis with separator tokens ( [CLS] [premise] [SEP] [hypothesis] [SEP] ). Token embeddings are aggregated via arithmetic mean pooling: 
+
+vsentence = 1
+
+n
+
+> n
+
+X
+
+> i=1
+
+vi ∈ R768 , (1) with {v1, . . . , vn} the token embeddings for a sentence with n tokens. 
+
+Classification. Pooled sentence representations are normalised and classified with a logistic re-gression using scikit-learn’s (Pedregosa et al., 2011) default hyperparameters (no regularisa-tion, LBFGS solver, max-iter 1000). The same classification head is used for the Riemannian pipeline downstream of the Fréchet aggregation (Section 3.5), so performance differences attribute cleanly to the aggregation step. 
+
+3.3 Intrinsic Green’s Learning Inverse-PDE objective. IGL (Quemy, 2026) is a framework for learning low-dimensional mani-fold representations through an inverse-PDE for-mulation. A small MLP encoder Ψθ : RD →
+
+Rdmax maps each input v ∈ RD to a latent code 
+
+ξ = Ψ θ(v). In the encoder’s coordinates, the tar-get function (here, the input itself) is expressed as the solution of a linear PDE 
+
+Lu = s, (2) where L is a fixed operator (a Laplacian in our setup whose Green’s function is approximated by a Gaussian kernel) and s is a learned source term. 3Closed-form kernel readout. The PDE is solved in closed form via a Green’s-function ker-nel: at any latent point ξ, the reconstruction is a linear combination of kernel evaluations at K
+
+learned anchor points {ζk}Kk=1 ,
+
+ˆu(ξ) = 
+
+> K
+
+X
+
+> k=1
+
+wk G(ξ, ζk), (3) where G is the Gaussian kernel. The weights w
+
+are not learnable parameters: at every minibatch they are recomputed by ridge regression on the re-construction targets (variable projection). 
+
+Encoder-only optimisation. IGL has no sym-metric decoder. Because w is closed-form, gra-dient descent operates only on the encoder pa-rameters θ, and the encoder must find coordinates in which the input admits a low-rank kernel de-composition: coordinates aligned with the smooth structure of the data manifold rather than with ar-bitrary nonlinear features a learned decoder could compensate for. As a byproduct, because Ψθ is a differentiable MLP, its Jacobian J(v) = ∂Ψθ/∂ v
+
+is analytically computable, giving direct access to the pullback metric at every input point. Under the configuration used in this work (MLP encoder, dmax =64 , K=128 anchors, 4 Gaussian scales per factor), training converges to stable re-construction. Full architectural details are de-ferred to Appendix A. The full pipeline (training top, inference bottom) is shown schematically in Figure 1. A representative validation-loss curve is shown in Appendix D. 
+
+3.4 Pullback metric extraction 
+
+After training the IGL encoder Ψθ : R768 →
+
+Rdmax on token-level BERT embeddings v ∈ R768 
+
+(Section 3.3), we extract a local Riemannian met-ric at each token via the pullback metric . The intu-ition is that Ψθ maps the ambient embedding space to a lower-dimensional latent space; the pullback metric measures distances in the input space as they appear after this mapping, capturing how the encoder locally stretches or compresses different directions of the embedding space. 
+
+From Jacobian to metric. For an input v ∈
+
+R768 , the Jacobian of the encoder is 
+
+J(v) = ∂Ψθ
+
+∂v ∈ Rdmax ×768 , (4) computed in closed form by automatic differenti-ation through Ψθ. Pulling back the ambient Eu-clidean metric I768 through the encoder yields the co-metric on the latent manifold: 
+
+g−1(v) = J(v) J(v)⊤ ∈ Rdmax ×dmax . (5) By construction g−1(v) is symmetric and posi-tive semi-definite. To obtain a metric tensor that is strictly positive-definite (required for the Rie-mannian operations in Section 3.5), we add a small regulariser before inversion: 
+
+g(v) =  g−1(v) + ϵI dmax 
+
+−1 , ϵ = 10 −6, (6) and a further additive regularisation λI dmax with 
+
+λ = 10 −2 to guarantee numerical stability across the full range of input tokens. The resulting 
+
+g(v) ∈ S dmax  
+
+> ++
+
+is the per-token SPD matrix used as input to the sentence-level aggregation. 
+
+Why pullback rather than direct estimation. 
+
+The two most direct alternatives—kNN-based metric estimation and projection-then-metric ap-proaches such as UMAP—suffer from sensitivity to local sampling density and non-isometric dis-tortion, respectively (Section 2). The pullback through a trained encoder avoids both issues: the metric is computed analytically from J rather than estimated from neighbours, and its position depen-dence is a smooth function of the original 768-dimensional input rather than of a non-isometric projection of it. Pulling back an ambient metric through an encoder’s Jacobian follows Hauser and Ray (2017) and Arvanitidis et al. (2018); recent extensions analyse discretisation of continuous in-puts (Brandon et al., 2025) and score-based extrac-tion of data-manifold geometry (Diepeveen et al., 2024). 
+
+Independence from the training loss. Because the pullback metric depends only on the encoder’s Jacobian rather than on its training loss, the ge-ometric pipeline downstream of g(v) is well-defined for any differentiable encoder. We exploit this in Section 5 to isolate the contribution of the encoder from the contribution of the geometric ag-gregation. 
+
+3.5 Sentence aggregation and classification Token-to-Sentence Aggregation Given a sen-tence with n tokens producing per-token SPD ma-trices {g(v1), . . . , g (vn)} ∈ S dmax  
+
+> ++
+
+(Section 3.4), we aggregate them into a single sentence-level 4Token embeddings Encoder Ψθ Latent code z           
+
+> Product Green’s kernel
+> Variable projection
+> Reconstructed embeddings
+> reconstruction loss
+> IGL pipeline
+> Per-token Jacobian
+> Pullback metric
+> Sentence desc. (Fréchet mean)
+> Riemannian whitening
+> Tangent-space classifier
+> Predicted class
+> Figure 1: Overview of the pipeline. Top row (training): the encoder Ψθis trained to reconstruct token embeddings (early stopping with patience=50, δ= 2 ×10 −5), mapping them to a low-dimensional latent code from which a product Green’s kernel with variable projection recovers the input; the reconstruction loss flows back to the encoder (dashed arrow). Bottom row (inference): once trained, the encoder’s Jacobian induces a pullback metric at each token; the per-token metrics are aggregated on the SPD manifold via the Fréchet mean to a sentence-level descriptor, preprocessed with Riemannian whitening, projected to the tangent space, and classified. The classification (inference) path carries no gradients and uses the encoder frozen post-training; only the reconstruction (training) path is differentiable. The full architecture with formulas is given in Figure 3 of Appendix A.
+
+SPD descriptor using the Fréchet mean (Fletcher et al., 2004) on the SPD manifold: 
+
+Gsentence = arg min 
+
+> G∈S dmax ++
+> n
+
+X
+
+> i=1
+
+d2
+
+> Riem
+
+(G, g (vi)) , (7) with dRiem the affine-invariant Riemannian dis-tance (Förstner et al., 2000): 
+
+dRiem (G1, G 2) = log( G−1/21 G2G−1/21 ) F . (8) 
+
+Gsentence is the geometric counterpart of Euclidean mean pooling: a Fréchet-mean point on the SPD manifold rather than an arithmetic mean. 
+
+Classification The sentence-level SPD matrices are classified in three steps. First, we apply Rie-mannian whitening, which rescales each matrix to unit determinant while preserving its affine-invariant geometric properties, removing scale dif-ferences across samples. Second, we project each whitened matrix to the tangent space at the population Riemannian mean of the training set; the tangent space at a point on the SPD man-ifold is a flat Euclidean space, so standard lin-ear classifiers apply. Third, we fit a logistic regression on the vectorised tangent-space rep-resentations. We use pyRiemann’s (Barachant et al., 2026) TSClassifier with default hy-perparameters, which implements the projection-plus-linear-classifier pipeline. 
+
+3.6 Experimental configuration 
+
+All experiments employed 5-fold stratified cross-validation to ensure balanced class distributions across folds, using two seeds. We report the mean and standard deviation across folds to capture per-formance variability. 2
+
+Because the classification pipeline reuses es-tablished BCI components (e.g., Fréchet mean of SPD matrices, Riemannian whitening, and tangent-space classifier) we adopt the evalua-tion and statistical protocol of the Mother of all BCI Benchmarks (MOABB) (Aristimunha et al., 2023). Statistical significance was computed in-dependently for each dataset using significance thresholds of α < 0.05 and α < 0.01 . Ef-fect sizes are reported using the standardised mean difference (SMD), and the aggregated meta-effect across datasets is also provided. 
+
+4 Experimental results 
+
+Table 1 reports two baselines, Linear Probe (Eu-clidean mean pooling) and CLS Token Aggre-gation, alongside Riemannian Mean Pooling on the three signal-bearing datasets (CoLA, CREAK, RTE) and the FEVER-Symmetric negative con-trol, with means and standard deviations across the multi-seed cross-validation protocol. Figure 2 presents forest plot comparing the dis-tribution of AUC scores across all 10 evaluations for each dataset. Per-dataset AUC, Accuracy, and F1 bar plots together with the CLS-vs-RMP forest plot (Fig-ures 10, 11, 12, 13) are deferred to Appendix C; Figure 2 and Table 1 carry the headline compari-son in the body. The multi-seed meta-analysis shows Rieman-nian Mean Pooling outperforming both baselines 
+
+> 2The headline comparison (Table 1) and the ablation ex-periment (Table 2, appendix) are independent runs with iden-tical protocol but different random initialisations; small nu-merical differences for the shared rows are within the re-ported cross-seed variance.
+
+5Table 1: Multi-seed meta-analysis results (mean ± std across 10 evaluations). †FEVER is included as a negative control (Section 3); chance-level performance is the expected and correct behaviour, so no method is bolded for this dataset. Dataset Method Accuracy F1-Score AUC 
+
+FEVER †
+
+Linear Probe 0.407 ± 0.044 0.429 ± 0.035 0.424 ± 0.028 CLS Token Aggregation 0.374 ± 0.049 0.397 ± 0.050 0.402 ± 0.050 Riemannian mean pooling 0.486 ± 0.038 0.488 ± 0.057 0.508 ± 0.047 
+
+CoLA 
+
+Linear Probe 0.705 ± 0.022 0.706 ± 0.025 0.772 ± 0.025 CLS Token Aggregation 0.661 ± 0.013 0.662 ± 0.015 0.711 ± 0.012 Riemannian mean pooling 0.723 ± 0.015 0.730 ± 0.018 0.799 ± 0.018 CREAK 
+
+Linear Probe 0.606 ± 0.018 0.606 ± 0.020 0.648 ± 0.018 CLS Token Aggregation 0.594 ± 0.024 0.594 ± 0.025 0.631 ± 0.023 Riemannian mean pooling 0.656 ± 0.015 0.654 ± 0.019 0.708 ± 0.019 RTE 
+
+Linear Probe 0.560 ± 0.014 0.555 ± 0.019 0.591 ± 0.024 CLS Token Aggregation 0.574 ± 0.027 0.581 ± 0.027 0.611 ± 0.027 Riemannian mean pooling 0.603 ± 0.012 0.604 ± 0.014 0.638 ± 0.023 4 3 2 1 0 1 2 3 4   
+
+> Standardized Mean Difference
+> Meta-effect
+> cola
+> creak
+> fever
+> rte
+> < riemannian_mean_pooling better |euclidean_mean_pooling better >
+> 3.12e-02
+> 3.12e-02
+> 3.12e-02
+> 3.12e-02
+> 9.75e-05
+> p-value
+> euclidean_mean_pooling vs riemannian_mean_pooling
+> Generated using MOABB v1.5.0 Chevallier et al. (2024) doi:10.48550/arXiv.2404.15319
+
+Figure 2: Statistical comparison between Linear Probe and Riemannian mean pooling across random seeds. Box plots show the distribution of AUC scores obtained from 10 eval-uations (2 seeds × 5 folds). Corresponding p-values are dis-played on the right side of each plot. One (respectively, two and three) red star(s) indicate that the p-value is below the significance threshold of α < 0.05 (respectively, α < 0.01 ,
+
+α < 0.001 ). Effect sizes are reported using SMD. Follow-ing common interpretation guidelines, absolute SMD values around 0.2, 0.5, and 0.8 correspond to small, medium, and large effects, respectively. FEVER-Symmetric is included as a negative control (Section 3): a chance-level result is the expected and correct behaviour, confirming that the pipeline does not exploit lexical artifacts. 
+
+(Linear Probe and CLS Token Aggregation) on CoLA, CREAK, and RTE, the three datasets with classification signal accessible from claim sur-face. CLS Token Aggregation underperforms Linear Probe on three of four datasets (FEVER, CoLA, CREAK), with RTE the exception (0.611 vs 0.591 AUC). This replicates the observation of Reimers and Gurevych (2019) that vanilla CLS embeddings underperform mean pooling on trans-fer tasks without task-specific fine-tuning, and provides a second controlled Euclidean baseline against which to measure the Riemannian gain. On FEVER-Symmetric, both baselines and Rie-mannian Mean Pooling stay at chance, the be-haviour expected from a negative control. Al-though the Riemannian mean pooling point esti-mate of 0.508 AUC nominally exceeds 0.5, it falls within the 95 % confidence interval [0 .443 , 0.557] 
+
+derived from permutation testing (Müller-Putz et al., 2008; Maris and Oostenveld, 2007), con-firming that the result is indistinguishable from chance. 
+
+5 Decomposing the geometric gain 
+
+5.1 Ablation Components 
+
+To localise the source of the geometric gain, we ablate the pipeline along two axes: (i) whether the encoder is trained or randomly initialised, and (ii) whether the encoder is the IGL MLP architecture or a simpler random linear projection. Encoder-Only projects tokens through the trained IGL en-coder and applies Euclidean mean pooling in la-tent space (no metric extraction), testing whether the encoder alone matters. Frozen Random IGL 
+
+replaces the trained encoder with a randomly ini-tialised MLP of identical architecture (256-d hid-den, SiLU) and runs the full geometric pipeline, testing whether encoder training matters. Ran-dom Projection + SiLU uses a frozen random lin-ear projection R768 → R64 followed by SiLU, then the full geometric pipeline, testing whether the depth and nonlinearity of the IGL MLP matter even without training. 
+
+5.2 Experimental Results 
+
+The full ablation table (Table 2) and per-comparison forest/bar plots are deferred to Ap-pendix B; the qualitative findings are summarised below. 65.3 Findings 
+
+Three patterns emerge from Table 2. First, on CoLA and RTE, the gap between the trained IGL encoder and a randomly initialised one is within one standard deviation in AUC (CoLA: 0.778 vs 0.762; RTE: 0.635 vs 0.616), indicating that the geometric aggregation, rather than encoder training, carries most of the gain. Second, on CREAK the trained encoder gains about 3.6 AUC points over the random one (0.703 vs 0.667), and CREAK is also the most knowledge-heavy of the three signal-bearing datasets, suggesting that the encoder contributes specifically where labels de-pend on world knowledge rather than on local lin-guistic structure. Third, the simpler Random Pro-jection + SiLU underperforms the random IGL en-coder on every signal-bearing dataset, indicating that the depth and nonlinearity of the MLP mat-ter even without training. The FEVER-Symmetric rows are reported for completeness but, by the negative-control framing of Section 3, are not in-formative about the source of geometric signal. Taken together, the ablations support the cen-tral claim: a randomly initialised encoder com-bined with geometric aggregation already beats Euclidean pooling, which is stronger evidence that the signal lives in the geometry than if only a care-fully trained encoder could extract it. The encoder then does additional work on harder, composition-heavy tasks. 
+
+6 Discussion 
+
+6.1 Hypothesis validation Geometric advantage and what it tests. Rie-mannian aggregation of token-level pullback met-rics outperforms Euclidean mean pooling on the three signal-bearing datasets and stays at chance on the FEVER-Symmetric negative control (Ta-ble 1; Figure 2). The gain is largest on CREAK ( ∆AUC ≈ 0.060 ) and smallest on CoLA (∆AUC ≈ 0.027 ), tracking how non-linearly sep-arable class structure is in the raw embedding. The ablations localise most of this gain to the ge-ometric aggregation rather than to learned man-ifold structure: random encoders combined with Fréchet aggregation already beat Euclidean pool-ing on CoLA and RTE, while the trained en-coder contributes specifically on CREAK (+3.6 AUC points), the most knowledge-heavy of the three (Table 2, with per-comparison forest plots in Appendix B). Rather than concluding that BERT embeddings lie on a globally coherent manifold, the evidence supports locally manifold-like struc-ture (Robinson et al., 2025): aggregated geomet-ric features yield classification gains even where global manifold structure fails. 
+
+Role of the negative control The inclusion of FEVER-Symmetric (Schuster et al., 2019) serves a methodological purpose distinct from the other three datasets. Where CoLA, CREAK, and RTE probe whether geometric structure encodes specific linguistic properties, FEVER-Symmetric probes whether the method exploits residual sig-nal in the underlying representations. The ablation pattern on this dataset is in-formative. The Encoder-Only ablation reaches 
+
+0.553 ± 0.037 AUC on FEVER-Symmetric, above chance, while the full Riemannian pipeline and both random-encoder ablations remain at chance (Table 2). FEVER-Symmetric was constructed by Schuster et al. to remove annotation-driven lexi-cal and stylistic artifacts in the original FEVER, specifically by pairing each claim with its nega-tion against shared evidence. This construction targets surface features arising from the annota-tion process; it does not target all model-accessible content features. BERT representations encode substantial world knowledge through pre-training, and the trained IGL encoder exposes some of this knowledge in its learned coordinates, sufficient for Euclidean classification to detect a small signal that Schuster’s debiasing does not remove. The full Riemannian pipeline does not access this residual signal. The pullback metric depends on the encoder’s Jacobian rather than on the value of its coordinates: it captures how the encoder lo-cally bends the embedding space rather than which features it preserves. World-knowledge content is feature content, and the geometric pipeline fil-ters it by construction. This is supported by the random-encoder ablations: both Frozen Ran-dom IGL (0.443 AUC) and Random Projection + SiLU (0.499 AUC) stay at or below chance on FEVER-Symmetric, because random encoders do not learn to expose specific content features. The below-chance reading on Frozen Random IGL is consistent with sample-specific bias on the 316-sample FEVER-Symmetric set rather than with a learned content signal. The pattern (trained en-coder + Euclidean aggregation as the only above-chance method, geometric methods at or below chance regardless of encoder training) supports 7rather than weakens the negative control: the geo-metric pipeline behaves correctly even when resid-ual signal is present in the underlying representa-tions and accessible to simpler methods. 
+
+What does the pullback metric encode? 
+
+The random-encoder ablations clarify what the pipeline is actually testing. The pullback met-ric g(v) = (JJ ⊤ + ϵI )−1 captures the local anisotropy of the encoder map: how a unit in-put perturbation at v is stretched or compressed across latent dimensions. For a random MLP with SiLU nonlinearity, J(v) varies smoothly with v
+
+because of the nonlinearity, even though the en-coder weights themselves are random. Conse-quently g(v) encodes the position of v in in-put space through the local Jacobian structure of the random transformation, not through any prop-erty the encoder learned. Fréchet aggregation on the SPD manifold then summarises this local-geometry signal into a sentence-level descriptor. The geometric-aggregation gain over Euclidean pooling thus reflects that token positions in BERT embeddings carry classification signal in their lo-cal nonlinear-transformation structure, which Eu-clidean averaging discards. 
+
+6.2 Limitations and challenges Computational cost. On top of one-time IGL training, each sentence requires a per-token Jaco-bian and an SPD Fréchet-mean iteration, an or-der of magnitude more arithmetic than Euclidean pooling, though still negligible against LLM in-ference or gradient-based fine-tuning. Exact wall-clock and FLOP figures are reserved for a scaling study. 
+
+Hyperparameter and architectural scope. 
+
+Our encoder-width and anchor-count sweep was conducted only on FEVER-Symmetric, so sensitivity on the signal-bearing datasets and to the metric regulariser λ is unverified. The encoder objective itself was held fixed at IGL; alternative objectives that also yield a Jacobian (vanilla autoencoders, VAEs, normalising flows, contrastive encoders) were not swept, although the random-encoder ablation already suggests the specific objective is largely transparent on most tasks. 
+
+Scope of the controlled comparison. The pipeline was evaluated against Euclidean and CLS-token baselines on a single encoder (BERT-base) at a single layer (layer 9) and a fixed projec-tion dimensionality. This is a deliberate method-ological choice: the comparison isolates the con-tribution of geometric aggregation on identical embeddings, which is why fine-tuned BERT and Sentence-BERT (Reimers and Gurevych, 2019) are excluded rather than missing. Absolute clas-sification performance is not the question this pa-per investigates; whether geometric aggregation extracts signal that flat-Euclidean pooling discards is. 
+
+6.3 Future work Architecture and layer coverage. Extending the evaluation to larger and structurally different encoders (RoBERTa, DistilBERT, decoder-only LLMs) and across layers would clarify whether the geometric-aggregation gain is general or spe-cific to BERT-base layer 9, and whether the layer-wise intrinsic-dimension trajectory (Valeri-ani et al., 2023; Cheng et al., 2025) interacts with where the pullback metric becomes informative. 
+
+Richer SPD descriptors. The Fréchet mean is the simplest aggregator on the SPD mani-fold; weighted Fréchet means, trajectory-based descriptors in the spirit of layer-wise geometric probes (Damirchi et al., 2026; Mir, 2025), and explicit curvature features are natural next steps, with per-token pullback eigenvalues offering a route to relate the geometric signal to interpretable linguistic phenomena. 
+
+7 Conclusion 
+
+The SPD Fréchet mean of per-token pullback metrics beats Euclidean mean pooling on CoLA, CREAK and RTE under a controlled comparison on identical embeddings; on FEVER-Symmetric, included as a negative control, the method cor-rectly stays at chance, confirming it does not ex-ploit the lexical and annotation artifacts the dataset was constructed to remove. Random-encoder ab-lations localise most of the gain to the geomet-ric aggregation rather than to learned manifold structure, with the trained encoder contributing ad-ditional signal specifically on CREAK, the most knowledge-heavy of the three datasets. Together these results support the framing of embeddings as locally manifold-like rather than globally coher-ent (Robinson et al., 2025): aggregated geomet-ric features yield classification gains even where global manifold structure may fail. 8References 
+
+Guillaume Alain and Yoshua Bengio. 2017. Under-standing intermediate layers using linear classifier probes. In International Conference on Learning Representations (ICLR) Workshop Track .Anton Andreev, Gregoire Cattan, and Marco Congedo. 2025. The Riemannian Means Field Classifier for EEG-Based BCI Data. Sensors , 25(7):2305. Bruno Aristimunha, Igor Carrara, Pierre Guetschel, Sara Sedlar, Pedro Rodrigues, Jan Sosulski, Divyesh Narayanan, Erik Bjareholt, Barthélémy Quentin, Robin Tibor Schirrmeister, Emmanuel Kalunga, Lu-dovic Darmet, Cattan Gregoire, Ali Abdul Hussain, Ramiro Gatti, Vladislav Goncharenko, Jordy Thie-len, Thomas Moreau, Yannick Roy, and 3 others. 2023. Mother of all BCI benchmarks. In Ad-vances in Neural Information Processing Systems (NeurIPS) Datasets and Benchmarks Track .Georgios Arvanitidis, Lars Kai Hansen, and Søren Hauberg. 2018. Latent space oddity: On the cur-vature of deep generative models. In International Conference on Learning Representations (ICLR) .Alexandre Barachant, Quentin Barthélemy, Jean-Rémi King, Alexandre Gramfort, Sylvain Cheval-lier, Pedro L. C. Rodrigues, Emanuele Olivetti, Vladislav Goncharenko, Gabriel Wagner vom Berg, Ghiles Reguig, Arthur Lebeurrier, Erik Bjäreholt, Maria Sayu Yamamoto, Pierre Clisson, Marie-Constance Corsi, Igor Carrara, Apolline Mellot, Bruna Junqueira Lopes, Brent Gaisford, and 4 oth-ers. 2026. pyriemann. Alexandre Barachant, Stéphane Bonnet, Marco Con-gedo, and Christian Jutten. 2012. Multiclass brain-computer interface classification by Riemannian ge-ometry. IEEE transactions on bio-medical engi-neering , 59(4):920–928. Matthew Brand. 2003. Charting a manifold. In Ad-vances in Neural Information Processing Systems (NeurIPS) .Julian Brandon, Angus Chadwick, and Arthur Pelle-grino. 2025. Emergent Riemannian geometry over learning discrete computations on continuous mani-folds. arXiv preprint arXiv:2512.00196. Daniel Brooks, Olivier Schwander, Frédéric Bar-baresco, Jean-Yves Schneider, and Matthieu Cord. 2019. Riemannian batch normalization for SPD neural networks. In Advances in Neural Information Processing Systems (NeurIPS) .Ziheng Chen, Yue Song, Rui Wang, Xiaojun Wu, and Nicu Sebe. 2024. RMLR: Extending multinomial logistic regression into general geometries. In Ad-vances in Neural Information Processing Systems (NeurIPS) .Emily Cheng, Diego Doimo, Corentin Kervadec, Iuri Macocco, Jade Yu, Alessandro Laio, and Marco Ba-roni. 2025. Emergence of a high-dimensional ab-straction phase in language transformers. In Inter-national Conference on Learning Representations (ICLR) .Sylvain Chevallier, Igor Carrara, Bruno Aristimunha, Pierre Guetschel, Sara Sedlar, Bruna Lopes, Se-bastien Velut, Salim Khazem, and Thomas Moreau. 2024. The largest EEG-based BCI reproducibility study for open science: the MOABB benchmark. 
+
+arXiv preprint . ArXiv:2404.15319. Sungjun Cho, Seunghyuk Cho, Sungwoo Park, Han-kook Lee, Honglak Lee, and Moontae Lee. 2023. Curve your attention: Mixed-curvature transformers for graph representation learning. In Proceedings of the AAAI Conference on Artificial Intelligence .Marco Congedo, Alexandre Barachant, and Rajendra Bhatia. 2017. Riemannian geometry for EEG-based brain-computer interfaces; a primer and a review. 
+
+Brain-Computer Interfaces , 4(3):155–174. Hamed Damirchi, Ignacio Meza De la Jara, Ehsan Ab-basnejad, Afshar Shamsi, Zhen Zhang, and Javen Shi. 2026. Truth as a trajectory: What internal rep-resentations reveal about large language model rea-soning. Preprint , arXiv:2603.01326. Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. BERT: Pre-training of deep bidirectional transformers for language under-standing. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics (NAACL-HLT) .Riccardo Di Sipio, Jairo Diaz-Rodriguez, and Luis Ser-rano. 2025. The curved spacetime of transformer ar-chitectures. arXiv preprint arXiv:2511.03060. Willem Diepeveen, Georgios Batzolis, Zakhar Shu-maylov, and Carola-Bibiane Schönlieb. 2024. Score-based pullback Riemannian geometry: Extracting the data manifold geometry using anisotropic flows. arXiv preprint arXiv:2410.01950. Kawin Ethayarajh. 2019. How contextual are contex-tualized word representations? Comparing the ge-ometry of BERT, ELMo, and GPT-2 embeddings. In Proceedings of the 2019 Conference on Em-pirical Methods in Natural Language Processing (EMNLP) .P Fletcher, Conglin Lu, Stephen Pizer, and Sarang Joshi. 2004. Principal geodesic analysis for the study of nonlinear statistics of shape. Medical Imag-ing, IEEE Transactions on , 23:995 – 1005. Wolfgang Förstner, Boudewijn Moonen, and Carl Gauss. 2000. A metric for covariance matrices. Xiaofang Gao and Jiye Liang. 2011. The dynamical neighborhood selection based on the sampling den-sity and manifold curvature for isometric data em-bedding. Pattern Recognition Letters , 32(2):202– 209. 
+
+9Wes Gurnee and Max Tegmark. 2024. Language mod-els represent space and time. In International Con-ference on Learning Representations (ICLR) .Michael Hauser and Asok Ray. 2017. Principles of Riemannian geometry in neural networks. In Ad-vances in Neural Information Processing Systems (NeurIPS) .Saahith Janapati and Yangfeng Ji. 2025. A compara-tive study of learning paradigms in large language models via intrinsic dimension. In Proceedings of the 10th Workshop on Representation Learning for NLP (RepL4NLP-2025) , pages 59–86, Albuquerque, NM. Association for Computational Linguistics. Zhongping Ji. 2025. RiemannFormer: A frame-work for attention in curved spaces. arXiv preprint arXiv:2506.07405. Ce Ju, Reinmar Kobler, Antoine Collas, Motoaki Kawanabe, Cuntai Guan, and Bertrand Thirion. 2024. SPD matrix learning for neuroimaging anal-ysis: Perspectives, methods, and challenges. arXiv preprint arXiv:2504.18882. Takuya Kataiwa, Cho Hakaze, and Tetsushi Ohki. 2025. Measuring intrinsic dimension of token em-beddings. arXiv preprint arXiv:2503.02142. Aditya Kusupati, Gantavya Bhatt, Aniket Rege, Matthew Wallingford, Aditya Sinha, Vivek Ra-manujan, William Howard-Snyder, Kaifeng Chen, Sham Kakade, Prateek Jain, and Ali Farhadi. 2022. Matryoshka representation learning. In Advances in Neural Information Processing Systems (NeurIPS) .Yangyang Li. 2017. Curvature-aware Manifold Learn-ing. arXiv preprint . ArXiv:1706.07167 [cs.LG]. Aaron Lou, Isay Katsman, Qingxuan Jiang, Serge Be-longie, Ser-Nam Lim, and Christopher De Sa. 2020. Differentiating through the Fréchet mean. In Pro-ceedings of the 37th International Conference on Machine Learning (ICML) .Rob Manson. 2025. Curved inference: Concern-sensitive geometry in large language model residual streams. Preprint , arXiv:2507.21107. Eric Maris and Robert Oostenveld. 2007. Nonparamet-ric statistical testing of EEG- and MEG-data. Jour-nal of Neuroscience Methods , 164(1):177–190. Samuel Marks and Max Tegmark. 2024. The geometry of truth: Emergent linear structure in large language model representations of true/false datasets. In Con-ference on Language Modeling (COLM) .Leland McInnes, John Healy, and James Melville. 2018. UMAP: Uniform manifold approximation and projection for dimension reduction. arXiv preprint arXiv:1802.03426 .Amir Hameed Mir. 2025. The geometry of truth: Layer-wise semantic dynamics for hallucination de-tection. arXiv preprint arXiv:2510.04933. Gernot Müller-Putz, Reinhold Scherer, Clemens Brun-ner, Robert Leeb, and Gert Pfurtscheller. 2008. Bet-ter than Random? A closer look on BCI results. In-ternational Journal of Bioelektromagnetism , 10:52– 55. Maximilian Nickel and Douwe Kiela. 2017. Poincaré embeddings for learning hierarchical representa-tions. In Advances in Neural Information Process-ing Systems (NeurIPS) .Maximilian Nickel and Douwe Kiela. 2018. Learning continuous hierarchies in the Lorentz model of hy-perbolic geometry. In Proceedings of the 35th Inter-national Conference on Machine Learning (ICML) .Yasumasa Onoe, Michael J.Q. Zhang, Eunsol Choi, and Greg Durrett. 2021. Creak: A dataset for common-sense reasoning over entity knowledge. OpenRe-view .Kiho Park, Yo Joong Choe, Yibo Jiang, and Victor Veitch. 2025. The geometry of categorical and hi-erarchical concepts in large language models. In 
+
+International Conference on Learning Representa-tions (ICLR) .Kiho Park, Yo Joong Choe, and Victor Veitch. 2024. The linear representation hypothesis and the geome-try of large language models. In Proceedings of the 41st International Conference on Machine Learning (ICML) .F. Pedregosa, G. Varoquaux, A. Gramfort, V. Michel, B. Thirion, O. Grisel, M. Blondel, P. Pretten-hofer, R. Weiss, V. Dubourg, J. Vanderplas, A. Pas-sos, D. Cournapeau, M. Brucher, M. Perrot, and E. Duchesnay. 2011. Scikit-learn: Machine learning in Python. Journal of Machine Learning Research ,12:2825–2830. Alexandre Quemy. 2026. Intrinsic Green’s Learning: Supervised Learning on Manifolds via Inverse PDE. In AI & PDE Workshop at ICLR .Nils Reimers and Iryna Gurevych. 2019. Sentence-BERT: Sentence embeddings using siamese BERT-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing (EMNLP) .Michael Robinson, Sourya Dey, and Tony Chiang. 2025. Token embeddings violate the manifold hy-pothesis. In Advances in Neural Information Pro-cessing Systems (NeurIPS) .Anna Rogers, Olga Kovaleva, and Anna Rumshisky. 2020. A primer in BERTology: What we know about how BERT works. Transactions of the Associ-ation for Computational Linguistics (TACL) , 8:842– 866. Frederic Sala, Christopher De Sa, Albert Gu, and Christopher Ré. 2018. Representation tradeoffs for hyperbolic embeddings. In Proceedings of the 35th International Conference on Machine Learning (ICML) .
+
+10 Tal Schuster, Darsh J Shah, Yun Jie Serene Yeo, Daniel Filizzola, Enrico Santus, and Regina Barzilay. 2019. Towards debiasing fact verification models. In Pro-ceedings of the 2019 Conference on Empirical Meth-ods in Natural Language Processing (EMNLP) . As-sociation for Computational Linguistics. A. Singer. 2006. From graph to manifold laplacian: The convergence rate. Applied and Computational Harmonic Analysis , 21(1):128–134. Special Issue: Diffusion Maps and Wavelets. Bartlomiej Sobieski, Matthew Tivnan, Dawid Płu-dowski, Michał Jan Włodarczyk, Pengfei Jin, Prze-myslaw Biecek, and Quanzheng Li. 2026. Local in-trinsic dimension unveils hallucinations in diffusion models. Preprint , arXiv:2605.05026. Matthieu Tehenan, Vikram Natarajan, Jonathan Michala, Milton Lin, and Juri Opitz. 2025. Mech-anistic decomposition of sentence representations. arXiv preprint arXiv:2506.04373. James Thorne, Andreas Vlachos, Christos Christodoulopoulos, and Arpit Mittal. 2018. FEVER: a large-scale dataset for fact extraction and VERification. In NAACL-HLT .Lucrezia Valeriani, Diego Doimo, Francesca Cuturello, Alessandro Laio, Alessio Ansuini, and Alberto Caz-zaniga. 2023. The geometry of hidden representa-tions of large transformer models. In Advances in Neural Information Processing Systems (NeurIPS) .Alex Wang, Amanpreet Singh, Julian Michael, Felix Hill, Omer Levy, and Samuel R. Bowman. 2018. GLUE: A multi-task benchmark and analysis plat-form for natural language understanding. In Pro-ceedings of the 2018 EMNLP Workshop Black-boxNLP: Analyzing and Interpreting Neural Net-works for NLP , pages 353–355, Brussels, Belgium. Association for Computational Linguistics. Alex Warstadt, Amanpreet Singh, and Samuel R Bow-man. 2018. Neural network acceptability judg-ments. arXiv preprint arXiv:1805.12471 .
+
+11 A IGL architecture details 
+
+This appendix collects the architectural details of the IGL configuration used in Section 3.3. 
+
+Encoder and Matryoshka Truncation A small MLP encoder Ψθ : RD → Rdmax maps in-put to latent codes ξn = Ψ θ(vn) with dmax =64 . During training, a random truncation k ∼
+
+Uniform {1, . . . , d max } is sampled and trailing co-ordinates zeroed out, following Matryoshka rep-resentation learning (Kusupati et al., 2022). This ensures earlier dimensions capture the most in-formative features, with effective dimension dmax 
+
+determined post-training from the dimension-loss curve. 
+
+Product Green’s Kernel The reconstruction target is the input vn itself. We model the recon-struction by a tensor-factorised product Green’s kernel: 
+
+G(ξ, ζ ) ≈
+
+KX
+
+k=1 
+
+γkdmax Y
+
+j=1 
+
+Gk,j (ξj , ζ j ),K = nanchors = 128 (9) Each factor Gk,j is a one-dimensional kernel evaluated at the latent coordinate ξj and an an-chor ζjk, with K anchors placed adaptively. We use Gaussian kernel factors: each factor is itself a convex mixture of nscales = 4 Gaussian basis functions at learnable bandwidths σs,j ,
+
+Gk,j (ξj , ζ kj ) = 
+
+4X
+
+s=1 
+
+αs exp − (ξj − ζkj )2
+
+2σ2
+
+s,j 
+
+!
+
+,a = softmax (·) (10) 
+
+Variable-Projection Reconstruction Each minibatch solves bias-centered ridge regression for weights: 
+
+w∗ = arg min 
+
+w ∥Φw−(v−b)∥2+λ∥w∥2, λ = 10 −3
+
+(11) The design matrix Φ costs O(N Kd ) to com-pute, while the closed-form solve is O(N K 2 +
+
+K3) and independent of d. Weights w∗ are re-computed per minibatch (not stored), so gradient descent operates only on encoder parameters θ.
+
+B Ablation figures 
+
+The full ablation-results table and per-comparison forest plots and bar plots for the three ablation con-trasts (Section 5) are collected here for space. 4 2 0 2 4  
+
+> Standardized Mean Difference
+> Meta-effect
+> cola
+> creak
+> fever
+> rte
+> < encoder_only_mean_pool_latent_lr better |riemannian_mean_pooling better >
+> 9.77e-04
+> 9.77e-04
+> 9.77e-04
+> 6.84e-03
+> 2.71e-03
+> p-value
+
+riemannian_mean_pooling vs encoder_only_mean_pool_latent_lr  
+
+> Generated using MOABB v1.5.0 Chevallier et al. (2024) doi:10.48550/arXiv.2404.15319
+
+Figure 4: Riemannian Mean Pooling vs Encoder-Only: forest plot. Metric: AUC .0.0 0.2 0.4 0.6 0.8 1.0 
+
+> Auc Score
+> fever
+> cola
+> creak
+> rte
+> 0.508±0.051
+> 0.778±0.022
+> 0.703±0.013
+> 0.635±0.022
+> 0.553±0.037
+> 0.754±0.022
+> 0.675±0.018
+> 0.621±0.023
+> Multi-Seed Meta-Analysis: Token-level IGL vs Encoder-only
+> (Unified ablation results | pooled available seeds and CV folds)
+> Token-level IGL
+> Encoder-only
+
+Figure 5: AUC bar comparison: Riemannian Mean Pooling vs Encoder-Only. 3 2 1 0 1 2 3  
+
+> Standardized Mean Difference
+> Meta-effect
+> cola
+> creak
+> fever
+> rte
+> < frozen_random_igl_encoder_spd better |riemannian_mean_pooling better >
+> 1.56e-02
+> 9.77e-04
+> 9.77e-04
+> 2.93e-03
+> 1.41e-08
+> p-value
+
+riemannian_mean_pooling vs frozen_random_igl_encoder_spd  
+
+> Generated using MOABB v1.5.0 Chevallier et al. (2024) doi:10.48550/arXiv.2404.15319
+
+Figure 6: Riemannian Mean Pooling vs Frozen Random IGL: forest plot. Metric: AUC .
+
+12 Figure 3: Detailed architecture of token-level IGL for sentence classification via Riemannian mean pooling. Right path (reconstruction): Token embeddings vi ∈ R768 are encoded to latent space z ∈ Rdmax via encoder Ψθ , then mapped through Product Green’s kernel G(ξ, ζ ) to design matrix Φ. Variable projection (VP) solves for optimal weights w∗ = arg min w ∥Φw−
+
+(y − b)∥2 + λ∥w∥2 to reconstruct input ˆv = Φ w∗ + b. Left path (classification): The trained encoder’s Jacobian J =
+
+∂Ψθ
+
+∂v induces pullback metrics g(vi) ∈ S dmax 
+
+++ at each token. These are aggregated via Fréchet mean to sentence-level SPD matrix Gsentence , preprocessed with Riemannian whitening, projected to tangent space, vectorised, and classified with logistic regression. Solid arrows: forward flow. Dashed red arrow: reconstruction-loss gradient ∇θ ∥ˆv − v∥2 flowing back to encoder Ψθ . The encoder is trained jointly with VP solve until reconstruction converges (early stopping with patience=50, 
+
+δ = 2 × 10 −5), then frozen for metric extraction and classification. 0.0 0.2 0.4 0.6 0.8 1.0 
+
+> Auc Score
+> fever
+> cola
+> creak
+> rte
+> 0.508±0.051
+> 0.778±0.022
+> 0.703±0.013
+> 0.635±0.022
+> 0.443±0.047
+> 0.762±0.022
+> 0.667±0.019
+> 0.616±0.025
+> Multi-Seed Meta-Analysis: Token-level IGL vs Random IGL encoder
+> (Unified ablation results | pooled available seeds and CV folds)
+> Token-level IGL
+> Frozen random IGL encoder
+
+Figure 7: AUC bar comparison: Riemannian Mean Pooling vs Frozen Random IGL. 4 2 0 2 4
+
+Standardized Mean Difference   
+
+> Meta-effect
+> cola
+> creak
+> fever
+> rte
+> < frozen_linear_silu_projection_spd better |riemannian_mean_pooling better >
+> 9.77e-04
+> 9.77e-04
+> 9.77e-04
+> 3.94e-07
+> p-value
+
+riemannian_mean_pooling vs frozen_linear_silu_projection_spd  
+
+> Generated using MOABB v1.5.0 Chevallier et al. (2024) doi:10.48550/arXiv.2404.15319
+
+Figure 8: Riemannian Mean Pooling vs Random Projection + SiLU: forest plot. Metric: AUC .
+
+13 Table 2: Ablation study results (mean ± std across 10 evaluations). Bold indicates best per dataset. F1 is omitted from this table (tracks Accuracy closely on binary tasks); the full Accuracy/F1/AUC table is in Table 1. †FEVER is included as a negative control (Section 3); rows are reported for completeness but are not informative about the source of geometric signal, so no method is bolded. Dataset Method Accuracy AUC 
+
+FEVER †
+
+Linear Probe 0.407 ± 0.044 0.424 ± 0.028 CLS Token Aggregation 0.374 ± 0.049 0.402 ± 0.050 Riemannian Mean Pooling 0.460 ± 0.056 0.508 ± 0.051 Encoder-Only 0.519 ± 0.029 0.553 ± 0.037 Frozen Random IGL 0.405 ± 0.045 0.443 ± 0.047 Random Projection + SiLU 0.491 ± 0.049 0.499 ± 0.052 
+
+CoLA 
+
+Linear Probe 0.712 ± 0.018 0.729 ± 0.022 CLS Token Aggregation 0.661 ± 0.013 0.711 ± 0.012 Riemannian Mean Pooling 0.758 ± 0.009 0.778 ± 0.022 
+
+Encoder-Only 0.754 ± 0.010 0.754 ± 0.022 Frozen Random IGL 0.760 ± 0.011 0.762 ± 0.022 Random Projection + SiLU 0.731 ± 0.012 0.699 ± 0.037 
+
+CREAK 
+
+Linear Probe 0.597 ± 0.016 0.632 ± 0.015 CLS Token Aggregation 0.594 ± 0.024 0.631 ± 0.023 Riemannian Mean Pooling 0.647 ± 0.012 0.703 ± 0.013 
+
+Encoder-Only 0.625 ± 0.020 0.675 ± 0.018 Frozen Random IGL 0.618 ± 0.016 0.667 ± 0.019 Random Projection + SiLU 0.609 ± 0.016 0.639 ± 0.018 
+
+RTE 
+
+Linear Probe 0.560 ± 0.014 0.591 ± 0.024 CLS Token Aggregation 0.574 ± 0.027 0.611 ± 0.027 Riemannian Mean Pooling 0.596 ± 0.017 0.635 ± 0.022 
+
+Encoder-Only 0.585 ± 0.019 0.621 ± 0.023 Frozen Random IGL 0.578 ± 0.023 0.616 ± 0.025 Random Projection + SiLU 0.550 ± 0.021 0.575 ± 0.029 0.0 0.2 0.4 0.6 0.8 1.0 
+
+> Auc Score
+> fever
+> cola
+> creak
+> rte
+> 0.508±0.051
+> 0.778±0.022
+> 0.703±0.013
+> 0.635±0.022
+> 0.499±0.052
+> 0.699±0.037
+> 0.639±0.018
+> 0.575±0.029
+> Multi-Seed Meta-Analysis: Token-level IGL vs Encoder-only
+> (Unified ablation results | pooled available seeds and CV folds)
+> Token-level IGL
+> Random projection with SiLU
+
+Figure 9: AUC bar comparison: Riemannian Mean Pooling vs Random Projection + SiLU. 
+
+C Additional results figures 
+
+The per-dataset AUC, Accuracy, and F1 bar plots together with the CLS-vs-RMP forest plot are de-ferred here; the body keeps the headline Linear-Probe-vs-RMP forest plot (Figure 2) and Table 1 as the main visualisations. 0.0 0.2 0.4 0.6 0.8 1.0 
+
+> Auc Score
+> fever
+> cola
+> creak
+> rte
+> 0.424±0.028
+> 0.772±0.025
+> 0.648±0.018
+> 0.591±0.024
+> 0.508±0.047
+> 0.799±0.018
+> 0.708±0.019
+> 0.638±0.023
+> Multi-Seed Meta-Analysis: Euclidean vs Riemannian Mean Pooling
+> (Seeds: 67, 123 | 5-fold CV each = 10 evaluations per method)
+> Linear Probe
+> Riemannian IGL
+
+Figure 10: Multi-seed AUC comparison across datasets. 0.0 0.2 0.4 0.6 0.8 1.0 
+
+> Accuracy Score
+> fever
+> cola
+> creak
+> rte
+> 0.407±0.044
+> 0.705±0.022
+> 0.606±0.018
+> 0.560±0.014
+> 0.486±0.038
+> 0.723±0.015
+> 0.656±0.015
+> 0.603±0.012
+> Multi-Seed Meta-Analysis: Euclidean vs Riemannian Mean Pooling
+> (Seeds: 67, 123 | 5-fold CV each = 10 evaluations per method)
+> Linear Probe
+> Riemannian IGL
+
+Figure 11: Multi-seed accuracy comparison across datasets. Error bars represent standard deviation across 10 evaluations. 
+
+14 0.0 0.2 0.4 0.6 0.8 1.0 
+
+F1 Score 
+
+> fever
+> cola
+> creak
+> rte
+> 0.429±0.035
+> 0.706±0.025
+> 0.606±0.020
+> 0.555±0.019
+> 0.488±0.057
+> 0.730±0.018
+> 0.654±0.019
+> 0.604±0.014
+
+Multi-Seed Meta-Analysis: Euclidean vs Riemannian Mean Pooling 
+
+(Seeds: 67, 123 | 5-fold CV each = 10 evaluations per method) 
+
+> Linear Probe
+> Riemannian IGL
+
+Figure 12: Multi-seed F1-score comparison across datasets. 3 2 1 0 1 2 3
+
+Standardized Mean Difference  
+
+> Meta-effect
+> cola
+> creak
+> fever
+> rte
+> < linear_probe_cls better
+
+| riemannian_mean_pooling better > 
+
+9.77e-04 
+
+9.77e-04 
+
+9.77e-04 
+
+9.77e-04 
+
+2.92e-10 
+
+> p-value
+
+riemannian_mean_pooling vs linear_probe_cls  
+
+> Generated using MOABB v1.5.0 Chevallier et al. (2024) doi:10.48550/arXiv.2404.15319
+
+Figure 13: Statistical comparison between CLS Token Ag-gregation and Riemannian Mean Pooling across random seeds. Box plots show the distribution of AUC scores from 10 evaluations (2 seeds × 5 folds). Effect sizes are reported us-ing SMD. FEVER-Symmetric is included as a negative con-trol (Section 3); a chance-level result is the expected and cor-rect behaviour for both methods. 
+
+D Reconstruction convergence 
+
+Figure 14: Training (blue) and validation (red) reconstruction MSE for the IGL encoder on fold 1 of FEVER-Symmetric, over ∼310 epochs. The validation curve decreases monoton-ically from ∼0.17 to ∼0.14. This is representative of all folds and datasets. 
+
+15
