@@ -1,0 +1,402 @@
+Title: Environment-Sensitive Lexicographic Disambiguation for Contextual Parsing
+
+URL Source: https://arxiv.org/pdf/2607.07728v1
+
+Published Time: Fri, 10 Jul 2026 00:00:58 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Environment-Sensitive Lexicographic Disambiguation for Contextual Parsing 
+
+## Alejandro Luis Vaz Mayato 
+
+## Abstract 
+
+This paper presents a deterministic algorithm for resolving ambiguity in parse trees using a global mutable context. The proposed method applies a tournament-style selection pro-cess to competing derivations at each non-terminal, system-atically discarding alternatives whose non-terminal subtrees are not selected by the contextual decision mechanism. Unlike approaches that rely on post-processing, the al-gorithm maintains semantic state throughout incremental Abstract Syntax Tree (AST) building, allowing earlier deci-sions to influence the resolution of future ambiguities. This context-aware strategy enables consistent and procedural disambiguation after parsing. It features syntactic disambiguation based on a document environment instead of relying on ad-hoc rules, thus able to model complex relationships between previous constructs and the different derivations for a same non-terminal. 
+
+ACM Reference Format: 
+
+Alejandro Luis Vaz Mayato. 2026. Environment-Sensitive Lexico-graphic Disambiguation for Contextual Parsing. In . ACM, New York, NY, USA, 9 pages. https://doi.org/10.1145/nnnnnnn.nnnnnnn 
+
+## 1 Introduction 
+
+1.1 Goal 
+
+This paper aims to introduce a contextual ambiguity solver algorithm[ 3 ] that clears ambiguity based on a shared mutable context. This mechanism is a generalization of top-down, left-to-right, single-pass, context-dependent disambiguation; that can be used in grammars where ambiguity is bounded but cannot be resolved locally. To our knowledge, no previous work explicitly formu-lates a deterministic, incremental, bounded-ambiguity, lex-icographic elimination procedure over SPPFs with formal guarantees on termination and complexity.  
+
+> Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. Copyrights for components of this work owned by others than the author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permissions from permissions@acm.org.
+> Conference’17, Washington, DC, USA
+> ©2026 Copyright held by the owner/author(s). Publication rights licensed to ACM. ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM
+> https://doi.org/10.1145/nnnnnnn.nnnnnnn
+
+1.2 Problem 
+
+Programming language grammars often depend on contex-tual information in order to resolve the meaning of certain constructs. In those cases, deciding between two or more possible derivations is only possible with imported defini-tions from elsewhere in the document. Many languages, like C with typedef disambiguation or Rust’s function call ver-sus tuple struct have devised clever methods or multi-stage intermediate representations in order to peek into the docu-ment context and decide for a correct interpretation of the ambiguous construct. Throughout this paper, we’ll use a classic example of am-biguity that depends on an environment to be resolved to clarify some explanations. We’ll be working with a math-like domain-specific-language, where we must distinguish between implicit multiplication of a variable with a nested expression and a function call: 
+
+f(0) 
+
+The reason this is an ambiguous token sequence is that it can represent two different AST nodes and there is not enough information locally to decide. 
+
+1.3 Limitations of Current Approaches 
+
+We distinguish three current approaches that try to overcome this obstacle: 
+
+• Multi-stage AST building 
+
+• Pre-selected choices 
+
+• Name-resolution Staged AST building with intermediate representations al-lows for multiple disambiguation steps before the final tree is built. Ambiguity does not exist in the grammar, but is rather about the meaning of it. Instead of having conflicting con-structs in the grammar, this type of languages use nodes that represent that ambiguity without acknowledging it is the definite shape the AST will take. Its main advantage is that it allows for full contextual parsing (not just left-to-right), but requires multiple passes and ASTs, which increases memory usage and compilation time. Pre-selected choices in certain types of parsers (like Pars-ing Expression Grammar parsers) solve this issue by always selecting one choice over the other. This is inherently not what we need since pre-selection replaces context. Name-resolution is another technique, generally used by multi-stage AST builders, but it is often strictly post-syntactic, defying the purpose of using name-resolution for disam-biguation in order to build the first and only AST. arXiv:2607.07728v1 [cs.PL] 6 Jul 2026 Conference’17, July 2017, Washington, DC, USA Alejandro Luis Vaz Mayato 
+
+1.4 Core Idea 
+
+Parsing[ 1] becomes a two-stage pipeline, as shown in figure 1. 
+
+Figure 1. Two-stage parsing pipeline. The generalized parser’s role is to preserve all valid deriva-tions that can be built with the supplied grammar, without deciding the final tree and return a compact backpointer rep-resentation to the solver (like a Shared Packed Parse Forest). On the other hand, the contextual solver will compare backpointer trees at earliest points of divergence, choosing one among all candidate derivations, and producing the AST incrementally. The solver context, which will be used to disambiguate different non-terminals, is left for host languages to define. It may include a full type analysis or be something much simpler. 
+
+1.5 Contributions 
+
+1. A deterministic lexicographic disambiguation algo-rithm over SPPFs. 2. A bounded-ambiguity complexity guarantee. 3. A left-to-right context mutation model. 4. Proof of termination. 5. An implementation and empirical evaluation. 6. A case study over a non-trivial Domain-Specific Lan-guage. 
+
+## 2 Formal Model 
+
+2.1 Grammar 
+
+We define the grammar 𝐺 as a Context-Free Grammar[ 14 ](CFG): 
+
+𝐺 = (𝑉 , Σ, 𝑅, 𝑆 )
+
+where 𝑉 is the finite set of non-terminals, Σ is a finite set of terminals, 𝑆 ∈ 𝑉 is the start symbol, and 𝑅 is the finite set of production rules of the form 
+
+𝐴 → 𝛼 where 𝐴 ∈ 𝑉 ∧ 𝛼 ∈ ( 𝑉 ∪ Σ)∗
+
+2.2 Uniformly Bounded Ambiguity 
+
+We target grammars presenting localized structural ambi-guity, where ambiguity is bounded per non-terminal oc-currence. Most real programming languages and Domain-Specific Languages (DSLs) do not feature unbounded ambi-guity, so our solver is not a general ambiguity solver for all grammars. We define the ambiguity order 𝑘 as a static property of 𝐺 :
+
+∃𝑘 ∈ N : ∀𝐻 ∈ 𝐵, |𝐻 | ≤ 𝑘 
+
+where 𝐵 is the finite set of backpointers (e.g. a SPPF) and 
+
+𝐻 is the set of valid derivations for that a non-terminal 𝑁 ∈
+
+𝑉 over the input string 𝑤 = Σ∗. Unambiguous grammars exhibit 𝑘 = 1, and bounded ambiguity grammars have 𝑘 > 1.It is a property of the grammar. This assumption constraints the ambiguity per packed node, but does not bound the total number of ambiguous nodes in the forest. For our example of f(0) , we are dealing with a grammar with 𝑘 = 2 since the term that holds that input can have either: 
+
+• two factors, f and the nested (0) ; or 
+
+• one factor, f(0) , which is a function call. we’ll present our case study on section 6. 
+
+2.3 Context 
+
+We define a mutable context 𝐶 which stores data defined by the host language. We assume: 1. All functions and procedures associated with it are deterministic. 2. No methods of it access the compact backpointer rep-resentation ( 𝐵 ). 3. Its associated functions are guaranteed termination. 4. Memory usage may not be constant, nor strictly lin-ear, but may depend on how many non-terminals are appended to the AST ( 𝑡 ≤ 𝑛 ). Therefore we can only claim, as we’ll shortly justify, that memory usage is equal to the ambiguity order times however 
+
+𝐶 scales with 𝑡 in the individual implementation. In our case study, 𝐶 ’s memory usage increases linearly with 𝑡 in the worst case, since function declarations like: 
+
+f(x) := x 
+
+can add each one entry to a set of strings that refer to variables that are functions. When a non-terminal 𝐴 being built definitively to be ap-pended to the AST, a transformation 
+
+𝐶 × 𝐴 → 𝐶 + + 𝑁 
+
+which builds the non-terminal node 𝑁 and modifies the context is applied. This transformation mutates the context, and thus changes how disambiguation results for future (not previously processed) non-terminals. For that reason, we say our algorithm is left-to-right. Past non-terminals can affect how future non-terminals are dis-ambiguated but not the other way around. That means that f(0) will be resolved as function call if previously we had a line specifying f(x) := x but it will be resolved as implicit multiplication if the function declaration appears later on. Environment-Sensitive Lexicographic Disambiguation for Contextual Parsing Conference’17, July 2017, Washington, DC, USA 
+
+## 3 The Algorithm 
+
+3.1 Definitions 
+
+We define the compact backpointer representation as 𝐵 , and 
+
+|𝐵 | = 𝑛 . The solver run function 
+
+𝑅 : 𝐵 × 𝐶 0 → 𝑁 𝑆 
+
+is tasked with finding the backpointer of the start non-terminal and building it into 𝑁 𝑆 , which is the base node of the AST. Here, 𝐶 0 is the default context or a context supplied by the caller. 
+
+3.2 Inner Processing 
+
+In order to build the start non-terminal, a build function is called. This is the first of the three core functions of our algorithm: build ( 𝑈 ), solve ( 𝑍 ), and choose ( 𝐸 ): 1. Build ( 𝑈 ): 
+
+𝑈 : 𝐻 × 𝐶 × 𝑑 → 𝐶 (+) + 𝑁 
+
+The build function takes builds a backpointer 𝐻 into a non-terminal 𝑁 . This build is definitive and mutates the context if the 𝑑 flag is true , otherwise it produces exploratory builds that do not mutate the supplied 𝐶 .The start build is always definitive. The 𝑈 function will call 𝑍 in order to select the pre-ferred derivation from 𝐻 according to 𝐶 .2. Solve ( 𝑍 ): 
+
+𝑍 : 𝐻 × 𝐶 → 𝐷 
+
+The solve method takes the backpointer 𝐻 and looks up for all derivations of it in a candidates set. Out of all the derivations, it will choose one and return it. In order to choose one of those candidates, these steps are performed: a. We iterate over the indices of the elements of deriva-tions. b. We discard those derivations that have no back-pointer at this index (i.e. shorter but equal deriva-tions). c. We collect all the backpointers of the derivations at this index, and we build them all with 𝑈 with 𝑚 
+
+false into non-terminal nodes. d. We pop the first node from the built non-terminals and declare it the winner to start with. The final tournament winner after all the comparisons will be independent of which first node we choose, so we may select the first one 1, as strict total ordering guarantees we will arrive at the strongest node. e. For all the remaining built contenders, we call 𝐸 with the winner and the contender. If the chooser selects the winner, the winner stays in place, otherwise the contender is declared the winner. 
+
+> 1Technically, it is possible to choose a random one, from popping from a set, as this does still meet determinism.
+
+f. Those candidates whose backpointer at this index is the one that built the winning non-terminal node are kept in the candidates set, all others are discarded. g. The index advances until there’s only one candidate, and then returns it. This returned derivation is guar-anteed to be the unique lexicographic maximum with respect to ≺𝐶 .3. Choose ( 𝐸 ): 
+
+𝑁 1 × 𝑁 2 × 𝐶 → either node The choose function takes two nodes 𝑁 1 and 𝑁 2 and returns a flag that indicates which node is preferred. If the chooser reflects the intended semantic preference policy, the produced AST corresponds to the intended interpretation. It is aided by read-only access to context, allowing for decisions based on past mutations of the context. Here, read-only methods on context may be called. For correctness and determinism, 𝐸 must induce a strict total ordering over non-terminal nodes. Con-cretely, the strict total ordering relationship 
+
+𝑁 1 ≺𝐶 𝑁 2
+
+The tournament-style elimination assumes this strict total ordering; violations may yield unstable results. This requirement may seem overly strict, or that 𝐸 
+
+must behave as an oracle that never fails, but in real cases it just means avoiding outputs that contradict each other (e.g. if 𝑁 1 is chosen instead of 𝑁 2 in a certain context, that the chooser called with flipped arguments yields the same result). More often than not, a prob-lematic 𝐸 can just be revealed by running the same parse multiple times and comparing results. The solver also stores cache for exploratory-built non-terminals, that allows time complexity to drop to linear worst case instead of growing exponentially with nesting under bounded ambiguity assumption. 
+
+## 4 Theoretical properties 
+
+4.1 Theorem: Uniqueness of Selected Derivation 
+
+In order for determinism to hold, ∀𝐻 ∈ 𝐵, 𝑍 (𝐻, 𝐶 ) = the unique lexicographic maximum derivation under ≺𝐶 . This ensures that 𝑍 is a function of 𝐻 and 𝐶 and always produces the same output given the same input. It constraints 𝐸 to impose a strict total ordering over the derivations. 
+
+4.2 Strict Total Order Requirement 
+
+Let the finite set 𝑁 = {𝑁 1, 𝑁 2, 𝑁 3, . . . }.We define the lexicographic order induced by ≺𝐶 as a strict total order binary relation: 
+
+• Irreflexive: ∀𝑖, ¬( 𝑁 𝑖 < 𝑁 𝑖 )• Transitive: ∀𝑖, 𝑗, 𝑘 ; 𝑁 𝑖 < 𝑁 𝑗 ∧ 𝑁 𝑗 < 𝑁 𝑘 ⇒ 𝑁 𝑖 < 𝑁 𝑘 Conference’17, July 2017, Washington, DC, USA Alejandro Luis Vaz Mayato 
+
+• Total: ∀𝑖, 𝑗 : 𝑖 ≠ 𝑗 ; 𝑁 𝑖 < 𝑁 𝑗 ⊻ 𝑁 𝑖 > 𝑁 𝑗 
+
+4.3 Termination 
+
+The algorithm is guaranteed termination since: 
+
+• 𝐵 is finite 
+
+• 𝐻 can contain at most 𝑘 derivations 
+
+• each derivation 𝐷 is composed of at most 𝑟 backpoint-ers, therefore the iteration over indices is always guar-anteed to come to an end with one candidate 
+
+• non-terminal node building is assumed to always ter-minate 
+
+• all procedures involving 𝐶 are guaranteed termination therefore termination is guaranteed iff 𝐵 is a well-formed SPPF. 
+
+4.4 Determinism 
+
+The algorithm does not involve random choice, does not rely on race conditions, and does not involve non-deterministic guessing; so for the same input always produces the same output as long as the uniqueness theorem holds. Hence, it’s deterministic. For each input, the algorithm always follows the same finite sequence of steps and operations, thus the next op-eration is completely determined by the current state and input. 
+
+4.5 Time Complexity 
+
+Let 𝐵 be the compact backpointer representation and 𝑛 = |𝐵 |.Let 𝑘 be the ambiguity order and 𝑟 the maximum length of a derivation. Let the backpointer 𝐻 ∈ 𝐵 .
+
+Exploratory builds and memoization. Exploratory builds are side-effect free: they construct candidate subtrees with-out committing them to the AST and without mutating 𝐶 .In our implementation, exploratory builds do not embed context-dependent state into the resulting node represen-tation; contextual decisions are deferred to the chooser 𝐸 .Therefore, the result of an exploratory build depends solely on the structure of 𝐻 and may be safely memoized. Each backpointer 𝐻 ∈ 𝐵 is thus built at most once in exploratory mode, then cached. 
+
+Cost per node. For a backpointer 𝐻 , the solver compares 
+
+|𝐻 | derivations. Each derivation contains at most 𝑟 elements. At each index, at most |𝐻 | exploratory subtrees are con-structed or retrieved from cache and compared. Therefore, resolving a single ambiguous backpointer costs 
+
+𝑂 (| 𝐻 |𝑟 ).
+
+Total cost. All nodes in 𝐵 incur this cost. The total worst-case time complexity is therefore: 
+
+𝑂 (| 𝐻 |𝑟𝑛 )
+
+since |𝐻 | ≤ 𝑘 for each individual backpointer, 
+
+𝑂 (𝑘𝑛𝑟 )
+
+though if we let the ambiguity density be 
+
+𝛿 =∑︁ |𝐻 |
+
+𝑛 , 𝐻 ∈ 𝐵 where 1 ≤ 𝛿 ≤ 𝑘 
+
+since ∀𝐻 ∈ 𝐵, |𝐻 | ≥ 1
+
+then the complexity becomes 
+
+𝑂 (𝛿𝑛𝑟 )
+
+Practical behavior. In practice, programming languages and DSLs exhibit sparse and localized ambiguity, so 𝛿 ≪ 𝑘 .Moreover, derivations are short and typically diverge at shal-low indices, causing early elimination during tournament comparison. As a result, empirical measurements in our implementa-tion show near-linear growth with respect to 𝑛 over synthetic scaling tests. This is explained by the sparsity of ambiguous nodes, early elimination during lexicographic comparison, and caching of exploratory builds. 
+
+4.6 Memory Usage 
+
+The memory usage is determined by: 
+
+• The amount of non-terminals built in the worst case for any index on 𝑍 : 𝑘 .
+
+• The context, for each individual candidate: 𝐶 . How 
+
+𝐶 behaves asymptotically is defined by the host lan-guage. 
+
+• The cache for exploratory nodes grown: 𝑛 .
+
+• Each individual derivation may store at most 𝑟 back-pointers. Thus, memory usage scales with 𝑛 as 𝑂 (𝑛 + 𝑘𝐶 + 𝑘𝑟 ).
+
+## 5 Related Work 
+
+5.1 Generalized Parsing 
+
+Generalized parsers are algorithms that take an input and build a compact representation of all syntactically valid derivations. Our two stage pipeline depends on the first step having a generalized parser that preserves all valid derivations for the non-terminals of an input so that the contextual solver can choose which one is the right one according to context and constraints. Among generalized parsers, we find Earley[ 4], GLL[ 13 ], or GLR[7, 8, 16] parsers. Our solver does not interfere with parsing, but rather chooses which of all the possible constructs suits the input according to the document state and discards the others. For that reason, we need all possible derivations preserved with a generalized parser. Environment-Sensitive Lexicographic Disambiguation for Contextual Parsing Conference’17, July 2017, Washington, DC, USA 
+
+5.2 Parse Forests 
+
+Parse forests store the full semantic information of a parse. They are produced by generalized parsers, as they allow to ex-press ambiguity. Each parse forest has at least one parse tree, though some variants like Shared Packed Parse Forests[ 2 , 12 ](SPPFs) can encode exponentially many trees in polynomial memory. For these reasons, our algorithm takes a SPPF as input, and builds the final AST incrementally instead of letting ambiguity explode. 
+
+5.3 Semantic Predicates 
+
+Semantic predicates are a mechanism used in some parser generators such as ANTLR[ 10 , 11 ] or PEG parsers in which a boolean guard is attached to a production alternative during parsing to indicate whether that alternative is valid according to a shared context 𝐶 .A rule using a semantic predicate is of the form: 
+
+𝐴 → { 𝜙 (𝐶 )} 𝛼 
+
+where 𝜙 is a function that takes 𝐶 and returns a boolean. The parser computes the condition at the decision point to determine whether that alternative is viable. Our algorithm exhibits six main differences in comparison to semantic predicates: 1. Decision point: semantic predicates are evaluated dur-ing parsing, and if the predicate succeeds, the parser commits that derivation as the only valid one. Our solver, however, evaluates candidates after the full am-biguous parse has finished but before AST materializa-tion. 2. Disambiguation level: semantic predicates extend the grammar behavior with contextual conditions, effec-tively moving the grammar outside the pure CFG cat-egory by encoding procedural logic into productions. On the other hand, our grammar remains fully CFG, while ambiguity is preserved in the SPPF and contex-tual logic is isolated on the solver. We maintain a clean boundary between grammar and the derivation selec-tion procedure, whilst semantic predicates combines them. 3. Selection mechanism: semantic predicates operate as simple boolean filters, the alternative whose predi-cate succeeds is selected and competing alternatives are not materialized. Instead, our algorithm performs a tournament-style comparison, building complete derivation subtrees and being compared pairwise, elim-inating candidates based on divergence with respect to the winner. It differs in that it acts as a relative prefer-ence ordering, assuming associativity and transitivity for 𝐸 .4. Ambiguity preservation: semantic predicates do not preserve ambiguity, and often the first valid alternative gets chosen. In our algorithm, we preserve all valid meanings with a generalized parser and then prune candidates deterministically afterwards. While seman-tic predicates guide parsing, our solver interprets the parse forest according to the context. 5. Ordering power: semantic predicates often depend on immediate semantic properties, lookahead, and sym-bol tables. We take a different approach by comparing the non-terminals of built subtrees supporting the lex-icographic comparison accross derivations. 6. Order of evaluation: semantic predicates are evaluated during recursive descent, allowing for context muta-tion as parsing advances. In our model, the context is mutated only when a node is definitively appended, while exploratory builds do not mutate the context. Disambiguation becomes strictly left-to-right at the AST construction level. 
+
+5.4 Attribute Grammars 
+
+Attribute grammars[ 6] are a way to associate semantic in-formation with context-free grammars. In them, each non-terminal carries attributes and productions define equations for calculating those attributes (which may be synthesized or inherited). The key difference resides in that an attribute grammar decorates a chosen tree, whilst our solver chooses the tree itself. We distinguish four other differences: 1. Ambiguity: attribute grammars generally operate on unambiguous CFGs, and even when ambiguity is al-lowed the attribute system can’t resolve it. Our ap-proach requires an SPPF, treating ambiguity as ex-pected, bounded, and resolvable instead of an error. 2. Paradigm: attribute grammars are declarative and side-effect free. Our model uses a mutable context in which later decisions depend on earlier mutations and con-text evolves as nodes are committed to the AST. 3. Evaluation strategy: attribute grammars require well-defined evaluation order, fixed dependency graphs and (often) acyclicity constraints. We, in contrast, evaluate candidates pairwise discarding losing derivations and then commit that derivation mutating context after selection. 4. Expressiveness: attribute grammars can compute con-textual properties, propagate type environments or perform name resolution; but they are not defined as selection mechanisms over ambiguous forests, or define an ordering over derivations. 
+
+5.5 Ordered Choice in PEGs 
+
+In Parsing Expression Grammars[ 5 , 9], there exists a choice (/) operator which performs a deterministic, priority-based selection. For rules like: Conference’17, July 2017, Washington, DC, USA Alejandro Luis Vaz Mayato 
+
+𝐴 → 𝑑 1/𝑑 2
+
+it allows the parser to have 𝑑 2 as fallback in case 𝑑 1 didn’t match. PEG priority is static, defined at grammar level, and only depends on the local success of the leftmost derivation. Our solver is dynamic, depends on a mutable context, selects one derivation among all valid derivations, compares subtrees structurally and prunes candidates progressively. We observe four other differences: 1. Context: PEG ordered choice is locally greedy, select-ing 𝑑 2 iff 𝑑 1 fails. Our algorithm is globally comparative and sees all valid derivations simultaneously and com-mits one. 2. Ambiguity handling: PEGs do not represent ambiguity and output exactly one valid parse, while ambiguity is encoded away via rule ordering. Our approach re-lies on a generalized parser preserving all meanings compactly and treating ambiguity as bounded and in-tentional. 3. Expressiveness: PEG ordered choice alone cannot ex-press preference based on symbol tables (doing so requires embedding semantic predicates), previously chosen derivations, or structural comparison between two successful parses. Our solver’s decision can be influenced by earlier AST commits, deep subtree com-parison and context-sensitive ordering. 4. Grammar: PEGs have disambiguation encoded into rule order so reordering derivations changes semantics, since grammar and disambiguation are intertwined. In our method the grammar remains a pure CFG, dis-ambiguation logic is externalized into the solver, and the grammar can remain declarative and ambiguity-preserving. 
+
+5.6 SDF Filters 
+
+SDF filters[ 15 ] allow for declarative disambiguation over a parse forest. They also require a generalized parser, but disambiguation is resolved applying multiple filters to the forest and then materialize the remaining tree. Classical SDF filters are declarative and grammar-level, and do not model mutable document state that evolves dur-ing disambiguation. These filters encode priority, associativ-ity, restrictions, constraints and preferences; so the rules are applied sequentially and then the AST is built. The main difference between our algorithm and SDF filters is that our solver performs context-sensitive comparison between subtrees based on a mutable context. Our model allows for mutable context that disambiguates future non-terminals based on how earlier ones modified the context. The design philosophy differs in that our solver produces the start non-terminal when run: 
+
+𝑅 : 𝐵 × 𝐶 0 → 𝑁 𝑆 
+
+whilst SDF defines: 
+
+F : SPPF → SPPF 
+
+5.7 Summary 
+
+Table 1 summarizes the main differences between our solver and related disambiguation mechanisms. 
+
+## 6 Case Study: A Mathematical DSL 
+
+6.1 Grammar 
+
+The grammar of our DSL has 24 non-terminals and 25 token types. Our language has only one type of ambiguity, with 
+
+𝑘 = 2. See the full grammar specification for our language in appendix A. 
+
+6.2 Ambiguity 
+
+Ambiguity arises in the programs of our language when we find structures like 
+
+• f() ; or 
+
+• f(0) 
+
+because it can be both interpreted as a term with two factors ( f and (0) ) or a function call, as show in figure 2. So we’ve implemented a 𝐶 that stores a set of strings for variables that have been declared as functions 𝐶 𝑓 , and a 𝐸 
+
+that disambiguates between between a call or the first factor of the two-factor sequence by looking up whether 𝑣 ∈ 𝐶 𝑓 
+
+where 𝑣 is the variable string. Subsequently, we have also defined that when a Function 
+
+AST node is built, it inserts its variable into 𝐶 𝑓 .We will now walk through two examples to show the solver in action. 
+
+Figure 2. Parse subtree for function call (simplified). Environment-Sensitive Lexicographic Disambiguation for Contextual Parsing Conference’17, July 2017, Washington, DC, USA                                                 
+
+> Property Our Solver Semantic Predicates Attribute Grammars PEG Ordered Choice SDF Filters
+> Requires generalized parser Yes No No No Yes Preserves ambiguity explicitly Yes (SPPF) No Typically No No Yes Grammar remains pure CFG Yes No Yes No (priority-based) Yes Disambiguation location Post-parse During parsing After tree selection During parsing Post-parse Context mutability Yes (left-to-right) Yes No (declarative) No (static priority) No (declarative) Context affects future decisions Yes Yes Limited No No Pairwise structural comparison Yes No No No No Deterministic outcome Yes Yes Yes Yes Certain configurations Bounded ambiguity required Yes No No No No Separation of grammar and disambiguation Strict Mixed Strict Mixed Strict
+
+Table 1. Comparison between environment-sensitive lexicographic disambiguation and related techniques. 
+
+Implicit multiplication. For the full document: 
+
+x(x + 1) 
+
+Our solver finds the earliest point of divergence at index zero of the term, where the different derivations produce different exploratorily-built nodes: 
+
+• A factor containing a function call to function x with the expression of the first argument being x + 1 .
+
+• A factor containing a raw variable, x, as the first factor of the sequence. Therefore, it looks up in 𝐶 𝑓 whether x was declared as a function. Since it wasn’t declared as a function before, 𝐸 
+
+deliberately selects the raw variable factor as the correct interpretation. 
+
+Function call. Suppose we have the document: 
+
+f(x) := x f(0) 
+
+First, the solver will find the unambiguous Function node. Thus, when it is committed to the AST, it inserts into 𝐶 𝑓 that 
+
+f was declared as a function. Later, when 𝐸 finds itself disambiguating f(0) , it will look up 𝐶 𝑓 and see f was declared as a function, therefore choosing the interpretation that f(0) is a function call. As we see in this example, the strict total ordering require-ment is easily imposed, and no matter which winner was selected at first by the algorithm, we’ll arrive at function call iff the variable was declared as a function. The strict ordering requirement is not an oracle; it corre-sponds to defining a deterministic precedence policy over competing interpretations. In practice, this is simpler than defining consistent semantic predicates across the grammar. 
+
+6.3 Nested Ambiguity 
+
+Memoization is essential so pathological input like: 
+
+f(f(f(f(f(f(f(f(f(f(f(0))))))))))) 
+
+can be processed without collapsing into exponential time. In this example, 𝑘 is still equal to 2 because the nested expres-sions are not ambiguous themselves but rather their factors. However, caching is necessary to process it in polynomial time. Our implementation is able to solve a few hundred nested levels with memoization, avoiding exponential explo-sion. 
+
+6.4 Implementation and Evaluation 
+
+Implementation. The solver and generalized parser were implemented in Rust 1.95-nightly. We built a custom Earley parser producing an SPPF and a standalone contextual solver. The forest is roughly represented as: 
+
+HashMap<Backpointer, HashSet<Vec<Backpointer>>> 
+
+where each key corresponds to a non-terminal span and maps to its set of derivations. The grammar has maximum derivation length 𝑟 = 8.Since exploratory builds are side-effect free, each back-pointer is built at most once. The context is merely a simple struct: 
+
+struct Context { functions: HashSet<String> } 
+
+It stores declared functions and mutates only when a 
+
+Function node is definitively appended. Exploratory builds use cloned contexts. The DSL defines 24 AST node types, built incrementally and heap-allocated. 
+
+Experimental setup. Experiments were run on a Mac-Book Air M4 (10-core CPU, 16GB RAM, macOS) compiled in release mode with full LTO and opt-level = 3. Each measurement was repeated five times. 
+
+Results. We measured solver runtime as a function of SPPF size 𝑛 for both unambiguous and ambiguous inputs. Unambiguous input: Conference’17, July 2017, Washington, DC, USA Alejandro Luis Vaz Mayato 
+
+𝑛 mean time (ms) 5k 0.23 50k 1.66 175k 5.07 657k 13.01 2.5M 33.45 Ambiguous input: 
+
+𝑛 mean time (ms) 4k 0.58 36k 3.16 124k 7.75 453k 17.06 1.7M 45.35 Observed growth is close to Θ(𝑛 0.7) in both cases. Ambi-guity seems to increase constant factors but not change the exponent. Measured ambiguity density was 𝛿 ≤ 1.024 , and no pathological slowdowns were observed, including nested ambiguous inputs. The current implementation uses recursive construction and may exhibit stack overflow on artificially deep nesting (i.e. > 500 depth levels). This does not affect the theoretical guarantees but suggests that an iterative formulation would be preferable for production-scale inputs. These results empirically support the 𝑂 (𝛿𝑛𝑟 ) complexity under bounded ambiguity. 
+
+## 7 Discussion 
+
+7.1 Limitations 
+
+Although our proposed solver provides a deterministic and context-sensitive mechanism able to resolve bounded ambi-guity, it is subject to several important limitations. 
+
+Bounded Ambiguity Requirement. The linear-time guar-antee depends on 𝑘 being constant. Grammars in which a single non-terminal may admit an arbitrary number of derivations over the same span violate this assumption and therefore may cause the solver to explode combinatorily. This approach is inherently unsuitable for grammars with-out structural constraints. 
+
+Left-to-right commitment. Context mutation happens strictly left-to-right as it’s the order in which the AST is built. Earlier decisions might influence later ones, but not vice versa. Ambiguities whose resolution depends on future constructs might not be resolved as intended without extend-ing the model with rollback. 
+
+Dependence on a well-behaved chooser. Correctness and determinism rely on the chooser function 𝐸 defining a strict total ordering. In practice, it must behave transitively and co-herently across comparisons. If 𝐸 violates this guarantee, the tournament-style pruning process may yield unstable results. The framework does not enforce ordering laws formally, and they must be guaranteed by the host implementation. 
+
+Exploratory build cost. Although caching exploratory builds mitigates costs, exploratory subtree construction may introduce significant constant-factor overhead on deep and ambiguous nested constructs even when asymptotic bounds remain linear. 
+
+Context predictability. Because the context 𝐶 is mutable and host-defined, its expressiveness is unconstrained. It thus introduces the risk of large complex increasing memory usage beyond practical limits, or subtle context mutations making disambiguation behavior harder to reason about. 
+
+7.2 Applicability 
+
+The solver is best suited for languages where ambiguity arises from well-structured syntactic overlap dependent on evolving document state rather than global unstructured am-biguity. Its design favors environments targeting a final AST to be produced deterministically, with the aid of contextual information to guide syntactic interpretation. 
+
+Programming languages with context-dependent syn-tax. Many modern programming languages exhibit localized ambiguities whose resolution depends on symbol tables, dec-larations, or type environments (e.g. distinguishing variable references from type names, or function calls from construc-tors). The solver provides a principled alternative to ad-hoc grammar refactoring or multi-phase AST building, allow-ing those languages to retain a clean CFG while delegating contextual choice to the solver. 
+
+Domain-specific languages. Domain-Specific Languages (DSLs) often introduce environment-sensitive constructs or user defined operators, amongst other self-defined behavior. Because ambiguity in such DSLs is typically small, bounded, and follows coherent rules, the solver is a practical fit. 
+
+Mathematical and symbolic notations. Languages mod-eling mathematical notation frequently contain ambiguities between implicit multiplication, function application, and parenthesized grouping. These ambiguities are rarely re-solvable locally but depend on previously introduced dec-larations. The left-to-right context mutation model aligns naturally with such semantics. Conversely, the approach is less appropriate for languages with pervasive or unbounded ambiguity, for specifications re-quiring fully declarative disambiguation, or for systems that depend on global whole-program inference before syntax can be interpreted. Within its intended design space (bounded, contextual ambiguity), the solver provides a structured and deterministic resolution mechanism that integrates syntac-tic and contextual reasoning without sacrificing grammar clarity. 
+
+## References   
+
+> [1] Aho, A. V., Lam, M. S., Sethi, R., and Ullman, J. D. Compilers: Princi-ples, Techniques, and Tools , 2 ed. Addison-Wesley, 2006.
+
+Environment-Sensitive Lexicographic Disambiguation for Contextual Parsing Conference’17, July 2017, Washington, DC, USA 
+
+[2] Billot, S., and Lang, B. The structure of shared forests in ambiguous parsing. In 27th Annual Meeting of the Association for Computational Linguistics (Vancouver, British Columbia, Canada, June 1989), Associa-tion for Computational Linguistics, pp. 143–151. [3] Cormen, T. H., Leiserson, C. E., Rivest, R. L., and Stein, C. Introduc-tion to Algorithms , 3rd ed. The MIT Press, Cambridge, Massachusetts, 2009. [4] Earley, J. An efficient context-free parsing algorithm. Commun. ACM 13 , 2 (Feb. 1970), 94–102. [5] Ford, B. Parsing expression grammars: a recognition-based syntactic foundation. SIGPLAN Not. 39 , 1 (Jan. 2004), 111–122. [6] Knuth, D. E. The genesis of attribute grammars. In Attribute Gram-mars and their Applications (Berlin, Heidelberg, 1990), P. Deransart and M. Jourdan, Eds., Springer Berlin Heidelberg, pp. 1–12. [7] Lavie, A., and Tomita, M. Glr* – an efficient noise-skipping pars-ing algorithm for context free grammars. In International Work-shop/Conference on Parsing Technologies (1993). [8] McPeak, S., and Necula, G. C. Elkhound: A Fast, Practical GLR Parser Generator. In Proceedings of the 13th International Conference on Compiler Construction (2004), vol. 2985 of Lecture Notes in Computer Science , Springer International Publishing, pp. 73–88. [9] Medeiros, S., Mascarenhas, F., and Ierusalimschy, R. Left recursion in parsing expression grammars. Science of Computer Programming 96 
+
+(Dec. 2014), 177–190. [10] Parr, T., and Fisher, K. Ll(*): the foundation of the antlr parser generator. In Proceedings of the 32nd ACM SIGPLAN Conference on Pro-gramming Language Design and Implementation (New York, NY, USA, 2011), PLDI ’11, Association for Computing Machinery, p. 425–436. [11] Parr, T. J., and Quong, R. W. Antlr: A predicated- parser generator. [12] Scott, E., and Johnstone, A. Recognition is not parsing — sppf-style parsing from cubic recognisers. Science of Computer Programming 75 ,1 (2010), 55–70. Special Issue on ETAPS 2006 and 2007 Workshops on Language Descriptions, Tools, and Applications (LDTA ’06 and ’07). [13] Scott, E., and Johnstone, A. Gll parse-tree generation. Science of Computer Programming 78 , 10 (2013), 1828–1844. Special section on Language Descriptions Tools and Applications (LDTA’08 & ’09) & Special section on Software Engineering Aspects of Ubiquitous Computing and Ambient Intelligence (UCAmI 2011). [14] Sipser, M. Introduction to the Theory of Computation , 2 ed. Thomson Course Technology, Boston, MA, 2006. [15] van den Brand, M., van Deursen, A., Heering, J., de Jong, H., de Jonge, M., Kuipers, T., Klint, P., Moonen, L., Olivier, P., Scheerder, J., Vinju, J., Visser, E., and Visser, J. The asf+sdf meta-environment. Electronic Notes in Theoretical Computer Science 44 , 2 (Jun 2001), 3–8. [16] Visser, E. Scannerless generalized-lr parsing. 
+
+## A Case Study Grammar 
+
+Below is the full Extended Backus-Naur Form (EBNF) speci-fication for our language. This grammar is converted to BNF form automatically and then parsed, but for simplicity we will only provide the EBNF form. The grammar is unambiguous except for the call / implicit multiplication overlap. 
+
+//> EBNF -> START Start -> (NEWLINES? Level1 (NEWLINES Level1 SPACES?)*)? NEWLINES? ENDOFFILE ↩→
+
+//> EBNF -> 1 ºLEVEL Definition -> Variable DEFINITION Level2 Function -> Variable OPEN (Variable (COMMA Variable)* SPACES?)? CLOSE DEFINITION Level2 ↩→
+
+Node -> Level2 Equation -> Level2 EQUALITY Level2 Use -> USE MODULE //> EBNF -> 2 ºLEVEL Expression -> (SIGN SPACES?)* Level3 ((SIGN)+ Level3)* ↩→
+
+//> EBNF -> 3 ºLEVEL Term -> Level4 ((OPERATOR)? Level4)* //> EBNF -> 4 ºLEVEL Factor -> Level5 (EXPONENTIATION Level2 EXPONENTIATION)? ↩→
+
+Limit -> LIMIT Variable TO Level2 SIGN? OF Nest (EXPONENTIATION Level2 EXPONENTIATION)? ↩→
+
+//> EBNF -> 5 ºLEVEL Infinite -> INFINITE Variable -> IDENTIFIER Nest -> OPEN Level2? CLOSE Tensor -> ENTER (Level2 (COMMA Level2)* SPACES?)? EXIT ↩→
+
+Whole -> NUMBER Absolute -> PIPE Level2 PIPE Undefined -> UNDEFINED Rational -> RATIONAL Call -> Variable OPEN (Level2 (COMMA Level2)* SPACES?)? CLOSE ↩→
+
+//> EBNF -> LEVELS Level1 -> Definition | Function | Node | Equation | Use ↩→
+
+Level2 -> Expression Level3 -> Term Level4 -> Factor | Limit Level5 -> Infinite | Variable | Nest | Tensor | Whole | Absolute | Undefined | Rational | Call
