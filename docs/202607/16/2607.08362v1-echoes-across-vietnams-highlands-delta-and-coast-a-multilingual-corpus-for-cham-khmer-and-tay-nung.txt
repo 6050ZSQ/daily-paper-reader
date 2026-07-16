@@ -1,0 +1,543 @@
+Title: Echoes Across Vietnam's Highlands, Delta, and Coast: A Multilingual Corpus for Cham, Khmer, and Tay-Nung
+
+URL Source: https://arxiv.org/pdf/2607.08362v1
+
+Published Time: Fri, 10 Jul 2026 01:03:51 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# Echoes Across Vietnam’s Highlands, Delta, and Coast: A Multilingual Corpus for Cham, Khmer, and Tay-Nung 
+
+Anh Trac Duc Dinh 1* †, Khang Nhat Hoang Vo 2* †, Vinh Cong Doan 1,Tai Tien Ta 1, Khoa Duc Anh Lam 11Faculty of Computer Science and Engineering, Ho Chi Minh City University of Technology (HCMUT), VNU-HCM, Ho Chi Minh City, Vietnam 
+
+> 2
+
+Mohamed bin Zayed University of Artificial Intelligence, Abu Dhabi, UAE  
+
+> *Corresponding author: anh.dinhtracduc@hcmut.edu.vn; Khang.Vo@mbzuai.ac.ae
+
+Abstract 
+
+Vietnam’s ethnic minority languages are al-most absent from the field of Natural Lan-guage Processing (NLP), and the challenge goes beyond data scarcity: Cham, Khmer, and Tay-Nung differ sharply in script, Vietnamese contact, and standardization, conditions un-der which standard multilingual adaptation can learn the wrong signals. We introduce CKTN, the first corpus and benchmark for these lan-guages (44,367 documents, 24M subword to-kens), spanning continued pretraining, cate-gory classification, and summary-document retrieval. We show that existing multilingual encoders severely fragment these languages, and that common adaptation metrics can mis-lead: models may lower language-modeling loss or excel at lexical-overlap retrieval while still failing at semantic generalization across documents. We address this with a script-aware adaptation recipe - vocabulary augmentation combined with calibrated replaced-token pre-training - that prevents the discriminator from exploiting trivial script mismatches. The result is an encoder with substantially less fragmen-tation and the strongest classification perfor-mance among evaluated models, exposing the limits of lexical-overlap retrieval as an evalua-tion signal. 
+
+1 Introduction 
+
+Low-resource NLP is often framed as a problem of missing data. For many minority languages, however, scarcity is only one part of the difficulty. Languages spoken under sustained contact with a dominant national language may diverge from their higher-resource genealogical relatives, develop un-stable or mixed writing practices, and appear in digital text through scripts that are poorly repre-sented by multilingual tokenizers. In such settings, adaptation can fail even when some text is avail-able: models may learn local subword regularities, 
+
+> †These authors contributed equally to this work, and are project leaders. Names are ordered alphabetically.
+
+lexical overlap, or script cues rather than transfer-able language structure. Vietnam’s ethnic minority languages offer a compelling testbed for this problem. Vietnam rec-ognizes 54 ethnic groups (Van, 2002; Tappe, 2015); beyond the Kinh majority, over 14 million people speak minority languages spanning the Austroasi-atic, Tai-Kadai, Austronesian, and Sino-Tibetan families (Edmondson and Gregerson, 2007; Liu et al., 2020). We focus on three languages ac-tively published in digital media yet almost absent from NLP: Cham, Khmer, and Tay-Nung. Together they form a natural contrast set: Cham (Austrone-sian, south-central coast) is traditionally written in a Brahmic-derived abugida but often appears in Latin script online; Khmer (Austroasiatic, Mekong Delta) uses a script without explicit word bound-aries; and Tay-Nung (Tai-Kadai varieties of the northern highlands) uses Latin-based orthography but has limited standardized digital text. These languages thus span different regions, scripts, lan-guage families, and degrees of visible contact with Vietnamese. This diversity is not merely sociolinguistic back-ground; it creates concrete modeling failures. Existing multilingual encoders such as mBERT, XLM-R, and RemBERT (Pires et al., 2019; Con-neau et al., 2020; Chung et al., 2021) allocate little vocabulary capacity to these languages, fragment-ing words into continuation pieces and weakening lexical representations. Moreover, script hetero-geneity creates a specific hazard for ELECTRA-style continued pretraining (Clark et al., 2020): a weak generator trained jointly across languages can produce replacements that are trivially detectable from script identity alone, such as substituting a Khmer-script token into a Latin-script Cham or Tay-Nung sequence. The discriminator can then solve replaced-token detection through shortcuts rather than semantic confusability. We address these challenges by introducing 1arXiv:2607.08362v1 [cs.CL] 9 Jul 2026 CKTN, the first multilingual corpus and bench-mark for Cham, Khmer, and Tay-Nung, and by proposing a script-aware adaptation recipe com-bining vocabulary augmentation with calibrated replaced-token pretraining. CKTN contains 44,367 documents and over 24M subword tokens, support-ing continued pretraining, category classification, and summary-document retrieval. Our experiments show that tokenizer fragmentation strongly affects downstream transfer, that language-modeling loss and lexical-overlap retrieval can overestimate rep-resentation quality, and that calibrated script-aware pretraining substantially improves category classi-fication. Our contributions are: 
+
+• We introduce CKTN, the first corpus and benchmark for Cham, Khmer, and Tay-Nung (44,367 documents), supporting continued pretraining, 28-way category classification, and summary-document retrieval. 
+
+• We identify a failure mode of ELECTRA-style adaptation in script-heterogeneous settings: weak generators create script- or form-based corruptions that let the discriminator solve replaced-token detection through shortcuts. 
+
+• We propose a calibrated adaptation recipe-vocabulary augmentation (Gee et al., 2022; Minixhofer et al., 2022), linear generator-discriminator scheduling, and script-aware re-placement filtering-that achieves the strongest classification performance, while our retrieval analysis explains why lexical-overlap tasks can overestimate representation quality. 
+
+2 Related Work 
+
+2.1 Low-Resource Corpus for Vietnamese Ethnic Languages 
+
+Corpus development for Vietnam’s ethnic minority languages remains critically fragmented and scarce. While Le et al. (2004) and Trieu and Ittoo (2020) contributed foundational Vietnamese and Southeast Asian corpora, neither addressed indigenous mi-nority languages. The few directly relevant efforts target only Bahnar: Vo et al. (2024) applied NMT with transfer learning, and Nguyen et al. (2025) introduced BARTBahnar with hybrid fine-tuning. Isolated attempts for a few other languages also ex-ist, but only as small-scale dictionary-based or sta-tistical systems published outside mainstream NLP venues, such as Vietnamese–Ede translation (Le and Khanh, 2015) and Vietnamese–K’Ho transla-tion (Nguyen et al., 2023). This reflects a broader absence of coordinated NLP infrastructure, leaving dozens of Vietnam’s minority languages without systematically collected, annotated, or task-ready corpora for NLP research. 
+
+2.2 Tokenization as a Bottleneck for Low-Resource Language Modeling 
+
+Multilingual models such as mBERT (Pires et al., 2019), XLM-RoBERTa (Conneau et al., 2020), and RemBERT (Chung et al., 2021) allocate vocabu-lary disproportionately toward high-resource lan-guages, over-fragmenting low-resource languages and degrading performance. Liang et al. (2023) quantify this directly: expanding XLM-R’s vocab-ulary from 250K to one million tokens outperforms the original by 11.2% on MasakhaNER and 5.8% on Americas NLI. Limisiewicz et al. (2023) fur-ther confirm that language-specific token coverage, not model size, drives performance disparities on word-level tasks. To address this, vocabulary adaptation meth-ods transfer pretrained models to new languages without full retraining. FVT (Gee et al., 2022) re-places the tokenizer and reinitializes embeddings for efficient adaptation, while WECHSEL (Minix-hofer et al., 2022) uses cross-lingual static em-beddings to initialize target-language embeddings, enabling transfer of monolingual models to unseen languages. Nag et al. (2023) show that entropy-based vocabulary augmentation yields significant gains for low-resource languages, collectively es-tablishing vocabulary expansion as a necessary step in low-resource adaptation. 
+
+2.3 Adapting Multilingual Pretrained Encoders to Low-Resource Languages 
+
+Multilingual encoders such as mBERT and XLM-R, despite broad language coverage, often under-perform on low-resource languages due to the curse of multilinguality (Chang et al., 2024): as more lan-guages share a fixed model capacity, per-language representation quality degrades. The most direct remedy is continued pre-training (CPT), where the model is further trained on target-language data. Ebrahimi and Kann (2021) show that CPT on lim-ited New Testament data achieves substantial gains when adapting XLM-R to 1,600 languages, im-proving POS tagging by 17.69% and NER by 6.29 F1 points, outperforming more complex methods in low-data conditions. Downey et al. (2024) similarly demonstrate that targeted multilingual adaptation 2of XLM-R consistently outperforms mono- and multilingual baselines across 15 Uralic languages. However, CPT risks overwriting multilingual knowledge through catastrophic forgetting. Modu-lar approaches address this by isolating language-specific parameters. Pfeiffer et al. (2022) introduce X-Mod, which adds language-specific modules to XLM-R, improving NER and question answering while allowing new languages to be added post-hoc without degrading existing ones. Gurgurov et al. (2025) show that lightweight adapter meth-ods, specifically Sequential and Invertible Bottle-neck adapters, match or outperform full fine-tuning on NER and sentiment analysis using mBERT and XLM-R with far fewer trainable parameters. To-gether, these findings suggest that CPT is effective under extreme data scarcity, while modular adap-tation is preferable when preserving cross-lingual transfer is a priority. 
+
+2.4 Pretraining Objectives for Low-Resource Encoders: From MLM to ELECTRA 
+
+Beyond vocabulary, the pretraining objective itself plays a critical role in data efficiency, particularly when training signals are scarce. The standard Masked Language Modeling objective learns from only 15% of tokens per step (Devlin et al., 2019), leaving the majority of the input sequence unused. ELECTRA (Clark et al., 2020) addresses this in-efficiency via Replaced Token Detection (RTD), a discriminative objective that classifies every to-ken as real or generator-replaced, thereby utilizing the full sequence at each training step. He et al. (2023) demonstrate RTD’s superior sample effi-ciency: mDeBERTa Base achieves 79.8% zero-shot accuracy on XNLI, a 3.6% improvement over XLM-R. This efficiency advantage is especially relevant in low-resource settings, where limited data makes every training signal count. Indeed, Cruz et al. (2021) and Antoun et al. (2021) suc-cessfully apply ELECTRA to Filipino and Ara-bic respectively, both outperforming MLM-based baselines despite constrained corpus sizes. Crucially, these adaptations remain monolingual, single-script settings, where sampling a replace-ment directly from the generator’s raw output dis-tribution – as in the original ELECTRA recipe – is safe because the generator is already well-calibrated. This assumption breaks down under multilingual, script-heterogeneous, low-resource adaptation: a weak, from-scratch generator can naively propose replacements that are wrong for su-perficial reasons – a Khmer-script piece substituted into a Latin sequence, or a degenerate token stand-ing in for a meaningful one – letting the discrimina-tor learn shortcut cues (script, frequency) instead of genuine semantic confusability, and eroding RTD’s sample-efficiency advantage. We take this as the core problem our method must solve, and address it via a difficulty-calibrated replacement sampler that constrains candidates by script compatibility, well-formedness, and embedding similarity – the central mechanism enabling ELECTRA-style pretraining to remain effective in this regime. 
+
+3 Methodology 
+
+3.1 CKTN Corpus and Benchmark Design Web  
+
+> Scraper
+> HTML
+> Cleanser
+> Normaliza-
+> tion
+> Metadata
+> Collection
+> Selected
+> Web
+> Pages
+> Category
+> Classifi-
+> cation
+> Informa-
+> tion
+> Retrieval
+> 80/20 Split
+> Category Filter Summary Filter Mask
+> Language
+> Model-
+> ling
+> JSON
+
+Figure 1: Data collection and preprocessing pipeline for minority language corpora (Cham, Khmer, Tay-Nung) from VOV and local news. 
+
+CKTN is designed as both a resource for Viet-namese ethnic minority languages and a benchmark for low-resource transfer under script and contact variation. Unlike single-language low-resource col-lections, CKTN combines three languages differ-ing in family, region, script, and Vietnamese con-tact: Cham (south-central coast), Khmer (Mekong Delta), and Tay-Nung (northern highlands), allow-ing us to test whether adaptation succeeds through lexical overlap, script compatibility, or genuine se-mantic transfer. We collect data from continuously updated Viet-namese government and regional news outlets, in-cluding Voice of Vietnam ,1 Ca Mau Newspaper ,2
+
+Can Tho Newspaper ,3 An Giang Province Web Por-tal ,4 and Ethnic Minority and Mountainous Re-gions .5 The snapshot was collected around Febru-ary 2026. 
+
+> 1https://vov4.vov.vn/
+> 2https://khmer.baocamau.vn/
+> 3https://baocantho.com.vn/khmer/
+> 4https://angiang.gov.vn/khmer
+> 5https://km-dantocmiennui.baotintuc.vn/
+
+3Figure 1 summarizes preprocessing: crawling, boilerplate removal, Unicode normalization, and metadata extraction (language, source, category, URL, title, summary, date). Khmer is addition-ally segmented with khmer-nltk , since its script lacks explicit word boundaries. Cleaned docu-ments support three benchmark settings: continued pretraining, category classification, and summary-document retrieval. The corpus contains 44,367 documents, 663,881 sentences, and over 24M BPE subword tokens (Khmer: 27,808; Cham: 11,481; Tay-Nung: 5,078 documents). Pretraining uses an 80/20 train-development split (seed 42). Classification uses the 9–10 most frequent categories per language (28 labels total). Retrieval uses documents with non-empty summaries, pairing each summary as a query with its article as the positive document. This design spans different levels of lexical depen-dence: pretraining evaluates token-level adapta-tion, retrieval measures recovery via shared sur-face forms, and classification tests generalization across lexically dissimilar articles. As our results show, models can excel at language modeling or lexical-overlap retrieval while still failing at cross-document semantic generalization. 
+
+3.2 Vocabulary Augmentation 
+
+The first obstacle in adapting multilingual encoders to CKTN is lexical fragmentation: existing mul-tilingual tokenizers allocate little vocabulary ca-pacity to Cham, Khmer, and Tay-Nung, splitting words into long sequences of continuation pieces. This weakens both downstream representations and ELECTRA-style pretraining, since fragmented lex-ical units make the generator more likely to propose malformed replacements, letting the discriminator rely on surface artifacts rather than semantic plau-sibility. We therefore expand the source vocabulary before continued pretraining. Let Vsrc be the source encoder’s original vo-cabulary and C = S 
+
+> ℓ
+
+Cℓ the concatenated Cham, Khmer, and Tay-Nung pretraining corpora. We construct an extended vocabulary Vext in three steps: candidate selection, tokenizer-score calibra-tion, and embedding initialization. 
+
+Candidate selection. We train an auxiliary Sen-tencePiece Unigram tokenizer (Kudo and Richard-son, 2018) on C to obtain a candidate vocabulary 
+
+Vaux . A candidate piece t ∈ Vaux is retained if it is not already in Vsrc , occurs at least τ times in the CKTN corpus, and passes a validity filter. The validity filter removes punctuation-contaminated pieces, control symbols, digit-dominant pieces, and forms that are inconsistent with the script profile of the language in which they occur. This prevents the extended vocabulary from being filled with boiler-plate artifacts or cross-script noise. 
+
+Tokenizer-score calibration. SentencePiece Un-igram tokenization performs Viterbi decoding over token log-scores. When new pieces are inserted, assigning them arbitrary scores can cause two fail-ures: over-selection of long noisy pieces or under-selection of useful new pieces. We therefore initial-ize each new token score from its decomposition under the original tokenizer. Let I(t) be the sequence of source-vocabulary pieces produced by tokenizing the surface form ˜t
+
+with the original tokenizer, and let ℓsrc (i) denote the original Unigram log-score of source piece i.We assign the new piece t the calibrated score 
+
+ˆℓ(t) = 1
+
+|I(t)|
+
+X
+
+> i∈I(t)
+
+ℓsrc (i) − λlen (|˜t| − 1) (1) where λlen is a length penalty. This places the new piece near the score of its original decomposition while discouraging overly long pieces. The result-ing extended vocabulary is 
+
+Vext = Vsrc ∪ T, (2) where T is the set of retained CKTN pieces. 
+
+Embedding initialization. After extending the vocabulary, we expand the input embedding matrix while preserving the pretrained embedding space. Existing tokens keep their original embeddings. Following vocabulary-transfer and embedding-initialization approaches (Gee et al., 2022; Minix-hofer et al., 2022), each new token t is initialized from the embeddings of its source-token decompo-sition: 
+
+et =
+
+
+
+> 1
+> |I(t)|
+
+P 
+
+> i∈I(t)
+
+E(0)  
+
+> i
+
+, if |I(t)| > 0,
+
+> 1
+> |J(t)|
+
+P 
+
+> j∈J(t)
+
+E(0)  
+
+> j
+
+, if |J(t)| > 0,
+
+¯e, otherwise ,
+
+(3) where E(0) is the original embedding matrix, J(t)
+
+is a character-level decomposition of ˜t under the source tokenizer, and ¯e is the mean source em-bedding. This initialization anchors new tokens 4in the existing multilingual space and avoids the instability of randomly initialized lexical entries. The extended tokenizer is used for all subsequent continued pretraining and downstream evaluation. As shown in Section 4.3, this step substantially re-duces fertility and continuation-token ratio across all three languages, giving the generator and dis-criminator cleaner lexical units for the calibrated pretraining stage. 
+
+3.3 Script-Aware Calibrated Replacement Pretraining 
+
+After vocabulary augmentation, we continue pre-training with an ELECTRA-style replaced token detection (RTD) objective, which supervises ev-ery non-padding token rather than only masked positions. Applying the standard recipe directly is unstable here due to two asymmetries: the discriminator is initialized from the vocabulary-augmented encoder while the generator is a much smaller from-scratch Transformer, and CKTN is script-heterogeneous (Cham/Tay-Nung mostly Latin script, Khmer in Khmer script). A weak generator can thus produce script-inconsistent re-placements (e.g., a Khmer-script token in a Latin context), letting the discriminator solve RTD via script/formatting shortcuts instead of learning gen-uine language structure. CKTN-ELECTRA addresses this with a smaller generator, a script-aware difficulty-calibrated re-placement sampler, and a linear schedule for intro-ducing the discriminator loss. 
+
+Generator objective. Given input 
+
+x = [x1, . . . , x n] with masked view xm and original tokens ˆxi, the generator GθG is trained with standard MLM: 
+
+LMLM (x; θG) = E
+
+"X
+
+> i∈m
+
+− log pG(ˆ xi | xm)
+
+#
+
+(4) 
+
+Difficulty-calibrated replacement sampling. 
+
+For each masked position i, we restrict candi-dates to the top-k generator logits, then filter by four constraints: (1) not identical to the orig-inal token; (2) well-formed (no special/control tokens or punctuation-, digit-, symbol-dominant pieces unless the original is of the same class); (3) script-compatible with the local context (Khmer-script candidates excluded from Latin Cham/Tay-Nung contexts, and vice versa, barring script-agnostic symbols or named entities); (4) within an embedding-similarity band, 
+
+ρmin ≤ cos( eˆxi , e c) ≤ ρmax , (5) which excludes candidates too similar (uninforma-tive) or too dissimilar (trivially rejectable). Given the filtered set Vi, the replacement is drawn from a temperature-scaled softmax over generator log-its restricted to Vi; if Vi is empty, the token is left unchanged. RTD labels are defined relative to the original pre-masking token ˆxi, so a generator sam-ple equal to ˆxi is labelled unchanged. 
+
+Discriminator objective. Given corrupted se-quence xc and label yt = 1[xct = ˆ xt], the discrimi-nator DθD is trained with binary cross-entropy over all non-padding positions: 
+
+LRTD (x; θD) = −E
+
+" nX
+
+> t=1
+
+
+
+yt log DθD (xc, t )+ (1 − yt) log  1 − DθD (xc, t )#
+
+(6) 
+
+Linear generator-discriminator scheduling. To avoid destabilizing the from-scratch generator, RTD is introduced gradually via L = LMLM +
+
+λ(t)LRTD , with λ(t) ramping linearly from 0 (warmup, generator-only) to λmax (joint training) between twarmup and tramp , then held fixed. 
+
+Diagnostics and ablations. We track replace-ment rate, valid-candidate rate, RTD accuracy, dis-criminator confidence, and RTD entropy to con-firm replacements are neither trivial nor excessively noisy. Ablations remove script-class constraints (sampling after only identity/well-formedness fil-tering) or the linear schedule (fixed λ = λmax 
+
+from step one). After pretraining, the generator is discarded and the discriminator is fine-tuned on downstream tasks. 
+
+4 Experiments 
+
+4.1 Data Analysis 
+
+We analyze token frequency and Zipfian distribu-tion (Zipf, 1935, 1949) on the pre-training MLM dataset, which serves as the foundation before split-ting into downstream tasks; further data analysis is provided in Appendix B. Figure 2 shows that Cham documents are sub-stantially longer (peak ≈900 BPE tokens) than 50 500 1000 1500 2000 2500      
+
+> BPE Tokens per Document
+> 0
+> 500
+> 1000
+> 1500
+> 2000
+> 2500
+> Freq.
+> Train Split
+> Cham (9,184)
+> Khmer (22,246)
+> Tay-Nung (4,062)
+> 0500 1000 1500 2000 2500
+> BPE Tokens per Document
+> 0
+> 200
+> 400
+> 600
+> Freq.
+> Dev Split
+> Cham (2,297)
+> Khmer (5,562)
+> Tay-Nung (1,016)
+
+Figure 2: Distribution of BPE subword token counts per document across Cham, Khmer, and Tay-Nung MLM corpora. 10 0 10 1 10 2 10 3 10 4 10 5               
+
+> Rank
+> 10 5
+> 10 4
+> 10 3
+> 10 2
+> 10 1
+> 10 0
+> Normal. Freq.
+> Train Split
+> Cham
+> Khmer
+> Tay-Nung
+> 1/ r
+> 10 010 110 210 310 410 5
+> Rank
+> 10 5
+> 10 4
+> 10 3
+> 10 2
+> 10 1
+> 10 0
+> Normal. Freq.
+> Dev Split
+> Cham
+> Khmer
+> Tay-Nung
+> 1/ r
+
+Figure 3: Word frequency distributions of the MLM corpora on a log-log scale, compared against the ideal Zipf law ( ∝ 1/r ). 
+
+Khmer (peak ≈250) and Tay-Nung (bimodal, 50– 500), reflecting differences in article style and or-thographic density. Train and dev distributions align closely across all three languages, confirming that the splits are drawn from the same domain. Figure 3 confirms that all three corpora follow a natural Zipfian distribution, validating that the col-lected text is authentic and topically diverse rather than repetitive or synthetic. The close overlap be-tween train and dev curves further indicates a con-sistent vocabulary distribution across splits, with no evidence of domain shift. 
+
+4.2 Experimental Setup 
+
+We evaluate three pretrained multilingual encoders: mBERT, XLM-R-base, and RemBERT, reporting performance before and after continued pretraining (CPT) on CKTN with the MLM objective for six epochs (15% masking, maximum sequence length 512, learning rate 2 × 10 −5, warmup ratio 0.06, weight decay 0.01, and gradient clipping at 1.0). CKTN-ELECTRA initializes its discriminator from vocabulary-augmented RemBERT and pairs it with a generator at approximately one fourth of the discriminator’s depth, trained from scratch jointly with the discriminator using a calibrated replace-ment procedure: top-k = 64 candidate replace-ments, temperature τ = 1 .25 , and similarity band 
+
+[ρmin , ρ max ] = [0 .15 , 0.95] . The RTD weight λ
+
+follows a linear schedule: λ = 0 for epochs 1–2, increasing linearly to λmax = 50 during epochs 2– 3, and remaining fixed for epochs 4–6. After CPT, the generator is discarded and the discriminator encoder is fine-tuned for downstream tasks. We evaluate models on three groups of metrics: (1) intrinsic tokenization quality, measured by fer-tility, token coverage, and continuation-token ratio; (2) category classification, evaluated using accu-racy and Macro-F1 (the primary metric given the imbalanced label distribution), with all encoders fine-tuned for five epochs at maximum sequence length 512, selecting models on the development set and reporting held-out test performance; and (3) information retrieval, evaluated by encoding summaries as queries and articles as candidate documents, indexing embeddings with FAISS, and reporting MRR@10 and Recall@10. Since sum-maries and articles may share surface forms, re-trieval results are interpreted together with clas-sification rather than as a standalone measure of representation quality. 
+
+4.3 Intrinsic Evaluation 
+
+Table 1 reports fertility, token coverage, and continuation-token ratio across Cham, Khmer, and Tay-Nung. CKTN-ELECTRA achieves the low-est fertility for all three languages (1.18/1.17/1.24), a 25–32% reduction over the strongest baseline, and cuts continuation-token ratio from as high as 44.5% under RemBERT to below 11%, showing that vocabulary augmentation gives the encoder cleaner lexical units. Token coverage also improves over RemBERT and XLM-R, except Khmer un-der mBERT, which reports higher coverage de-spite worse fertility and continuation-token behav-ior – likely an artifact of character-level fallback rather than linguistically meaningful units. We therefore analyze coverage jointly with fertility and continuation-token ratio rather than in isolation. Table 2 reports MLM perplexity and loss before and after continued pretraining. Continued pre-training substantially reduces language-modeling loss for all baselines, showing that the CKTN cor-pus is sufficient to adapt existing multilingual en-coders at the token-prediction level. However, the downstream results in Section 4.4 show that low MLM loss is not by itself a reliable indicator of transferable document representations. In particu-lar, an encoder may learn to predict frequent local subword fragments while still failing on tasks that require cross-document semantic generalization. 6Table 1: Intrinsic evaluation results for multilingual model Tokenizer. 
+
+Language Metric CKTN-ELEC. RemBERT XLM-R mBERT 
+
+Cham Fertility ↓ 1.1824 1.5862 1.6191 1.7576 Token Coverage (%) ↑ 7.3823 6.8113 5.2734 6.3746 Continuation Token Ratio (%) ↓ 4.8212 36.7765 22.6879 35.1436 Khmer Fertility ↓ 1.1721 1.6492 1.8365 1.5037 Token Coverage (%) ↑ 11.7842 8.0324 6.9156 32.0145 
+
+Continuation Token Ratio (%) ↓ 10.2238 39.6847 34.5824 26.6436 Tay-Nung Fertility ↓ 1.2414 1.8021 1.9186 1.9456 Token Coverage (%) ↑ 12.2723 10.7423 9.8449 9.7154 Continuation Token Ratio (%) ↓ 5.6142 44.5425 11.0311 41.2632 
+
+> Table 2: MLM perplexity and loss before and after continued pretraining on the CKTN development set. CKTN-ELECTRA is excluded because it is trained with replaced token detection rather than MLM.
+
+Condition Metric CKTN-ELECTRA RemBERT XLM-R mBERT 
+
+Before CPT Perplexity ↓ – 346,594.96 10.66 27.45 MLM loss ↓ – 12.7559 2.3667 3.3124 After CPT Perplexity ↓ – 4.68 2.44 2.34 
+
+MLM loss ↓ – 1.5367 0.8922 0.8505 4.4 Extrinsic Evaluation 
+
+Table 3 reports category classification and infor-mation retrieval results before and after continued pretraining, revealing sharply different behavior across the two tasks. 
+
+Category classification. CKTN-ELECTRA achieves the strongest performance after continued pretraining (0.9214 accuracy / 0.7103 Macro-F1), substantially outperforming XLM-R (0.8169 / 0.5617), mBERT (0.8024 / 0.5054), and Rem-BERT (0.1454 / 0.0053). Given the imbalanced label distribution, the Macro-F1 gain indicates transfer across minority classes rather than only dominant categories. RemBERT’s collapse despite a large drop in MLM perplexity suggests a disconnect between intrinsic and extrinsic adaptation: without vocabulary augmentation, its tokenizer still fragments the target languages, so MLM improves local subword prediction without yielding topic-separable document representations - an effect potentially compounded by RemBERT’s decoupled embeddings, which we leave for future mechanistic analysis. 
+
+Information retrieval. RemBERT remains strongest on MRR@10/Recall@10 both before and after CPT, while CKTN-ELECTRA improves only modestly - the opposite of the classification trend. We attribute this to retrieval’s sensitivity to lexical overlap between summaries and their source articles, which can reward surface matching even when document-level semantic representations are weak. Classification and retrieval thus measure different forms of transfer: classification exposes cross-document semantic generalization, while retrieval reflects a mixture of semantic and lexical-overlap matching. 
+
+Why do XLM-R and mBERT outperform Rem-BERT under MLM? Since all three converge to similar post-CPT perplexity, the classification gap is likely architectural rather than optimisation-driven. Two non-exclusive hypotheses: (i) XLM-R and mBERT use tied, full-width embeddings (1024-d/768-d), so fine-tuning acts directly on the dimensions encoding token identity, unlike RemBERT’s 256-d bottleneck; (ii) RemBERT’s continuation-token ratio is especially high for Tay-Nung (44.5% vs. 11.0% for XLM-R), leaving more input as fragments with little standalone lexical signal. We cannot isolate which factor dominates. 
+
+CKTN-ELECTRA succeeds on the same back-bone. Since CKTN-ELECTRA’s discriminator shares RemBERT’s architecture, its gains isolate the other two components. Vocabulary augmen-tation cuts fertility by 25–32% and continuation-token ratio to under 11%, giving the same 256-d embedding table cleaner, word-boundary-respecting entries. The ELECTRA objective fur-ther supervises every token rather than 15%, likely 7Table 3: Category Classification and Information Retrieval performance of various baselines before and after CPT on CKTN corpus. All baselines was vocabulary augmented before CPT and after CPT. 
+
+Condition Metric CKTN-ELECTRA RemBERT XLM-RoBERTa mBERT 
+
+Category Classification 
+
+Before CPT Accuracy ↑ 0.0176 0.0176 0.7756 0.7410 Macro-F1 ↑ 0.0007 0.0007 0.3217 0.4615 
+
+After CPT Accuracy ↑ 0.9214 0.1454 0.8169 0.8024 Macro-F1 ↑ 0.7103 0.0053 0.5617 0.5054 
+
+Information Retrieval 
+
+Before CPT MRR@10 ↑ 0.7660 0.7727 0.7266 0.3628 Recall@10 ↑ 0.9013 0.9017 0.8712 0.4421 After CPT MRR@10 ↑ 0.7718 0.7787 0.7361 0.3794 Recall@10 ↑ 0.9039 0.9049 0.8789 0.4504 valuable under our severe data scarcity. The cali-brated sampler appears necessary: without script-compatibility and similarity constraints, replace-ments could be trivially detectable, letting the dis-criminator learn a shortcut instead of semantics. Together, these components jointly move the same RemBERT encoder from near-collapse to the best classification score. 
+
+5 Ablation Study CKTN-ELECTRA No script-       
+
+> aware
+> No linear
+> lambda
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> 1.2
+> Score
+> 0.9214
+> 0.0304 0.0304
+> 0.7103
+> 0.0012 0.0012
+> Category Classi fi cation
+> Accuracy
+> Macro-F1
+> CKTN-ELECTRA No script-
+> aware
+> No linear
+> lambda
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> 1.2
+> Score  0.7718 0.7678 0.7712
+> 0.9039 0.9021 0.9047
+> Information Retrieval
+> MRR@10
+> Recall@10
+
+Figure 4: Ablation results for CKTN-ELECTRA. 
+
+Component importance. The ablation suggests script-aware filtering and linear scheduling are each important: removing either collapses clas-sification to near-random levels (0.0304/0.0012 accuracy/Macro-F1 vs. 0.9214/0.7103 for the full model). One plausible explanation is that, with-out script-aware filtering, the from-scratch gen-erator may substitute tokens from a mismatched script or of markedly different frequency, poten-tially letting the discriminator lean on such superfi-cial cues rather than semantic confusability. Like-wise, without linear scheduling, the full RTD loss is applied from the first update, pairing a strong pretrained discriminator with a generator that has not yet learned a plausible target-language distribu-tion, which may destabilize training. We offer these as candidate explanations rather than confirmed mechanisms. What is clear is that retrieval remains largely unaffected in both ablations (MRR@10: 0.7678–0.7718; Recall@10: 0.9021–0.9047), in-dicating that classification, not lexical-overlap re-trieval, is the metric sensitive to these components. 
+
+6 Conclusion 
+
+We introduced CKTN, the first multilingual corpus and benchmark for Cham, Khmer, and Tay-Nung, spanning continued pretraining, category classi-fication, and summary-document retrieval. We show that existing multilingual encoders severely fragment these languages, and that standard sig-nals – MLM loss and lexical-overlap retrieval – can overestimate representation quality. Our script-aware adaptation recipe, combining vocab-ulary augmentation with a difficulty-calibrated, script-constrained RTD objective, yields CKTN-ELECTRA: substantially less fragmented and the strongest classifier among evaluated models. Ab-lations confirm both script-aware filtering and lin-ear scheduling are necessary for this gain, while our retrieval analysis exposes the limits of lexical-8overlap tasks as a standalone evaluation signal in this regime. 
+
+7 Limitation 
+
+Our work has several limitations. CKTN is sourced entirely from government and state-affiliated out-lets, so it skews toward formal news register and away from informal or code-switched text, limit-ing generalization beyond institutional media. The category distribution is heavily imbalanced toward news, with labels inherited from source websites rather than independently verified. The corpus re-mains small overall (24M tokens, with Tay-Nung especially scarce), and the Khmer retrieval subset (250 pairs) is too limited for statistically reliable conclusions. Our explanations for RemBERT’s col-lapse and for why script-aware filtering and linear scheduling matter are plausible hypotheses consis-tent with observed patterns, not confirmed via di-rect mechanistic probes. We evaluate only encoder-only backbones (mBERT, XLM-R, RemBERT), not decoder-based or instruction-tuned multilin-gual LLMs. Finally, since our retrieval task pairs summaries with their source articles, it inherently rewards lexical overlap, so results should not be read as a general-purpose semantic search bench-mark. 
+
+References 
+
+Wissam Antoun, Fady Baly, and Hazem Hajj. 2021. AraELECTRA: Pre-training text discriminators for Arabic language understanding. In Proceedings of the Sixth Arabic Natural Language Processing Work-shop , pages 191–195, Kyiv, Ukraine (Virtual). Asso-ciation for Computational Linguistics. Marc Brunelle. 2008. Diglossia, bilingualism, and the revitalization of written eastern cham. Language Documentation & Conservation , 2(1):28–46. Marc Brunelle. 2009. Contact-induced change? register in three cham dialects. Journal of the Southeast Asian Linguistics Society , 2:1–22. Tyler A. Chang, Catherine Arnett, Zhuowen Tu, and Benjamin K. Bergen. 2024. When is multilingual-ity a curse? language modeling for 250 high- and low-resource languages. In Proceedings of the 2024 Conference on Empirical Methods in Natural Lan-guage Processing , pages 4074–4096, Miami, Florida, USA. Association for Computational Linguistics. Hyung Won Chung, Thibault Févry, Henry Tsai, Melvin Johnson, and Sebastian Ruder. 2021. Rethinking em-bedding coupling in pre-trained language models. In 
+
+9th International Conference on Learning Represen-tations, ICLR 2021, Virtual Event, Austria, May 3-7, 2021 . OpenReview.net. Kevin Clark, Minh-Thang Luong, Quoc V. Le, and Christopher D. Manning. 2020. ELECTRA: Pre-training text encoders as discriminators rather than generators. In ICLR .Alexis Conneau, Kartikay Khandelwal, Naman Goyal, Vishrav Chaudhary, Guillaume Wenzek, Francisco Guzmán, Edouard Grave, Myle Ott, Luke Zettle-moyer, and Veselin Stoyanov. 2020. Unsupervised cross-lingual representation learning at scale. In Pro-ceedings of the 58th Annual Meeting of the Asso-ciation for Computational Linguistics , pages 8440– 8451, Online. Association for Computational Lin-guistics. Michael A. Covington and Joe D. McFall. 2010. Cutting the gordian knot: The moving-average type–token ratio (mattr). Journal of Quantitative Linguistics ,17(2):94–100. Jan Christian Blaise Cruz, Jose Kristian Resabal, James Lin, Dan John Velasco, and Charibeth Cheng. 2021. Exploiting news article structure for automatic corpus generation of entailment datasets. In Proceedings of the 18th Pacific Rim International Conference on Artificial Intelligence (PRICAI 2021) , volume 13032 of Lecture Notes in Computer Science , pages 86–99. Springer. Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. BERT: Pre-training of deep bidirectional transformers for language under-standing. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Tech-nologies, Volume 1 (Long and Short Papers) , pages 4171–4186, Minneapolis, Minnesota. Association for Computational Linguistics. C. M. Downey, Terra Blevins, Dhwani Serai, Dwija Parikh, and Shane Steinert-Threlkeld. 2024. Targeted multilingual adaptation for low-resource language families. In Findings of the Association for Com-putational Linguistics: EMNLP 2024 , pages 15647– 15663, Miami, Florida, USA. Association for Com-putational Linguistics. Nguyen Duong, Nguyen Anh, and Nong Hai. 2024. Genetic diversity and haplogroup distribution of three ethnic groups tay, thai, and nung. VNU Journal of Science: Natural Sciences and Technology , 40(2). Abteen Ebrahimi and Katharina Kann. 2021. How to adapt your pretrained multilingual model to 1600 languages. In Proceedings of the 59th Annual Meet-ing of the Association for Computational Linguistics and the 11th International Joint Conference on Nat-ural Language Processing (Volume 1: Long Papers) ,pages 4555–4567, Online. Association for Computa-tional Linguistics. 
+
+9Jerold A. Edmondson and Kenneth J. Gregerson. 2007. The languages of vietnam: Mosaics and expansions. 
+
+Language and Linguistics Compass , 1(6):727–749. Leonidas Gee, Andrea Zugarini, Leonardo Rigutini, and Paolo Torroni. 2022. Fast vocabulary transfer for language model compression. In Proceedings of the 2022 Conference on Empirical Methods in Nat-ural Language Processing: Industry Track , pages 409–416, Abu Dhabi, UAE. Association for Compu-tational Linguistics. Dinh Lu Giang. 2015. Main characteristics of Khmer-Vietnamese bilingualism in the southern region. 
+
+Journal of Language and Life , (4). In Vietnamese; original title: "Các đặc điểm chính của song ngữ Khmer-Việt vùng Nam Bộ". Daniil Gurgurov, Ivan Vykopal, Josef Van Genabith, and Simon Ostermann. 2025. Small models, big im-pact: Efficient corpus and graph-based adaptation of small multilingual language models for low-resource languages. In Proceedings of the 63rd Annual Meet-ing of the Association for Computational Linguistics (Volume 4: Student Research Workshop) , pages 355– 395, Vienna, Austria. Association for Computational Linguistics. Pengcheng He, Jianfeng Gao, and Weizhu Chen. 2023. DeBERTaV3: Improving DeBERTa us-ing ELECTRA-style pre-training with gradient-disentangled embedding sharing. In International Conference on Learning Representations .Pratik Joshi, Sebastin Santy, Amar Budhiraja, Kalika Bali, and Monojit Choudhury. 2020. The state and fate of linguistic diversity and inclusion in the NLP world. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pages 6282–6293, Online. Association for Computational Linguistics. James Kirby and Đinh Lu Giang. 2021. Relating Pro-duction and Perception of L2 Tone , page 249–272. Cambridge University Press. James Kirby and Lư Giang Đinh. 2017. On the r>h shift in kiên giang khmer. Journal of the Southeast Asian Linguistics Society , 10(2):66–89. Taku Kudo and John Richardson. 2018. SentencePiece: A simple and language independent subword tok-enizer and detokenizer for neural text processing. In 
+
+Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing: System Demonstrations , pages 66–71, Brussels, Belgium. Association for Computational Linguistics. Hoang Thi My Le and Phan Huy Khanh. 2015. Building a Vietnamese-Ede machine translation based on the bilingual corpus. International Journal of Engineer-ing Research & Technology (IJERT) , 4(2):721–725. Viet-Bac Le, Do-Dat Tran, Eric Castelli, Laurent Be-sacier, and Jean-Fran c¸ ois Serignat. 2004. Spoken and written language resources for Vietnamese. In 
+
+Proceedings of the Fourth International Conference on Language Resources and Evaluation (LREC’04) ,Lisbon, Portugal. European Language Resources As-sociation (ELRA). Davis Liang, Hila Gonen, Yuning Mao, Rui Hou, Na-man Goyal, Marjan Ghazvininejad, Luke Zettle-moyer, and Madian Khabsa. 2023. XLM-V: Over-coming the vocabulary bottleneck in multilingual masked language models. In Proceedings of the 2023 Conference on Empirical Methods in Natural Lan-guage Processing , pages 13142–13152, Singapore. Association for Computational Linguistics. Tomasz Limisiewicz, Ji ˇrí Balhar, and David Mare ˇcek. 2023. Tokenization impacts multilingual language modeling: Assessing vocabulary allocation and over-lap across languages. In Findings of the Associa-tion for Computational Linguistics: ACL 2023 , pages 5661–5681, Toronto, Canada. Association for Com-putational Linguistics. Mai Bui Dieu Linh. 2022. Religious identity and con-temporary ritual practices of the cham ahiér in viet-nam. Extrême-Orient Extrême-Occident , 45(1):77– 118. Special issue: “Religious plurality and tolerance in East Asia”. Dang Liu, Nguyen Thuy Duong, Nguyen Dang Ton, Nguyen Van Phong, Brigitte Pakendorf, Nong Van Hai, and Mark Stoneking. 2020. Extensive eth-nolinguistic diversity in vietnam reflects multiple sources of genetic diversity. Molecular Biology and Evolution , 37(9):2503–2519. Benjamin Minixhofer, Fabian Paischer, and Navid Rek-absaz. 2022. WECHSEL: Effective initialization of subword embeddings for cross-lingual transfer of monolingual language models. In Proceedings of the 2022 Conference of the North American Chap-ter of the Association for Computational Linguistics: Human Language Technologies , pages 3992–4006, Seattle, United States. Association for Computational Linguistics. Arijit Nag, Bidisha Samanta, Animesh Mukherjee, Niloy Ganguly, and Soumen Chakrabarti. 2023. Entropy-guided vocabulary augmentation of mul-tilingual language models for low-resource tasks. In Findings of the Association for Computational Linguistics: ACL 2023 , pages 8619–8629, Toronto, Canada. Association for Computational Linguistics. Long Nguyen, Tran Le, Huong Nguyen, Quynh Vo, Phong Nguyen, and Tho Quan. 2025. Serving the un-derserved: Leveraging BARTBahnar language model for bahnaric-Vietnamese translation. In Proceedings of the 1st Workshop on Language Models for Under-served Communities (LM4UC 2025) , pages 32–41, Albuquerque, New Mexico. Association for Compu-tational Linguistics. Thi Luong Nguyen, Quoc Thang La, Nhat Quang Tran, Bao Ninh Duong, Huu Khanh Nguyen, Thi Thanh Nga Phan, Ngo Nhu Khanh Tran, and Thong 
+
+10 Tran. 2023. A study on Vietnamese-K’Ho transla-tion system using neural machine translation. TNU Journal of Science and Technology , 228(07). In Viet-namese; original title: "Nghiên cứu hệ thống dịch ngôn ngữ Tiếng Việt-K’Ho sử dụng dịch máy bằng nơron". Xuan Nhat Chi Mai Nguyen and Van Huy Nguyen. 2019. Language Education Policy in Vietnam , chap-ter 13. Routledge. ISBN (Print): 9781138955608. Jonas Pfeiffer, Naman Goyal, Xi Victoria Lin, Xian Li, James Cross, Sebastian Riedel, and Mikel Artetxe. 2022. Lifting the curse of multilinguality by pre-training modular transformers. In Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies , pages 3479–3495, Seattle, United States. Association for Computational Linguistics. Telmo Pires, Eva Schlinger, and Dan Garrette. 2019. How multilingual is multilingual BERT? In Proceed-ings of the 57th Annual Meeting of the Association for Computational Linguistics , pages 4996–5001, Flo-rence, Italy. Association for Computational Linguis-tics. Surangika Ranathunga, En-Shiun Annie Lee, Mar-jana Prifti Skenduli, Ravi Shekhar, Mehreen Alam, and Rishemjit Kaur. 2021. Neural machine transla-tion for low-resource languages: A survey. CoRR ,abs/2106.15115. Van Ngoc Sang and Mohamad Bin Bilal Ali. 2015. Pre-serving cham font through online conversion applica-tion. International Education Studies , 8(13):60–66. Received: Nov 5, 2014; Accepted: Mar 15, 2015; Published online: Jun 28, 2015. Oliver Tappe. 2015. Politics of ethnic classification in vietnam. The Asia Pacific Journal of Anthropology ,16(3):299–301. Philip Taylor. 2014. The Khmer Lands of Vietnam: En-vironment, Cosmology and Sovereignty . NUS Press Pte Ltd. Ta Van Thong and Ta Quang Tung. 2019. The language loss of ethnic minorities in Vietnam. Journal of Ethnic Minorities Research , 8(2). In Vietnamese; original title: "Sự mai một ngôn ngữ của một số dân tộc thiểu số ở Việt Nam". Hai-Long Trieu and Ashwin Ittoo. 2020. MT-WIKI: A wikipedia-based multilingual parallel corpus for machine translation on low-resource languages. Manuscript, University of Liège. Dang Nghiem Van. 2002. Indigenous peoples in viet nam and their knowledge of biodiversity in traditional health care. Biodiversity , 3(3):22–23. Hoang Nhat Khang Vo, Duc Dong Le, Tran Minh Dat Phan, Tan Sang Nguyen, Quoc Nguyen Pham, Ngoc Oanh Tran, Quang Duc Nguyen, Tran Minh Hieu Vo, and Tho Quan. 2024. Revitalizing bahnaric language through neural machine transla-tion: Challenges, strategies, and promising outcomes. 
+
+Proceedings of the AAAI Conference on Artificial In-telligence , 38(21):23360–23368. George Kingsley Zipf. 1935. The Psycho-Biology of Language: An Introduction to Dynamic Philology .Houghton Mifflin, Boston, MA. George Kingsley Zipf. 1949. Human Behavior and the Principle of Least Effort: An Introduction to Human Ecology . Addison-Wesley, Cambridge, MA. 
+
+A Corpus Statistics 
+
+Table 4 presents the corpus statistics across three minority languages: Cham, Khmer, and Tay-Nung, totaling 44,367 documents, 663,881 sentences, and over 24 million BPE subword tokens. Khmer dom-inates the corpus with 27,808 documents sourced from VOV and four additional regional outlets, while Cham and Tay-Nung contribute 11,481 and 5,078 documents respectively. The corpus is partitioned for two downstream tasks following an 80/20 split. For the Masked Language Modeling task, the full document set is divided into training and development subsets (35,492 and 8,875 documents respectively), pre-serving proportional language representation. For Category Classification, an additional held-out test set is introduced, yielding a three-way split across 28 classes in total (9–10 per language), with 24,456 training, 4,315 development, and 7,197 test documents. For Information Retrieval, matched summary–document pairs are used (11,811 pairs total); notably, the Khmer IR subset is substantially smaller (250 pairs) compared to Cham and Tay-Nung, reflecting limited availability of summary-level annotations in Khmer sources beyond VOV. The data sources selected for this corpus share several defining characteristics that ensure both linguistic authenticity and long-term extensibility. 
+
+Voice of Vietnam , the primary source across all three languages, is a state-operated broadcaster with dedicated editorial teams comprising pro-fessional journalists and native-speaking contrib-utors, guaranteeing consistent orthographic con-ventions and domain diversity. The supplemen-tary Khmer sources such as Ca Mau Newspaper ,
+
+Can Tho Newspaper , the An Giang Province Web Portal , and the Ethnic Minority and Mountainous Regions portal are likewise institutionally main-tained, either by regional government bodies or by professional press organizations serving ethnic 11 Table 4: Corpus statistics and task distribution 
+
+Cham Khmer Tay-Nung Total 
+
+Source Distribution (Documents) 
+
+Voice of Vietnam (VOV) 11,481 19,765 5,078 36,324 Ca Mau Newspaper 6 0 537 0 537 Can Tho Newspaper 7 0 6,609 0 6,609 An Giang Province Web Portal 8 0 251 0 251 Ethnic Minority and Mountainous Regions 9 0 646 0 646 
+
+Corpus Statistics 
+
+Documents 11,481 27,808 5,078 44,367 Sentences 301,317 294,077 68,487 663,881 Subword Tokens (BPE) 11,361,144 10,174,988 2,495,431 24,031,563 
+
+MLM Task Split (Documents) 
+
+Train 9,184 22,246 4,062 35,492 
+
+Dev 2,297 5,562 1,016 8,875 
+
+Category Classification Task (Num Classes) 9 10 9 28 Train 7,722 13,550 3,184 24,456 Dev 1,408 2,351 556 4,315 Test 2,288 3,975 934 7,197 
+
+Information Retrieval (Documents) 
+
+Summary Set 6,545 250 5,016 11,811 Document Set 6,545 250 5,016 11,811 minority communities in the Mekong Delta. As active, continuously updated outlets, these plat-forms generate new content on a regular basis, meaning the corpus can be systematically expanded through periodic re-crawling without requiring new source identification or annotation pipelines. Fur-thermore, content produced by government portals and state-affiliated newspapers adheres to editorial standards that reduce noise from informal language use, code-switching, or user-generated irregulari-ties commonly found in social med. 
+
+B Further Data Analysis 
+
+B.1 Moving-Average Type Token Ratios (MATTR)                    
+
+> Language Original RemBERT Extended Tokenizer Train Dev Train Dev
+> cham 0.36727 0.36798 0.41432 0.41514 khmer 0.45615 0.45641 0.49069 0.49127 tay_nung 0.31652 0.31488 0.39316 0.39078
+> Table 5: Comparative MATTR results ( window =1000 ) between the baseline and our extended tokenizer across all languages and splits.
+
+The comparative analysis of MATTR (Coving-ton and McFall, 2010) scores reveals a significant divergence between the Original RemBERT and our Extended Tokenizer across all evaluated lan-guages. The results demonstrate a consistent and substantial increase in lexical diversity when em-ploying the extended vocabulary; for instance, Tay Nung exhibits the most pronounced improvement, with its MATTR rising from approximately 0.316 
+
+to 0.393 . This upward trend indicates that the Original RemBERT tokenizer suffered from se-vere over-segmentation, breaking down words into repetitive and non-distinctive subword units, which artificially lowered the diversity metrics. In con-trast, the higher MATTR values produced by the Extended Tokenizer suggest a more efficient en-coding process that preserves lexical integrity, re-sulting in fewer repetitive functional subwords and a richer distribution of unique types per window. While the baseline scores were constrained by the specific sub-corpus characteristics and the limita-tions of the original multilingual vocabulary, our proposed extension successfully captures the spe-cialized lexical nuances of Cham, Khmer, and Tay Nung, providing a more robust and linguistically representative tokenization framework. 12 B.2 Category Classification B.2.1 Document Length 
+
+> Figure 5: Document Length
+
+The statistical distribution reveals that Khmer ac-counts for the largest portion of the dataset in terms of document counts, with most samples being rela-tively short. There is a high degree of consistency in the document length patterns between the Train and Dev splits, ensuring that the development set is statistically representative of the training data. Notably, while Khmer and Tay-Nung documents are primarily concentrated at shorter lengths, the Cham sub-corpus exhibits a distinct distribution, with most documents ranging from 500 to 1000 
+
+words. This variation suggests that the model must handle significantly different levels of contextual density across the three languages. 
+
+B.2.2 Document sentences 
+
+> Figure 6: Document Sentences
+
+The distribution of sentence counts per docu-ment shown in Fig. 6 further reinforces the struc-tural differences between the three languages. Khmer documents are characterized by a high fre-quency of very short structures, with most con-taining fewer than 10 sentences. In contrast, the Cham sub-corpus demonstrates a more balanced and distributed pattern, with a peak around 20 − 40 
+
+sentences per document. The consistent overlap between the Train and Dev sets across all lan-guages confirms that the data splits maintain a sta-ble sentence-level complexity. These observations indicate that while Khmer provides a larger volume of data, the Cham documents offer more extended intra-document sentence sequences, which could be a significant factor for models capturing long-range dependencies. 
+
+B.2.3 Category Distribution                  
+
+> Language Category Count
+> Cham News & Events 4,352 Cham Community Issues 2,663 Ethnic Groups of Vietnam 463 Your Doctor 451 Law & Life 407 Khmer News 13,182 Discovering Vietnam 570 People of Vietnam 462 Daily Reports 461 Vietnamese Economy 417 Tay-Nung Daily Radio Program 1,248 News & Events 951 Tay-Nung Music 397 New Music 233 Tourism 170
+> Table 6: Top 5 categories per language (Train + Dev combined)
+
+The category distribution across all three lan-guages reveals a strong dominance of news and cur-rent events content. For Cham, the two largest cat-egories such as News & Events (4,352) and Cham Community Issues (2,663), together account for the majority of the sub-corpus, reflecting the jour-nalistic and community-oriented nature of the data source. A similar pattern is observed in Tay-Nung, where News & Events (951) and Daily Radio Pro-gram (1,248) dominate, suggesting that the corpus is primarily drawn from broadcast and news media. For Khmer, the News category overwhelmingly leads with 13,182 documents, representing the vast majority of the Khmer sub-corpus. In contrast, culturally-oriented topics such as Tourism, Music, and New Music appear only marginally across all languages, indicating that modern lifestyle and en-tertainment content remains underrepresented in the dataset. This skewed distribution suggests that while the corpus is well-suited for news-domain tasks, it may not fully capture the breadth of in-formal or cultural language use in these minority communities. 
+
+B.3 Vietnamese Loanword Penetration Analysis 
+
+We measured the influence of Vietnamese on the three minority languages by tracking the hit rates of common Vietnamese administrative loanwords: 13 • Cham (High Borrowing): Shows the highest penetration of Vietnamese entities (e.g., “Việt Nam” at 25.59% and “y tế” at 20.26%). This suggests a hybrid linguistic profile where offi-cial and health-related terminology is heavily borrowed directly from Vietnamese. 
+
+• Tay-Nung (Moderate Borrowing): Despite sharing the Latin script, borrowing rates are moderate compared to Cham (e.g., “Việt Nam” at 18.24%, “Chính phủ” at 6.06%). This shows a degree of lexical overlap with Vietnamese, due to shared administrative and political vocabulary in broadcast media. 
+
+• Khmer (Zero Direct Borrowing): The 0% hit rate across all keywords confirms that the script barrier prevents any direct orthographic borrowing from Vietnamese, despite potential phonetic borrowing at the spoken level. The selected entities include: 
+
+• Political/Administrative: Việt Nam (Viet-nam), Chính phủ (Government), Thủ tướng 
+
+(Prime Minister), Bộ Giáo dục (Ministry of Education). 
+
+• Social/Functional: văn hóa (Culture), phát triển (Development), y tế (Health), quy định 
+
+(Regulation).                   
+
+> Entity Tay Nung (%) Cham (%)
+> Việt Nam 915 (18.24) 1,675 (25.59) Chính phủ 304 (6.06) 70 (1.07) văn hóa 275 (5.48) 105 (1.60) phát triển 271 (5.40) 169 (2.58) y tế 221 (4.41) 1,326 (20.26) Thủ tướng 136 (2.71) 853 (13.03) quy định 57 (1.14) 239 (3.65) Bộ Giáo dục 6 (0.12) 8 (0.12)
+
+Table 7: Distribution of Vietnamese administrative en-tities in Tay Nung and Cham sub-corpora. 
+
+Figure 7: Word cloud of most frequent tokens in the Cham corpus, dominated by words such as bruk , ngak ,
+
+thau , and brei .
+
+Figure 8: Word cloud of most frequent tokens in the Khmer corpus, written in Khmer script. 
+
+Figure 9: Word cloud of most frequent tokens in the Tày–Nùng corpus, dominated by words such as noọng ,
+
+pỉ , chương trình , and dân tộc .
+
+B.4 Domain Distribution in the Corpus 
+
+In this section, we present the comprehensive dis-tribution of the source domains found within our dataset across both the training and development sets. As shown in Table 8, the corpus distribu-tion is heavily dominated by national broadcast-ing platforms. Specifically, vovworld.vn accounts for the largest share (44.55%), which is expected since it serves as the official external service tar-geted at global audiences. Together with VOV4 (vov4.vov.vn , 37.32%), a dedicated channel for ethnic minority languages, these two sources con-tribute over 81% of the entire dataset.                 
+
+> Domain #URLs %
+> vovworld.vn 19,765 44.55%
+> vov4.vov.vn 16,559 37.32%
+> baocantho.com.vn 6,609 14.90%
+> km-dantocmiennui.baotintuc.vn 646 1.46%
+> khmer.baocamau.vn 537 1.21%
+> angiang.gov.vn 251 0.57%
+> Total 44,367 100.00%
+
+Table 8: The domain distribution found in the corpus. 
+
+14 C The influence of vocabulary on Rembert’s performance 
+
+The results in Table 3 report all baselines – in-cluding RemBERT – after vocabulary augmenta-tion (Section 3.2), so the gap between RemBERT and CKTN-ELECTRA there isolates the effect of the calibrated RTD objective (Section 3.3) alone, holding vocabulary fixed. To further isolate the contribution of vocabulary augmentation itself, we run an additional ablation: continued MLM pre-training of the original, non-augmented RemBERT tokenizer directly on the CKTN corpus, under the same optimization budget and downstream fine-tuning protocol as Section 4.2, with no calibrated RTD involved.               
+
+> Metric No Vocab Aug. Vocab Aug. (Table 3)
+> Category Classification
+> Accuracy ↑0.0304 0.1454 Macro-F1 ↑0.0012 0.0053
+> Information Retrieval
+> MRR@10 ↑0.7857 0.7787 Recall@10 ↑0.9090 0.9049
+> Table 9: Effect of vocabulary augmentation on Rem-BERT after CPT, with no calibrated RTD in either set-ting. “Vocab Aug.” reproduces the RemBERT row from Table 3 (which already uses the extended tokenizer of Section 3.2) for direct comparison. Recall@1 was not reported for the vocabulary-augmented RemBERT base-line in the main experiments.
+
+Vocabulary augmentation helps, but only marginally. Extending RemBERT’s vocabulary before CPT roughly doubles classification Accu-racy (0.0304 → 0.1454) and more than quadru-ples Macro-F1 (0.0012 → 0.0053). This con-firms that lexical fragmentation is part of Rem-BERT’s failure mode: without an extended vocab-ulary, CKTN text is split into long continuation-piece sequences (Table 1 shows RemBERT’s un-augmented continuation-token ratio reaching 44.5% on Tay-Nung), leaving even less stan-dalone lexical signal for the 256-d embedding table to exploit. However, both settings remain far below every other baseline in Table 3 (XLM-R: 0.8169/0.5617; mBERT: 0.8024/0.5054) and orders of magnitude below CKTN-ELECTRA (0.9214/0.7103), which shares RemBERT’s back-bone and augmented vocabulary but adds the cal-ibrated RTD objective. Vocabulary augmentation alone is therefore necessary but far from suffi-cient to make RemBERT a competitive encoder on CKTN; the RTD objective and its script-aware cali-bration (Section 3.3) account for the overwhelming majority of CKTN-ELECTRA’s gain over plain RemBERT CPT, not the vocabulary extension by itself. 
+
+Retrieval is insensitive – and mildly anti -correlated – with vocabulary quality. In con-trast to classification, retrieval performance is es-sentially unaffected by vocabulary augmentation, and if anything is marginally higher without it (MRR@10: 0.7857 vs. 0.7787; Recall@10: 0.9090 vs. 0.9049). This is consistent with the pattern already observed in Section 4.4 and the ablation study: because our retrieval task pairs each sum-mary with its own source article, it can largely be solved through shared surface forms between query and document, regardless of how cleanly the tokenizer segments those forms into semantic units. A model does not need well-formed, low-fragmentation subwords to match overlapping char-acter sequences; it only needs the same fragments to appear on both sides of the pair, which happens whether or not the vocabulary was extended. This result reinforces our central methodological claim: lexical-overlap retrieval and language-modeling loss are unreliable proxies for representation quality in script-heterogeneous, low-resource adaptation, whereas category classification – which requires generalizing across lexically dissimilar documents within a class – exposes real differences in tok-enization and pretraining quality that retrieval con-ceals. 
+
+D Sociolinguistic Context of Minority Languages in Vietnam 
+
+In contrast, regional and provincial outlets repre-sent a significantly smaller portion. Local sources like Can Tho Newspaper account for 14.90%, while provincial portals such as Ca Mau Newspaper 
+
+(1.21%) and An Giang Newspaper (0.57%) face extreme data scarcity. This distribution highlights that centralized national media remains the primary resource for digital ethnic minority language data. From a taxonomic and geographical perspec-tive, the ethnolinguistic landscape of the Khmer, Cham, and Tay-Nung communities in Vietnam is highly diverse. The Khmer in southern Vietnam, whose dialects are classified within the Central Khmer construct of the Austroasiatic family, pre-dominantly inhabit the Mekong Delta region in 15 Figure 10: Geographic distribution and population sizes of selected ethnic minority communities (Tay, Nung, Khmer, and Cham) in Vietnam, covering the geographic region from latitudes 8.0 °N to 24.0 °N and longitudes 102.0 °E to 115.5 °E. 
+
+southwestern Vietnam, clustering across inland plains, saline coastal areas, and southwestern bor-der hills 10 . The Cham, speaking an Austrone-sian language of the Western-Malayo-Polynesian branch, reside primarily in the south-central coastal provinces of Ninh Thuan 11 and Binh Thuan 12 ,traditionally occupying ground-level dwellings 13 .Conversely, the Tay and Nung languages are clas-sified within the Kra-Dai (Tai-Kadai) language family (Duong et al., 2024). These communities are geographically distributed across the northeast-ern mountainous valleys, spanning provinces from Quang Ninh, Bac Giang 14 , and Lang Son to Lao                    
+
+> 10 http://www.cema.gov.vn/gioi-thieu/cong-dong-54-dan-toc/nguoi-khmer.htm
+> 11 Effective July 1, 2026, under Resolution No. 202/2025/QH15, Ninh Thuan Province is merged with Khanh Hoa Province into the newly consolidated Khanh Hoa Province.
+> 12 Effective July 1, 2026, under Resolution No. 202/2025/QH15, Binh Thuan Province is merged with Dak Nong and Lam Dong provinces into the newly consolidated Lam Đong Province.
+> 13 http://www.cema.gov.vn/gioi-thieu/cong-dong-54-dan-toc/nguoi-cham.htm
+> 14 Effective July 1, 2026, under Resolution No. 202/2025/QH15, Bac Giang Province is merged with Bac Ninh Province into the newly consolidated Bac Ninh Province.
+
+Cai and Yen Bai 15 , where the Tay typically reside in highly populated villages 16 , while the Nung fre-quently live in interspersed settlements alongside them 17 .From a macro-sociolinguistic perspective, the vitality of Khmer in Vietnam is increasingly re-stricted to specific localized domains, primarily sustained through the intergenerational transmis-sion within family compounds and ritualized en-gagement in Theravada Buddhist religious prac-tices (Taylor, 2014). In formal administrative and educational settings, the dominant Vietnamese lan-guage acts as the primary medium of instruction and official communication, facilitating a high fre-quency of code-mixing among the Khmer com-munity. However, rather than leading to language attrition, this contact has catalyzed a stable and directed bilingualism, where the younger genera-tion, particularly those born after 1975, demon-strates enhanced proficiency in both Khmer and Vietnamese compared to their elders, reflecting a trajectory of sustainable linguistic development. Although Southern Khmer in Vietnam is generally classified within the Central Khmer dialect contin-uum and maintains mutual intelligibility with the source language, this variety exhibits highly signif-icant lexical and phonological divergences (Kirby and Giang, 2021). These distinctions largely stem from extensive language contact with Vietnamese, which has driven profound shift trajectories such as monosyllabization. Notably, in stark contrast to the fundamentally non-tonal nature of Standard Khmer, certain Khmer dialects in Vietnam (exem-plified by the Kiên Giang variety) have developed a nascent pitch-based contrast system, albeit with a relatively limited functional load. The most promi-nent phonological rupture between Khmer in Viet-nam and its root language is evidenced by the shift of the rhotic consonant /r/ to the fricative [h]. In the colloquial Phnom Penh variety of Khmer, the lenition of onset /r/ is a complex process accompa-nied by pitch lowering, the introduction of breath-iness, and substantial alterations to the quality of the following vowel. Conversely, acoustic phonetic       
+
+> 15 Effective July 1, 2026, under Resolution No. 202/2025/QH15, the entirety of Yen Bai Province and Lao Cai Province are merged into the newly consolidated Lào Cai Province.
+> 16 http://www.cema.gov.vn/gioi-thieu/cong-dong-54-dan-toc/nguoi-tay.htm
+> 17 http://www.cema.gov.vn/gioi-thieu/cong-dong-54-dan-toc/nguoi-nung.htm
+
+16 analyses demonstrate that within the Kien Giang 18 
+
+community, the r>h shift is exclusively accompa-nied by pitch lowering that forms a falling-rising F0 contour, while showing no substantial changes in vowel quality or voice quality. Perceptual studies by Kirby and Đinh (2017) confirm that while native speakers in Phnom Penh process a complex combi-nation of acoustic cues, the Khmer community in Kien Giang relies primarily on pitch differences to distinguish lexical pairs, suggesting these dialects have established a distinct phonetic mechanism. The Eastern Cham communities exhibit a com-plex sociolinguistic framework defined by perva-sive bilingualism with Vietnamese and an internal diglossia. This diglossia manifests through the co-existence of a conservative High (H) formal variety and a colloquial Low (L) variety, which has un-dergone severe structural reduction and lost almost all presyllables to become virtually monosyllabic. Furthermore, extensive contact with the dominant Vietnamese culture has led to significant lexical replacement and syntactic restructuring within the spoken language. Beyond sociolinguistic struc-tures, the phonetic architecture of Eastern Cham is defined by a phonological register system that originally emerged from the neutralization of voic-ing in onset stops (Brunelle, 2009). Experimental acoustic evaluations reveal that fundamental fre-quency (f0), or pitch, serves as the dominant and primary acoustic correlate for distinguishing these high and low registers, while variations in vowel quality and voice quality traits such as breathiness are negligible and act merely as ancillary proper-ties. Notably, Eastern Cham demonstrates a hyper-salient and distinct f0 gap between its high and low registers. This phenomenon is directly attributed to its speakers’ quasi-native bilingualism in Viet-namese, suggesting a fine-grained phonetic con-vergence where existing phonetic properties are significantly strengthened by contact with a tonal language. The sociolinguistic ecology and the distribution of writing systems among the Cham community reveal a complex interplay of religious ideology, educational policy, and technological constraints. It is an oversimplification to characterize the Eastern Cham as exclusively Hindu, as part of the popu-lation practices a syncretic form of Islam and is known as the Pani (Linh, 2022). While the tra-      
+
+> 18 Effective July 1, 2026, under Resolution No. 202/2025/QH15, Kien Giang Province is merged with An Gi-ang Province into the newly consolidated An Giang Province.
+
+ditional Indic script, akhăr thrah, is preserved for formal religious ceremonies and the transcription of classical literature, the Pani subgroup concur-rently utilizes an Arabic-based script, akhăr pani, specifically for their internal religious rituals. Fur-thermore, while primary education programs in Cham-speaking areas are strictly dedicated to the instruction and preservation of the traditional akhăr thrah script (Sang and Ali, 2015), practical mod-ern communications such as television broadcasts and digital messaging predominantly rely on an ad hoc Romanized script due to immediate techno-logical limitations. Consequently, the community maintains a staunch opposition to any official Ro-manization efforts, viewing such initiatives as a direct threat to the preservation of their cultural heritage. In contrast to the severe sociolinguistic marginal-ization experienced by many micro-minority groups, the Tay and Nung languages represent a distinct dynamic within the ethnolinguistic land-scape of northern Vietnam. Boasting a relatively large demographic base (with the Tay population reaching over 1.8 million 16 and the Nung exceed-ing 1 million 17 ), both languages benefit from of-ficially recognized writing systems and have been supported by foundational linguistic documenta-tion, such as formal grammar texts and multilingual dictionaries published in the 1970s and 1980s. The functional vitality of Tay is further reinforced by its active utilization in national mass media, in-cluding designated state television and radio broad-casts. Crucially, from a sociolinguistic perspective, Tay and Nung operate with a relatively high sta-tus compared to other indigenous languages in the region. Their regional prestige exerts direct assimi-lation pressure on highly endangered communities, a phenomenon exemplified by the language shift observed in the Red Co Lao group, whose mem-bers have transitioned to speaking Tay alongside Chinese. However, this robust demographic base does not automatically guarantee full functional security within formal domains. In the broader context of Vietnam’s national education policy, the state sys-tem overwhelmingly prioritizes Vietnamese as the primary language of instruction, effectively rele-gating minority languages to a limited, supplemen-tary, or extracurricular status (Nguyen and Nguyen, 2019). Sociolinguistic evaluations indicate that such systemic limitations heavily restrict the de-velopment of formal written literacy among ethnic 17 minority youth, including the Tay-Nung communi-ties. As a result, the lack of extensive utilization in formal administrative and standardized educational frameworks channels these languages primarily into oral, informal, and domestic domains, thereby constraining their capacity to establish a strong functional presence in non-oral public spheres. Accordingly, formal written communication re-mains a challenge for most minority languages, which are largely confined to oral, informal, and rural in-group domains (Thong and Tung, 2019). As a sub-set of these minority tongues, Tay and Nung mirror this broader trend; the resulting lack of active, standardized written production in offi-cial spheres fundamentally obstructs the develop-ment of large-scale text corpora, thereby firmly en-trenching them as acutely low-resource languages in terms of documented literacy. The drastic phono-logical and lexical drift of these minority vari-eties from their genealogical counterparts, such as the independent tonal developments in Kien Gi-ang Khmer (Kirby and Đinh, 2017) and the severe structural reduction in Eastern Cham, challenges traditional comparative assumptions. Furthermore, linguistic documentation tasks are severely im-peded by extreme data sparsity and orthographic instability (Ranathunga et al., 2021). The perva-sive code-mixing observed among younger Khmer generations (Giang, 2015), coupled with the frag-mented, ad hoc Romanization of Cham in digital messaging due to localized hardware and font con-straints (Brunelle, 2008), inherently obstructs the construction of standardized, large-scale textual repositories. Consequently, this entire linguistic cluster suffers from a critical deficit of standardized written data, firmly entrenching them as digitally vulnerable and under-documented languages (Joshi et al., 2020). 18
