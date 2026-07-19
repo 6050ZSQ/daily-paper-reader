@@ -6,85 +6,85 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-16
-- 运行时间：2026-07-16 21:41:59 UTC
+- 最新运行日期：2026-07-19
+- 运行时间：2026-07-19 21:01:57 UTC
 - 运行状态：成功
 - 本次总论文数：21
 - 精读区：8
 - 速读区：13
 
 ### 今日简报（AI）
-今天精读8篇、速读13篇，《Language Re-generation》与《Enjoy Your Talk》双双获评9.0，是最高分焦点。  
-重点关注方向：语言模型的信息局部性对重构的影响，以及多轮对话中解耦用户模拟与评判的基准。  
-建议普通读者优先翻阅这两篇高分论文，快速把握重构机制与对话评估的最新思路。
-- 详情：[/202607/16/README](/202607/16/README)
+今日精读8篇、速读13篇，高分聚焦语言模型语法线性表示与MLP高效事实存储。  
+最值得看的两篇：满分论文《Linear representations of grammaticality》揭示语法性在神经元层面的线性表征；《MLPs are Hebbians》提出将MLP重构为高效事实存储器的Hebbian学习框架。  
+建议优先精读这两篇，并关注速读中的《Partition, Prompt, Aggregate》以理解语言模型统计自体一致性的新范式。
+- 详情：[/202607/19/README](/202607/19/README)
 
 ### 精读区论文标签
-1. [Language Re-generation: An investigation into information locality effects on reconstruction](/202607/16/2607.10268v1-language-re-generation-an-investigation-into-information-locality-effects-on-reconstruction)  
+1. [Linear representations of grammaticality in neural language models](/202607/19/2607.15175v1-linear-representations-of-grammaticality-in-neural-language-models)  
+   标签：评分：10.0/10、query:llm-lang-rep
+   evidence：研究神经语言模型中语法性的线性表示，直接涉及LLM中的语言表征
+2. [MLPs are Hebbians: Constructing Efficient Fact-Storing MLPs for Transformers](/202607/19/2607.10034v1-mlps-are-hebbians-constructing-efficient-fact-storing-mlps-for-transformers)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：信息局部性对语言模型重建的影响
-2. [Enjoy Your Talk: A Human-Centered Benchmark for Multi-Turn Dialogue with Decoupled User Simulation, Target Modeling, and Judging](/202607/16/2607.10428v1-enjoy-your-talk-a-human-centered-benchmark-for-multi-turn-dialogue-with-decoupled-user-simulation-target-modeling-and-judging)  
-   标签：评分：9.0/10、query:llm-eval
-   evidence：提出以人为本的基准，用于评估多轮对话LLM，采用解耦组件设计
-3. [Comparing Semantic Navigation in Humans and Large Language Models using Natural Language Processing](/202607/16/2607.12195v1-comparing-semantic-navigation-in-humans-and-large-language-models-using-natural-language-processing)  
+   evidence：对LLM中MLP层存储事实的机械可解释性研究
+3. [One mechanism for many mental spaces: a shared router over a value slot in language models](/202607/19/2607.10248v1-one-mechanism-for-many-mental-spaces-a-shared-router-over-a-value-slot-in-language-models)  
    标签：评分：9.0/10、query:llm-lang-rep
-   evidence：比较人类与LLMs的语义导航动态，涉及LLM如何表征人类语言
-4. [Epistemic Stance Flexibility Probing: Measuring Prompt-Conditioned Register Shift in Large Language Models](/202607/16/2607.12739v1-epistemic-stance-flexibility-probing-measuring-prompt-conditioned-register-shift-in-large-language-models)  
+   evidence：发现LLM中用于表征心理空间的共享路由器/值槽机制
+4. [Operationalising Multi-Dimensional Evaluation for Conversational Agents: A Scalable, Governed Pipeline with Selective Re-evaluation and Model Benchmarking](/202607/19/2607.12085v1-operationalising-multi-dimensional-evaluation-for-conversational-agents-a-scalable-governed-pipeline-with-selective-re-evaluation-and-model-benchmarking)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：引入行为基准评估LLM认识论语域转换，衡量NLU灵活性
-5. [Mixture of Probes: Learning from Privileged Modalities in Multimodal LLMs Through Probing](/202607/16/2607.08839v1-mixture-of-probes-learning-from-privileged-modalities-in-multimodal-llms-through-probing)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：使用探针解耦多模态LLM中的模态特定及通用信号，提升可解释性
-6. [CRiT-QA: Evaluating Multi-hop Reasoning with Counterfactual Chains and Distractor Traps](/202607/16/2607.10562v1-crit-qa-evaluating-multi-hop-reasoning-with-counterfactual-chains-and-distractor-traps)  
+   evidence：提出了可扩展的对话系统评估管道，使用LLM作为评判
+5. [Controlled Reformulation Testing for Logical Consistency in Large Language Models](/202607/19/2607.14528v1-controlled-reformulation-testing-for-logical-consistency-in-large-language-models)  
+   标签：评分：9.0/10、query:llm-eval
+   evidence：提出CRTBench基准，通过控制性改写评估LLM逻辑一致性
+6. [Enjoy Your Talk: A Human-Centered Benchmark for Multi-Turn Dialogue with Decoupled User Simulation, Target Modeling, and Judging](/202607/19/2607.10428v1-enjoy-your-talk-a-human-centered-benchmark-for-multi-turn-dialogue-with-decoupled-user-simulation-target-modeling-and-judging)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：使用反事实链和干扰陷阱评估LLM的多跳推理能力
-7. [Laguerre Geometry for Interpreting Large Language Models](/202607/16/2607.10578v1-laguerre-geometry-for-interpreting-large-language-models)  
+   evidence：提出EYT-Bench，以人为中心的多轮对话评估基准
+7. [A Shared Subcircuit Lets LLMs Count Down Across Tasks](/202607/19/2607.12279v1-a-shared-subcircuit-lets-llms-count-down-across-tasks)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：通过拉盖尔几何解释LLM中的概念几何
-8. [Knowledge Distillation for Automated AI Tutor Evaluation](/202607/16/2607.10647v1-knowledge-distillation-for-automated-ai-tutor-evaluation)  
+   evidence：识别出Llama-70B中用于计数的倒计时子电路
+8. [The Illusion of Robustness: Aggregate Accuracy Hides Prediction Flips under Task-Irrelevant Context](/202607/19/2607.12963v2-the-illusion-of-robustness-aggregate-accuracy-hides-prediction-flips-under-task-irrelevant-context)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：大语言模型评估方法用于AI导师评价
+   evidence：揭示在任务无关语境下的预测翻转，凸显评测缺陷
 
 ### 速读区论文标签
-1. [From Expressivity to Sample Complexity: Narrow Teachers for Transformers via C-RASP](/202607/16/2607.11760v1-from-expressivity-to-sample-complexity-narrow-teachers-for-transformers-via-c-rasp)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：对Transformer在语言表示方面的表达性和可学习性的理论分析
-2. [GRID: Grammar-Railed Decoding for Enterprise SQL Generation](/202607/16/2607.11951v1-grid-grammar-railed-decoding-for-enterprise-sql-generation)  
-   标签：评分：8.0/10、query:llm-ling
-   evidence：提出语法约束解码以确保SQL生成中的语法正确性
-3. [Graded Entity-Familiarity Readouts in Language Models: Polish Adaptation, Cross-Language Robustness, and Refusal Steering](/202607/16/2607.13568v1-graded-entity-familiarity-readouts-in-language-models-polish-adaptation-cross-language-robustness-and-refusal-steering)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：激活探针检测语言模型对实体的熟悉度
-4. [PROBE: Benchmarking Code Generation in Large Language Models](/202607/16/2607.13820v1-probe-benchmarking-code-generation-in-large-language-models)  
+1. [Rubrics on Trial: Evolving Rubrics from a Single Query via Synthetic Pairwise Evidence](/202607/19/2607.15092v1-rubrics-on-trial-evolving-rubrics-from-a-single-query-via-synthetic-pairwise-evidence)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：提出评估LLM代码生成的基准框架，与自然语言生成评估相关
-5. [SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models](/202607/16/2607.10296v1-spark-susceptibility-guided-profiling-and-steering-of-latent-reasoning-states-in-large-language-models)  
+   evidence：为LLM评估演化评分标准
+2. [Expanding the Lexicon of Ge'ez Based African Languages: A Comparative Study of Amharic and Tigrinya](/202607/19/2607.15209v1-expanding-the-lexicon-of-geez-based-african-languages-a-comparative-study-of-amharic-and-tigrinya)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：通过扩展低资源语言词表改善多语言LM中的语义表示
+3. [Partition, Prompt, Aggregate: Statistical Self-Consistency in Language Models](/202607/19/2607.15277v1-partition-prompt-aggregate-statistical-self-consistency-in-language-models)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：评估LLM估计的自洽性，使用总概率定律
+4. [LeRoPE: Learnable RoPE Frequencies Improve Language Modeling](/202607/19/2607.10134v1-lerope-learnable-rope-frequencies-improve-language-modeling)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：利用隐藏状态诊断LLM推理状态，贡献于语言表征的可解释性
-6. [Weight-Adjusted Gradients Reveal Parameter Importance and Failure Modes in LLMs](/202607/16/2607.10803v1-weight-adjusted-gradients-reveal-parameter-importance-and-failure-modes-in-llms)  
-   标签：评分：7.0/10、query:llm-lang-rep
-   evidence：LLM参数重要性估计方法用于可解释性
-7. [Reliability Scaling Laws for Quantized Large Language Models](/202607/16/2607.10855v1-reliability-scaling-laws-for-quantized-large-language-models)  
+   evidence：可学习的RoPE频率改善语言建模，涉及编码机制
+5. [Hallucination Detection in Large Language Models Using Diversion Decoding](/202607/19/2607.10476v1-hallucination-detection-in-large-language-models-using-diversion-decoding)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：评估量化LLM的可靠性，使用不确定性和校准度量
-8. [PRISM Edit: One Vector for All Temporal Answers](/202607/16/2607.11327v1-prism-edit-one-vector-for-all-temporal-answers)  
+   evidence：提出分流解码用于幻觉检测，一种评估LLM不确定性和可靠性的方法
+6. [We Hebben Een Serieus Translatie: Modeling Intercomprehension as Probabilistic Inference](/202607/19/2607.12169v1-we-hebben-een-serieus-translatie-modeling-intercomprehension-as-probabilistic-inference)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：因果追踪揭示时间表示的两阶段内部计算
-9. [PRISM Edit: One Vector for All Temporal Answers](/202607/16/2607.11327v2-prism-edit-one-vector-for-all-temporal-answers)  
-   标签：评分：7.0/10、query:llm-lang-rep
-   evidence：因果追踪揭示时间表示的两阶段内部计算
-10. [Echoes Across Vietnam's Highlands, Delta, and Coast: A Multilingual Corpus for Cham, Khmer, and Tay-Nung](/202607/16/2607.08362v1-echoes-across-vietnams-highlands-delta-and-coast-a-multilingual-corpus-for-cham-khmer-and-tay-nung)  
-   标签：评分：6.0/10、query:llm-ling
-   evidence：为少数民族语言引入多语料库和基准，与计算语言学和LLM评估相关
-11. [Scalable Visual Pretraining for Language Intelligence](/202607/16/2607.09657v1-scalable-visual-pretraining-for-language-intelligence)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：研究面向语言智能的视觉预训练，挑战纯文本语义表示
-12. [AgentAbstain: Do LLM Agents Know When Not to Act?](/202607/16/2607.10059v1-agentabstain-do-llm-agents-know-when-not-to-act)  
+   evidence：使用语言模型评分跨语言理解的潜在假设，与语义表示相关
+7. [LLMs Can See the Smoke but not the Fire: Evaluating Abductive Reasoning with Elenchos](/202607/19/2607.12733v1-llms-can-see-the-smoke-but-not-the-fire-evaluating-abductive-reasoning-with-elenchos)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：LLM溯因推理评估框架
+8. [DS@GT ARC at LongEval: Citation Integrity and Factual Grounding in Scientific QA](/202607/19/2607.14400v1-dsgt-arc-at-longeval-citation-integrity-and-factual-grounding-in-scientific-qa)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：检查传统自然语言评估指标与RAG QA中引用完整性之间的分歧，贡献于LLM评估方法
+9. [Valid $\ne$ Necessary: Diagnosing Latent Inefficiency in Chain-of-Thought](/202607/19/2607.11266v1-valid-ne-necessary-diagnosing-latent-inefficiency-in-chain-of-thought)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：提出LLM代理放弃行动的评估框架和基准
-13. [The Effect of Multi-Lingual and Keyword Adversarial Injection on LLM Relevance Judgment](/202607/16/2607.10080v1-the-effect-of-multi-lingual-and-keyword-adversarial-injection-on-llm-relevance-judgment)  
+   evidence：引入诊断基准评估思维链中的低效，与LLM推理评估相关
+10. [Transforming LLMs into Efficient Cross-Encoders via Knowledge Distillation for RAG Reranking](/202607/19/2607.11933v1-transforming-llms-into-efficient-cross-encoders-via-knowledge-distillation-for-rag-reranking)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：对抗注入评估LLM相关性判断
+   evidence：使用RAGAS评估框架并报告重排序指标
+11. [The Test Oracle Problem in Synthetic LLM-as-Judge Corpora: Disappearance, Distortion and a Validation Protocol](/202607/19/2607.13707v1-the-test-oracle-problem-in-synthetic-llm-as-judge-corpora-disappearance-distortion-and-a-validation-protocol)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：LLM评判偏见与验证协议
+12. [HABIB_TAZ at SemEval-2026 Task 11: Disentangling Formal Logic from Content via Synthetic Training and Multi-Objective Optimization](/202607/19/2607.14349v1-habibtaz-at-semeval-2026-task-11-disentangling-formal-logic-from-content-via-synthetic-training-and-multi-objective-optimization)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：评估LLM区分形式逻辑与内容的能力，与语言理解评估相关
+13. [Large Language Models for Code Generation from Multilingual Prompts: A Curated Benchmark and a Study on Code Quality](/202607/19/2607.14816v1-large-language-models-for-code-generation-from-multilingual-prompts-a-curated-benchmark-and-a-study-on-code-quality)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：研究不同语言下LLM代码生成质量，涉及自然语言生成评估
 
 
 <div class="dpr-home-promo-card">

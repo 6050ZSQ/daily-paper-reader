@@ -1,0 +1,295 @@
+Title: 2607.15209v1.pdf
+
+URL Source: https://arxiv.org/pdf/2607.15209v1
+
+Published Time: Fri, 17 Jul 2026 01:27:59 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# Expanding the Lexicon of Ge’ez Based African Languages: A Comparative Study of Amharic and Tigrinya 
+
+Hailay Kidu Teklehaymanot †, Debela Desalegn Yadeta ‡, Wolfgang Nejdl †† L3S Research Center, Leibniz University Hannover, Germany {teklehaymanot, nejdl}@l3s.de  
+
+> ‡
+
+Addis Ababa University, Ethiopia debela.desalegn@aau.edu.et 
+
+Abstract 
+
+Multilingual pre-trained language models (PLMs) exhibit degraded performance on low-resource, non-Latin-script languages, driven by high out-of-vocabulary (OOV) rates and excessive subword fragmentation that result from Latin-script-centric tok-enizer training. We introduce VEXMLM, a vocabulary-extended variant of XLM-R tar-geting the two highest-resource Ge’ez-script languages, Amharic and Tigrinya, and further evaluated on 17 additional low-resource African languages (19 total). We train a language-specific SentencePiece tokenizer on curated Amharic and Tigrinya monolingual corpora, extend XLM-R’s vocabulary with 30,000 Ge’ez-script subwords derived from this tokenizer, and initialize their embeddings by averaging the embeddings of their con-stituent subwords under XLM-R’s original tokenizer. VEXMLM is trained in two stages: (1) continued masked language modeling over the extended vocabulary on the curated corpora, and (2) supervised fine-tuning on question answering (QA), named entity recognition (NER), and sentiment analysis (SA). On Amharic/Tigrinya QA, VEXMLM achieves 87.0 EM /90.0 F1, versus 66.0 EM/78.0 F1 for XLM-R and 74.0 EM/ 78.0 F1 for Glot500. On SA, VEXMLM reaches 80.0% accuracy versus 77.0% (XLM-R) and 46.0% (Glot500). On NER, VEXMLM raises OOV-token entity accuracy from 81.4% to 94.3%, averaged over 11 of the 19 evaluated languages for which OOV analysis was possible. Our contributions are: (i) a vocabulary-extension and embedding-initialization procedure tailored to Ge’ez script; (ii) a two-stage training strategy under which vocabulary and continued-pretraining gains on Amharic/Tigrinya transfer to 17 typologically related, unaugmented African languages; and (iii) an evaluation spanning both intrinsic tokenization metrics (vocabulary coverage, fertility, OOV rate) and extrinsic task performance across all 19 languages. 1
+
+1 Introduction 
+
+Multilingual pre-trained language models (PLMs) have significantly advanced natural language pro-cessing (NLP) by enabling cross-lingual trans-fer across many languages (Wang et al., 2023; Xue et al., 2021). Despite these advances, low-resource languages remain severely underrepre-sented in training corpora, leading to suboptimal performance on downstream tasks. This underrep-resentation is particularly acute for languages that use non-Latin scripts, where standard tokeniza-tion strategies allocate disproportionately few sub-word units, resulting in high out-of-vocabulary (OOV) rates and excessive token fragmentation that degrades performance on token-sensitive tasks such as named entity recognition, sequence label-ing, and reading comprehension (Chau and Smith, 2021; Ahia et al., 2023). A key technical bottleneck is subword tok-enization. Standard methods such as Byte Pair Encoding (BPE) and SentencePiece (Kudo and Richardson, 2018) are highly effective for high-resource, Latin-script languages but frequently over-segment text in morphologically rich or ortho-graphically distinct languages, producing longer sequences, degraded semantic representations, and elevated OOV rates. Tokens not covered by the model’s vocabulary are typically mapped to a generic [UNK] symbol, discarding all lexical in-formation (Liu et al., 2024; Xue et al., 2022). These challenges are especially pronounced for Ge’ez-script languages such as Amharic and Tigrinya. The Ge’ez script is a morphosyllabic abugida in which each symbol represents a con-
+
+> 1Code: https://github.com/hailaykidu/VEXMLM ;Model: https://huggingface.co/Hailay/ glot500-multilingual-sentiment ;Demo: https://huggingface.co/spaces/Hailay/ glot500-multilingual-sentiment-demo
+
+sonant vowel pair; the full orthographic inventory of Tigrinya, for example, comprises 347 syllabic characters and 45 labialized forms (Gebremed-hin and Mebrahtu, 2020). Standard multilingual vocabularies built predominantly on Latin-script corpora inevitably produce severe fragmentation for these scripts. Compounding this problem, Amharic and Tigrinya have limited digitized text, orthographic variation across dialects, and incon-sistent Unicode encoding in existing datasets, all of which further hamper model adaptation. Prior work has explored vocabulary expan-sion for low-resource languages (Wang et al., 2019), continued pretraining on parallel cor-pora (Ebrahimi and Kann, 2021), adaptation strategies for African languages (Alabi et al., 2022), and large-scale pretraining over 500+ lan-guages (ImaniGooghari et al., 2023). However, no prior work has systematically combined targeted vocabulary augmentation, language-specific tok-enizer construction, mean-based embedding ini-tialization, and two-stage continued pretraining within a unified framework directed at Ge’ez-script languages. Existing broad-coverage mod-els such as Glot500 achieve coverage through scale but do not optimize tokenization for specific script families, leaving a representational gap for Amharic and Tigrinya. This paper addresses these limitations by proposing VEXMLM (Vocabulary-Extended XLM), a systematic framework for adapting XLM-R to Ge’ez-script languages that combines: (1) language-specific SentencePiece tokenization and vocabulary augmentation with 30,000 Ge’ez-derived subword tokens; (2) mean initialization of new token embeddings to preserve alignment with the existing embedding space; and (3) a two-stage training procedure comprising contin-ued masked language model pretraining followed by task-specific fine-tuning. The adapted model is evaluated on three downstream tasks named entity recognition (NER), sentiment analysis (SA), and question answering (QA) across 19 low resource African languages, with primary focus on Amharic and Tigrinya. This work makes three principal contributions: • Vocabulary expansion and embedding initialization for Ge’ezscript. We pro-pose a principled vocabulary augmentation approach, constructing language-specific SentencePiece tokenizers for Amharic and Tigrinya and initializing new token embed-dings via the mean of source embeddings, ensuring compatibility with the pretrained XLM-R embedding space. • Two-stage training for cross-lingual gener-alization. We demonstrate that continued MLM pretraining on Ge’ez-script monolin-gual corpora, followed by task-specific fine-tuning, enables strong cross-lingual transfer to 17 additional African languages that were not targets of vocabulary expansion. • Comprehensive intrinsic and extrinsic evaluation. We evaluate VEXMLM using both tokenization efficiency metrics (parity, fertility, compression, OOV accuracy) and downstream task performance across 19 languages, providing a thorough charac-terization of the model’s capabilities and limitations. Experimental results show that VEXMLM sub-stantially improves over XLM-R on all three tasks. On QA, VEXMLM achieves an Exact Match of 0.87 and F1 of 0.90, compared to XLM-R’s 0.66 and 0.78 respectively. OOV word accuracy on NER improves from 81.4% to 94.3% on average across 11 African languages, with the most signif-icant gains in Amharic (+1.1 points) and Tigrinya (+2.1 points). 
+
+2 Background and Related Work 
+
+2.1 The Ge’ez Script 
+
+The Ge’ez script (also referred to as Ethiopic or Fi-del) is the only writing system indigenous to the African continent that has evolved continuously into a modern form. Originally derived from the South Arabian Sabean script, Ge’ez adapted 24 of the 29 Sabean characters, introduced a vowel mod-ification system, and shifted writing direction from right-to-left to left-to-right (Mitchell and Mitchell, 1997; Gebremedhin and Mebrahtu, 2020). Unlike the alphabetic systems of Greek or Latin, Ge’ez is a syllabic abugida in which each character encodes a consonant–vowel unit (Yimam, 1992). Amharic adopted all 26 base Ge’ez characters and added characters for additional phonemes, in-cluding Cushitic sounds encoded via modified Ge’ez forms. Tigrinya retained the full Ge’ez char-acter set and added eight additional fidels , yield-ing 347 syllabic forms and 45 labialized charac-ters (Gebremedhin and Mebrahtu, 2020). These script properties large character inventories, mor-phosyllabic structure, and limited presence in mul-tilingual corpora directly motivate the need for language-specific tokenization. 
+
+2.2 Vocabulary Expansion in Multilingual Models 
+
+Vocabulary expansion methods aim to augment the tokenizer and embedding matrix of a pretrained multilingual model to better serve target languages underrepresented during pretraining. Wang et al. (2019) identified fixed vocabulary size as a struc-tural bottleneck in multilingual models and pro-posed vocabulary adaptation strategies. More re-cently, Kim et al. (2024) demonstrated effective vocabulary expansion for Korean (EEVE-Korean) via parameter freezing and subword embedding initialization, achieving strong downstream perfor-mance. Yamaguchi et al. (2024) examined the min-imal data requirements for vocabulary expansion, and Hong et al. (2024) proposed language-specific model heads with customized vocabulary sets com-bined with verification-based fine-tuning. Remy et al. (2024) introduced Trans-Tokenization, a framework for repurposing high-resource models for low-resource settings via adaptive tokenization. Chelombitko et al. (2024) presented QTok, a comprehensive framework for evaluating multilingual tokenization quality across languages, and Richburg and Carpuat (2024) addressed cross-lingual tokenization in-consistencies using the FLORES-200 benchmark. Weber et al. (2024) explored tokenizer design choices to ensure equitable representation of low-resource languages. Our work differs from these efforts in two key respects. First, we focus on Ge’ez-script lan-guages, which have received no systematic at-tention in the vocabulary expansion literature de-spite their significant representational challenges. Second, we combine vocabulary expansion with a two-stage pretraining and fine-tuning pipeline evaluated across 19 African languages, providing a broader transferability analysis than prior work. 
+
+2.3 Tokenization for Morphologically Rich Languages 
+
+Subword tokenizers (WordPiece, BPE, Sentence-Piece) reduce vocabulary size while maintaining generalization across common forms. However, in low-resource settings, particularly for morpholog-ically rich languages, these tokenizers suffer from over-segmentation, high OOV rates, and data inef-ficiency (Limisiewicz et al., 2023; Beinborn and Pinter, 2023). The problem is amplified for lan-guages with complex derivational or inflectional morphology (Chai et al., 2024). Vocabulary-free approaches offer an alternative: ByT5 (Xue et al., 2022) and CANINE (Clark et al., 2022) operate at the byte or character level and demonstrate robustness across many languages. However, these models incur higher computa-tional costs due to longer sequences and slower inference (Xue et al., 2021; Liang et al., 2023). Pagnoni et al. (2024) proposed the Byte Latent Transformer (BLT), which processes raw bytes without tokenization, representing a promising but computationally demanding alternative. 
+
+2.4 Multilingual Models for Languages in Africa 
+
+Most multilingual modeling research has concen-trated on high-resource languages, but recent ef-forts have expanded coverage. ImaniGooghari et al. (2023) proposed Glot500-m, pretrained on 511 low-resource languages, significantly ex-panding the set of supported languages. Alabi et al. (2022) fine-tuned XLM-R for languages in African. AfroXLMR (Alabi et al., 2022) and AfriBERTa (Ogueji et al., 2021) provide special-ized encoders for African NLP. Despite this progress, Amharic and Tigrinya re-main underserved in terms of tokenization opti-mization and vocabulary coverage. Our work di-rectly targets this gap by constructing language-specific tokenizers, augmenting XLM-R’s vocabu-lary with Ge’ez-derived subword tokens, and eval-uating the resulting model across a broad collec-tion of African languages and tasks. 
+
+3 Proposed Method 
+
+This section describes the VEXMLM framework for mitigating OOV and over-segmentation issues in Ge’ez-script languages within a multilingual PLM. The framework consists of four components: (1) base model selection, (2) language-specific tokenizer construction and vocabulary expansion, (3) mean-based embedding initialization for new tokens, and (4) a two-stage training procedure of continued pretraining followed by task-specific fine-tuning. 3.1 Multilingual Base Model 
+
+We adopt XLM-RoBERTa (XLM-R) (Conneau et al., 2020) as the base model due to its strong cross-lingual transfer capabilities. XLM-R is built on the Transformer architecture (Vaswani et al., 2017) and the RoBERTa framework (Liu et al., 2019)an optimized variant of BERT (Devlin et al., 2019) and is pretrained via masked language mod-eling (MLM) on CommonCrawl data spanning 100 languages. Despite broad coverage, XLM-R exhibits sys-tematic limitations for Ge’ez-script languages. Its Latin-centric SentencePiece vocabulary produces high OOV rates, over-segmentation of morphosyl-labic units, and the mapping of unseen tokens to the [UNK] symbol (Zhang et al., 2022; Ahia et al., 2023). These problems motivate our targeted aug-mentation strategy. 
+
+3.2 Target Language Tokenization and Vocabulary Expansion 
+
+We construct independent language-specific Sen-tencePiece tokenizers (Kudo and Richardson, 2018) trained on curated monolingual corpora for Amharic and Tigrinya. For Tigrinya, we train a vocabulary of 50,000 subword units; for Amharic, 32,000 subword units. These sizes balance script coverage with computational efficiency and are calibrated to minimize OOV rates on held-out eval-uation corpora. To merge the new vocabulary with XLM-R’s original vocabulary Vs, we retain only tokens from the new tokenizers that are absent from Vs (i.e., 
+
+Vt ∩ V s = ∅ after deduplication). This yields a combined vocabulary Vs∪t with 30,000 net new Ge’ez-derived subword tokens added, expanding XLM-R’s vocabulary from 250K to 280K tokens. Backward compatibility with all original XLM-R representations is fully preserved, as no existing entries are modified. 
+
+3.3 Embedding Initialization for Expanded Vocabulary 
+
+Integrating new vocabulary tokens into a pre-trained model requires initializing their embed-dings compatibly with the existing embedding space. Random initialization risks destabilizing pretraining dynamics, while zero-initialization in-troduces systematic magnitude bias. We adopt a 
+
+mean initialization strategy, which positions new tokens at the geometric centroid of the source em-bedding distribution (Minixhofer et al., 2022). 
+
+Formal Setup. Let θ denote the parameters of the pretrained model LM sθ , trained on source vo-cabulary Vs = {vs
+
+> 1
+
+, . . . , v sn} with embeddings 
+
+Es = {es
+
+> 1
+
+, . . . , e sn}, where esi ∈ Rd. The proba-bility of predicting token wi given context w1: i−1
+
+is: 
+
+pθ(wi | w1: i−1) = exp (h⊤
+
+> i−1
+
+eswi )
+
+∑ 
+
+> j∈V s
+
+exp (h⊤
+
+> i−1
+
+esj ) , (1) where hi−1 = ϕ(w1: i−1; LM sθ ) ∈ Rd is the en-coder’s contextual representation. 
+
+Vocabulary Extension. Let Vt = {vt
+
+> 1
+
+, . . . , v tn′ }
+
+be the set of new tokens with Vt ∩ V s = ∅ by construction. 2 The updated parameter set becomes 
+
+θ′ = θ ∪ { etj : j ∈ V t}, and the extended model 
+
+LM tθ′ operates over Vs∪t.
+
+Mean Initialization. Each new embedding etj is initialized to the mean of all source embeddings: 
+
+etj = 1
+
+|V s|
+
+> |V s|
+
+∑
+
+> i=1
+
+esi . (2) This places new tokens at the centroid of the source embedding space, reducing the risk of out-lier placement and avoiding directional bias to-ward any specific source language. Since XLM-R ties its input embedding matrix with the MLM out-put projection, Equation 2 is applied once to the shared matrix. An ablation study comparing mean initialization against random and zero initialization baselines is provided in Section 4.5, demonstrat-ing its contribution to faster convergence and im-proved downstream performance. 
+
+3.4 Two-Stage Training: Continued Pretraining and Fine-Tuning Stage 1: Continued Pretraining. We perform continued pretraining using the MLM objective (pmask = 0.15 ) on large unlabeled monolingual corpora for Amharic and Tigrinya. During this stage, all model parameters including original and newly added embeddings are updated. Low-resource language data is upsampled to address corpus imbalance. Full parameter training is es-sential to allow newly initialized embeddings to move toward meaningful representations within the shared embedding space. The model at the end of this stage is referred to as VEXMLM .                                            
+
+> 2Any token already present in Vsretains its original em-bedding; only genuinely new tokens enter Vt.Hyperparameter Cont. Pretraining Fine-Tuning
+> Maximum sequence length 256 †256 Batch size 32 32 Training epochs 10 4Learning rate 5×10 −52×10 −5
+> LR schedule Constant Linear decay + warmup Weight decay 0.01 0.01 MLM probability 0.15 N/A Gradient clipping 1.0 1.0 Optimizer AdamW AdamW Adam ϵ1×10 −81×10 −8
+> Adam β10.9 0.9 Adam β20.999 0.999 Mixed precision (fp16) True True Trainable parameters All Embedding + Output head
+
+Table 1: Hyperparameter settings for continued pre-training and supervised fine-tuning. †XLM-R supports up to 514 tokens; a 256-token limit is used for compu-tational efficiency. The effect of this constraint on QA performance for longer documents is discussed in Sec-tion 7. 
+
+Stage 2:Task Specific Fine-Tuning. VEXMLM is subsequently fine-tuned on three downstream tasks: named entity recognition (NER), sentiment analysis (SA), and question answering (QA). To mitigate overfitting in resource-constrained set-tings, fine-tuning updates only the task-specific classification head and the embedding layer while keeping the transformer body partially frozen. This selective update strategy preserves cross-lingual representations acquired during continued pretraining while enabling task adaptation. Evalu-ation focuses primarily on Amharic and Tigrinya, and extends to 19 low-resource African languages to assess cross-lingual generalization. For NER and SA, we report accuracy as the pri-mary metric. 3 For QA, we report both Exact Match (EM) and F1 scores. 
+
+Hyperparameter Configuration. Table 1 sum-marizes the hyperparameters used for both training stages. 
+
+4 Experimental Setup 
+
+4.1 Model Architecture 
+
+VEXMLM retains XLM-RoBERTa-base’s en-coder architecture: 12 Transformer layers, ahidden size of 768, 12 attention heads, GELU activation, and layer normalization ( ϵ = 1 ×10 −5). The vocabulary is expanded from 250K to 280K tokens (301M total parameters, up from 279M). 
+
+> 3Accuracy is used for NER to maintain consistency with SA; however, we acknowledge that macro-F1 is the standard metric for NER evaluation and report it alongside accuracy in Table 7 in the Appendix.
+
+For reference, Glot500 has 395M parameters and a 400K vocabulary. A comparison of model characteristics is shown in Figure 2 (vocabulary and parameter counts). 
+
+4.2 Training Configuration 
+
+Continued pretraining uses a constant learning rate of 5 × 10 −5; fine-tuning uses a linear decay sched-ule with warmup starting at 2×10 −5 over 4 epochs. Both stages use AdamW ( β1=0 .9, β2=0 .999 ,
+
+ϵ=1 ×10 −8) with weight decay 0.01, gradient clip-ping at 1.0, and mixed-precision (fp16) training. 
+
+4.3 Datasets and Tasks 
+
+We evaluate VEXMLM on three downstream tasks spanning 19 low-resource African languages. Where datasets are provided with standard splits, we use them as-is. For imbalanced or unsplit datasets, we apply an 80:10:10 train-development-test split. 
+
+Sentiment Analysis (SA). We use AfriSenti (Muhammad et al., 2023), a multi-lingual corpus containing over 110,000 tweets labeled as positive, negative, or neutral across 14 African languages. For language subsets without standard splits, we apply the 80:10:10 division. 
+
+Named Entity Recognition(NER). We use MasakhaNER (Adelani et al., 2021), covering 10 African languages with annotations for PER, LOC, ORG, and MISC entities, and the Tigrinya NER dataset (Yohannes and Amagasa, 2022). All datasets are evaluated using the official test splits where available. 
+
+Question Answering (QA). We evaluate on TIGQA (Teklehaymanot et al., 2024), an expert-annotated extractive QA dataset in Tigrinya, and AmQA (Taffa et al., 2024), an extractive QA cor-pus for Amharic. Both provide diverse question types and answer lengths representative of natu-rally occurring text. 
+
+4.4 Baselines 
+
+We compare VEXMLM against two baselines, both fine-tuned under identical training data, hy-perparameters, and evaluation protocols to ensure fair comparison: • XLM-R (Conneau et al., 2020): The di-rect base model for VEXMLM; pretrained on 100 languages including some African lan-guages. Serves as the primary baseline to iso-late the contribution of vocabulary expansion and continued pretraining. • Glot500 (ImaniGooghari et al., 2023): Amassively multilingual model pretrained on 511 languages, representing the strongest publicly available broad-coverage baseline. Glot500’s larger vocabulary (400K) and pa-rameter count (395M) provide an upper-bound comparison for coverage-oriented ap-proaches. We acknowledge that other recent African NLP models (e.g., AfroXLMR, AfriBERTa) were not included in the primary comparison due to differ-ences in supported languages and task coverage; a discussion of their relative positioning is provided in Section 5.4. 
+
+4.5 Ablation Study Design 
+
+To isolate the individual contributions of VEXMLM’s components, we conduct ablation experiments on Tigrinya NER (our primary target language with the largest OOV improvement). We compare four configurations: 1. XLM-R (baseline) : No modification. 2. +VocabExp (Random Init) : Vocabulary ex-panded with 30K new tokens, randomly ini-tialized. 3. +VocabExp (Mean Init) : Vocabulary ex-panded with 30K new tokens, mean initial-ized (Equation 2). 4. VEXMLM (Full) : Mean init + continued pre-training + fine-tuning. Results are reported in Table 5. 
+
+5 Results and Evaluation 
+
+We assess VEXMLM using both intrinsic met-rics tokenization quality measures and extrinsic metrics downstream task performance across 19 African languages. 
+
+5.1 Intrinsic Evaluation: Tokenization Quality Model Characteristics. Figure 2 compares pa-rameter counts and vocabulary sizes. VEXMLM has 301M parameters and a 280K-token vocab-ulary, compared to XLM-R (279M / 250K) and Glot500 (395M / 400K). VEXMLM offers a mid-dle ground: targeted Ge’ez-script coverage with modest parameter overhead. 
+
+Parity. The Parity metric (Petrov et al., 2024) assesses cross-lingual processing fairness by mea-suring how consistently a model tokenizes equiva-lent sentences across languages relative to English. Scores closer to 1.0 indicate more equitable tok-enization. Table 2 shows that VEXMLM achieves the best parity for most languages, including all non-Ge’ez languages tested (Ge’ez, Tigre, Harari, Gurage, Afar, Oromo, Afrikaans, German, Ara-bic). Glot500 outperforms VEXMLM on Tigrinya (1.20 vs. 0.27) and Amharic (0.90 vs. 0.39), reflect-ing the impact of its broader pretraining on these specific scripts. XLM-R records the lowest par-ity across low-resource languages, confirming the baseline tokenization gap. We note that VEXMLM’s low parity score for Tigrinya (0.27) indicates more compact tokeniza-tion relative to English a desirable property, indi-cating fewer tokens needed per sentence. This is consistent with the fertility results below.                                      
+
+> Table 2: Parity scores across languages relative to En-glish sentence length. Values closer to 1.0 indicate more equitable tokenization. Bold indicates best.
+> Language XLM-R Glot500 VEXMLM
+> Tigrinya 1.36 1.20 0.27 Amharic 0.82 0.90 0.39 Ge’ez 0.45 0.31 0.73
+> Tigre 0.82 0.88 0.89
+> Harari 0.41 0.14 0.88
+> Gurage 0.62 0.12 0.89
+> Afar 0.54 0.30 0.90
+> Oromo 1.27 0.90 0.93
+> Afrikaans 1.18 1.30 0.96
+> German 1.09 1.10 0.98
+> Arabic 1.27 1.30 1.16
+
+Fertility. Fertility (Rust et al., 2021) measures the average number of tokens produced per in-put word; lower values indicate more efficient tokenization. Figure 1 shows that VEXMLM achieves significantly lower fertility for Amharic and Tigrinya compared to XLM-R, indicating re-duced over-fragmentation. Glot500 performs most efficiently for English due to its broader Latin-script coverage, while XLM-R shows the highest fertility for the Ge’ez-script languages confirming the tokenization gap that motivated this work. Figure 1: Fertility scores (tokens per word) for English, Amharic, and Tigrinya. Lower scores indicate more ef-ficient tokenization. VEXMLM shows the largest fer-tility reduction for the target Ge’ez-script languages. 
+
+Compression. The Compression metric (Gold-man et al., 2024) evaluates the average number of characters per token, measuring how compactly a tokenizer encodes text. Higher compression indi-cates fewer tokens needed to represent the same content. VEXMLM achieves higher compression for Amharic and Tigrinya compared to XLM-R, consistent with its lower fertility scores. 
+
+Language and Script Coverage. Figure 2 il-lustrates that VEXMLM extends vocabulary cov-erage for Ge’ez-script languages while main-taining parity with XLM-R across other scripts. VEXMLM’s vocabulary of 280K tokens preserves all original XLM-R entries, ensuring no regression in coverage for the 100 languages supported by the base model. 
+
+Figure 2: Vocabulary size comparison across lan-guages for XLM-R (250K) and VEXMLM (280K). VEXMLM’s expanded vocabulary is uniformly avail-able across all evaluated languages. 
+
+OOV Handling. Table 3 reports OOV word ac-curacy in NER across 11 African languages, com-paring XLM-R and VEXMLM. VEXMLM im-proves OOV accuracy by +12.9 points on average (from 81.4% to 94.3%), with the largest absolute improvements in Kinyarwanda (+8.5), Swahili (+15.0), and Nigerian Pidgin (+7.4). For Amharic and Tigrinya the primary targets of vocabulary ex-pansion OOV accuracy improves by +1.1 and +2.1 points respectively, while Non-OOV accuracy also improves substantially for Tigrinya (+11.4 points), indicating that the vocabulary expansion benefits the model’s representation of known tokens as well. 
+
+Table 3: OOV word accuracy (%) for 11 African lan-guages on NER. This is a diagnostic evaluation focus-ing on out-of-vocabulary tokens within the NER task and is not directly comparable to the overall NER accu-racy reported in Table 3. VEXMLM improves average OOV accuracy by +12.9 points over XLM-R.                                                      
+
+> Language XLM-R VEXMLM
+> Non-OOV OOV Non-OOV OOV
+> Amharic (amh) 98.1 91.1 98.1 92.2 Tigrinya (tig) 78.1 96.1 89.5 98.2
+> Hausa (hau) 97.0 90.2 97.2 95.6
+> Igbo (ibo) 97.8 91.9 97.7 94.5
+> Kinyarwanda (kin) 98.8 84.9 99.0 93.4
+> Luganda (lug) 98.8 91.3 96.4 94.8
+> Luo (luo) 97.8 91.4 98.6 95.2
+> Nigerian Pidgin (pcm) 98.6 89.6 97.5 97.0
+> Swahili (swa) 98.2 80.2 93.9 95.2
+> Wolof (wol) 92.5 89.1 98.7 93.0
+> Yoruba (yor) 91.6 81.8 92.8 89.1 Average 95.2 81.4 96.3 94.3
+
+5.2 Extrinsic Evaluation: Downstream Task Performance 
+
+Table 4 reports performance on all three down-stream tasks. VEXMLM outperforms XLM-R on SA, QA (EM), and QA (F1), and outperforms Glot500 on SA and QA. Glot500 achieves higher NER accuracy than VEXMLM (0.92 vs. 0.78), suggesting that its larger vocabulary (400K to-kens), greater model capacity (395M parameters), and broader pretraining may benefit entity-centric tasks. However, Glot500 achieves substantially lower sentiment analysis (SA) accuracy (0.46 vs. 0.80), indicating that the advantages of large-scale models do not transfer uniformly across tasks and that targeted tokenization may offer task-specific benefits. 
+
+5.3 Ablation Study 
+
+Table 5 reports ablation results for Tigrinya NER OOV accuracy, isolating the contribution of each component. Vocabulary expansion alone with ran-dom initialization provides a modest gain (+1.2 points over baseline). Mean initialization yields a further improvement (+2.3 points over random init), confirming that the geometric centroid start-Table 4: Downstream task performance. SA and NER report accuracy; QA reports Exact Match (EM) and F1. Bold indicates best performance per metric. VEXMLM significantly outperforms XLM-R on QA (+21 EM, +12 F1) and SA (+3 accuracy), and Glot500 on SA (+34 accuracy) and QA.                
+
+> Task (Metric) XLM-R VEXMLM Glot500
+> SA (Accuracy) 0.77 0.80 0.46 NER (Accuracy) 0.75 0.78 0.92
+> QA (EM) 0.66 0.87 0.74 QA (F1) 0.78 0.90 0.78
+
+ing point enables faster, more stable convergence. The full VEXMLM configuration (mean init + con-tinued pretraining + fine-tuning) achieves the best OOV accuracy, with continued pretraining provid-ing the largest single gain (+7.1 points), indicating that updating the model’s representations through MLM on Ge’ez-script corpora is the most critical component of the pipeline. 
+
+> Table 5: Ablation study: Tigrinya NER OOV accuracy under different configurations. Each row adds one com-ponent to the previous.
+
+Configuration OOV Acc. (%) 
+
+XLM-R baseline 96.1 + VocabExp (Random Init) 97.3 + VocabExp (Mean Init) 97.8 + Continued Pretraining 98.2 
+
+5.4 Discussion 
+
+The results demonstrate that VEXMLM’s improve-ments are primarily driven by two factors: (1) enhanced vocabulary coverage through targeted Ge’ez-script subword augmentation, and (2) con-tinued MLM pretraining that updates representa-tions to reflect the morphological and orthographic patterns of Amharic and Tigrinya. The cross-lingual transfer gains observed in non-Ge’ez languages (e.g., Kinyarwanda, Swahili, Nigerian Pidgin in NER OOV accuracy) are not a direct product of vocabulary expansion, which targets only Ge’ez-script tokens. Rather, these gains likely stem from continued pretraining on multilingual corpora with upsampled low-resource data, which strengthens the model’s general abil-ity to represent morphologically complex tokens. This interpretation is consistent with findings in prior work on continued pretraining for multilin-gual transfer (Alabi et al., 2022). A notable finding is that Glot500 substantially outperforms VEXMLM on NER accuracy (0.92 vs. 0.78) despite VEXMLM’s targeted vocabu-lary expansion. We attribute this to two factors: (i) Glot500’s larger parameter count (395M vs. 301M) provides greater representational capacity for entity boundary detection; (ii) Glot500 was pretrained on substantially more African language data overall, which may benefit NER more than QA or SA due to the importance of cross-lingual entity sharing. The reversal on SA (0.80 vs. 0.46 for Glot500) further suggests task-specific dynam-ics: sentiment classification may be more sensi-tive to tokenization quality and fine-tuning signal, where VEXMLM’s more targeted vocabulary pro-vides an advantage. Comparing with AfroXLMR and AfriBERTa is complicated by differing language coverage and evaluation protocols. Both models target a subset of the languages evaluated here and are not avail-able in configurations covering all 19 languages in our benchmark. A direct, controlled comparison constitutes important future work. We stress that the absolute gains reported for Amharic and Tigrinya NER OOV accuracy (+1.1 and +2.1 points respectively) are modest relative to the average improvement (+12.9 points). The relatively high baseline OOV accuracy for these languages (91.1% and 96.1% for Amharic and Tigrinya) suggests that XLM-R’s token-level rep-resentations are not uniformly poor for these lan-guages; the gains may be larger for tasks with more diverse entity types or longer contexts. The 256-token sequence limit likely constrains QA perfor-mance on long documents; future work should in-vestigate full-length training. 
+
+6 Conclusion 
+
+We present VEXMLM, a vocabulary-extended variant of XLM-R addressing OOV and over-segmentation in Ge’ez-script languages through:(i) language-specific SentencePiece tokenization for Amharic and Tigrinya;(ii) augmentation with 30,000 Ge’ez-derived subword tokens; (iii) mean-based embedding initialization for compatibility with the pretrained embedding space; and (iv) two-stage training combining continued MLM pretrain-ing with task-specific fine-tuning. Across NER, sentiment analysis, and QA on 19 low-resource African languages, VEXMLM outperforms XLM-R, with a 21-percentage-point gain in QA Exact Match (0.66→0.87) and a 12.9-point average OOV accuracy gain on NER. Ablations show contin-ued MLM pretraining contributes most to perfor-mance, while mean initialization accelerates con-vergence relative to random initialization. These results highlight the value of morphology aware, script-specific tokenization and targeted vocabu-lary augmentation for equitable multilingual NLP, directly narrowing the representational gap for un-derserved Ge’ez-script communities. Future work includes: (i) extending vocabulary augmentation to Tigre, Harari, and Classical Ge’ez; (ii) morpho-logically informed tokenization capturing syllabic structure; (iii) character- or byte-level hybrid rep-resentations; and (iv) controlled comparisons with AfroXLMR and AfriBERTa on a unified bench-mark.One accuracy point worth double-checking before you finalize: the vocabulary augmenta-tion and tokenization changes (i–iii) are explic-itly scoped to Amharic and Tigrinya (Ge’ez-script), but the evaluation is on 19 African languages, most of which use Latin/other scripts. If the reported gains are averaged across all 19, a reviewer may ask why a Ge’ez-script-specific vocabulary inter-vention improves non-Ge’ez-script languages too likely because the gains are driven by continued MLM pretraining (a general effect) rather than the script-specific vocabulary (a targeted effect). You may want to either (a) break out Ge’ez-script vs. non-Ge’ez-script results separately in the ablation, or (b) add a sentence clarifying that the vocabu-lary/tokenization components target Ge’ez-script languages specifically while the training proce-dure(continued MLM + fine-tuning) is what drives the broader multilingual gains. Worth confirm-ing this matches what your ablation table actually shows. 
+
+Ethical Considerations 
+
+This work aims to improve NLP capabilities for historically underserved African language commu-nities. All datasets used are publicly available and were collected with appropriate community con-sent (per the original dataset publications). We do not introduce new data collection; potential biases in the source corpora may propagate to VEXMLM’s representations. 
+
+7 Limitations and Future Directions 
+
+Scope of vocabulary expansion. Vocabulary augmentation in VEXMLM targets only Amharic and Tigrinya. The improvements observed in other low-resource languages are a by-product of con-tinued pretraining and cross-lingual transfer rather than direct tokenization improvement. Languages with distinct scripts (e.g., Arabic-script Hausa or Wolof) do not benefit from the new Ge’ez-derived tokens and remain limited by the original XLM-R vocabulary allocation. 
+
+Data constraints. Our continued pretraining re-lies on curated monolingual corpora for Amharic and Tigrinya. These corpora may be limited in domain diversity, dialectal coverage, and size rel-ative to high-resource language corpora. Poten-tial biases in the training data topical skew toward news or religious text, for example may limit ro-bustness for informal or domain-specific applica-tions. 
+
+Evaluation metrics for NER. Accuracy is used as the primary NER metric for consistency with sentiment analysis. However, accuracy does not adequately capture performance on class-imbalanced entity type distributions. Macro-F1 scores are provided in the Appendix (Table 7) and should be considered alongside accuracy for a com-plete picture. 
+
+Sequence length constraint. A 256-token limit is applied during both pretraining and fine-tuning for computational efficiency, despite XLM-R sup-porting up to 514 tokens. This may constrain QA performance on documents with long contexts, as answer spans in TIGQA and AmQA can occur be-yond the 256-token window. 
+
+Ablation scope. While Section 5.3 reports abla-tion results on Tigrinya NER, ablations are not re-ported for SA or QA tasks due to resource con-straints. Comprehensive ablation analysis across all tasks and language pairs including an investiga-tion of vocabulary size (e.g., 10K, 20K, 30K new tokens) and embedding initialization variants re-mains an important direction for future work. 
+
+Missing baselines. Comparisons with AfroX-LMR and AfriBERTa were not included due to in-consistencies in supported language sets and eval-uation protocols. Future work should establish a unified evaluation benchmark enabling controlled comparison across all African NLP specialized models. References 
+
+David Ifeoluwa Adelani, Jade Abbott, Graham Neubig, Daniel D’souza, Julia Kreutzer, Constantine Lignos, Chester Palen-Michel, Happy Buzaaba, Shruti Rijh-wani, Sebastian Ruder, et al. 2021. Masakhaner: Named entity recognition for african languages. 
+
+Transactions of the Association for Computational Linguistics , 9:1116–1131. Orevaoghene Ahia, Sachin Kumar, Hila Gonen, Jungo Kasai, David Mortensen, Noah Smith, and Yulia Tsvetkov. 2023. Do all languages cost the same? to-kenization in the era of commercial language mod-els. In Proceedings of the 2023 Conference on Em-pirical Methods in Natural Language Processing ,pages 9904–9923, Singapore. Association for Com-putational Linguistics. Jesujoba O. Alabi, David Ifeoluwa Adelani, Marius Mosbach, and Dietrich Klakow. 2022. Adapting pre-trained language models to African languages via multilingual adaptive fine-tuning. In Proceedings of the 29th International Conference on Computa-tional Linguistics , pages 4336–4349, Gyeongju, Re-public of Korea. International Committee on Compu-tational Linguistics. Lisa Beinborn and Yuval Pinter. 2023. Analyzing cog-nitive plausibility of subword tokenization. In Pro-ceedings of the 2023 Conference on Empirical Meth-ods in Natural Language Processing , pages 4478– 4486, Singapore. Association for Computational Lin-guistics. Yekun Chai, Yewei Fang, Qiwei Peng, and Xuhong Li. 2024. Tokenization falling short: On subword ro-bustness in large language models. In Findings of the Association for Computational Linguistics: EMNLP 2024 , pages 1582–1599, Miami, Florida, USA. As-sociation for Computational Linguistics. Ethan C. Chau and Noah A. Smith. 2021. Specializing multilingual language models: An empirical study. In Proceedings of the 1st Workshop on Multilingual Representation Learning , pages 51–61, Punta Cana, Dominican Republic. Association for Computational Linguistics. Iaroslav Chelombitko, Egor Safronov, and Aleksey Komissarov. 2024. Qtok: A comprehensive frame-work for evaluating multilingual tokenizer qual-ity in large language models. arXiv preprint arXiv:2410.12989 .Jonathan H Clark, Dan Garrette, Iulia Turc, and John Wieting. 2022. Canine: Pre-training an efficient tokenization-free encoder for language representa-tion. Transactions of the Association for Computa-tional Linguistics , 10:73–91. Kartikay Conneau, Alexis Workshop Khandelwal, Na-man Goyal, Vishrav Chaudhary, Guillaume Wen-zek, Francisco Guzmán, Edouard Grave, Myle Ott, Luke Zettlemoyer, and Veselin Stoyanov. 2020. Un-supervised cross-lingual representation learning at scale. In Proceedings of the 58th Annual Meet-ing of the Association for Computational Linguistics ,pages 8440–8451, Online. Association for Computa-tional Linguistics. Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. BERT: Pre-training of deep bidirectional transformers for language under-standing. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers) ,pages 4171–4186, Minneapolis, Minnesota. Associ-ation for Computational Linguistics. Abteen Ebrahimi and Katharina Kann. 2021. How to adapt your pretrained multilingual model to 1600 lan-guages. In Proceedings of the 59th Annual Meet-ing of the Association for Computational Linguistics and the 11th International Joint Conference on Natu-ral Language Processing (Volume 1: Long Papers) ,pages 4555–4567, Online. Association for Computa-tional Linguistics. Gebremeskel Hagos Gebremedhin and Abera Asefa Mebrahtu. 2020. Linguistic evolution of ethiopic languages: a comparative discussion. Interna-tional Journal of Intelligent Systems and Applica-tions , 8(1):1–9. Omer Goldman, Avi Caciularu, Matan Eyal, Kris Cao, Idan Szpektor, and Reut Tsarfaty. 2024. Unpacking tokenization: Evaluating text compression and its correlation with model performance. arXiv preprint arXiv:2403.06265 .Jimin Hong, Gibbeum Lee, and Jaewoong Cho. 2024. Accelerating multilingual language model for ex-cessively tokenized languages. arXiv preprint arXiv:2401.10660 .Ayyoob ImaniGooghari, Peiqin Lin, Amir Hossein Kar-garan, Silvia Severini, Masoud Jalili Sabet, Nora Kassner, Chunlan Ma, Helmut Schmid, André Mar-tins, François Yvon, and Hinrich Schütze. 2023. Glot500: Scaling multilingual corpora and language models to 500 languages. In Proceedings of the 61st Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) , pages 1082–1117, Toronto, Canada. Association for Com-putational Linguistics. Seungduk Kim, Seungtaek Choi, and Myeongho Jeong. 2024. Efficient and effective vocabulary expansion towards multilingual large language models. arXiv preprint arXiv:2402.14714 .Taku Kudo and John Richardson. 2018. SentencePiece: A simple and language independent subword tok-enizer and detokenizer for neural text processing. In 
+
+Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing: System Demonstrations , pages 66–71, Brussels, Belgium. Association for Computational Linguistics. Davis Liang, Hila Gonen, Yuning Mao, Rui Hou, Na-man Goyal, Marjan Ghazvininejad, Luke Zettle-moyer, and Madian Khabsa. 2023. XLM-V: Over-coming the vocabulary bottleneck in multilingual masked language models. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , pages 13142–13152, Singa-pore. Association for Computational Linguistics. Tomasz Limisiewicz, Jiří Balhar, and David Mareček. 2023. Tokenization impacts multilingual language modeling: Assessing vocabulary allocation and over-lap across languages. In Findings of the Association for Computational Linguistics: ACL 2023 , pages 5661–5681, Toronto, Canada. Association for Com-putational Linguistics. Yihong Liu, Peiqin Lin, Mingyang Wang, and Hinrich Schuetze. 2024. OFA: A framework of initializ-ing unseen subword embeddings for efficient large-scale multilingual continued pretraining. In Find-ings of the Association for Computational Linguis-tics: NAACL 2024 , pages 1067–1097, Mexico City, Mexico. Association for Computational Linguistics. Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Man-dar Joshi, Danqi Chen, Omer Levy, Mike Lewis, Luke Zettlemoyer, and Veselin Stoyanov. 2019. Roberta: A robustly optimized bert pretraining ap-proach. arXiv preprint arXiv:1907.11692 .Benjamin Minixhofer, Fabian Paischer, and Navid Rek-absaz. 2022. WECHSEL: Effective initialization of subword embeddings for cross-lingual transfer of monolingual language models. In Proceedings of the 2022 Conference of the North American Chap-ter of the Association for Computational Linguis-tics: Human Language Technologies , pages 3992– 4006, Seattle, United States. Association for Com-putational Linguistics. Tom M Mitchell and Tom M Mitchell. 1997. Machine learning , volume 1. McGraw-hill New York. Shamsuddeen Hassan Muhammad, Seid Yimam, Idris Abdulmumin, Ibrahim Sa’id Ahmad, Nedjma Ousid-houm, Abinew Ayele, David Adelani, Sebastian Ruder, Meriem Beloucif, Shehu Bello Bello, and Saif M. Mohammad. 2023. SemEval-2023 task 12: Sentiment analysis for african languages (AfriSenti-SemEval). In Proceedings of the 17th International Workshop on Semantic Evaluation (SemEval-2023) .Kelechi Ogueji, Yuxin Zhu, and Jimmy Lin. 2021. Small data? no problem! exploring the viability of pretrained multilingual language models for low-resourced languages. In Proceedings of the 1st work-shop on multilingual representation learning , pages 116–126. Artidoro Pagnoni, Ram Pasunuru, Pedro Rodriguez, John Nguyen, Benjamin Muller, Margaret Li, Chunt-ing Zhou, Lili Yu, Jason Weston, Luke Zettle-moyer, et al. 2024. Byte latent transformer: Patches scale better than tokens. arXiv preprint arXiv:2412.09871 .Aleksandar Petrov, Emanuele La Malfa, Philip Torr, and Adel Bibi. 2024. Language model tokenizers introduce unfairness between languages. Advances in Neural Information Processing Systems , 36. François Remy, Pieter Delobelle, Hayastan Avetisyan, Alfiya Khabibullina, Miryam de Lhoneux, and Thomas Demeester. 2024. Trans-tokenization and cross-lingual vocabulary transfers: Language adap-tation of llms for low-resource nlp. arXiv preprint arXiv:2408.04303 .Aquia Richburg and Marine Carpuat. 2024. How mul-tilingual are large language models fine-tuned for translation? arXiv preprint arXiv:2405.20512 .Phillip Rust, Jonas Pfeiffer, Ivan Vulić, Sebastian Ruder, and Iryna Gurevych. 2021. How good is your tokenizer? on the monolingual performance of multilingual language models. In Proceedings of the 59th Annual Meeting of the Association for Compu-tational Linguistics and the 11th International Joint Conference on Natural Language Processing (Vol-ume 1: Long Papers) , pages 3118–3135, Online. As-sociation for Computational Linguistics. Tilahun Abedissa Taffa, Ricardo Usbeck, and Yaregal Assabie. 2024. Low resource question answering: An Amharic benchmarking dataset. In Proceedings of the Fifth Workshop on Resources for African In-digenous Languages @ LREC-COLING 2024 , pages 124–132, Torino, Italia. ELRA and ICCL. Hailay Kidu Teklehaymanot, Dren Fazlija, Niloy Gan-guly, Gourab Kumar Patro, and Wolfgang Ne-jdl. 2024. TIGQA: An expert-annotated question-answering dataset in Tigrinya. In Proceedings of the 2024 Joint International Conference on Compu-tational Linguistics, Language Resources and Eval-uation (LREC-COLING 2024) , pages 16142–16161, Torino, Italia. ELRA and ICCL. Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. Advances in neural information process-ing systems , 30. Chunliu Wang, Huiyuan Lai, Malvina Nissim, and Jo-han Bos. 2023. Pre-trained language-meaning mod-els for multilingual parsing and generation. In Find-ings of the Association for Computational Linguis-tics: ACL 2023 , pages 5586–5600, Toronto, Canada. Association for Computational Linguistics. Hai Wang, Dian Yu, Kai Sun, Jianshu Chen, and Dong Yu. 2019. Hai wang, dian yu, kai sun, janshu chen, and 791 dong yu. 2019. improving pre-trained multilingual 792 models with vocabulary expansion. arxiv preprint 793 arxiv:1909.12440. In Proceed-ings of the 23rd Conference on Computational Nat-ural Language Learning (CoNLL) , pages 316–327, Hong Kong, China. Association for Computational Linguistics. Alexander Arno Weber, Klaudia Thellmann, Jan Ebert, Nicolas Flores-Herr, Jens Lehmann, Michael Fromm, and Mehdi Ali. 2024. Investigating multi-lingual instruction-tuning: Do polyglot models de-mand for multilingual instructions? arXiv preprint arXiv:2402.13703 .Linting Xue, Aditya Barua, Noah Constant, Rami Al-Rfou, Sharan Narang, Mihir Kale, Adam Roberts, and Colin Raffel. 2022. Byt5: Towards a token-free future with pre-trained byte-to-byte models. Trans-actions of the Association for Computational Lin-guistics , 10:291–306. Linting Xue, Noah Constant, Adam Roberts, Mihir Kale, Rami Al-Rfou, Aditya Siddhant, Aditya Barua, and Colin Raffel. 2021. mt5: A massively multi-lingual pre-trained text-to-text transformer. In Pro-ceedings of the 2021 Conference of the North Amer-ican Chapter of the Association for Computational Linguistics: Human Language Technologies , pages 483–498. Atsuki Yamaguchi, Aline Villavicencio, and Nikolaos Aletras. 2024. How can we effectively expand the vocabulary of llms with 0.01 gb of target language text? arXiv preprint arXiv:2406.11477 .Baye Yimam. 1992. (Ethiopian) Writing System . Ad-dis Ababa University, Addis Ababa, Ethiopia. Asso-ciate Professor & Head of Department of Linguistics, 1992. Hailemariam Mehari Yohannes and Toshiyuki Ama-gasa. 2022. A method of named entity recognition for tigrinya. ACM SIGAPP Applied Computing Re-view , 22(3):56–68. Shiyue Zhang, Vishrav Chaudhary, Naman Goyal, James Cross, Guillaume Wenzek, Mohit Bansal, and Francisco Guzman. 2022. How robust is neural ma-chine translation to language imbalance in multilin-gual tokenizer training? In Proceedings of the 15th biennial conference of the Association for Machine Translation in the Americas (Volume 1: Research Track) , pages 97–116, Orlando, USA. Association for Machine Translation in the Americas. 
+
+A Language Selection 
+
+Table 6 lists all 19 languages included in the eval-uation, along with their ISO codes, primary coun-tries of use, and writing scripts. Languages using the Ge’ez script the primary targets of VEXMLM’s vocabulary expansion are highlighted in bold. 
+
+B NER Macro-F1 Scores 
+
+Table 7 reports macro-F1 scores for NER alongside accuracy, providing a more complete evaluation for entity-level performance on class-imbalanced datasets.                                       
+
+> Language (ISO) Primary Re-gion Script
+> Algerian Arabic (arq) Algeria Arabic
+> Amharic (amh) Ethiopia Ge’ez
+> Hausa (hau) Nigeria, Niger, West Africa Arabic / Latin Igbo (ibo) Nigeria Latin Kinyarwanda (kin) Rwanda Latin Moroccan Arabic/Dar-ija (ary) Morocco Arabic Mozambique Por-tuguese (pt-MZ) Mozambique Latin Nigerian Pidgin (pcm) Nigeria Latin Oromo (orm) Ethiopia Latin Swahili (swa) Kenya, Tanza-nia, Uganda Latin
+> Tigrinya (tir) Eritrea, Ethiopia
+> Ge’ez
+> Twi (twi) Ghana Latin Xitsonga (tso) Mozambique Latin Yoruba (yor) Nigeria, Benin, Togo Latin Luganda (lug) Uganda Latin Luo (luo) Kenya, Tanza-nia Latin Wolof (wol) Senegal, Gam-bia Latin
+> Gurage (gru) Ethiopia Ge’ez Harari (har) Ethiopia Ethiopic
+
+Table 6: Languages, regions, and scripts in the 19-language evaluation benchmark. Ge’ez-script lan-guages (primary targets of vocabulary expansion) are in bold. Table 7: NER accuracy and macro-F1. Macro-F1 better reflects per-class performance on imbalanced distribu-tions. 
+
+# XLM-R VEXMLM Glot500 Lang. Acc. F1 Acc. F1 Acc. F1 Amharic 98.1 – 98.1 – – –Tigrinya 78.1 – 89.5 – – –
+
+# Full results pending model outputs. 
+
+C Perplexity on Ge’ez-Script Languages 
+
+Figure 4 reports perplexity scores for XLM-R, VEXMLM (reported as EXLMR/FT_EXLMR in the original experiment logs), and Glot500 on Ge’ez-script text. VEXMLM achieves substan-tially lower perplexity than the fine-tuned vari-ant (FT_EXLMR), indicating improved language modeling fit for Amharic and Tigrinya after vocab-ulary expansion and continued pretraining. XLM-R achieves the lowest raw perplexity (1.06), which reflects its well-calibrated probability distributions over its original vocabulary but does not account for OOV tokens the central limitation addressed in this work. 
+
+D Dataset Examples 
+
+Figures 6–7 present sample instances from the Tigrinya NER and Amharic QA datasets (TIGQA and AmQA), illustrating the diversity of question types and the script characteristics of the evalua-tion data. These examples are reproduced from the original published datasets under their respective licenses.
