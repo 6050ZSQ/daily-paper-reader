@@ -1,0 +1,670 @@
+Title: A POS Tier Is the Key to Automated Annotation for Low-Resource Language Documentation: Neural Interlinear Glossing for Irabu, a Southern Ryukyuan Language
+
+URL Source: https://arxiv.org/pdf/2607.13372v1
+
+Published Time: Thu, 16 Jul 2026 00:25:19 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# A POS Tier Is the Key to Automated Annotation for Low-Resource Language Documentation: Neural Interlinear Glossing for Irabu, a Southern Ryukyuan Language 
+
+# Michinori Shimoji 
+
+## Kyushu University 
+
+## smz@kyudai.jp 
+
+# Abstract 
+
+Discourse data are the primary empirical basis of gram-mar writing in field linguistics, but producing interlin-earized text is notoriously expensive — on the order of one hour of work per minute of recording. For en-dangered languages, where the time remaining to verify analyses with native speakers is itself limited, automat-ing parts of the interlinearization workflow has direct documentary value. We implement a full neural anno-tation pipeline (morpheme segmentation → POS tag-ging → glossing) for Irabu Ryukyuan using deliberately small, transparent BiLSTM–CRF models, and evaluate it under a realistic hard constraint: approximately one hour of fully annotated discourse as the entire super-vised resource. Two factors of the annotation itself are manipulated: its richness (with or without a POS tier) and its quantity (training budgets from 6 to 47 minutes). Gold POS improves grammatical glossing by +4 .4 ± 0.7
+
+points (significant in all 5 seeds), and the gain grows as data shrink ( +11 .6 points at a quarter of the data); a POS tier more than halves the amount of glossed data needed to reach a given accuracy. In a fully automatic pipeline this gain is not yet realized: the tagger still errs on 12% of morphemes, and an incorrect POS mis-leads the glossing model more than no POS at all. The value is latent rather than lost: degrading gold POS with controlled noise shows the gain returning as tagger accuracy rises, with break-even near our tagger’s current 88% and +1 .6 to +3 .2 points recovered at 92–96%. We conclude with a concrete recommendation for documen-tation practice: annotate quadrilinearly — text, POS, gloss, translation. 
+
+Keywords: low-resource languages; language doc-umentation; neural networks; automated glossing; Ryukyuan 
+
+# 1 Introduction 
+
+Background: the annotation bottleneck. Docu-mentary linguistics takes as its primary object a corpus of naturalistic communicative events — narratives, con-versations, and whatever further event types the com-munity’s culture-specific ways of speaking comprise: a “systematics” of communicative events (Himmelmann, 1998, pp. 176–177). For grammar writing, such con-nected discourse is an indispensable empirical resource: it supplies the frequency, context, and construction di-versity that elicitation alone cannot (Shimoji, 2011, 2021). The cost side is equally well known: the gap be-tween what is recorded and what is transcribed — the “transcription bottleneck” (Seifart et al., 2018, p. e325) — reflects, in our experience, on the order of one hour of expert work per minute of recording for fully interlin-earized text (Shimoji, 2011; a similar guess is given by Seifart et al., 2018, p. e336). In documentation projects for endangered languages, the Japonic–Ryukyuan lan-guages among them, this annotation cost is the standing bottleneck between recording discourse and actually us-ing it. For endangered languages the bottleneck is com-pounded by a harder limit: the time remaining with fluent speakers. Every hour spent mechanically filling in glosses is an hour not spent checking analyses with 
+
+speakers. Research on automatic annotation is there-fore not a convenience but a necessity for documentary linguistics, and the present study is squarely in that con-text: automation not as a replacement for the linguist, but as a way to reallocate scarce speaker-facing time. 
+
+Stance: leverage, not replacement. The last point deserves emphasis, because it sets this study apart from much of the current, largely NLP-driven discussion of low-resource annotation automation, which tends — of-ten implicitly — toward replacement : systems designed and benchmarked as if the goal were to produce inter-linear text without the linguist in the loop. The ten-dency lives in the operational format rather than in stated aims: the SIGMORPHON glossing shared task, for instance, is prefaced by the remark that such meth-ods “can never fully replace the expertise of a dedicated documentary linguist” (Ginn et al., 2023, p. 186) — yet what the task measures is precisely fully automatic pro-duction. For endangered-language documentation we 1arXiv:2607.13372v1 [cs.CL] 15 Jul 2026 consider that framing not just unrealistic but misdi-rected. Consider what a chef wants from automation: not to arrive at the restaurant and find every dish al-ready cooked, but to be relieved of the shopping, the cleaning, and the slow, monotonous prep work — and to have even that done under the chef’s supervision, in a form the chef can inspect, because whatever leaves the kitchen carries the chef’s name. The documentary lin-guist is in the chef’s position. The discourse data being automated has a specific consumer: it exists to be used by descriptive linguists for grammar writing (as well as, of course, by language communities for revitalization purposes, which we do not go into in this study), and its annotations are meaningful only insofar as they conform to the gold analysis that the linguist’s own descriptive work produces — the label inventory, the segmentation conventions, the glossing decisions. Automatic output that drifts from that analysis is not a cheaper version of the same resource; it is a different resource of unclear value. The productive frame, we suggest, is the opposite of replacement: treat the small body of training data that a descriptive linguist can carefully hand-annotate in the time that remains as an asset , and ask how to 
+
+leverage that asset for the maximum documentary re-turn. The two questions below are the operational form of this view. 
+
+Problem: two questions without concrete an-swers. Bringing automatic annotation into a doc-umentation project immediately raises two practical questions. The first is model choice : what kind of model is appropriate under the data conditions of endangered-language documentation? The second — asked less of-ten, but the one a project leader must answer first — is training cost : how much supervised data, of what kind, must the linguist create before automation pays off? That is, the minimum quantity and the mini-mum richness of the teaching annotation. For Japonic– Ryukyuan languages, concrete studies addressing either question are, to our knowledge, all but nonexistent (cf. Shimoji, 2025). The gap has consequences well beyond automation itself. Discourse-collection projects for en-dangered Japanese dialects are currently proliferating, 1
+
+yet how much discourse to record is typically set either as an open-ended aspiration (“as much as possible”) or by convention — one hour, two hours — with no em-pirical basis for the number; and how the collected dis-course should be annotated receives even less attention: in many projects the recordings are transcribed and given a free translation only, with no morpheme-level annotation at all (e.g. the curation efforts surveyed in      
+
+> 1E.g. NINJAL’s collaborative project Endangered Languages and Dialects in Japan (2016–2022) and its successors, and the on-going public release of the Agency for Cultural Affairs’ emergency dialect survey recordings (https://www.ninjal.ac.jp/events_ jp/20220716a/ ); see Hidaka (2026) for a survey of current cu-ration efforts.
+
+Hidaka, 2026, and the COJADS dialect corpus, National Institute for Japanese Language and Linguistics, 2025). Without answers to the two questions above, there is in fact no principled way to set either the number of hours or the depth of annotation. 
+
+Purpose. This study takes up both questions, in dif-ferent ways matched to their nature. The first — model choice — we answer by design : small, transparent, purely supervised BiLSTM–CRF models, on grounds set out in the next paragraph. The second — training cost — is the empirical subject of the paper. We imple-ment and evaluate a complete neural interlinearization pipeline — morpheme segmentation, POS tagging, and glossing — for Irabu, a Southern Ryukyuan language (Shimoji, 2008, 2017), under a scenario we consider re-alistic for most endangered-language projects: the en-tire supervised resource — the asset to be leveraged — is about one hour of fully annotated discourse (774 ut-terance units, of which the 620-utterance training por-tion corresponds to roughly 47 minutes; §3), with sub-budgets down to 6 minutes evaluated explicitly (§3.7). The question is not “how well can neural models gloss with abundant data” but “what return does a given in-vestment of annotation actually buy — and how should that investment be allocated?” Answering it yields what current practice lacks: an empirically grounded crite-rion — how many minutes of discourse to annotate, and with which tiers — in place of effort targets and con-ventional hour counts. Our budget-centered evaluation culminates in a concrete proposal: a two-stage design in which a small first-stage corpus is annotated richly, then leveraged to automate the rest (§6). 
+
+Model choice (the first question): small, supervised, and transparent. All components are BiLSTM–CRF sequence labelers (Hochreiter and Schmidhuber, 1997; Lafferty et al., 2001; Lample et al., 2016). We deliberately do not use large pretrained Transformer models (Vaswani et al., 2017; Ginn et al., 2024b), for two reasons. First, the data reality: the premise of unsupervised or transfer approaches — large amounts of raw text — does not hold for most en-dangered languages, where the recorded discourse it-self is minuscule; under such conditions we consider it more realistic to invest the linguist’s expertise in 
+
+careful annotation of the small data and use it as di-rect supervision. We have previously framed this as a 
+
+quality-dependent rather than quantity-dependent sce-nario (Shimoji, 2025): an experienced fieldworker can produce a small but highly consistent gold-standard cor-pus, which is precisely the setting where small super-vised models are viable. Second, workflow transparency: a BiLSTM–CRF factorizes into per-morpheme evidence (emission scores) and label-sequence regularities (transi-tion scores), a structure that maps naturally onto how a 2linguist reasons about interlinear annotation, and whose errors are correspondingly diagnosable (§3.5 puts this transparency to work). We emphasize the scope of this choice: we make no claim that small supervised models outperform pretrained ones — indeed, pretrained mul-tilingual encoders can be viable even for low-resource languages (Ogueji et al., 2021; Hangya et al., 2022), al-though “low-resource” there still means raw text on the gigabyte scale or sizable monolingual corpora (AfriB-ERTa pretrains on just under 1 GB; the transcription tier of our corpus totals ∼26 KB, four orders of magni-tude less) — and comparing against such encoders and LLM-based approaches (Ginn et al., 2024b; Elsner and Liu, 2025; Aycock et al., 2025) under the same annota-tion budget is future work. Our contribution concerns 
+
+annotation design under a fixed, simple model .
+
+Terminology: trilinear vs. quadrilinear. Stan-dard IGT is trilinear : a transcription line, a morpheme-by-morpheme gloss line (Lehmann, 2004), and a free-translation line. Note where the annotator’s morpheme-level effort goes: it is concentrated entirely in the gloss 
+
+line. A parallel morpheme-by-morpheme POS tier is not part of common practice — part-of-speech information remains implicit in the analysis, or is recorded only in the lexicon, but is rarely written down token by token. We use quadrilinear for the format that adds exactly this tier (text + POS + gloss + translation); Figure 1 shows the resulting tier structure in our ELAN work-flow. Two clarifications are important. First, the POS tier at issue is per morpheme , aligned with the gloss line, not a per-word category label. Second, while the free-translation line is part of both formats, our system does not use it at any stage : unlike translation-leveraging approaches to glossing (Zhao et al., 2020; Yang et al., 2024), our pipeline operates entirely on the transcrip-tion, POS, and gloss tiers. Figure 1 shows what quadri-linear annotation looks like in practice, in the ELAN environment in which our corpus was built. What our experiments quantify, therefore, is the return on deliber-ately annotating the one morpheme-level tier that stan-dard practice omits. 
+
+What we test. Holding the model fixed, we manipu-late the annotation itself along two axes: 
+
+• Richness (RQ1): does the POS tier — quadri-linear rather than trilinear annotation — improve automatic glossing? We separate the intrinsic value of POS information (oracle input) from its realiz-able value in a full pipeline (predicted input), and dissect the gap token by token. 
+
+• Quantity (RQ2): how does performance scale from 6 to 47 minutes of annotated discourse, and does it interact with richness? 
+
+Contributions. (i) A complete, reproducible neural interlinearization pipeline for a low-resource Ryukyuan language, 2 trained on ∼47 minutes of annotated dis-course, with budgets down to 6 minutes evaluated (segmentation span-F1 0.907; POS accuracy 0.881; grammatical-gloss accuracy 0.93 with oracle POS). (ii) A controlled ablation showing that POS informa-tion improves grammatical glossing by +4 .4 ± 0.7 points (all 5 seeds individually significant), with the gain concentrated on linguistically predictable ambiguities (case/focus clitics). (iii) An error-propagation analysis showing that with a realistic tagger the gain is cancelled — incorrect POS is worse than no POS — and an exact decomposition of the loss, plus a noise-injection anal-ysis locating the break-even tagger accuracy ( ≈88%). (iv) A data-size analysis showing the POS gain grows 
+
+as data shrink (up to +11 .6 points at ∼12 minutes), so a POS tier more than halves the glossed data needed — exactly in the regime where documentation projects begin. (v) A concrete recommendation for annotation practice: quadrilinear annotation, with quantified costs and benefits — and, building on it, a two-stage design 
+
+for discourse-documentation projects (collect ∼30 min-utes and annotate it richly first; then collect more and let the pipeline draft the annotations). (vi) A work-ing implementation of the Stage-2 workflow: a browser-based annotation tool in which the pipeline drafts the interlinearization of arbitrary input, the annotator con-firms or corrects every tier, and the corrections feed back into the models (Figure 8). 
+
+# 2 Related Work 
+
+Automatic interlinear glossing. Automating IGT production has a substantial NLP literature. Palmer et al. (2009) evaluated machine-in-the-loop annota-tion strategies for documentation; Moeller and Hulden (2018) showed that CRF-based glossing reaches useful accuracy for Lezgi from roughly 3,000 words of IGT — a setting close to ours in scale and spirit, down to the design decision of reducing open-class stems to a placeholder and predicting the closed-class grammati-cal glosses — and Barriga Martínez et al. (2021) report a comparable case study for Otomi. Notably, Moeller and Hulden’s models consume a POS tier rather than evaluate it: word-level POS tags enter their CRF as features (“and, of course, POS tags taken from the data,” Moeller and Hulden, 2018, p. 88), on the ex-plicit assumption that documentation data will come with POS. Their POS-informed CRF outperforms their no-POS seq2seq by 13 points, but the two differ in ar-chitecture, so the tier’s own contribution cannot be iso-                       
+
+> 2All code (the full pipeline and every experiment script), the gold corpus, and the complete per-sentence test outputs reported in this paper are available at https://github.com/ MichinoriShimoji/ML_autogloss .
+
+3Figure 1 – Quadrilinear annotation in practice: the ELAN environment used to build our corpus, showing the utterance nkjaan=du kiban-kiban=nu pZtu=tu ujaki=ti=nu pZtu=tu dus 1 a-tar=ca ‘Once upon a time, (it is said,) a poor man and a rich man were friends’ (rendering of the trans tier). From top to bottom: text (word-segmented transcription with -/= boundaries), trans (free translation — present in the corpus but not used by our system),      
+
+> morph (morpheme segmentation), gloss (morpheme-by-morpheme glosses), and pos — the tier that conventional trilinear practice omits and that this paper argues for.
+
+lated; our ablation turns exactly this assumed ingre-dient into a measured design variable. (Suggestively, their hardest labels are case morphemes such as gen 
+
+and erg — precisely where our POS gain concentrates; Appendix B.) Later work leverages the translation line (McMillan-Major, 2020; Zhao et al., 2020; Yang et al., 2024): McMillan-Major (2020) generates the gloss line from the segmented source phrase plus its English trans-lation, Zhao et al. (2020) feed translations to a multi-source transformer, and Yang et al. (2024) quantify the tier’s effect: embedding LLM-encoded translations into a hard-attentional glosser gains +4 .0 points on average over the previous state of the art on the SIGMORPHON 2023 data, and +9 .8 points over the translation-free baseline when training on as few as 100 sentences — the same band as our POS-tier gain ( +4 .4 with full data, 
+
++11 .6 in the low-data regime), for a tier that trilinear practice already produces. A POS tier, by contrast, is far cheaper than free translation (a closed inventory) yet is the tier standard practice does not write down. This strand culminated in the SIGMORPHON 2023 shared task on interlinear glossing (Ginn et al., 2023) and its systems (e.g. Girrbach, 2023). Most recently, massively multilingual pretraining (Ginn et al., 2024b) and LLM-based glossing (Ginn et al., 2024a; Elsner and Liu, 2025) have been explored — the latter with an interactive, linguist-assisting orientation close in spirit to ours (El-sner and Liu, 2025) — and Aycock et al. (2025) probe gloss prediction as one test of what LLMs learn about a low-resource language from a grammar book. This line of work asks “how accurate can glossing get given a cor-pus”; our question is the converse and, to our knowledge, largely unaddressed: given a fixed, small annotation budget, how should the annotation itself be designed — which tiers, how much? Our controlled comparison of annotation richness (POS tier) and quantity, with seed-level significance testing and error-propagation analysis, is complementary to all of the above. 
+
+Ryukyuan and Japanese dialects. To our knowl-edge, the only prior work on IGT automation for Japonic varieties is our own proof-of-concept for Irabu (Shimoji, 2025), which introduced the quality-dependent scenario, a joint segmentation–POS–gloss prototype, and a dictionary on/off comparison, but no controlled ablation, no multi-seed significance testing, and no analysis of error propagation or annotation bud-gets. Trained on a 30-minute subset of the present corpus (289 sentences), that system reached 97.2% word-level segmentation exact match, 84.7% gloss-token accuracy (dictionary-assisted, lexical and grammatical glosses pooled), and 75.4% POS accuracy on a 30-sentence held-out set. The numbers are not directly comparable to ours — the data volume, test sets, met-rics, and task decomposition all differ — but the qual-itative picture is consistent: under the present paper’s stricter evaluation (405 grammatical-gloss tokens, five seeds), the redesigned pipeline improves POS tagging (0.75 → 0.88) and reaches 0.89–0.93 on grammatical glosses, superseding the prototype on all fronts. Beyond IGT, NLP interest in endangered Japonic varieties is now emerging on the translation side: Miyagawa (2026) machine-translates the Yoron dialect (Amami Islands) into Japanese with retrieval-augmented LLM genera-tion over roughly 9,000 phrase-aligned pairs drawn from a published folk-tale collection. That line exploits the phrase-translated (non-IGT) resources that Japanese di-alectology has produced in relative abundance, and large proprietary LLMs; ours targets the annotation tiers that only IGT provides — segmentation, POS, and gloss — with small supervised models. The two are complemen-tary halves of the same documentary bottleneck. 
+
+The documentation bottleneck. The programme of documentary linguistics — compiling annotated cor-pora of primary data for endangered languages — was articulated by Himmelmann (1998); Seifart et al. (2018) review its first twenty-five years and identify the tran-scription bottleneck as a central obstacle. On the au-4dio side of that bottleneck, Michaud et al. (2018) in-tegrated automatic transcription into the Na documen-tation workflow; our work addresses the complementary 
+
+annotation side (segmentation, POS, gloss), and the two lines compose naturally into a single pipeline. CRF-based morphological segmentation in low-resource set-tings was established by Ruokolainen et al. (2013). In Japan the bottleneck is also institutional: Hidaka (2026) surveys ongoing collaborative efforts to digitize, align, and native-check legacy dialect recordings — most no-tably the 1977–1985 national emergency survey (roughly ten hours of discourse at each of 228 sites) — four decades after their collection; we return to this in §6. 
+
+# 3 Data and Pipeline 
+
+## 3.1 Corpus 
+
+Our corpus consists of 774 transcribed utterance units of Irabu Ryukyuan (6,412 morpheme tokens), drawn from four recordings totalling 58 minutes 26 seconds of connected discourse. The materials are entirely origi-nal fieldwork by the author, recorded with five speakers of the Nagahama district of Irabu island between 2005 and 2025; the genres are monologue — mostly legends and folktales — and everyday conversation. Transcrip-tion and annotation were likewise carried out by the author: the corpus is fully annotated with morpheme boundaries, POS tags (32 tags, of which 31 occur in the training split; full inventory in Appendix A), and interlinear morphemic glosses (Lehmann, 2004); anno-tation was carried out in ELAN following the workflow described in Shimoji (2025), whose corpus (roughly 30 minutes) forms a subset of the present one. The cor-pus also carries a free-translation tier, but — as stated in §1 — no component of the pipeline uses it; all su-pervision comes from the transcription, POS, and gloss tiers. We distinguish grammatical glosses (a closed set of category labels such as nom , gen , foc ; 115 types in training) from lexical glosses (open-class Japanese translations). This paper’s quantitative target is the former; lexical positions are mapped to a placeholder 
+
+lex so sentence context is preserved. Data are split at utterance level into train/dev/test (620/77/77 utter-ances; Table 1). The gold corpus ( final.json ), all pipeline and experiment code, and the complete per-sentence test outputs ( test_report.txt ) are available in the repository cited in §1 ( https://github.com/ MichinoriShimoji/ML_autogloss ). 
+
+## 3.2 Pipeline Components 
+
+The pipeline (Figure 2) mirrors the interlinearization workflow: (1) a character-level BiLSTM–CRF segments words into morphemes (test span-F1 0.907, vs. 0.726 for a longest-match dictionary baseline; p < 10 −4, paired                  
+
+> Split Utt. Tokens Gram. tok. Label types Train 620 5,075 3,145 115 Dev 77 675 432 76 Test 77 662 405 64
+> Table 1 – Data splits. The training set corresponds to roughly 47 minutes of discourse and contains 836 morpheme types.
+
+randomization/bootstrap); (2) a BiLSTM–CRF POS tagger over morphemes (test accuracy 0.881); (3) the glossing model described next. A lexical-gloss module (training-lexicon copy with contextual reranking plus a fallback to a digitized dictionary of a neighboring vari-ety, Tomihama, 2013) reaches 0.69 exact match but is peripheral here. 3
+
+Boundary types come from POS. IGT distin-guishes affixal boundaries ( -) from clitic boundaries ( =), so a segmenter must in principle deliver typed bound-aries. Our design factors this apart: the segmenter predicts boundary positions only, and the type is de-rived from the POS of the following morpheme — par-ticle classes (case, focus, final, conjunctive, etc.) attach with =, affix classes with -. In our corpus this ma-jority rule reconstructs the type of 97.6% of all 3,613 word-internal boundaries (and, fit on the training split alone, scores 97.8% on the 368 held-out test boundaries): the affix/clitic distinction is, to a close approximation, a corollary of lexical category. The alternative — a segmenter trained to predict typed boundaries jointly (eight labels instead of four) — is empirically just as good at segmenting: across 5 seeds, position span-F1 is 
+
+0.901 ± 0.013 (typed) versus 0.900 ± 0.009 (plain), and type accuracy at correctly detected positions averages 97.8%. 4 Which route should deliver the type therefore depends on the quality of the POS the rule consumes, and we measured both (test set, 368 boundaries; exper-iment released with our code). On gold POS the rule ties the typed segmenter (97.8%). On predicted POS it falls to 95.4% — whether segmentation is gold or predicted — while the typed segmenter, which never consults POS, keeps 97 .8 ± 0.4% at the positions it de-tects: a +2 .4-point advantage, consistent in direction in all 5 seeds (pooled discordant boundaries 60:17; exact McNemar significant in 2 of 5 seeds). For a fully auto-matic pipeline, then, typed segmentation is the better engineering choice. Our deployed interactive tool still derives types from POS, for a workflow reason: keeping one source of truth means a POS correction automat-
+
+> 3The dictionary (15,132 entries) was digitized from the printed original with the National Diet Library’s NDLOCR-Lite engine, followed by custom OCR post-correction and headword-structure extraction; residual OCR noise is one reason the dictionary serves as a fallback rather than an oracle.
+> 4An earlier draft reported a 1.3-point position cost for the typed segmenter; a 5-seed replication (released with our code) shows that difference was single-seed noise.
+
+5word-segmented transcription jaanu accagaman c 1ffiutui                  
+
+> 1 Segmenter — char BiLSTM–CRF
+> span-F1 0.907 (vs. 0.726 longest-match)
+> morphemes jaa nu acca gama n c 1ff i utui
+> 2 POS tagger — BiLSTM–CRF
+> accuracy 0.881
+> POS tags n cp n nafx cp v vafx vafx
+> 3 Gloss labeler
+> BiLSTM–CRF over morpheme ⊕POS
+> gram-acc 0.93 (gold POS) / 0.89 (pipeline)
+> quadrilinear IGT
+> jaa=nu acca-gama=n c1ff-i-utui
+> n=cp n-nafx =cp v-vafx -vafx
+> house= gen side-dim =dat make-thm -crcm
+> ‘(they) were making (it) by the house’
+> Boundary types
+> rule: next POS ∈particle classes ⇒=, else -
+> 97.6% (gold POS)
+> 4 Lexical glosses
+> lexicon copy + reranking; dictionary fallback
+> exact match 0.69
+> lex  positions
+
+Figure 2 – The annotation pipeline. Numbered boxes are trained BiLSTM–CRF components (test scores below each); the boundary-type module is a rule over the predicted POS of the attaching morpheme (§3.2). Gloss labeling consumes both the morphemes and their POS tags — the dependency whose value and cost this paper quantifies. The lexical-gloss module is peripheral to our claims. The worked example is a real fragment of the corpus (‘(they) were making (it) by the house’, from a wartime narrative), and every tier shown is the pipeline’s actual output on that fragment, which here coincides with the gold annotation. 
+
+ically corrects the attached boundary type, and once the annotator has reviewed the POS tier — which the Stage-2 workflow requires anyway — the rule operates on gold-quality tags and recovers its 97.8% ceiling. This is a first instance of the paper’s recurring theme — the POS tier quietly carries other tiers of IGT with it —and, in the same breath, of its qualification: it carries them at gold quality, and tagger errors tax the ride (§3.5 quantifies the same pattern for glossing). We ask whether a POS tier — quadrilinear rather than trilinear annotation — improves automatic gram-matical glossing. We separate two questions: (A) does POS information have intrinsic value for gloss predic-tion, and (B) can that value be realized in a fully au-tomatic pipeline, where POS tags themselves must be predicted? 
+
+## 3.3 Glossing Model and Conditions 
+
+The glossing model is a BiLSTM–CRF over morphemes: each morpheme is represented by a 64-dimensional em-bedding, optionally concatenated with a 16-dimensional POS embedding, fed to a single-layer BiLSTM (hidden size 128) with a CRF output layer. Note where each information source acts: POS is visible only to the BiL-STM , as an input feature; the CRF operates purely over the output gloss labels, scoring adjacent label pairs, and never sees POS. All other factors — data splits, architec-ture, optimizer (Adam, lr 10 −3), batch size (16), train-ing length (40 epochs, best-dev selection) — are held constant; the only manipulated factor is the POS input. Three conditions: 
+
+• Gold POS (oracle): human POS tags at train-ing and test time. Measures the intrinsic value of POS (question A). Not available in deployment, but operative in computer-assisted annotation, where a human supplies POS before the model proposes glosses. 
+
+• Predicted POS (pipeline): test-time tags from the POS tagger of §3 (accuracy 0.881). Mea-sures realizable value (question B), including error propagation. The information flow is identical to the Gold-POS condition: the tagger first Viterbi-decodes the complete POS sequence for the sen-tence, and the glossing model then receives those tags exactly as it would receive gold ones — the two conditions differ in input quality, not in archi-tecture; nothing is predicted jointly. 
+
+• No POS (control): the POS embedding is ablated. 6Condition Gram. gloss accuracy Gold POS 0.937 ± 0.004 
+
+Predicted POS 0.897 ± 0.006 No POS 0.893 ± 0.008 
+
+∆(Gold − No) +4 .35 ± 0.73 pts 
+
+∆(Predicted − No) +0 .40 ± 0.77 pts 
+
+Table 2 – Grammatical gloss accuracy on test (405 tokens), mean ± SD over 5 seeds. 
+
+Seed Gold Pred. No POS ∆(Gold −No) McNemar p
+
+1 0.936 0.891 0.889 +4 .7 1.6 × 10 −4
+
+2 0.943 0.904 0.901 +4 .2 7.6 × 10 −5
+
+3 0.933 0.894 0.882 +5 .2 1.9 × 10 −5
+
+4 0.933 0.894 0.901 +3 .2 7.2 × 10 −3
+
+5 0.938 0.904 0.894 +4 .4 2.8 × 10 −4
+
+Table 3 – Per-seed results. The Gold-POS advan-tage is positive and individually significant ( p <
+
+0.01 ) in every seed; discordant pairs consistently fa-vor the POS-informed model (22:3, 18:1, 23:2, 17:4, 21:3). 
+
+Both models are trained from scratch with five ran-dom seeds (mean ± SD reported). Within each seed, Gold-POS and No-POS systems are compared on the same 405 test tokens with an exact McNemar test. 
+
+## 3.4 Main Results (RQ1: Richness) 
+
+With gold POS, the POS-informed model outperforms the ablated model by +4 .35 ± 0.73 points; the gain is positive and individually significant in all five seeds (Ta-bles 2–3; all p < 0.01 , hence significant even under Bon-ferroni correction for the five tests). POS information is intrinsically valuable for grammatical glossing (ques-tion A: yes). 
+
+Why POS helps: the case of ga . The Irabu clitic 
+
+ga occurs 112 times in our corpus under six distinct grammatical glosses, and its segmental form gives no clue. Yet with POS in hand, the ambiguity dissolves into rules a linguist would state on one line (all counts are corpus totals): 
+
+• If ga is a case particle ( cp ), the next word de-cides: N =ga N → gen (‘X’s Y’; 27/35), whereas 
+
+N =ga V → nom (subject; 11/11). 
+
+• If ga ’s own POS is isp , the gloss is forced: 
+
+focus particle ga is foc without exception (28/28). Likewise sfp → q (10/10) and vafx → pur 
+
+(11/11). Figure 4 schematizes this disambiguation, and (1)–(3) are real corpus utterances instantiating it: in (1) ga sits between two nouns ( gen ), in (2) a verb follows ( nom ), and in (3) ga itself is a focus particle ( isp ), which forces 
+
+foc . Note that (2) and (3) are string-wise near-parallel (. . . =ga . . . -tar=gagara=mmja ); only the POS tier tells them apart. 
+
+(1) otoo 
+
+n
+
+father 
+
+=ga 
+
+cp gen 
+
+f1ni 
+
+n
+
+boat =nu 
+
+cp nom 
+
+=du 
+
+isp foc 
+
+f11 
+
+v
+
+come =ti 
+
+cjp quot 
+
+‘(They said) father’s boat is coming.’ (2) taa 
+
+prn 
+
+who 
+
+=ga 
+
+cp nom 
+
+tur 
+
+v
+
+take -tar 
+
+vafx pst 
+
+=gagara 
+
+mp dub 
+
+=mmja 
+
+intj dsc 
+
+‘Who took it, I wonder.’ (3) unu 
+
+intj fil 
+
+nausi 
+
+adv 
+
+how 
+
+=ga 
+
+isp foc 
+
+maf 1
+
+v
+
+wind -tar 
+
+vafx pst 
+
+=gagara 
+
+mp dub 
+
+=mmja 
+
+intj dsc 
+
+‘How did it wind up, I wonder.’ 
+
+These category-level rules are exactly what the POS-informed model can exploit and what a morpheme-only model cannot see: on the test set, the ablated model misglossed ga as nom in both (1) and (3) — the actual errors we observed — and resolved only 7 of 10 gram-matical ga tokens overall, versus 10/10 with POS. 5 Ap-pendix B confirms the pattern corpus-wide: the largest per-label gains fall exactly on the case and focus/topic clitics (Table 8). 
+
+Where in the model the rule lives. It is worth be-ing precise about where the N =ga N rule is computed, because the answer illustrates the transparency we ap-pealed to in §1. Figure 3 traces example (1) through the trained model, with actually measured scores. POS enters at the very bottom, as an input embedding con-catenated to each morpheme embedding. The BiLSTM then folds the left context ( otoo , n) and the right con-text ( f1ni , n) into ga ’s contextual vector, and a linear layer converts that vector into emission scores — one score per gloss label. The categorical rule is already decided at this point: gen scores +9 .5 against nom ’s 
+
++8 .6, so even before the CRF, the emission argmax is 
+
+gen . The CRF, which never sees POS, then adds tran-sition scores between adjacent output labels and Viterbi-decodes the globally best gloss sequence. Interestingly, its transitions push in the same direction (net +0 .4),               
+
+> 5How does the tagger itself resolve ga , having no POS tier of its own? It must reconstruct category information on the fly, from two implicit sources: morpheme embeddings, which POS su-pervision shapes into soft category proxies (noun-like morphemes cluster together), and the CRF’s joint decoding, in which the hy-pothesized tags of ga and its neighbors constrain one another as a single sequence. The reconstruction is frequency-weighted: on the ten grammatical ga tokens in test the tagger scores 7/10, suc-ceeding after nominal hosts ( →cp ) and after another case clitic — where isp is forced because a case clitic follows a case clitic in only 2 of 512 training bigrams — and defaulting to majority
+> cp in the three rare left contexts, including example (3). Re-constructed category is also what collapses on unseen morphemes (tagger accuracy 0.90 known vs. 0.70 unknown). An explicit POS tier hands the model this category directly instead of asking it to be reconstructed from lexical identity — which is why its value grows precisely as data shrink (§3.7).
+
+7otoo =ga f1ni                                                
+
+> emb(otoo) ⊕emb( n)emb(ga) ⊕emb( cp )emb(f 1ni) ⊕emb( n)POS enters here (input, 64+16 dim)
+> BiLSTM: left and right context flow toward each position
+> h(ga ): 256-dim contextual vector
+> emission(ga) = one score per gloss label:
+> gen +9 .5✓nom +8 .6q+3 .2. . .
+> rule N=ga N
+> already decided here
+> CRF: transition scores over adjacent gloss labels only (POS invisible)
+> lex →gen +0 .05 ,gen →lex +0 .23 vs. lex →nom −0.03 ,nom →lex −0.10 (net +0 .4toward gen )
+> nom ’s own top continuation is nom →foc +0 .20 — its expected foc never appears here (see text)
+> Viterbi over the whole sequence: lex gen lex . . . ⇒ga =gen ✓
+
+Figure 3 – How the trained model glosses ga in example (1), with actually measured scores. POS participates only as an input feature: the BiLSTM merges the flanking nouns’ categories into ga ’s contextual vector, and the resulting emission already ranks gen above nom (+9 .5 vs. +8 .6; the emission-only argmax is already gen ). The CRF sees no POS; it scores adjacent gloss labels, yet its learned transitions also favor gen here (net +0 .4) — syntax echoed in label-sequence statistics. Contribution to the decision: roughly 2/3 emission, 1/3 transitions. 
+
+ga 
+
+cp (case) 
+
+isp (focus) 
+
+sfp (final) 
+
+vafx (verbal) 
+
+⇒ gen (27/35) 
+
+⇒ nom (11/11) 
+
+⇒ foc (28/28) 
+
+⇒ q (10/10) 
+
+⇒ pur (11/11)        
+
+> next =N
+> next =V
+> morpheme own POS gloss (corpus counts)
+
+Figure 4 – How POS determines the gloss of the six-ways ambiguous clitic ga (counts over the full corpus). Its own POS tag resolves three of the four readings outright — isp , sfp , and vafx force foc , q, and pur without exception — and for the case-particle reading ( cp ), the category of the following word decides: noun → gen (typical; exceptions are nominal-predicate clauses), verb → nom (without exception). The remaining cp contexts (e.g. before focus clitics or utterance-finally) are nom in 13 of 16 cases. 
+
+and the reason is instructive. At the label level the two competitors look identical here — lex gen lex 
+
+vs. lex nom lex — so one might expect the CRF to be indifferent. It is not, because the two labels have sharply different continuation profiles in the training data: gen , being adnominal, is followed by a lexical gloss 95% of the time (118/124), whereas nom is fol-lowed by a lexical gloss only 64% of the time (43/67), with much of the remaining mass on foc (18%) — re-flecting the Miyako focus construction in which a nom-inative subject hosts the focus clitic =du , visible in example (1) itself ( f1ni=nu=du ). The learned transi-tions mirror this exactly: gen →lex (+0 .23 ) is gen ’s highest-scoring continuation, while nom ’s is nom →foc 
+
+(+0 .20 ), leaving nom →lex at −0.10 . In a lex _ lex 
+
+frame, then, the CRF favors gen not because it sees the syntax, but because nom ’s expected continuation ( foc )fails to appear — a distributional echo of the syntax in the label space, learned without ever seeing a POS tag. The decision thus decomposes into interpretable parts: roughly two thirds context-driven emission (the POS-informed BiLSTM) and one third label-sequence prior (the CRF). With predicted POS the gain shrinks to +0 .40 ± 0.77 
+
+points — smaller than its seed variance, one seed neg-ative, and non-significant by an exact McNemar test in every seed (smallest p = 0 .44 ). The current pipeline does not realize the value of POS (question B: not yet). §3.5 locates the loss. 8Gloss accuracy at these positions Position type Gold POS Predicted POS No POS Tagger correct (371 tok., 91.6%) 0.963 0.960 0.930 Tagger error (34 tok., 8.4%) 0.653 0.218 0.494    
+
+> Table 4– Seed-averaged gloss accuracy, split by whether the tagger predicted the token’s own POS correctly. At mistagged positions an incorrect POS feature is worse than no POS at all .
+
+## 3.5 Analysis: Where the 4 Points Are Lost 
+
+Gold and predicted POS differ only where the tagger errs, so the 4-point gap must originate there (the re-leased test report shows the propagation sentence by sentence). To see how, we split the 405 test tokens into two groups — the 371 (91.6%) where the tagger pre-dicted the token’s own POS correctly, and the 34 (8.4%) where it did not — and ask how each model fares in each group (Table 4, visualized in Figure 5). Three findings follow. 
+
+(a) The damage is localized. Where the tagger is right, nothing is lost: the POS-informed model per-forms as well with predicted POS as with gold (0.960 vs. 0.963). Essentially all of the damage sits in the small mistagged group: there, switching from gold to predicted POS flips 44.1% of the glosses from correct to incorrect, against a negligible 0.4% elsewhere. 
+
+(b) At those positions, a wrong POS is worse than no POS. This is the key finding (Figure 5, top). One might expect a wrong POS to be merely useless. It is not: at mistagged positions the model that receives the (wrong) POS scores 0.218, far below the 0.494 of the model that receives no POS at all. A wrong tag is 
+
+misleading evidence — the model, trained exclusively on gold POS, has never seen an incorrect tag and follows it off a cliff (a train/test mismatch akin to exposure bias). 
+
+(c) The two effects balance almost exactly. The observed pipeline gain is now just bookkeeping (Fig-ure 5, bottom): on the 91.6% of well-tagged tokens, POS earns 3.0 points per token ( 0.9596 vs. 0.9299 ); on the 8.4% of mistagged tokens it loses 27 .6 points per token ( 0.2176 vs. 0.4941 ). Weighting by group size, 
+
+(0 .9596 − 0.9299) × 0.916 
+
+| {z } 
+
+> +2 .72 pts (gain)
+
++ (0 .2176 − 0.4941) × 0.084 
+
+| {z } 
+
+> −2.32 pts (poison)
+
+= +0 .40 pts ,
+
+(1) which reproduces the observed +0 .40 exactly. In words: 
+
+each tagger error is roughly nine times as damaging as each correct tag is helpful, so 8% poison cancels 92% gain. The pipeline gain vanishes not because POS lacks value, but because of where and how the errors strike.                         
+
+> Train. utt. ≈min Gold POS No POS ∆(pts) 78 60.765 0.671 +9 .5
+> 155 12 0.839 0.723 +11 .6
+> 310 23 0.890 0.822 +6 .8
+> 620 47 0.933 0.888 +4 .5
+> Table 5 – Learning curves (test accuracy, 5-seed means). The POS gain is largest in the low-data regime: 2.6 ×larger at 12 minutes than at 47.
+
+## 3.6 Break-Even Analysis: How Good Must the Tagger Be? 
+
+Injecting controlled noise into gold POS — substitution errors sampled from the real tagger’s confusion distri-bution — traces how tagger quality translates into gloss quality (Figure 6). The POS-informed model beats the baseline by +3 .2 points at a 4% error rate and +1 .6
+
+points at 8%, crossing it at 14.1%. Two caveats sharpen the picture. First, the real tagger (11.9% error) yields only +0 .40 , below the simulated curve at the same rate: real errors cluster on hard tokens, so the effective break-even for a real tagger is nearer 88% accuracy — almost exactly where our tagger stands (88.1%). Second, the curve sets a concrete target: a tagger at 92–96% accu-racy converts the latent value into +1 .6 to +3 .2 practical points. 
+
+## 3.7 Interaction with Data Size (RQ2): POS as a Data Multiplier 
+
+If POS acts as a coarse generalization class, its value should be greatest when training data are scarce — the situation at the start of a documentation project. We train both conditions on nested subsets of the training data (78, 155, 310, 620 utterances ≈ 6, 12, 23, 47 min-utes of discourse), rebuilding all vocabularies from each subset; five seeds per cell, gold POS at test. The interaction is substantial (Table 5, Figure 7): the gain peaks at +11 .6 points with a quarter of the data and shrinks to +4 .5 with all of it — a narrowing of 2.0
+
+points per doubling of training data (seed-level regres-sion, interaction t = −5.0; analysis released with our code). At the smallest budget the gain is somewhat smaller ( +9 .5 at 6 minutes than +11 .6 at 12), suggest-ing a floor below which the glossing model has too little data to exploit the tier fully. One qualification is im-portant, because the two curves in Figure 7 nevertheless run roughly parallel to the eye — and on the log-odds 
+
+scale they are parallel: there the interaction vanishes (t = 0 .5), and POS multiplies the odds of a correct gloss by a factor that stays within 1.6–2.0 (mean ≈1.8) at ev-ery budget. The two readings are complementary, not contradictory. POS confers a roughly constant multi-plicative advantage; near the accuracy ceiling that con-stant multiplier compresses into a few percentage points, while in the low-data regime it unfolds into many. What 9Gloss accuracy at the 34 mistagged positions          
+
+> Gold POS 0.653
+> No POS 0.494
+> Wrong POS (pred.) 0.218 — worse than no POS
+> The budget: why the pipeline gain is only +0 .40
+> gain on 91.6% of tokens
+> +2 .97 ×0.916 = +2 .72 pts
+
+# −     
+
+> poison on 8.4% of tokens
+> −27 .6×0.084 =−2.32 pts
+
+# = +0 .40 pts 
+
+> (= observed)
+
+Figure 5 – Why tagger errors cancel the POS gain. Top: at the 34 positions where the tagger mistags the token itself, receiving the wrong POS (0.218) is far worse than receiving none (0.494) — an incorrect feature actively misleads the model. Bottom: the small gain earned on the many well-tagged tokens is almost exactly cancelled by the deep loss on the few mistagged ones (Eq. 1).     
+
+> 0510 15 20
+> 0.86
+> 0.88
+> 0.9
+> 0.92
+> 0.94
+
+POS error rate (%) Gram. gloss accuracy 
+
+Figure 6 – Gloss accuracy vs. POS error rate. Teal curve: POS-informed model on noise-injected gold POS (noise sampled from the real tagger’s confu-sion distribution, estimated on dev; means over 5 seeds × 3 draws). Red dashed line: No-POS base-line (0.8933). Blue diamond: the real tagger (mea-sured). Simulated break-even: 14.1% error (85.9% accuracy). The real tagger (11.9% error) falls below 
+
+the curve because real errors concentrate on intrin-sically difficult tokens. 
+
+an annotator experiences, however, is percentage points — glosses to fix per hundred — so the practical return on the POS tier is largest exactly where documentation projects begin. The same fact can also be read scale-free, as data equivalence : matching the POS-informed model trained on 78 utterances takes the ablated model 
+
+∼221 utterances ( ×2.8); at 155, ∼386 ( ×2.5); and the POS-informed model trained on half the corpus is not matched by the ablated model even with the full corpus. In this range a POS tier more than halves the glossed data needed for a given accuracy. (These curves use gold POS and thus speak to the assisted-annotation scenario; a pipeline analogue would retrain the tagger at each size — future work.) 
+
+# 4 Implications for Annotation Practice 
+
+Our results support a concrete recommendation for endangered-language documentation: include a POS 
+
+> 78 (6 m)
+> 155 (12 m)
+> 310 (23 m)
+> 620 (47 m)
+> 0.7
+> 0.8
+> 0.9
+
+Training utterances ( ≈ minutes of discourse) 
+
+> Gram. gloss accuracy
+> Gold POS
+> No POS
+
+Figure 7 – Learning curves. The POS-informed model trained on 310 utterances (0.890) already ex-ceeds the ablated model trained on all 620 (0.888). The near-parallel appearance is real on the log-odds scale — POS multiplies the odds of a correct gloss by a near-constant ≈1.8 — and the narrowing point gap is that constant advantage compressing near the ceiling (see text). 
+
+tier — annotate quadrilinearly . The argument has three layers, in decreasing order of immediacy. 1. Computer-assisted annotation (immediate). 
+
+In an interactive workflow where the annotator con-firms or corrects POS before the model proposes glosses, the model effectively receives gold POS and the full +4 .35 -point gain applies. Figure 9 makes the order of operations explicit, because it is easy to misread: the pipeline drafts every tier at once, but the gloss line of that first draft is a preview , com-puted from unverified POS — it is never the object of correction. The annotator verifies the POS line (boundaries follow automatically); the glosses are then re-predicted from the verified tags — a mil-lisecond re-decode in our tool — and only these proposals, now operating under the Gold-POS con-dition of Table 2, go to gloss review. POS is a small closed set (32 tags) and far cheaper to annotate than glosses; a cheap tier accelerates the expen-sive one. Note the cost asymmetry at the moment 10 (a) Interactive annotation view (b) A fine-tuning run: per-epoch log with the dev gate  
+
+> Figure 8 – Our Stage-2 annotation tool (browser interface; the annotator-facing language is Japanese). (a) Free-text input, interlinearized by the pipeline; every tier is confirmed or corrected in place (green rings = confirmed tokens; the pop-up panel offers confirm/reject/replace, and redrawing a word’s morpheme boundaries re-predicts its POS and glosses). (b) The log of an actual fine-tuning run over 23 accumulated corrections (gloss section shown). The header reports the leak guard — sentences coinciding with the held-out sets are excluded (0 here) — feedback is oversampled fourfold, and a model replaces the deployed one only if its dev score improves; in this run the gate kept all three incumbents. Lexical-gloss corrections bypass retraining via a user lexicon.
+
+of annotation: for an annotator who has just seg-mented a morpheme and chosen its gloss, its part of speech is typically already decided in the analysis — recording it is nearly free. Conventional practice leaves this tier unwritten; our results show that the return on writing it down is large. The data-size analysis (§3.7) sharpens this: the gain is largest precisely when the corpus is small — at the start of a documentation project — where a POS tier more than halves the glossed data needed. The POS tier also subsumes another piece of IGT for free: the affix/clitic boundary typing ( - vs. =) is recoverable from gold POS at 97.6% (§3.2), so annotating POS effectively annotates boundary types as well. 2. Fully automatic glossing (as annotation ac-cumulates). The break-even analysis shows the pipeline gain is a function of tagger accuracy, which grows with annotated data. Quadrilinear annota-tion is thus an investment: once the tagger clears roughly 90%, POS begins to pay off automatically, approaching the +4 .35 -point ceiling. 3. Model-side remedies (future work). The poi-soning effect (Table 4) suggests training with pre-dicted or noised POS (scheduled sampling / POS dropout), joint POS–gloss modeling, or soft (proba-bilistic) POS inputs — each attacks the −2.32 -point term of Eq. (1) rather than the tagger itself. We emphasize what our data do not show: with the current corpus size, quadrilinear annotation does not yet improve fully automatic glossing significantly (+0 .40 ± 0.77 ). The recommendation rests on the as-sisted workflow, the measured ceiling, and the quantified path between them. 
+
+# 5 Limitations 
+
+Our conclusions are bounded in five ways. First, ev-erything rests on a single language and a single cor-pus — roughly one hour of discourse, with a test set of 405 grammatical tokens; the numbers should be read as one carefully measured data point, not as univer-sal constants. Second, the learning curves that ground the richness-beats-quantity argument use gold POS at test time, so they speak directly to the computer-assisted scenario and only indirectly to the fully au-tomatic pipeline, whose tagger would itself improve as data grow. Third, we compare annotation designs under one deliberately simple, fixed model family; we have not benchmarked multilingual pretrained encoders or LLM-based glossing under the same annotation budget, so our claims rank annotation strategies, not model fami-lies. Fourth, lexical glossing — the open-class transla-tion tier — is treated only peripherally, by lexicon copy with reranking. Finally, the two-stage sizing proposal (§6) extrapolates from one language’s learning curves, and its Stage-2 savings are a projection: the correction 
+
+rate is measured, but the wall-clock review time in a live project is not yet. 
+
+# 6 Conclusion: A Two-Stage De-sign for Discourse Documenta-tion 
+
+Discourse-collection projects for endangered languages routinely face a sizing decision — how much discourse to record, transcribe, and annotate — and, in our ex-perience, that decision is usually made by convention (“one hour,” “two hours”) rather than by evidence about 11 new transcription              
+
+> draft in one pass : mor-phemes ·POS ·gloss preview
+> (preview = computed from unver-ified POS — never corrected )
+> annotator verifies/corrects POS
+> closed set; boundary types follow from POS
+> glosses re-predicted from verified POS
+> = the Gold-POS condition of Table 2
+> annotator reviews these gloss proposals
+> the expensive open-class tier, with the POS head start
+> corrections →versioned gold corpus
+> ms re-decode
+> retrain
+
+Figure 9 – The assisted workflow, step by step. The pipeline drafts all tiers at once, but the draft’s gloss line is a preview computed from unverified POS and is never corrected directly. The annota-tor verifies POS; the glosses are re-predicted from the verified tags; and gloss review happens only on these re-predictions — the Gold-POS condition of Table 2, with roughly 40% fewer gloss errors to fix than without a POS tier (10.7% →6.3% at full data, 27.7% →16.1% at 12 minutes). Corrections flow into the versioned gold corpus and, periodically, into re-training (dashed). 
+
+what a given amount of annotation buys. Our budget-centered results turn this into an empirical question, and they suggest a concrete answer for projects comparable to ours. 
+
+The proposal. Structure the project in two stages :1. Stage 1 — small, rich, careful. Collect roughly 30 minutes of discourse and invest the annotation effort there: full interlinearization in quadrilinear 
+
+format (text + POS + gloss + translation), veri-fied with speakers. Our results quantify what this buys: at a ∼23-minute training budget the POS-informed glossing model already reaches 0.89 (as-sisted), and with our full ∼47-minute corpus the pipeline reaches segmentation span-F1 0.91, POS accuracy 0.88, and grammatical-gloss accuracy 0.93 when a human supplies POS (0.89–0.90 fully auto-matically). 2. Stage 2 — collect more, correct instead of create. For all subsequent recordings, let the Stage-1 pipeline draft the interlinearization, and shift human effort from creating annotations to 
+
+reviewing them, in an interactive workflow where each correction feeds back into the models and the speaker-facing time is spent on verification, not me-chanics. We have built a working implementation of this workflow (Figure 8): a browser-based tool in which the pipeline annotates arbitrary input, ev-ery tier (including morpheme boundaries) can be confirmed or corrected in place, lexical-gloss cor-rections take effect immediately through a user lex-icon, and accumulated corrections periodically fine-tune the three models (oversampled relative to the base corpus). Two design points matter for sci-entific hygiene: corrections whose sentences coin-cide with the held-out sets are automatically ex-cluded from fine-tuning, so evaluation stays uncon-taminated; and the deployed models are versioned separately from the frozen ones behind this paper’s numbers. The notorious 60:1 transcription bottle-neck becomes, for the annotation tiers, a review task — and the review load is measurable: run end-to-end on our held-out test set, the pipeline de-livers 63.6% of word tokens fully correct across all tiers (187/294; 24 of the 77 utterances need no edit at all), so the reviewer edits roughly one word in three instead of authoring four tiers for every word. Each reviewed hour, moreover, is not just anno-tated discourse but new training data : folded back into the gold corpus as a versioned revision (with the hygiene above applied), it moves the models along the learning curves of §3.7 — and once the tagger clears the break-even of §3.6, the currently latent POS gain compounds the improvement. Re-view effort per hour of discourse thus falls as the archive grows, though not to zero: the curves flat-ten, and reviewed output must be audited before promotion to gold, lest model errors be ratified into the record. How the correction rate converts into wall-clock savings is the Stage-2 measurement we call for below. 
+
+Why 30 rich minutes rather than an hour of plain ones. The richness–quantity interaction (§3.7) directly informs how a fixed annotation budget should be split: a POS-informed model trained on half our corpus ( ∼23 minutes) already matches an ablated model trained on all of it ( ∼47 minutes; 0.890 vs. 0.888) — rich half-hour-scale annotation buys what plain hour-scale annotation buys. Since the POS tier adds only a small fraction of the per-utterance cost — a closed inventory of 32 tags, versus open-ended glossing and translation — richly annotating less discourse is the better investment than thinly annotating more. In the low-data regime where every documentation project begins, annotation 
+
+richness beats quantity .
+
+A concrete horizon: legacy discourse archives. 
+
+The scale of the opportunity in Japan alone is illus-trated by the Agency for Cultural Affairs’ emergency 12 dialect survey (1977–1985), which recorded roughly ten hours of discourse at each of 228 sites nationwide. Four decades later, making those recordings research-ready — digitization, alignment, native checking — is still on-going, sustained by collaborative projects that recruit volunteer researchers and distribute the manual labor (Hidaka, 2026). Legacy archives of this kind are pre-cisely where the two-stage design points: for any variety in the archive that a researcher commands, a Stage-1 in-vestment of some thirty richly annotated minutes would let a pipeline draft the remaining hours for review rather than creation. The current curation efforts target tran-scription and phrase-level translation rather than IGT; our proposal complements them by showing how such archives could be lifted to the IGT standard at realistic cost — and the two efforts could share infrastructure, since curated, aligned transcripts are exactly the input our pipeline expects. 
+
+Outlook. The specific figure of 30 minutes is derived from one language and one corpus; the two-stage logic, however, only requires that the learning curves retain their shape — steep early gains, richness amplifying them — which we expect to be robust for agglutinative languages with comparable morphological transparency. Replicating the budget analysis across languages, clos-ing the gap between oracle and pipeline POS (via better taggers or POS-robust training), and measuring the ac-tual review-time savings in Stage 2 are the natural next steps. 
+
+# References 
+
+Aycock, S., Stap, D., Wu, D., Monz, C., and Sima’an, K. (2025). Can LLMs really learn to translate a low-resource language from one grammar book? arXiv:2409.19151. Barriga Martínez, D., Mijangos, V., and Gutierrez-Vasques, X. (2021). Automatic interlinear glossing for Otomi language. In 
+
+Proceedings of the First Workshop on Natural Language Pro-cessing for Indigenous Languages of the Americas , pages 34– 43, Online. Association for Computational Linguistics. Elsner, M. and Liu, D. (2025). Prompt and circumstance: Aword-by-word LLM prompting approach to interlinear glossing for low-resource languages. arXiv:2502.09778. Ginn, M., Moeller, S., Palmer, A., Stacey, A., Nicolai, G., Hulden, M., and Silfverberg, M. (2023). Findings of the SIGMOR-PHON 2023 shared task on interlinear glossing. In Proceedings of the 20th SIGMORPHON Workshop on Computational Re-search in Phonetics, Phonology, and Morphology , pages 186– 201, Toronto, Canada. Association for Computational Linguis-tics. Ginn, M., Palmer, A., and Hulden, M. (2024a). Can we teach language models to gloss endangered languages? arXiv:2406.18895. Ginn, M., Tjuatja, L., He, T., Rice, E., Neubig, G., Palmer, A., and Levin, L. (2024b). GlossLM: A massively multilin-gual corpus and pretrained model for interlinear glossed text. arXiv:2403.06399. Girrbach, L. (2023). Tü-CL at SIGMORPHON 2023: Straight-through gradient estimation for hard attention. In Proceedings of the 20th SIGMORPHON Workshop on Computational Re-search in Phonetics, Phonology, and Morphology , pages 151– 165, Toronto, Canada. Association for Computational Linguis-tics. Hangya, V., Saadi, H. S., and Fraser, A. (2022). Improving low-resource languages in pre-trained multilingual language models. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing , pages 11993–12006, Abu Dhabi, United Arab Emirates. Association for Computational Linguis-tics. Hidaka, M. (2026). Zenkoku h¯ ogen bunp¯ o jiten purojekuto no torikumi to tenkai [The Dictionary of Japanese Dialect Gram-mar project: Activities and developments]. In Nihongo Gakkai 2026-nendo shunki taikai yok¯ osh¯ u [Proceedings of the Spring 2026 Meeting of the Society for Japanese Linguistics] , pages 221–226. (In Japanese) Symposium “Databases for endangered languages: Japonic”. Himmelmann, N. P. (1998). Documentary and descriptive linguis-tics. Linguistics , 36(1):161–195. Hochreiter, S. and Schmidhuber, J. (1997). Long short-term mem-ory. Neural Computation , 9(8):1735–1780. Lafferty, J., McCallum, A., and Pereira, F. C. N. (2001). Condi-tional random fields: Probabilistic models for segmenting and labeling sequence data. In Proceedings of the 18th International Conference on Machine Learning (ICML) , pages 282–289. Lample, G., Ballesteros, M., Subramanian, S., Kawakami, K., and Dyer, C. (2016). Neural architectures for named entity recog-nition. In Proceedings of the 2016 Conference of the North American Chapter of the Association for Computational Lin-guistics: Human Language Technologies , pages 260–270, San Diego, California. Association for Computational Linguistics. Lehmann, C. (2004). Interlinear morphemic glossing. In Booij, G., Lehmann, C., Mugdan, J., and Skopeteas, S., editors, 
+
+Morphologie / Morphology: Ein internationales Handbuch zur Flexion und Wortbildung , volume 2, pages 1834–1857. De Gruyter Mouton, Berlin. McMillan-Major, A. (2020). Automating gloss generation in in-terlinear glossed text. In Ettinger, A., Jarosz, G., and Pater, J., editors, Proceedings of the Society for Computation in Linguis-tics 2020 , pages 355–366, New York, New York. Association for Computational Linguistics. Michaud, A., Adams, O., Cohn, T. A., Neubig, G., and Guillaume, S. (2018). Integrating automatic transcription into the language documentation workflow: Experiments with Na data and the Persephone toolkit. Language Documentation & Conservation ,12:393–429. Miyagawa, S. (2026). Amami-gunt¯ o Yoron-t¯ o h¯ ogen no kikai hon’yaku e no LLM-RAG no ¯oy¯ o [Applying LLM-based retrieval-augmented generation to machine translation of the Yoron dialect of the Amami Islands]. IEICE Technical Report ,125(366, NLC2025-15):19–24. (In Japanese). Moeller, S. and Hulden, M. (2018). Automatic glossing in a low-resource setting for language documentation. In Klavans, J. L., editor, Proceedings of the Workshop on Computational Mod-eling of Polysynthetic Languages , pages 84–93, Santa Fe, New Mexico, USA. Association for Computational Linguistics. National Institute for Japanese Language and Linguistics (2016– 2025). Corpus of Japanese dialects (COJADS). https:// www2.ninjal.ac.jp/cojads/ . Transcriptions with standard-Japanese translations; no morpheme-level annotation. Ogueji, K., Zhu, Y., and Lin, J. (2021). Small data? No prob-lem! Exploring the viability of pretrained multilingual language models for low-resourced languages. In Proceedings of the 1st Workshop on Multilingual Representation Learning , pages 116– 126, Punta Cana, Dominican Republic. Association for Com-putational Linguistics. 
+
+13 Palmer, A., Moon, T., and Baldridge, J. (2009). Evaluating au-tomation strategies in language documentation. In Ringger, E., Haertel, R., and Tomanek, K., editors, Proceedings of the NAACL HLT 2009 Workshop on Active Learning for Natural Language Processing , pages 36–44, Boulder, Colorado. Associ-ation for Computational Linguistics. Ruokolainen, T., Kohonen, O., Virpioja, S., and Kurimo, M. (2013). Supervised morphological segmentation in a low-resource learning setting using conditional random fields. In 
+
+Proceedings of the Seventeenth Conference on Computational Natural Language Learning , pages 29–37, Sofia, Bulgaria. As-sociation for Computational Linguistics. Seifart, F., Evans, N., Hammarström, H., and Levinson, S. C. (2018). Language documentation twenty-five years on. Lan-guage , 94(4):e324–e345. Shimoji, M. (2008). A Grammar of Irabu, a Southern Ryukyuan Language . PhD thesis, Australian National University. Shimoji, M. (2011). Bunp¯ o kijutsu ni okeru tekisuto no j¯ uy¯ osei [The importance of texts in grammar writing]. Nihongogaku ,30(6):46–59. (In Japanese). Shimoji, M. (2017). A Grammar of Irabu: A Southern Ryukyuan Language . Kyushu University Press, Fukuoka. Shimoji, M. (2021). Guram¯ a raitingu: H¯ ogen no kijutsu bunp¯ o o kaku gaido [Grammar writing: A guide to writing a descriptive grammar of a dialect]. Nihongo Bunp¯ o [Japanese Grammar] ,21(2):136–151. (In Japanese). Shimoji, M. (2025). Teishigen gengo ni okeru tekisuto jid¯ o kaiseki to gurosu-zuke no jid¯ oka: Irabujima h¯ ogen no k¯ esu sutadi [Au-tomating text analysis and glossing for a low-resource language: A case study of Irabu Ryukyuan]. Ry¯ uky¯ u no h¯ ogen [Ryukyuan dialects] , 49:149–168. (In Japanese). Tomihama, S. (2013). Miyako Irabu h¯ ogen jiten [A dictionary of the Irabu dialect of Miyako] . Okinawa Times, Naha. (In Japanese). Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., and Polosukhin, I. (2017). Attention is all you need. arXiv:1706.03762. Yang, C., Nicolai, G., and Silfverberg, M. (2024). Em-bedded translations for low-resource automated glossing. arXiv:2403.08189. Zhao, X., Ozaki, S., Anastasopoulos, A., Neubig, G., and Levin, L. (2020). Automatic interlinear glossing for under-resourced languages leveraging translations. In Proceedings of the 28th International Conference on Computational Linguistics , pages 5397–5408, Barcelona, Spain (Online). International Commit-tee on Computational Linguistics. 
+
+14 A POS Tag Inventory 
+
+Table 6 lists the complete POS tag inventory with corpus frequencies. Tag names follow the annotation scheme of the Irabu reference grammar (Shimoji, 2017). The inventory has a long tail: five tags occur exactly once in the corpus, and onm occurs only outside the training split — the source of the unseen-label errors visible in Table 7. 
+
+Tag Train Total Tag Train Total 
+
+vafx 1058 1328 fn 45 58 
+
+n 699 862 pn 43 55 
+
+v 609 763 xafx 34 43 
+
+cp 540 667 adn 30 36 
+
+isp 344 460 num 28 34 
+
+intj 329 404 unk 19 25 
+
+prn 195 249 aafx 19 22 
+
+sfp 193 236 clf 16 20 
+
+aux 158 212 mp 10 13 
+
+jpn 148 199 rdb 3 7
+
+cjp 158 197 onm 0 2
+
+lp 112 143 dat 1 1
+
+nafx 101 140 dem 1 1
+
+conj 67 92 pst 1 1
+
+adj 60 74 comj 1 1
+
+adv 52 66 top 1 1
+
+Table 6 – POS tag inventory with token frequencies (training split / whole corpus; 5,075 and 6,412 tokens respectively). 
+
+# B Per-Label Performance 
+
+Table 7 breaks the POS tagger’s test performance down by tag, under exactly the condition behind the headline number of §3.2 (sentence-by-sentence decoding; over-all accuracy 583 /662 = 0.881 ). Table 8 does the same for grammatical glossing, comparing the No-POS and Gold-POS conditions of §3.4 label by label (5-seed means). The gains concentrate where §3.4 locates them — case marking ( nom +14 .1, dat +16 .4, acc +10 .6)and the focus/topic clitics ( foc +3 .6, top +3 .3) — while already-unambiguous labels ( pst , quot , prog )sit at ceiling in both conditions. 
+
+Tag Support Recall Precision F1 
+
+vafx 136 0.993 0.938 0.964 
+
+n 85 0.812 0.802 0.807 
+
+v 78 0.910 0.845 0.877 
+
+cp 70 0.929 0.915 0.922 
+
+isp 55 0.945 0.981 0.963 
+
+intj 32 0.812 0.929 0.867 
+
+jpn 31 0.871 0.794 0.831 
+
+aux 25 0.800 0.833 0.816 
+
+nafx 23 0.826 0.950 0.884 
+
+prn 21 0.952 0.952 0.952 
+
+cjp 19 0.947 0.900 0.923 
+
+sfp 16 0.750 0.750 0.750 
+
+conj 15 0.933 1.000 0.966 
+
+lp 12 0.833 0.714 0.769 
+
+adj 7 0.286 1.000 0.444 
+
+fn 6 0.667 0.571 0.615 
+
+pn 6 0.500 1.000 0.667 
+
+adv 6 0.667 0.667 0.667 
+
+xafx 4 1.000 0.667 0.800 
+
+unk 3 0.667 0.667 0.667 
+
+mp 3 0.667 1.000 0.800 
+
+onm 2 0.000 0.000 0.000 
+
+rdb 2 1.000 1.000 1.000 
+
+num 2 0.500 1.000 0.667 
+
+adn 1 0.000 0.000 0.000 
+
+aafx 1 0.000 0.000 0.000 
+
+clf 1 1.000 1.000 1.000 
+
+Table 7 – POS tagger, per-tag test results (662 to-kens, overall accuracy 0.881). onm does not occur in the training data. 
+
+Gloss Supp. No POS Gold POS ∆ (pts) 
+
+thm 45 0.996 1.000 +0 .4
+
+seq 29 0.931 0.924 −0.7
+
+foc 28 0.964 1.000 +3 .6
+
+top 24 0.967 1.000 +3 .3
+
+pst 20 1.000 1.000 +0 .0
+
+acc 17 0.894 1.000 +10 .6
+
+nom 17 0.624 0.765 +14 .1
+
+gen 15 0.960 0.973 +1 .3
+
+quot 15 1.000 1.000 +0 .0
+
+dsc 14 0.986 1.000 +1 .4
+
+csl 14 0.971 1.000 +2 .9
+
+prog 12 1.000 1.000 +0 .0
+
+dat 11 0.836 1.000 +16 .4
+
+pl 9 0.956 1.000 +4 .4
+
+dim 9 1.000 1.000 +0 .0
+
+cnf 8 0.850 0.900 +5 .0
+
+3sg 8 0.850 1.000 +15 .0
+
+add 8 1.000 1.000 +0 .0
+
+cop 6 0.967 0.967 +0 .0
+
+onm 5 0.040 0.320 +28 .0
+
+rls 5 1.000 1.000 +0 .0
+
+(others, pooled) 86 0.765 0.830 +6 .5
+
+Table 8 – Grammatical glossing, per-label test ac-curacy under the No-POS and Gold-POS conditions (5-seed means; labels with at least 5 test tokens, re-mainder pooled as “others”). The POS gain concen-trates on case marking and focus/topic clitics. 
+
+15
