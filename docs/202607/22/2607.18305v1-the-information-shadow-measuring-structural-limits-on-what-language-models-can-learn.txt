@@ -1,0 +1,303 @@
+Title: The Information Shadow: Measuring Structural Limits on What Language Models Can Learn
+
+URL Source: https://arxiv.org/pdf/2607.18305v1
+
+Published Time: Wed, 22 Jul 2026 00:03:07 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# The Information Shadow: Measuring Structural Limits on What Language Models Can Learn 
+
+## Priyansh Srivastava 
+
+## Sirena Ai 
+
+## priyansh@sirenatech.com 
+
+## Romit Chatterjee 
+
+## Independent Researcher 
+
+## chatterjeeromit86@gmail.com 
+
+## Abstract 
+
+Some limits on what language models know are not gaps in data coverage but structural prop-erties of learning from text. We introduce the 
+
+information shadow : the region of phenomena that a text-trained learner cannot acquire regard-less of scale, comprising (I) structures language cannot express, (II) functions that are statisti-cally non-identifiable from the training distribu-tion, and (III) functions that are representable but unreachable by gradient-based training. We give each type a probe that is decisive because the premise of the shadow is, in that setting, 
+
+provable . For Type I, Language Compression Residuals compare a text learner , which sees only a lossy text-like encoding of the signal, against a full-signal learner , which sees the un-derlying signal directly: the text learner sits at a 
+
+computable expressibility ceiling while the full-signal learner pulls away by a gap that stays flat across 300 × more data, so the deficit is a prop-erty of the channel, not of training. For Type II, the Counterfactual Distinction Test trains mod-els on data exactly consistent with two incom-patible rules; across a provable string task and a language-like agreement task, behavior on counterfactuals is set by the model’s induc-tive bias, while 5% disambiguating data steers the learned rule bidirectionally to either target (r = ±1.0, p < 10 −10 ). For Type III, Basin Escape Mapping exhibits a function that is rep-resentable at 100% (by hand-construction) yet reached 0% of the time by standard training and instantly from a nearby initialization, with width scaling no help ( p = 1 .6 × 10 −14 ). Each effect is isolated by a control that rules out a capacity or modality artifact. We release the probe suite and discuss implications for bench-mark design, capability auditing, and shadow-aware uncertainty. 
+
+## 1 Introduction 
+
+Ask a language model (LM) for a limerick and it obliges; ask it for the path of every raindrop in a storm ten years ago and it cannot help. The second failure is unremarkable—missing data. The interesting question is whether there exist limits that persist under arbitrarily more data, compute, and architectural refinement. We argue the answer is yes, and that these limits are heterogeneous: they arise from at least three distinct sources with different signatures and dif-ferent remedies. We call their union the informa-tion shadow . A phenomenon lies in the shadow if (Type I ) its structure cannot be adequately carried by symbolic language; ( Type II ) multiple incom-patible mechanisms induce the same distribution over observable text, so no amount of that text identifies the true one; or ( Type III ) the function is representable by the architecture but standard training dynamics do not reach it. Distinguishing these types matters practically, because each resists a different remedy. A Type I 
+
+failure cannot be fixed by more text: it is a property of the channel (language) itself, so a learner with access to a richer, non-linguistic signal pulls ahead by a margin that more text never closes. A Type II 
+
+failure cannot be fixed by scaling: it is a property of the data-generating process, not of capacity, so the model falls back on its inductive bias —the built-in preferences (from architecture and optimizer) that decide which of several data-consistent rules it adopts. A Type III failure cannot be fixed by more of the same data or more parameters: the function is representable, but the optimization path never reaches it. Conflating these leads to misdi-rected mitigation and to benchmarks that overstate understanding (Geirhos et al., 2020; McCoy et al., 2019). This paper contributes: 1. A taxonomy of three structural limit types with a falsifiable, measurable signature for each (§3). 2. Language Compression Residuals for Type I (§4): a text learner is shown to sit at a com-arXiv:2607.18305v1 [cs.LG] 17 Jul 2026 putable expressibility ceiling while a full-signal learner with access to the same informa-tion uncompressed pulls away by a gap that does not close with scale, with a coarse con-trol isolating inexpressibility from a generic modality gap. 3. The Counterfactual Distinction Test for Type II (§5–7), built on provably non-identifiable training distributions, with con-trols that steer the learned rule bidirectionally on 5% of the data, validated on a string task and a language-like agreement task. 4. Basin Escape Mapping for Type III (§6), pairing a constructive proof that the target is representable with measured reachability rates under matched interventions (initializa-tion, curriculum, width). 5. Effect sizes, multiplicity-corrected tests, and dose–response curves throughout, and a released, resumable probe suite (§8). Our experiments use small models on synthetic tasks by design: a separation result requires set-tings where each shadow’s premise is a theorem, not an assumption. Section 2 situates this against observational studies of the same phenomena in large pretrained models. 
+
+## 2 Related Work 
+
+Expressivity and the limits of form (Type I). 
+
+Type I connects to formal expressivity bounds: self-attention cannot model parity or unbounded hierarchy without growing resources (Hahn, 2020; Raghu et al., 2017) (though Chiang and Cholak, 2022 show finite-precision constructions can rec-ognize parity, so the bound is asymptotic), log-precision transformers lie in TC 0 (Merrill and Sab-harwal, 2023), and surveys map architecture to the Chomsky hierarchy (Delétang et al., 2023; Strobl et al., 2024). The simplicity bias of the parameter– function map (Valle-Pérez et al., 2019) and argu-ments that meaning cannot be recovered from form (Bender and Koller, 2020; Merrill et al., 2021) motivate a residual that text cannot close. Lan-guage Compression Residuals make this measur-able: we compare a text learner against a full-signal learner with a computable Bayes ceiling, isolating inexpressibility from a generic modality gap via a coarse control. Our taxonomy reorganizes the classical expressivity/trainability/generalization tri-chotomy around what no amount of text can fix ,attaching a falsifiable probe and a control to each axis. 
+
+Underdetermination across random seeds (Type II). McCoy et al. (2020b) fine-tuned 100 BERT instances on MNLI: in-distribution accuracy was nearly constant (83.6–84.8%) while HANS subject–object accuracy ranged from 0.0% to 66.2%. D’Amour et al. (2022) call this under-specification ; the space of equally-good models is formalized by the Rashomon set (Semenova et al., 2022) and predictive multiplicity (Marx et al., 2020), and learned representations are identifiable only up to linear transformation (Roeder et al., 2021). These characterize the set of solutions but cannot rule out that a subtle cue identifies the rule, nor steer a learner between solutions. Our CDT removes the confound—non-identifiability holds 
+
+by construction (Prop. 1)—and turns underdetermi-nation into a controllable dial. 
+
+Ambiguous training, disambiguating evaluation (Type II). MSGS (Warstadt et al., 2020) trains on data consistent with both a linguistic and a surface rule, scores a Matthews-correlation pref-erence in [−1, 1] , and shows small amounts of dis-ambiguating data (“inoculation”; Liu et al., 2019) shift the preference. McCoy et al. (2020a) find the adopted hierarchical-vs-linear rule tracks archi-tecture. On the theory side, Abbe et al. (2023b) prove that altering the input distribution provably accelerates parity learning. We adopt MSGS’s preference-score convention and extend this line in three ways: provable (not merely empirical) ambi-guity; bidirectional steering, where the same 5% 
+
+budget pins either rule; and a dose–response curve over the disambiguating fraction. Unlike Abbe et al. (2023b), who establish a one-directional speed-up, we measure the full identifiability response and its inductive-bias dependence behaviorally. 
+
+Reachability and the dynamics of SGD (Type III). That representable functions can be unreachable is well studied for parities: Shalev-Shwartz et al. (2017) show gradient methods fail on random parities, Barak et al. (2022) show SGD learns k-sparse parities near the computa-tional limit with abrupt “hidden progress,” and the merged-staircase/leap-complexity results (Abbe et al., 2022, 2023a) characterize which sparse functions two-layer networks reach. Good sub-Cannot be fixed by Probe & signature            
+
+> Imore text LCR: text plateaus at a com-putable ceiling; full-signal pulls away II more scale CDT: bias sets the rule; 5%
+> data re-pins it III more parameters BEM: representable but vanilla SGD reaches it 0% ;near-init rescues
+> Table 1: The three information-shadow types. Each re-sists a different “just add more” remedy and is detected by a dedicated probe with a falsifiable signature.
+
+networks need not be discoverable (Frankle and Carbin, 2019), and grokking (Power et al., 2022) ties reachability to training time and data fraction. Basin Escape Mapping does not re-derive these thresholds; it operationalizes them—pairing a con-structive representability proof with reachability rates under matched interventions (init, curricu-lum, width)—so the representable/reachable gap becomes a reportable quantity, with width scaling shown to be no remedy. 
+
+Identifiability theory (Type II). Type II is a learning-theoretic identifiability problem (Valiant, 1984): distinct hypotheses inducing identical ob-servable distributions cannot be distinguished. Nonlinear ICA is unidentifiable without auxiliary signal (Hyvärinen and Pajunen, 1999), and the causal hierarchy implies counterfactual quantities are generically underdetermined by observational data (Pearl, 2009). Our contribution is not these theorems but a behavioral protocol that turns them into a probe for neural learners. 
+
+## 3 The Information Shadow 
+
+Table 1 summarizes the three types; each has a distinct signature —an observable pattern that dis-tinguishes it from ordinary data scarcity—and a distinct mitigation class. 
+
+Why scaling does not dissolve the shadow. 
+
+Type I limits are properties of the channel (lan-guage), not the learner: if the signal needed for a task is destroyed when reality is compressed into text, no amount of additional text restores it. Type II limits are properties of the data-generating process: if two mechanisms agree on the support of the training distribution, more samples from that distribution add no information about which is true. Type III limits can in principle worsen with scale, as richer function classes induce more fragmented optimization landscapes. Scaling shifts which phe-nomena sit in the shadow; it does not empty it. 
+
+## 4 Type I: Language Compression Residuals 
+
+Type I holds that some structure cannot be carried by text at all, so a full-signal learner beats a text-only learner by a margin that never closes with scale —because the channel, not the learner, is the bottleneck. Results appear in §7.1. 
+
+Design. A latent z ∈ [0 , 1] generates the target. The text learner sees only “text”—a lossy B-bin quantization of z, i.e. a coarse “word” that dis-cards everything below bin resolution—whereas the full-signal learner sees z itself, the same in-formation uncompressed. The two learners are otherwise identical (same architecture, optimizer, and budget), so any gap between them is due to the compression of the input, not the learner. The 
+
+fine target 1[z1>z 2] on near-tied pairs depends on sub-bin structure that quantization destroys; its Bayes-optimal text accuracy is computable (cell-wise max-posterior over bin pairs) and plotted as a ceiling. The coarse control 1[b(z1)≥b(z2)] is a deterministic function of the text—if the method merely detected a modality gap it would fire here too. We train text-only and full-signal MLPs at budgets 300 to 100 k, N =8 seeds. 
+
+## 5 Type II: The Counterfactual Distinction Test 
+
+The CDT operationalizes Type II. Its logic (Fig-ure 1): (1) construct a training distribution that is 
+
+exactly consistent with two incompatible rules—in our string task, COPY and REVERSE ; (2) train many models that fit it (near-)perfectly; (3) probe on counterfactual inputs where the rules diverge—any systematic behavior there cannot have come from the data; (4) run identifiable controls in which a small fraction of disambiguating examples is in-jected, labeled by a planted rule—if behavior then converges to the planted rule (in either direction), the shadow behavior was underdetermined by data, not forced by capacity or architecture. We use two terms throughout: the shadow condition trains on the ambiguous (non-identifiable) data alone, while a control condition adds a small, labeled fraction that makes one rule identifiable, serving as a ref-erence for what the model does when the data is 
+
+informative. Figure 1: The Counterfactual Distinction Test on the palindrome task. Palindrome-only data is consistent with both COPY and REVERSE ; the rules diverge only on the non-palindrome probe. “ N =30 seeds” denotes 30 models trained from different random initializations on the same fixed data. Controls inject 5% disambiguating examples and re-pin the rule in either direction. 
+
+5.1 Instantiation 1: a provable string task 
+
+Inputs are strings over a k-symbol alphabet; the target is a string of the same length. Two candidate rules: fCOPY (x) = x and fREV (x) = reverse( x).The training set contains only palindromes , labeled with y = x.
+
+Proposition 1. Let D be any distribution supported on palindromes with targets y = x. Then fCOPY and 
+
+fREV have identical behavior on every example in the support of D, and hence identical risk under any loss. No learner observing samples from D
+
+can distinguish them. Proof. If x is a palindrome, reverse( x) = x, so 
+
+fREV (x) = fCOPY (x) pointwise on the support. At test time we present non-palindromes , on which the two rules disagree at every position i with 
+
+xi̸ = xL−1−i (disambiguating positions ). What-ever a trained model outputs there was not deter-mined by its training data. 
+
+Conditions. Shadow : palindromes only (non-identifiable). Control-COPY / Control-REV :identical except a fraction ρ of training exam-ples are non-palindromes labeled by the planted rule, making it identifiable; ρ=0 .05 in the main conditions, with a dose–response sweep ρ ∈{0.01 , 0.02 , 0.05 , 0.10 }. Architecture sweep : the shadow condition repeated with rotary instead of learned absolute position encodings, testing whether the data-silent choice tracks inductive bias. 
+
+5.2 Instantiation 2: a language-like task 
+
+To show the construction is not an artifact of string manipulation, we build the same logic into subject– verb agreement , a phenomenon with a long history in LM analysis (Linzen et al., 2016). Inputs are noun sequences ending in a verb cue; the model outputs the verb’s number. Here the two incom-patible rules are HIERARCHICAL (agree with the subject, the first noun) and LINEAR (agree with the most recent noun); both fit ordinary training data. In training, all nouns in a sentence share one num-ber, so the rules coincide—non-identifiable. The counterfactual probe inserts an opposite-number 
+
+attractor between subject and cue, where the rules diverge; this mirrors agreement-attraction designs (Linzen et al., 2016; McCoy et al., 2020a). Con-trols plant either rule via ρ=0 .05 disambiguating sentences. 
+
+5.3 Metrics 
+
+At each disambiguating position we classify the model’s output token as matching the COPY tar-get, the REV target, or neither. The copy score 
+
+c ∈ [0 , 1] is the fraction of COPY matches among rule-consistent positions ( c→1: COPY ; c→0: REV ;
+
+c≈0.5: undetermined). For comparability with MSGS we also report the preference score s =2c − 1 ∈ [−1, 1] (Warstadt et al., 2020). Rule con-sistency is the fraction of disambiguating positions where the output matches either rule, verifying the model learned the task rather than emitting noise. The bridge task uses the analogous subject score 
+
+(1 = HIERARCHICAL , 0 = LINEAR ). Across N seeds per condition we report means with bootstrap 95% CIs, two-sided Mann–Whitney tests between shadow and each control with rank-biserial effect sizes, a Holm–Bonferroni multiple-comparison correction, Levene’s test for variance, and an across-seed per-position disagreement en-tropy (defined in App. A) that detects underdeter-mination whether seeds choose a global rule or resolve positions independently. Definitions of the named statistical tests are given in Appendix A. 
+
+5.4 Experimental setup 
+
+All learners are small decoder-only transformers trained from scratch with next-token loss restricted to output positions (AdamW, cosine schedule, gra-dient clipping; early stopping at 99.9% training ac-curacy). A “seed” denotes one training run from a distinct random initialization (and batch ordering); the training data is held fixed across seeds , gener-ated once from a fixed RNG, so seeds vary only in initialization and batch order. The counterfactual probe set is likewise fixed, aligning per-position de-cisions across seeds. The model’s inductive bias —the preferences introduced by architecture (e.g. the position-encoding scheme) and optimizer, rather than by the data—is therefore the only thing that can break the tie in the shadow condition; the ar-chitecture sweep makes this concrete by changing only the position encoding. Full hyperparameters are in Appendix A. Code, generators, and analysis scripts are available at an anonymized repository. All conditions use N =30 seeds (30 runs from different initializations) trained to the 99 .9% ac-curacy criterion; every reported model reached it. Statistics are computed over the 30 per-seed scores per condition. 
+
+## 6 Type III: Basin Escape Mapping 
+
+Type III holds that a function can be representable 
+
+by an architecture yet unreachable by standard training. Basin Escape Mapping (BEM) separates the two by construction; its results appear with the others in §7.3. 
+
+Design. The target is k-sparse parity on n bits. Representability is proved , not assumed: we hand-construct exact weights for a two-layer ReLU MLP computing the parity (App. C), verified at 100% ac-curacy for every k. Reachability is then measured 
+
+as the fraction of random-initialization runs that reach the function under (a) vanilla Adam, against three interventions: (b) initialization near the con-structed solution plus Gaussian noise, (c) a curricu-lum increasing k within the budget, and (d) width scaling. Training uses fresh online batches every step, so failure cannot be attributed to finite data. The reachable control is k=1 , identical pipeline. We use n=80 , k ∈ { 1, . . . , 10 }, width 512 , 20 ksteps, N =25 seeds (25 runs from different random initializations). 
+
+## 7 Results 
+
+We report the three probes in taxonomy order (Type I, II, III). In every case the shadow condi-tion shows the predicted signature, and a dedicated control rules out a capacity or modality artifact; all effects are large and survive multiplicity correction.                                    
+
+> Task Budget Text Full Gap
+> Fine 300 0.741 0.990 +0 .249
+> Fine 3,000 0.743 0.994 +0 .251
+> Fine 30,000 0.744 0.994 +0 .250
+> Fine 100,000 0.746 0.996 +0 .250
+> Coarse 100,000 1.000 0.894 −0.106
+> Table 2: Language Compression Residuals ( N=8
+> seeds). Fine-target text accuracy plateaus at the com-putable Bayes ceiling ( 0.740 ); the full-vs-text gap is flat in budget (slope −4×10 −4,p= 0 .78 ; one-sided gap
+> p= 4 .7×10 −4). The coarse control reverses the gap, isolating inexpressibility from modality.
+> Figure 2: Scaling curves for the fine (left) and coarse (right) targets: full-signal vs. text-only accuracy, with the computed Bayes text ceiling (dashed). The fine-target gap is flat across budgets; the coarse gap is absent (text wins).
+
+7.1 Type I: text sits at a computable ceiling 
+
+Language Compression Residuals (design in §4) compare a text learner , which sees only a coarse B-bin quantization of a latent z, against a full-signal learner , which sees z directly. Table 2 reports the result. On the fine target the full-signal learner reaches 0.996 , while the text learner plateaus at 
+
+0.741 –0.746 —at the computed Bayes ceiling of 
+
+0.740 (the small excess is within N =8 seed noise). The residual gap is ≈ 0.25 and flat across two-and-a-half orders of magnitude of data; a regression of gap on log -budget gives slope −4 × 10 −4 (p =0.78 ), i.e. no closure with scale, and the one-sided test that the gap exceeds zero at the largest budget gives p = 4 .7 × 10 −4. The coarse control —a target that is a deterministic function of the text— 
+
+inverts the gap ( −0.11 : the text learner is now 
+
+better , reaching 1.000 ), confirming the fine-task deficit is inexpressibility, not a generic modality disadvantage. The text learner is not undertrained: it is already optimal given what the channel can express. 
+
+7.2 Type II: the identifiability dial Palindrome task. Table 3a reports the provable string task. Every condition reaches ≥ 99 .7% training accuracy, so capacity and convergence are matched; only identifiability differs. In the 
+
+shadow condition, models settle at copy score 
+
+0.672 (95% CI [0 .660 , 0.683] ): with the data con-sistent with both rules, behavior is pulled to an architecture-dependent operating point rather than committing to either rule. The two controls move it to the poles— 5% COPY -labeled data gives 0.976 ,
+
+5% REVERSE -labeled data gives 0.102 —a bidi-rectional, maximal shift: Mann–Whitney U tests give p = 3 .0 × 10 −11 against each control, rank-biserial r = +1 .0 and r = −1.0, Holm-adjusted 
+
+p = 6 .0 × 10 −11 .
+
+Dose–response. The contrast is not a thresh-old artifact of the chosen 5% . Sweeping ρ ∈{0, 0.01 , 0.02 , 0.05 , 0.10 } yields a smooth, mono-tone curve: copy score rises 0.672 → 0.850 →
+
+0.924 → 0.976 → 0.992 , with per-position dis-agreement entropy falling in lockstep ( 0.368 →
+
+0.025 bits). Identifiability is a dial, not a switch. 
+
+Inductive bias sets the silent default. Replac-ing learned absolute with rotary position encodings shifts the data-silent operating point from 0.672 to 
+
+0.931 (Mann–Whitney p = 3 .0 × 10 −11 ; distribu-tions disjoint). The data is identical and equally non-identifiable in both, so the difference is at-tributable entirely to inductive bias—the predicted mechanism, made visible by varying only the bias. 
+
+Bridge task. Table 3b reports the agreement-attraction task. Every model reaches 100% training accuracy and 100% rule consistency, the cleanest possible matched-capacity setting. The shadow condition adopts the HIERARCHICAL rule almost universally (subject score 0.997 ), reproducing the known hierarchical bias of neural sequence models (McCoy et al., 2020a)—but here we can prove the data did not cause it, since the distribution is exactly consistent with LINEAR too. Planting 5% HIER - 
+
+> ARCHICAL
+
+sentences leaves behavior unchanged (1.000 ); planting 5% LINEAR sentences flips it completely ( 0.000 , p = 3 .0 × 10 −11 , r = −1.0). The asymmetry is informative: signal that opposes 
+
+the bias overrides it, while signal that agrees is re-dundant (Control-HIER , p = 0 .33 , intentionally not separable). Appendix B positions these numbers against the closest prior measurements; the novel elements are provable ambiguity (Prop. 1), bidirec-tional steering, and the dose–response curve.                                         
+
+> (a) Palindrome ( N=30 seeds): copy score →1COPY ,→0REV
+> Condition Consist. Copy (95% CI) Pref. s
+> Shadow 0.83 0.672 [ .660 , . 683] +0 .34
+> Control-COPY 0.97 0.976 [ .973 , . 979] +0 .95
+> Control-REV 0.86 0.102 [ .075 , . 133] −0.80
+> (b) Bridge ( N=30 seeds): subject score 1HIER ,0LIN
+> Condition Train Subj. score Pref. s
+> Shadow 1.000 0.997 +0 .99
+> Control-HIER 1.000 1.000 +1 .00
+> Control-LIN 1.000 0.000 −1.00
+
+Table 3: CDT results. (a) Palindrome: 5% disambiguat-ing data pins the rule at either pole; Mann–Whitney 
+
+p = 3 .0 × 10 −11 vs. each control, r = ±1.0, Holm-adjusted p = 6 .0 × 10 −11 ; all conditions ≥ 99 .7% train acc. (b) Bridge: same effect in agreement attraction; shadow vs. Control-LIN p = 3 .0 × 10 −11 , r = −1.0.Shadow vs. Control-HIER is intentionally not separable (p = 0 .33 ): the shadow already adopts the hierarchical rule. 
+
+7.3 Type III: representable but unreachable 
+
+Table 4 reports Basin Escape Mapping (design in §6). Vanilla Adam reaches the parity with proba-bility 1.0 for k ≤ 5 but collapses at the frontier: 
+
+0.04 at k=6 and exactly 0.0 for k ∈ { 7, 8, 9, 10 }—despite the function being representable at 100% 
+
+throughout (proved by hand-construction, App. C). Mean steps-to-reach grow explosively up to the cliff ( 250 → 520 → 2,200 → 10 ,810 for 
+
+k=1 , 2, 4, 5), the fingerprint of a vanishing gradi-ent signal (Shalev-Shwartz et al., 2017). At the headline k=9 , the shadow is maximal (reach 0.0), yet initialization near the constructed solution 
+
+recovers it in 290 steps ( 100% reach; Fisher ex-act p = 1 .6 × 10 −14 vs. vanilla) and a curriculum recovers it more slowly ( 100% , ∼19k steps). Cru-cially, scaling width does not help : at k=9 both a 4× narrower ( 128 ) and a 4× wider ( 2048 ) net-work reach 0.0, indistinguishable from vanilla. The basin exists and is trivially reachable from the right start; standard training never finds it, and more parameters do not change that. 
+
+## 8 Discussion 
+
+All three signatures hold. Each shadow type was given a proof of its premise (a computable expressibility ceiling; provable non-identifiability; constructive representability), a shadow condition with a distinct measured signature (text at the 0.740 
+
+ceiling; copy 0.672 ; vanilla reach 0.00 ), and a con-trol that rules out a capacity or modality artifact. All effects are large (flat 0.25 gap; r = ±1.0; mag-Condition k Reach rate (95% CI) Steps                                                          
+
+> Hand-built 1–10 1.00 (exact) 0Vanilla 51.00 [0 .87 ,1.00] 10,810 Vanilla 60.04 [0 .01 ,0.20] 18,250 Vanilla 7–10 0.00 [0 .00 ,0.13] —Near-init 91.00 [0 .87 ,1.00] 290 Curriculum 91.00 [0 .87 ,1.00] 18,910 Width 128/2048 90.00 [0 .00 ,0.13] —
+> Table 4: Basin Escape Mapping ( n=80 ,N=25 seeds). Representable at 100% for all k, but vanilla Adam reaches 0% for k≥7.At k=9 , near-initialization recovers 100% in 290 steps (Fisher p= 1 .6×10 −14 )while 4×width scaling in either direction stays at 0% .Shadow magnitude (near-init −vanilla) = 1 .0.
+
+nitude 1.0) and corrected for multiplicity, and each resists the obvious “more scale” remedy by a dedi-cated control (flat slope p = 0 .78 ; dose–response; width 128 /2048=0 ). 
+
+Conjectures. The probes motivate three open conjectures: ( C1 ) for any scale and architecture there exist Type II functions non-identifiable from text but identifiable given interventional or non-linguistic signal; ( C2 ) there exist representable functions whose basins are so rarely visited under SGD that scale does not raise acquisition proba-bility (BEM’s flat 0% across a 16 × width range is consistent); and ( C3 ) reducing Type I shadows via multimodality may enlarge Type III shadows by fragmenting the landscape. 
+
+Implications. Benchmarks: held-out accuracy cannot distinguish a learned rule from a reachable shortcut that agrees with it on the test distribution (Geirhos et al., 2020; McCoy et al., 2019), suggest-ing counterfactual probes as a useful complement to capability claims. Auditing: a claimed capa-bility should be verified for both representability and reachability, which BEM shows can diverge completely. Safety: in shadow-affected regions a model need not be right for the right reasons, so confident outputs there should be treated as hy-potheses, and shadow-aware uncertainty is a dis-tinct capability worth training for. 
+
+## 9 Conclusion 
+
+The information shadow reframes a family of language-model limitations as structural rather than incidental, and makes each kind measurable. We validate all three predicted signatures in controlled settings where the premise of each is provable: in-expressibility, where a text learner sits at a com-putable ceiling while a full-signal learner pulls away by a gap that does not close with scale; non-identifiability, where silent data cedes the rule to inductive bias and 5% of disambiguating data re-pins it in either direction; and unreachability, where a function that is representable at 100% is reached 
+
+0% of the time by standard training yet instantly from the right initialization, with width scaling no help. Mapping these shadows in large pretrained models, and turning the probes into auditing tools, is the natural next step. 
+
+## Limitations 
+
+Our experiments use small models on synthetic tasks by design: isolating each shadow type requires a setting where its premise is prov-able, which large naturalistic corpora cannot offer. The three constructions are by design maximally favorable—each premise holds as a theorem—so the quantitative separations bound the phenomena in idealized settings and are not direct estimates of their magnitude in trained LMs; generalization to naturalistic learning is a conjecture the probes are meant to test, not a result we claim. Conse-quently, the quantitative numbers characterize the 
+
+phenomena , not their extent in frontier models; measuring shadow magnitude in pretrained LMs is future work. The three conjectures remain open, the Type I/Type II boundary may be hard to adjudi-cate for real-world phenomena, and the taxonomy does not claim exhaustiveness. 
+
+## References    
+
+> Emmanuel Abbe, Enric Boix-Adsera, and Theodor Misi-akiewicz. 2022. The merged-staircase property: A necessary and nearly sufficient condition for SGD learning of sparse functions on two-layer neural net-works. In Proceedings of the 35th Conference on Learning Theory (COLT) , pages 4782–4887. PMLR. Emmanuel Abbe, Enric Boix-Adsera, and Theodor Misi-akiewicz. 2023a. SGD learning on neural networks: Leap complexity and saddle-to-saddle dynamics. In
+> Proceedings of the 36th Conference on Learning The-ory (COLT) . PMLR. Emmanuel Abbe, Elisabetta Cornacchia, and Aryo Lotfi. 2023b. Provable advantage of curriculum learning on parity targets with mixed inputs. In Advances in Neu-ral Information Processing Systems 36 (NeurIPS) .Boaz Barak, Benjamin L. Edelman, Surbhi Goel, Sham Kakade, Eran Malach, and Cyril Zhang. 2022. Hid-den progress in deep learning: SGD learns parities
+
+near the computational limit. In Advances in Neural Information Processing Systems 35 (NeurIPS) .Emily M. Bender and Alexander Koller. 2020. Climbing towards NLU: On meaning, form, and understanding in the age of data. In Proceedings of the 58th An-nual Meeting of the Association for Computational Linguistics , pages 5185–5198. Association for Com-putational Linguistics. David Chiang and Peter Cholak. 2022. Overcoming a theoretical limitation of self-attention. In Proceed-ings of the 60th Annual Meeting of the Association for Computational Linguistics (ACL) , pages 7654–7664. Association for Computational Linguistics. Alexander D’Amour, Katherine Heller, Dan Moldovan, and 1 others. 2022. Underspecification presents chal-lenges for credibility in modern machine learning. 
+
+Journal of Machine Learning Research , 23(226):1– 61. Grégoire Delétang, Anian Ruoss, Jordi Grau-Moya, Tim Genewein, Li Kevin Wenliang, Elliot Catt, Chris Cundy, Marcus Hutter, Shane Legg, Joel Veness, and Pedro A. Ortega. 2023. Neural networks and the chomsky hierarchy. In International Conference on Learning Representations (ICLR) .Jonathan Frankle and Michael Carbin. 2019. The lottery ticket hypothesis: Finding sparse, trainable neural networks. In International Conference on Learning Representations .Robert Geirhos, Jörn-Henrik Jacobsen, Claudio Michaelis, Richard Zemel, Wieland Brendel, Matthias Bethge, and Felix A. Wichmann. 2020. Shortcut learning in deep neural networks. Nature Machine Intelligence , 2(11):665–673. Michael Hahn. 2020. Theoretical limitations of self-attention in neural sequence models. Transactions of the Association for Computational Linguistics , 8:156– 171. Aapo Hyvärinen and Petteri Pajunen. 1999. Nonlin-ear independent component analysis: Existence and uniqueness results. Neural Networks , 12(3):429– 439. Tal Linzen, Emmanuel Dupoux, and Yoav Goldberg. 2016. Assessing the ability of LSTMs to learn syntax-sensitive dependencies. Transactions of the Associa-tion for Computational Linguistics , 4:521–535. Nelson F. Liu, Roy Schwartz, and Noah A. Smith. 2019. Inoculation by fine-tuning: A method for analyz-ing challenge datasets. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies , pages 2171–2179. Associa-tion for Computational Linguistics. Charles Marx, Flavio Calmon, and Berk Ustun. 2020. Predictive multiplicity in classification. In Proceed-ings of the 37th International Conference on Machine Learning , pages 6765–6774. PMLR. R. Thomas McCoy, Robert Frank, and Tal Linzen. 2020a. Does syntax need to grow on trees? Sources of hierarchical inductive bias in sequence-to-sequence networks. Transactions of the Association for Computational Linguistics , 8:125–140. R. Thomas McCoy, Junghyun Min, and Tal Linzen. 2020b. BERTs of a feather do not generalize together: Large variability in generalization across models with similar test set performance. In Proceedings of the Third BlackboxNLP Workshop on Analyzing and In-terpreting Neural Networks for NLP , pages 217–227. Association for Computational Linguistics. R. Thomas McCoy, Ellie Pavlick, and Tal Linzen. 2019. Right for the wrong reasons: Diagnosing syntactic heuristics in natural language inference. In Proceed-ings of the 57th Annual Meeting of the Association for Computational Linguistics , pages 3428–3448. As-sociation for Computational Linguistics. William Merrill, Yoav Goldberg, Roy Schwartz, and Noah A. Smith. 2021. Provable limitations of acquir-ing meaning from ungrounded form: What will future language models understand? Transactions of the Association for Computational Linguistics , 9:1047– 1060. William Merrill and Ashish Sabharwal. 2023. The par-allelism tradeoff: Limitations of log-precision trans-formers. Transactions of the Association for Compu-tational Linguistics , 11:531–545. Judea Pearl. 2009. Causality: Models, Reasoning and Inference , 2nd edition. Cambridge University Press. Alethea Power, Yuri Burda, Harri Edwards, Igor Babuschkin, and Vedant Misra. 2022. Grokking: Generalization beyond overfitting on small algorith-mic datasets. arXiv preprint arXiv:2201.02177 .Maithra Raghu, Ben Poole, Jon Kleinberg, Surya Gan-guli, and Jascha Sohl-Dickstein. 2017. On the expres-sive power of deep neural networks. In Proceedings of the 34th International Conference on Machine Learning , pages 2847–2854. PMLR. Geoffrey Roeder, Luke Metz, and Durk Kingma. 2021. On linear identifiability of learned representations. In Proceedings of the 38th International Conference on Machine Learning , pages 9030–9039. PMLR. Lesia Semenova, Cynthia Rudin, and Ronald Parr. 2022. On the existence of simpler machine learning mod-els. In Proceedings of the 2022 ACM Conference on Fairness, Accountability, and Transparency (FAccT) ,pages 1827–1858. Shai Shalev-Shwartz, Ohad Shamir, and Shaked Shammah. 2017. Failures of gradient-based deep learning. In Proceedings of the 34th International Conference on Machine Learning , pages 3067–3075. PMLR. Lena Strobl, William Merrill, Gail Weiss, David Chiang, and Dana Angluin. 2024. What formal languages can transformers express? a survey. Transactions of the Association for Computational Linguistics , 12:543– 561. Leslie G. Valiant. 1984. A theory of the learnable. Com-munications of the ACM , 27(11):1134–1142. Guillermo Valle-Pérez, Chico Q. Camargo, and Ard A. Louis. 2019. Deep learning generalizes because the parameter-function map is biased towards simple functions. In International Conference on Learning Representations (ICLR) .Alex Warstadt, Yian Zhang, Xiaocheng Li, Haokun Liu, and Samuel R. Bowman. 2020. Learning which fea-tures matter: RoBERTa acquires a preference for linguistic generalizations (eventually). In Proceed-ings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP) , pages 217–235. Association for Computational Linguistics. 
+
+## A Hyperparameters, Statistical Tests, and Reproducibility 
+
+Named statistical tests. We use the following standard tests; definitions are collected here for ref-erence. Mann–Whitney U test: a non-parametric two-sample test of whether one distribution is stochastically shifted relative to another, based on rank sums rather than means; it makes no nor-mality assumption, suiting our bounded scores. 
+
+Rank-biserial correlation r: an effect size for the Mann–Whitney test, equal to the difference be-tween the proportion of cross-group pairs favoring each group; r = +1 (−1) means every sample in one group exceeds (falls below) every sample in the other, i.e. the two distributions are completely sep-arated. Holm–Bonferroni correction: a sequential multiple-comparison adjustment that controls the family-wise error rate; it orders the raw p-values and applies progressively less stringent thresholds, more powerful than plain Bonferroni while equally conservative on the smallest p. Levene’s test: a test for equality of variance between groups, used here to check whether conditions differ in spread and not only in central tendency. Fisher’s exact test 
+
+(used for BEM): an exact test of association in a 
+
+2 × 2 table of counts (here, reached vs. not-reached across conditions), appropriate when reach rates are at the 0/1 boundary. 
+
+Main-run configuration. All CDT learners are decoder-only transformers (3 layers, 4 heads, 
+
+dmodel =128 , dff =512 ; learned absolute position encodings, plus rotary in the architecture sweep). The palindrome task uses a 20-symbol vocabulary (+4 special), sequence lengths 8–16 , 50 ,000 train-ing pairs, and a 2,000 -input probe set. Training: AdamW (lr 3×10 −4, weight decay 0.01 ), cosine schedule with 200 warmup steps, batch size 256 ,up to 4,000 steps with early stopping at train ac-curacy ≥ 0.999 , 30 seeds per condition. Training data is generated from a fixed RNG and shared across seeds, so seeds vary only initialization and batch order; the probe set is fixed across all mod-els. The bridge task uses 4 noun lemmas, up to 3 modifiers, 40 ,000 training sentences, and a 2,000 -sentence counterfactual set; all other settings match. Decision vectors (per-position rule choices on the fixed probe set) are saved per seed, enabling ex-act recomputation of all statistics and figures from released artifacts. 
+
+Disagreement entropy. The across-seed per-position disagreement entropy is the mean, over counterfactual positions, of the binary entropy of the seeds’ COPY /REV choices at each position. It is 0 when all seeds agree at every position and ap-proaches 1 bit when seeds split evenly, capturing underdetermination whether seeds adopt a global rule or resolve positions independently. 
+
+## B Comparison with Prior Findings                          
+
+> Study Prior finding This work
+> McCoy et al. (2020b): 100 BERT seeds, MNLI →HANS OOD acc. 0.0–66.2% despite in-dist. 83.6–84.8% shadow copy
+> 0.672 ±0.03 ;con-trols 0.976 /0.102
+> Warstadt et al. (2020): MSGS MCC prefer-ence; inocu-lation shifts toward linguis-tic rule
+> s:shadow +0 .34 ;controls ±bidi-rectional ;dose– response McCoy et al. (2020a): seq2seq %hierarchical tracks architec-ture bias-tracked: 0.672
+> (abs) vs. 0.931 (ro-tary)
+
+Table 5: Relation to prior measurements of underdeter-mination. Prior ambiguity is empirical; ours is provable (Prop. 1). Bidirectional steering and the dose–response curve are, to our knowledge, new. 
+
+## C BEM Construction (Representability Proof) 
+
+For k-sparse parity, let s = Pki=1 xi be the sum of the relevant bits, an integer in [0 , k ]. For 
+
+j = 1 , . . . , k define the ramp Rj (s) = ReLU( s −(j−1)) − ReLU( s − j), which equals 1[s ≥ j] at integer s. Then parity( s) = Pkj=1 (−1) j+1 Rj (s)
+
+equals s mod 2 at every integer. We realize each 
+
+Rj with two hidden ReLU units sharing the in-put row w = 1[relevant bits ] and biases −(j−1) 
+
+and −j, with signed output weights, and scale the output to a confident logit C(2 parity − 1) . This requires width ≥ 2k; unused units are zeroed. The construction is exact at all binary inputs, giving 
+
+100% accuracy independent of training (verified empirically for all k ∈ { 1, . . . , 10 }). 
+
+## D A2/A3 Configuration 
+
+BEM (A2): two-layer ReLU MLP; n=80 bits; k ∈{1, . . . , 10 }; width 512 (sweep 128 , 2048 ); Adam, lr 10 −3; online batches of 512 ; 20 k steps; reach threshold 99% accuracy on 8192 held-out samples; near-init noise σ=0 .05 ; curriculum k : 2 → k;
+
+N =25 seeds. LCR (A3): two-hidden-layer MLP (width 64 ); B=8 bins; close-pair gap g=0 .12 ; bud-gets {300 , 10 3, 3×10 3, 10 4, 3×10 4, 10 5}; Adam, lr 10 −3; 6k steps; fixed 20 k-sample test set; N =8 
+
+seeds. Both runners are fully resumable. All 
+
+p-values are two-sided unless noted; BEM uses Fisher’s exact test, LCR uses Mann–Whitney (one-sided for the directional gap) and OLS for the slope.

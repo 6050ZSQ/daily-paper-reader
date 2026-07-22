@@ -6,79 +6,50 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-21
-- 运行时间：2026-07-21 21:57:37 UTC
+- 最新运行日期：2026-07-22
+- 运行时间：2026-07-22 21:31:49 UTC
 - 运行状态：成功
-- 本次总论文数：19
-- 精读区：8
-- 速读区：11
+- 本次总论文数：10
+- 精读区：6
+- 速读区：4
 
 ### 今日简报（AI）
-今日聚焦：语言模型认知模拟与算术推理机制，两篇高分论文揭示模型预测行为与神经元不变性。  
-最值得看：EEG编码揭示语言模型类人预测行为，以及LLM算术神经元对符号、文本、代码的形态不变性。  
-建议下一步关注跨语言同形词分词与自解释可操作性，拓展模型可解释性边界。
-- 详情：[/202607/21/README](/202607/21/README)
+今日精读6篇、速读4篇，重点关注神经符号提升与语用推理模型；最值得深读的是利用组合范畴语法提升LLM组合性的论文（10分），以及灵活生成含义与表达选项的语用推理计算模型（9分）；建议普通读者优先从这两篇精读入手，掌握神经符号方法与语用推理前沿。
+- 详情：[/202607/22/README](/202607/22/README)
 
 ### 精读区论文标签
-1. [Encoding EEG Signals to Examine Human-Like Next-Word Prediction Behaviour in Language Models](/202607/21/2607.16549v1-encoding-eeg-signals-to-examine-human-like-next-word-prediction-behaviour-in-language-models)  
+1. [From Dependency to Compositionality: A Neurosymbolic Lifting of LLM Outputs via Combinatory Categorial Grammar](/202607/22/2607.18961v1-from-dependency-to-compositionality-a-neurosymbolic-lifting-of-llm-outputs-via-combinatory-categorial-grammar)  
+   标签：评分：10.0/10、query:llm-ling
+   evidence：直接将LLM输出与组合范畴语法关联，研究组成性语义
+2. [Computational models of pragmatic reasoning with flexible generation of meaning and expression alternatives](/202607/22/2607.18443v1-computational-models-of-pragmatic-reasoning-with-flexible-generation-of-meaning-and-expression-alternatives)  
    标签：评分：9.0/10、query:llm-ling
-   evidence：认知语言学：将语言模型的下一个词预测与人类脑电信号对比
-2. [Are Arithmetic Heuristic Neurons Form-Invariant? A Mechanistic Analysis of Symbols, Text, and Code in LLMs](/202607/21/2607.16693v1-are-arithmetic-heuristic-neurons-form-invariant-a-mechanistic-analysis-of-symbols-text-and-code-in-llms)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：对LLM中算术启发神经元的机制分析，跨格式研究
-3. [The Anatomy of a Truth Direction: Knowledge-Dependent Dimensionality, a Relational Law, and a Convergent Category Geometry in Small Language Models](/202607/21/2607.16741v1-the-anatomy-of-a-truth-direction-knowledge-dependent-dimensionality-a-relational-law-and-a-convergent-category-geometry-in-small-language-models)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：研究LLM中真理表示的方向和维度，探测内部状态
-4. [Persistent Sparse Autoencoders: Learning Feature Timescales in Language Models](/202607/21/2607.17117v1-persistent-sparse-autoencoders-learning-feature-timescales-in-language-models)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：将语言模型激活分解为具有持久性系数的稀疏特征
-5. [KyrgyzLLM-Bench: Benchmarking Kyrgyz Language Understanding](/202607/21/2607.17173v1-kyrgyzllm-bench-benchmarking-kyrgyz-language-understanding)  
-   标签：评分：9.0/10、query:llm-eval
-   evidence：吉尔吉斯语LLM评估基准
-6. [RECON: Benchmarking Agent Memory for Compositional Reasoning over Long Contexts](/202607/21/2607.16716v1-recon-benchmarking-agent-memory-for-compositional-reasoning-over-long-contexts)  
+   evidence：融合认知模型与语言模型进行语用推理与备选生成
+3. [Beyond Semantic Equivalence: Logical Graphs for LLM Uncertainty Quantification](/202607/22/2607.16868v1-beyond-semantic-equivalence-logical-graphs-for-llm-uncertainty-quantification)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：提出RECON基准用于评估LLM智能体记忆和组合推理能力
-7. [Efficient Sequential Evaluation of Large Language Models](/202607/21/2607.17409v1-efficient-sequential-evaluation-of-large-language-models)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：利用置信序列对LLM能力进行序贯评估
-8. [ESCUCHA: A Spanish Speech Benchmark for Heterogeneous Acoustic Conditions](/202607/21/2607.17812v1-escucha-a-spanish-speech-benchmark-for-heterogeneous-acoustic-conditions)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：针对大型音频语言模型的西班牙语语音理解基准
+   evidence：LLM评估：利用逻辑关系进行不确定性量化
+4. [Tokenizing Crosslingual Homographs](/202607/22/2607.17689v1-tokenizing-crosslingual-homographs)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：多语言LLM中基于语言线索的分词干预
+5. [The Information Shadow: Measuring Structural Limits on What Language Models Can Learn](/202607/22/2607.18305v1-the-information-shadow-measuring-structural-limits-on-what-language-models-can-learn)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：提出信息阴影概念，衡量语言模型从文本中学习语言结构的极限
+6. [Inference-Time Steering for Cross-Lingual Factual Consistency in LLMs](/202607/22/2607.19243v1-inference-time-steering-for-cross-lingual-factual-consistency-in-llms)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：跨语言事实一致性，内部知识表示偏差
 
 ### 速读区论文标签
-1. [LLMs Encode Relevance as a Layer-Wise Cross-Lingual Signal](/202607/21/2607.15555v1-llms-encode-relevance-as-a-layer-wise-cross-lingual-signal)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：通过线性探针研究指令微调LLM内部的相关性表示
-2. [From Plausible to Actionable: A Position on LLM Self-Explanations](/202607/21/2607.15957v1-from-plausible-to-actionable-a-position-on-llm-self-explanations)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：讨论LLM自解释的忠实性和可操作性，用于可解释性
-3. [Tokenizing Crosslingual Homographs](/202607/21/2607.17689v1-tokenizing-crosslingual-homographs)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：多语言LLM中跨语言同形异义词的标记化干预
-4. [Safety That Does Not Transfer: Cross-Lingual Clinical Correctness Drift in Deployable Medical Language Models](/202607/21/2607.17270v1-safety-that-does-not-transfer-cross-lingual-clinical-correctness-drift-in-deployable-medical-language-models)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：跨语言医疗LLM安全性评估，揭示正确性漂移
-5. [Token-Level Off-Policy Learning for Faithful Generation Under Distribution Shift](/202607/21/2607.17524v1-token-level-off-policy-learning-for-faithful-generation-under-distribution-shift)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：提出令牌级离策略标记方法用于忠实生成评估
-6. [Stress Testing Concept Erasure with Large Language Model Agents](/202607/21/2607.17890v1-stress-testing-concept-erasure-with-large-language-model-agents)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：使用LLM代理进行概念擦除的压力测试，评估方法
-7. [L1 Augmented Attention as an Improved Vector Similarity Metric](/202607/21/2607.18027v1-l1-augmented-attention-as-an-improved-vector-similarity-metric)  
+1. [T^2MLR: Transformer with Temporal Middle-Layer Recurrence](/202607/22/2607.15178v2-t2mlr-transformer-with-temporal-middle-layer-recurrence)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：L1增强注意力改进Transformer相似度度量，与语言编码相关
-8. [ASK-NN: An Asymmetric Nearest-Neighbor Test that detects Distribution Drifts in Natural Language](/202607/21/2607.15607v1-ask-nn-an-asymmetric-nearest-neighbor-test-that-detects-distribution-drifts-in-natural-language)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：检测LLM输出中的分布漂移，可用于评估生成质量
-9. [JOR-Bench: Japanese Operations Research Benchmarks for Large Language Models](/202607/21/2607.16777v1-jor-bench-japanese-operations-research-benchmarks-for-large-language-models)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：JOR-Bench：面向LLM的日语运筹学基准，评测基准
-10. [Uncovering Latent Reasoning Strategies in Language Models](/202607/21/2607.17674v1-uncovering-latent-reasoning-strategies-in-language-models)  
+   evidence：通过时间循环改进Transformer表示，适用于语言编码机制
+2. [Convolution for Large Language Models](/202607/22/2607.18413v1-convolution-for-large-language-models)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：语言编码机制：在LLM中加入卷积以提供局部归纳偏置
+3. [AILQA: Evaluating AI-Driven Legal Question Answering Systems for the Indian Legal System](/202607/22/2607.18825v1-ailqa-evaluating-ai-driven-legal-question-answering-systems-for-the-indian-legal-system)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：使用词汇和语义指标评估基于LLM的法律问答系统
+4. [An Explicit World Model Based on Data-First Ontology: DaoQL Multimodal Storage Validation and Counterfactual Reasoning Evaluation](/202607/22/2607.17269v1-an-explicit-world-model-based-on-data-first-ontology-daoql-multimodal-storage-validation-and-counterfactual-reasoning-evaluation)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：将语言模型响应分布分解为潜在推理策略
-11. [Benchmarking Resource-Efficient LLMs for Research Topic Ontology Generation in the Biomedical Field](/202607/21/2607.17902v1-benchmarking-resource-efficient-llms-for-research-topic-ontology-generation-in-the-biomedical-field)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：提出MeSH-Rel-4K基准评估LLM语义关系识别能力
+   evidence：显式世界模型与隐式LLM表征对比
 
 
 <div class="dpr-home-promo-card">
