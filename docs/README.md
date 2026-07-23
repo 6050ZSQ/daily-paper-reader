@@ -6,50 +6,76 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-22
-- 运行时间：2026-07-22 21:31:49 UTC
+- 最新运行日期：2026-07-23
+- 运行时间：2026-07-23 21:47:55 UTC
 - 运行状态：成功
-- 本次总论文数：10
-- 精读区：6
-- 速读区：4
+- 本次总论文数：18
+- 精读区：8
+- 速读区：10
 
 ### 今日简报（AI）
-今日精读6篇、速读4篇，重点关注神经符号提升与语用推理模型；最值得深读的是利用组合范畴语法提升LLM组合性的论文（10分），以及灵活生成含义与表达选项的语用推理计算模型（9分）；建议普通读者优先从这两篇精读入手，掌握神经符号方法与语用推理前沿。
-- 详情：[/202607/22/README](/202607/22/README)
+今日日报聚焦小语言模型中的真理方向解剖与组合性神经符号提升，以及卷积大模型等前沿进展。  
+最值得关注的是两篇精读论文：一篇揭示小语言模型中真理方向的维度、关系律与收敛几何，另一篇通过组合范畴语法实现LLM输出的神经符号提升。  
+建议优先精读这两篇9分论文，以深入理解语言模型内部机理与符号增强方法。
+- 详情：[/202607/23/README](/202607/23/README)
 
 ### 精读区论文标签
-1. [From Dependency to Compositionality: A Neurosymbolic Lifting of LLM Outputs via Combinatory Categorial Grammar](/202607/22/2607.18961v1-from-dependency-to-compositionality-a-neurosymbolic-lifting-of-llm-outputs-via-combinatory-categorial-grammar)  
-   标签：评分：10.0/10、query:llm-ling
-   evidence：直接将LLM输出与组合范畴语法关联，研究组成性语义
-2. [Computational models of pragmatic reasoning with flexible generation of meaning and expression alternatives](/202607/22/2607.18443v1-computational-models-of-pragmatic-reasoning-with-flexible-generation-of-meaning-and-expression-alternatives)  
+1. [The Anatomy of a Truth Direction: Knowledge-Dependent Dimensionality, a Relational Law, and a Convergent Category Geometry in Small Language Models](/202607/23/2607.16741v2-the-anatomy-of-a-truth-direction-knowledge-dependent-dimensionality-a-relational-law-and-a-convergent-category-geometry-in-small-language-models)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：通过真理方向分析语言模型表示的可解释性
+2. [From Dependency to Compositionality: A Neurosymbolic Lifting of LLM Outputs via Combinatory Categorial Grammar](/202607/23/2607.18961v1-from-dependency-to-compositionality-a-neurosymbolic-lifting-of-llm-outputs-via-combinatory-categorial-grammar)  
    标签：评分：9.0/10、query:llm-ling
-   evidence：融合认知模型与语言模型进行语用推理与备选生成
-3. [Beyond Semantic Equivalence: Logical Graphs for LLM Uncertainty Quantification](/202607/22/2607.16868v1-beyond-semantic-equivalence-logical-graphs-for-llm-uncertainty-quantification)  
+   evidence：将LLM输出提升为组合范畴语法推导，以理解其如何处理句法和语义
+3. [Text Template Tokens Are Implicit Semantic Registers in Diffusion Transformers](/202607/23/2607.19139v1-text-template-tokens-are-implicit-semantic-registers-in-diffusion-transformers)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：Transformer中文本令牌作为语义寄存器的内部表示
+4. [Inference-Time Steering for Cross-Lingual Factual Consistency in LLMs](/202607/23/2607.19243v1-inference-time-steering-for-cross-lingual-factual-consistency-in-llms)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：跨语言事实一致性与内部表征偏差
+5. [Understanding the Impact of Linguistic Realization Choices on LLM Stance with Causal Tracing](/202607/23/2607.20115v1-understanding-the-impact-of-linguistic-realization-choices-on-llm-stance-with-causal-tracing)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：研究语言结构对LLM立场的影响，并使用因果追踪定位内部编码机制
+6. [Exposure is Optional: Learning Unlike Coordination in Language Models](/202607/23/2607.20251v1-exposure-is-optional-learning-unlike-coordination-in-language-models)  
+   标签：评分：9.0/10、query:llm-ling
+   evidence：语言模型学习异类并列句法
+7. [Lower-Resource, Higher Scores: Language Bias in LLM Evaluators](/202607/23/2607.14480v2-lower-resource-higher-scores-language-bias-in-llm-evaluators)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：LLM评估：利用逻辑关系进行不确定性量化
-4. [Tokenizing Crosslingual Homographs](/202607/22/2607.17689v1-tokenizing-crosslingual-homographs)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：多语言LLM中基于语言线索的分词干预
-5. [The Information Shadow: Measuring Structural Limits on What Language Models Can Learn](/202607/22/2607.18305v1-the-information-shadow-measuring-structural-limits-on-what-language-models-can-learn)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：提出信息阴影概念，衡量语言模型从文本中学习语言结构的极限
-6. [Inference-Time Steering for Cross-Lingual Factual Consistency in LLMs](/202607/22/2607.19243v1-inference-time-steering-for-cross-lingual-factual-consistency-in-llms)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：跨语言事实一致性，内部知识表示偏差
+   evidence：LLM评估器中的多语言偏差，显示分数差异与语言资源水平相关
+8. [Reference-Free Evaluation of Reasoning in Open-Ended Question Answering](/202607/23/2607.19678v1-reference-free-evaluation-of-reasoning-in-open-ended-question-answering)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：面向开放问答生成的无参考评估方法
 
 ### 速读区论文标签
-1. [T^2MLR: Transformer with Temporal Middle-Layer Recurrence](/202607/22/2607.15178v2-t2mlr-transformer-with-temporal-middle-layer-recurrence)  
+1. [Convolution for Large Language Models](/202607/23/2607.18413v1-convolution-for-large-language-models)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：通过卷积为LLM引入局部编码机制
+2. [Co-Evolving LLM Evaluators and Policies via DynamicRubric](/202607/23/2607.20083v1-co-evolving-llm-evaluators-and-policies-via-dynamicrubric)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：LLM评估器与策略共同演化方法
+3. [T^2MLR: Transformer with Temporal Middle-Layer Recurrence](/202607/23/2607.15178v1-t2mlr-transformer-with-temporal-middle-layer-recurrence)  
    标签：评分：7.0/10、query:llm-lang-rep
-   evidence：通过时间循环改进Transformer表示，适用于语言编码机制
-2. [Convolution for Large Language Models](/202607/22/2607.18413v1-convolution-for-large-language-models)  
-   标签：评分：7.0/10、query:llm-lang-rep
-   evidence：语言编码机制：在LLM中加入卷积以提供局部归纳偏置
-3. [AILQA: Evaluating AI-Driven Legal Question Answering Systems for the Indian Legal System](/202607/22/2607.18825v1-ailqa-evaluating-ai-driven-legal-question-answering-systems-for-the-indian-legal-system)  
+   evidence：Transformer中隐藏层表示持久性增强推理
+4. [Beyond Semantic Equivalence: Logical Graphs for LLM Uncertainty Quantification](/202607/23/2607.16868v1-beyond-semantic-equivalence-logical-graphs-for-llm-uncertainty-quantification)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：使用词汇和语义指标评估基于LLM的法律问答系统
-4. [An Explicit World Model Based on Data-First Ontology: DaoQL Multimodal Storage Validation and Counterfactual Reasoning Evaluation](/202607/22/2607.17269v1-an-explicit-world-model-based-on-data-first-ontology-daoql-multimodal-storage-validation-and-counterfactual-reasoning-evaluation)  
+   evidence：提出逻辑图不确定性作为LLM可靠性评估的新指标
+5. [Estimating Rare Events in Language Models with Proper Evaluation](/202607/23/2607.18454v1-estimating-rare-events-in-language-models-with-proper-evaluation)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：语言模型罕见事件估计与评估方法
+6. [On the Systematic Challenges of Culturally Loaded Machine Translation: Dream of the Red Chamber as the Cultural Lens](/202607/23/2607.20241v1-on-the-systematic-challenges-of-culturally-loaded-machine-translation-dream-of-the-red-chamber-as-the-cultural-lens)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：基于LLM的机器翻译在文化负载表达上的评估
+7. [In-Place Tokenizer Expansion for Pre-trained LLMs](/202607/23/2607.15232v1-in-place-tokenizer-expansion-for-pre-trained-llms)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：显式世界模型与隐式LLM表征对比
+   evidence：针对语言编码的分词器扩展方法
+8. [Sentence Splitter: Uncovering Latent Factual Structure for Self-Supervised Learning](/202607/23/2607.19845v1-sentence-splitter-uncovering-latent-factual-structure-for-self-supervised-learning)  
+   标签：评分：6.0/10、query:llm-lang-rep
+   evidence：自监督发现句子中潜在事实结构，揭示语义边界
+9. [The Maskability Index: Predicting Task-Objective Alignment in Pretrained Language Models](/202607/23/2607.20265v1-the-maskability-index-predicting-task-objective-alignment-in-pretrained-language-models)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：预测PLM中提示目标对齐度的指标
+10. [LKValues: Aligning Large Language Models with Sri Lankan Societal Values](/202607/23/2607.20410v1-lkvalues-aligning-large-language-models-with-sri-lankan-societal-values)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：用于斯里兰卡社会价值观的LLM基准
 
 
 <div class="dpr-home-promo-card">
