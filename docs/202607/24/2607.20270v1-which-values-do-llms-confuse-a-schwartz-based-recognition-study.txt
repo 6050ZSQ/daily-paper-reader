@@ -1,0 +1,636 @@
+Title: Which Values Do LLMs Confuse? A Schwartz-Based Recognition Study
+
+URL Source: https://arxiv.org/pdf/2607.20270v1
+
+Published Time: Thu, 23 Jul 2026 01:05:11 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# Which Values Do LLMs Confuse? 
+
+## A Schwartz-Based Recognition Study 
+
+Andrei Chetvergov 1,2 , Stepan Ukolov 1,2 , Timofei Sivoraksha 1,2 , Alexander Evseev 1,2 
+
+Mikhail Solovev 1,2 , Valeriia Kuschenko 2, Maria Chistyakova 2, Sergey Bolovtsov 1,2 
+
+> 1
+
+Ivannikov Institute for System Programming of the Russian Academy of Sciences, Moscow, Russia 
+
+> 2
+
+Russian Presidential Academy of National Economy and Public Administration, Moscow, Russia 
+
+> {chetvergov-as,ukolov-sd,sivoraksha-ta}@ranepa.ru {aevseev-23-01,mchistyakova-25,bolovtsov-sv}@ranepa.ru {msolovev-24,vkuschenko-22}@edu.ranepa.ru
+
+Abstract 
+
+Large language models are increasingly evaluated through the values they endorse, but such evaluations presuppose that models can identify the value expressed in a concrete situation. We study this prerequisite as controlled top-1 recognition over Schwartz’s ten basic values. Our evaluation set contains 1,000 Russian situational texts, balanced across the ten values and independently labeled by two human annotators per item. We evaluate 21 instruction-tuned LLM runs under a fixed ranked-response protocol; 20 runs with reliable outputs form the semantic panel. Pooled Acc@1 is 0.683 and Acc@3 is 0.892, showing that models often locate the correct motivational region while ranking close alternatives unstably. Adjacent values account for 50.9% of semantic errors, compared with 24.4% under a checkpoint-specific null. Eight directed confusions recur across checkpoints and human-confirmed subsets. Several are strongly asymmetric—including 
+
+Universalism →Benevolence , Tradition →Conformity , and Security →Power —whereas 
+
+Stimulation –Hedonism forms a bidirectional boundary. Their severity is checkpoint-specific and can bias higher-order value profiles. The results motivate value-recognition evaluation that combines exact accuracy, ranked recovery, and directed error analysis. Keywords: large language models, human values, Schwartz values, value recognition, Russian NLP, model evaluation, human validation 
+
+## 1 Introduction 
+
+Human values are increasingly used to evaluate large language models (LLMs): systems are compared by value orientations, moral choices, pluralistic judgments, and value-informed behavior. These evaluations depend on a simpler capability that is rarely isolated. Before asking whether a model endorses or follows a value, one should establish whether it can recognize which value is expressed in ordinary language. Recognition errors matter because predicted value labels can become features for profiling, routing, recommendation, policy analysis, or personalized intervention. A systematic Universal-ism →Benevolence shift can reduce a demand for equal access to a story of charitable care; Confor-mity →Security can turn normative compliance into threat avoidance; and Security →Power can read protective action as domination. These examples make the direction of an error more informative than a generic accuracy loss. 
+
+Schwartz-10 in brief. Schwartz’s circumplex arranges ten values so that neighboring positions express compatible motives and opposite positions express competing priorities [ 1, 2 ]. Openness to Change comprises Self-Direction (independent thought and action), Stimulation (novelty and excitement), and Hedonism (pleasure); Self-Enhancement comprises Achievement (success through competence) and Power (status and control); Conservation comprises Security (safety and stability), Conformity (restraint under social norms), and Tradition (respect for inherited 1arXiv:2607.20270v1 [cs.CL] 22 Jul 2026 customs); Self-Transcendence comprises Benevolence (welfare of close others) and Universalism 
+
+(welfare of all people and nature). Recognition therefore requires both locating the broad motivational region and distinguishing nearby motives. A single accuracy score can conceal the more diagnostic question posed by our title: which values does a model confuse, in which direction, and more often than expected from its general label preferences? 
+
+We study primary-value recognition in short Russian situational texts. Each model returns a ranked prediction over Schwartz-10. Russian provides the empirical setting; the object of analysis is the structure of value recognition and confusion. Figure 1 summarizes the task. The study addresses three research questions: 
+
+• RQ1 – Recognition and ranked recovery. How accurately do instruction-tuned LLMs recognize primary Schwartz values, which values are hardest, and how often does the reference remain at ranks 2–3 after a top-1 disagreement? 
+
+• RQ2 – Directed confusion and checkpoint heterogeneity. Which directed boundaries exceed checkpoint-specific label-preference baselines, reproduce across checkpoints and family exclusions, and form distinct model-specific error fingerprints? 
+
+• RQ3 – Human robustness and profile distortion. Do the conclusions persist on independently confirmed items, what semantic mechanisms recur, and how do fine-grained errors alter higher-order motivational profiles? Our contributions are fourfold. First, we formulate primary-value recognition as a controlled diagnostic task and release a balanced set of 1,000 unique Russian texts with two independent human labels for every item. Second, we separate output reliability, exact recognition, and ranked recovery, and introduce checkpoint-specific fixed-margin inference with replication and leave-one-family-out tests. Third, we characterize eight reproducible directed transitions, expose checkpoint-specific confusion fingerprints, and audit all 62 high-consensus cases for recurring semantic mechanisms. Fourth, we repeat the central analyses on two human-confirmed subsets and quantify the resulting distortion of higher-order value profiles over 20,000 model–text observations. 2Figure 1: Task overview. A model maps a situational text to one primary Schwartz value and two alternatives under a fixed ranked-response schema. Evaluation separates output reliability, top-1 recognition, top-3 coverage, and confusion structure. 
+
+## 2 Related Work 
+
+Value Recognition in Text. Webis-ArgValues-22 established value inference from natural-language arguments as an NLP task [3]; ValueEval and the Touche23-ValueEval extension enabled system and per-category comparison over larger multilabel argument collections [ 4, 5 ]. These resources establish values as operational textual categories. Our study adds a compact psychological geometry in which directed boundaries and circumplex distance are directly interpretable. 
+
+LLM Value and Scenario Benchmarks. ValueBench evaluates orientations and value understand-ing across many psychometric dimensions [ 6]; Value Kaleidoscope / ValuePrism emphasizes pluralistic rights and duties in situations [ 7 ]; Generative Psychometrics and ValueLlama support scalable value measurement from free text [ 8 ]. INVP studies value priorities in social decisions [ 9], ValueActionLens examines the value–action gap [ 10 ], and Value Portrait links realistic interactions to human value scores [ 11 ]. We isolate a prerequisite shared by these settings: distinguishing the expressed value before interpreting a profile or action. 
+
+Annotation Uncertainty and Russian Sources. Value expression in natural text is difficult to annotate consistently. Epstein et al. report substantial human and model variation in social-media 3value ratings [ 12 ]; Milkova and Rudnev emphasize calibrated non-English Schwartz annotation, expert verification, and error-structure analysis [ 13 ]. We therefore combine exact agreement between two construction models with complete two-annotator human validation. The candidate pool draws on Russian sensitive-topic and appropriateness data [ 17 ] and TAPE ethics examples [ 18 ]; source labels select candidates only. Scenario resources such as ETHICS, Social Chemistry 101, and Moral Stories motivate the use of concrete social situations [14, 15, 16]. 
+
+## 3 Task and Dataset 
+
+3.1 Recognition Task and Response Schema 
+
+For a text x, the model returns a ranking ( ˆy1, ˆy2, ˆy3) over the ten Schwartz values, and the primary task is x 7 → ˆy1. The judgment concerns the value expressed in the situation—not the model’s own preference and not whether the situation is morally acceptable. Label names are presented without definitions or demonstrations. Empty responses, refusals, and responses without an admissible top-1 label are output failures; semantic metrics use the extracted ranking, while rationales support the qualitative audit. 
+
+3.2 Candidate Pool and Construction Labels 
+
+The candidate pool contains 70,649 Russian texts from four source slices: 33,303 sensitive-topic texts, 28,931 high-confidence inappropriate messages, a 5,000-item high-confidence appropriate sample, and 3,415 TAPE ethics examples. Source categories are used solely for candidate selection; all final labels belong to the Schwartz-10 space. The construction stage is shown in Figure 2. A specialized ValueLlama annotator labels the candidates; 43,165 items are cross-annotated by GPT-4.1-mini with an explicit none option. Exact top-1 agreement yields 14,516 eligible candidates. For each value, the 100 highest-scoring agreed items are selected subject to a maximum of 60 items from any one source slice. The final set contains 1,000 unique text surfaces, exactly 100 per value: 521 sensitive-topic, 306 high-confidence inappropriate, 85 high-confidence appropriate, and 88 TAPE ethics texts. 4Figure 2: Dataset construction. Original source categories select candidates only. Reference labels are assigned in the Schwartz-10 space by two separate construction models and retained under exact top-1 agreement. Every selected item is then independently labeled by two humans. 
+
+Table 1: Construction-stage selectivity by ValueLlama label. “Agree” is exact top-1 agreement with GPT-4.1-mini; none is the GPT abstention rate. The final set then selects 100 items per value.                                              
+
+> Value Cross-annotated Agree rate GPT none Eligible Self-Direction 3,045 .200 .173 609 Stimulation 4,463 .192 .312 855 Hedonism 8,487 .324 .237 2,749 Achievement 3,748 .356 .177 1,333 Power 1,624 .576 .132 936 Security 10,288 .402 .124 4,136 Conformity 3,622 .271 .246 981 Tradition 3,168 .551 .131 1,746 Benevolence 1,494 .284 .177 425 Universalism 3,226 .231 .155 746
+
+3.3 Independent Human Validation 
+
+Twelve annotators worked independently in a dedicated web interface (Figure 3). Before annotation, they received a concise introduction to Schwartz’s basic value theory and a reference guide with definitions and illustrative examples for each of the ten values; the guide remained available during annotation. Each screen presented one Russian text and the ten Schwartz labels as a forced primary-value choice. Two labels were collected for every item, yielding 2,000 judgments with complete coverage. 5Figure 3: Human annotation interface. Annotators viewed one Russian situational text at a time and selected its most prominent value from the ten Schwartz labels. 
+
+The label jointly selected by the two construction models receives independent support from at least one human for 950 of 1,000 items (95.0%, Wilson 95% CI [93.5, 96.2]) and from both humans for 611 items (61.1%). Across individual judgments, human-to-reference agreement is 78.1% with Cohen’s 
+
+κ = .756 ; at-least-one-human support ranges from 88% to 99% across the ten values. Under the stricter criterion that both humans independently choose exactly the same forced primary label, pair agreement is 62.4% ( κ = .582 ). These measures provide broad independent support and preserve information about close boundaries that admit plausible secondary readings. We use reference label for the primary label selected under this protocol. 
+
+## 4 Experimental Protocol 
+
+4.1 Model Panel and Recognition Metrics 
+
+We evaluate 21 instruction-tuned runs under the same prompt, item order, temperature setting, and parser, yielding 21,000 outputs. All runs enter output-reliability analysis. Semantic analyses use the 20 runs with output-validity rate at least 0.8; the excluded run has rate 0.577 and the next-lowest rate is 0.948, so thresholds of 0.8 and 0.9 select the same panel. 
+
+Metric guide. Four related measures answer different questions. The output-validity rate (reported as Parse in figures) is the fraction of items with an admissible top-1 label. Strict end-to-end Acc@1 counts every invalid output as incorrect: 
+
+StrictAcc@1 = N −1 ∑
+
+> i
+
+1[parse i ∧ ˆyi, 1 = yi].
+
+6Strict Acc@3 asks whether the reference appears anywhere in the returned top three, again over all items. By contrast, top-3 rescue is conditional: among valid top-1 errors only, it asks whether the reference remains at rank 2 or 3. We also report macro-F1, per-value precision and recall, and directed confusion counts. 
+
+4.2 Directed-Confusion Inference 
+
+Raw counts can reflect a checkpoint’s general tendency to overuse particular labels. Our fixed-margin null is a label-bias-preserving baseline: within each checkpoint it reshuffles erroneous destinations while holding fixed both the number of errors from every reference value and the overall frequency of each wrong predicted label. We draw 10,000 such samples. For each of 90 directed transitions 
+
+a → b, a one-sided test asks whether the observed count exceeds this baseline; Holm correction is the multiple-testing adjustment used to control family-wise error. 
+
+Evidence guide. We use three increasingly strict levels. Aggregate significance pools the evidence across all predictions. Checkpoint replication asks whether observed-minus-null excess is consistently positive across checkpoints, using the Wilcoxon signed-rank test (a nonparametric paired test) with Holm correction. Leave-one-family-out robustness repeats that replication test after removing each of 11 model-family groups. Finally, comparing a → b with b → a distinguishes two-way boundary ambiguity from one-way category collapse. 
+
+4.3 Robustness, Controls, and Case Audit 
+
+The full 1,000-item set is primary. We repeat model ranking and directed-transition inference on 950 items confirmed by at least one human and 611 confirmed by both. The ten values are also aggregated into four non-overlapping orientations: Openness to Change (Self-Direction, Stimulation, Hedonism), Self-Enhancement (Achievement, Power), Conservation (Security, Conformity, Tradition), and Self-Transcendence (Benevolence, Universalism). Assigning Hedonism to Openness is an explicit reporting convention. Exact-correctness logit models over 20,000 checkpoint–text observations include checkpoint, reference-value, and source fixed effects plus standardized length; standard errors are clustered by text and checkpoint. A checkpoint-by-value interaction model—allowing each checkpoint to have its own difficulty profile across the ten values—tests whether one overall checkpoint-quality effect plus one overall value-difficulty effect is sufficient. For each core transition, a likelihood-ratio test compares models with and without checkpoint-specific transition rates after source and length controls. Finally, all 62 texts for which at least 10 of 20 checkpoints produce one of six core transitions are coded for salient cue, mechanism, ambiguity, and interpretation. Complete model identifiers, all 90 transition tests, row-level predictions, human labels, case codes, full regression coefficients, and reproduction scripts are available in the linked resources. 
+
+## 5 Results 
+
+5.1 Recognition and Ranked Recovery 
+
+Figure 4 decomposes all 21 runs into correct top-1 recognition, semantic disagreement, and output failure. Gemma-4-26B reaches 0.859 strict Acc@1 (95% bootstrap CI [0.837, 0.880]), followed by Qwen3.6-27B at 0.806, Ministral-3-14B at 0.797, and T-Pro-it-2.1 at 0.784. Paired bootstrap differences separate Gemma from every other top-six system; intervals among the next three overlap. 70.0 0.2 0.4 0.6 0.8 1.0 
+
+Share of 1,000 evaluation texts                                               
+
+> Phi-3-Medium
+> SOLAR-10.7B
+> Granite-3.3-8B
+> Granite-4.1-8B
+> Mistral-7B
+> Llama-3-8B
+> Qwen2.5-7B
+> Ministral-8B
+> YandexGPT-5-Lite
+> Qwen2.5-Coder-14B
+> Qwen2.5-14B
+> GLM-4.7-Flash
+> GigaChat3.1
+> Mistral-Nemo
+> AVIBE
+> Qwen3.6-35B-A3B
+> Gemma-2-9B
+> T-Pro-it-2.1
+> Ministral-3-14B
+> Qwen3.6-27B
+> Gemma-4-26B
+> 0.402 0.551 0.577
+> 0.515 0.773 0.948
+> 0.538 0.798 1.000
+> 0.555 0.835 0.961
+> 0.568 0.835 0.987
+> 0.602 0.889 1.000
+> 0.618 0.838 0.996
+> 0.628 0.891 0.987
+> 0.650 0.893 1.000
+> 0.668 0.929 0.998
+> 0.694 0.911 1.000
+> 0.700 0.863 0.999
+> 0.701 0.895 0.991
+> 0.729 0.907 0.999
+> 0.740 0.916 0.990
+> 0.750 0.929 0.999
+> 0.766 0.910 0.988
+> 0.784 0.959 0.998
+> 0.797 0.953 0.982
+> 0.806 0.941 0.999
+> 0.859 0.969 0.999
+> A1 A3 Parse
+> Correct top-1 Semantic disagreement Output failure
+
+Figure 4: End-to-end outcomes on 1,000 texts for all 21 runs. Each bar separates correct top-1 recognition, semantic disagreement, and output failure; numeric columns report strict Acc@1, strict Acc@3, and output-validity rate (Parse). 
+
+Overall Performance and Ranked Recovery. Across the 20-model semantic panel, pooled strict Acc@1 is 0.683 and Acc@3 is 0.892. Among 6,153 valid top-1 disagreements, 4,166 (67.7%) recover the reference at rank 2 or 3. Rescue is much more common for adjacent than non-adjacent errors (87.5% versus 47.2%; bootstrap difference 40.4 percentage points, 95% CI [37.3, 43.5]). This gap indicates that many local top-1 errors arise from unstable ordering among plausible neighbors while the broader motivational region remains correctly located. Twenty runs have output-validity rate at least 0.8; Phi-3-Medium is retained in the end-to-end comparison but excluded from semantic inference because its rate is 0.577. 
+
+Value-Level Difficulty. Figure 5a makes the category-specific pattern visible without reducing it to one pooled score. Universalism has the lowest recall (0.475) but high precision (0.833), and Tradition shows the same selective pattern (recall 0.605, precision 0.907). They occupy only 5.8% and 6.7% of valid predictions despite 10% reference prevalence, indicating selective under-use. Benevolence is recovered most often (recall 0.818), while the arrows identify the dominant outgoing boundary for every value. The controlled logit confirms this pattern: relative to Achievement, Universalism is less likely to be recovered (OR = 0 .40 , 95% CI [0.21, 0.77], p = .006 ), whereas Benevolence is more likely (OR = 2 .18 , [1.16, 4.08], p = .015 ). Text length is unrelated to correctness ( p = .670 ). 80.5 0.6 0.7 0.8 0.9 1.0 1.1 
+
+Pooled score           
+
+> Universalism
+> Conformity
+> Tradition
+> Stimulation
+> Power
+> Achievement
+> Security
+> Hedonism
+> Self-Direction
+> Benevolence
+> 0.47 0.83 -> Benev.
+> 0.56 0.72 -> Sec.
+> 0.60 0.91 -> Conf.
+> 0.66
+> 0.62
+> -> Hed.
+> 0.69
+> 0.68
+> -> Ach.
+> 0.72
+> 0.75
+> -> Self-Dir.
+> 0.75 0.62 -> Power
+> 0.77 0.63 -> Stim.
+> 0.79 0.66 -> Sec.
+> 0.82 0.66 -> Sec.
+> Main outgoing
+
+(a) Value-level recall and precision Strict recall Precision      
+
+> 020 40 60 80 100
+
+Top-3 recovery (%) 
+
+> Adjacent
+> Non-adjacent
+> 87.5%
+> 47.2%
+
+(b) Top-3 recovery after a top-1 error     
+
+> 12345
+
+Circumplex distance 
+
+> 0
+> 10
+> 20
+> 30
+> 40
+> 50
+> Semantic errors (%)  50.9
+> 24.4
+> 17.0
+> 20.8
+> 15.0
+> 21.7
+> 10.6
+> 22.3
+> 6.4
+> 10.8
+
+(c) Error locality versus the null  
+
+> Observed Fixed-margin null
+
+Figure 5: Recognition diagnostics over the 20-model semantic panel. (a) Pooled strict recall and precision by value; arrows name the dominant erroneous destination. (b) Recovery of the reference value at ranks 2–3 after an adjacent or non-adjacent top-1 error. (c) Observed semantic-error share by circumplex distance versus the checkpoint-specific fixed-margin null. 
+
+5.2 Directed Confusion and Checkpoint Heterogeneity 
+
+Evidence levels and robust transitions. The fixed-margin test rejects random reassignment of erroneous labels ( pMC = 0 .0001 ). At the pooled level, 16 transitions survive Holm correction; eight also replicate across checkpoints. The strongest enrichments are Tradition →Conformity (4.48 times the null) and Security →Power (4.28 times); the other six replicated transitions range from 2.15 to 3.48 times the null. Six remain significant after every model-family exclusion, and the remaining two after 10 of 11 exclusions. Figure 6 reports observed counts and all aggregate-significant cells. 9Self-Dir. 
+
+> Stim.
+> Hed.
+> Ach.
+> Power
+> Sec.
+> Conf.
+> Trad.
+> Benev.
+> Univ.
+
+Predicted value 
+
+Self-Dir. 
+
+Stim. 
+
+Hed. 
+
+Ach. 
+
+Power 
+
+Sec. 
+
+Conf. 
+
+Trad. 
+
+Benev. 
+
+Univ. 
+
+> Reference value
+> 55
+> 0.86×
+> 81
+> 1.21×
+> 61
+> 1.76×
+> 45
+> 0.89×
+> 111
+> 1.48×
+> 27
+> 0.66×
+> 6
+> 0.63×
+> 18
+> 0.30×
+> 14
+> 0.86×
+> 181
+> 1.61×
+> 364
+> 2.85×
+> 38
+> 0.72×
+> 45
+> 0.62×
+> 26
+> 0.22×
+> 0
+> 0.00×
+> 3
+> 0.18×
+> 9
+> 0.09×
+> 8
+> 0.29×
+> 82
+> 1.32×
+> 289
+> 2.82×
+> 19
+> 0.46×
+> 14
+> 0.25×
+> 24
+> 0.34×
+> 0
+> 0.00×
+> 0
+> 0.00×
+> 15
+> 0.27×
+> 5
+> 0.34×
+> 186
+> 2.15×
+> 92
+> 1.27×
+> 87
+> 1.11×
+> 47
+> 0.78×
+> 47
+> 0.51×
+> 10
+> 0.23×
+> 1
+> 0.09×
+> 67
+> 0.82×
+> 7
+> 0.38×
+> 46
+> 0.50×
+> 121
+> 1.40×
+> 102
+> 1.04×
+> 187
+> 3.16×
+> 106
+> 1.11×
+> 24
+> 0.50×
+> 5
+> 0.29×
+> 7
+> 0.08×
+> 5
+> 0.25×
+> 24
+> 0.38×
+> 37
+> 0.43×
+> 15
+> 0.20×
+> 60
+> 1.27×
+> 276
+> 4.28×
+> 37
+> 0.91×
+> 3
+> 0.34×
+> 18
+> 0.26×
+> 5
+> 0.27×
+> 108
+> 0.78×
+> 64
+> 0.58×
+> 89
+> 0.72×
+> 41
+> 0.54×
+> 91
+> 0.93×
+> 330
+> 2.37×
+> 46
+> 2.44×
+> 44
+> 0.41×
+> 33
+> 0.98×
+> 45
+> 0.46×
+> 30
+> 0.33×
+> 64
+> 0.53×
+> 26
+> 0.46×
+> 85
+> 1.02×
+> 114
+> 0.96×
+> 274
+> 4.48×
+> 71
+> 0.64×
+> 56
+> 2.05×
+> 48
+> 0.97×
+> 62
+> 1.02×
+> 56
+> 1.11×
+> 31
+> 1.03×
+> 3
+> 0.07×
+> 72
+> 1.11×
+> 16
+> 0.55×
+> 6
+> 0.74×
+> 57
+> 3.98×
+> 98
+> 0.84×
+> 57
+> 0.42×
+> 31
+> 0.21×
+> 23
+> 0.26×
+> 27
+> 0.26×
+> 99
+> 0.64×
+> 51
+> 0.56×
+> 54
+> 2.40×
+> 589
+> 3.48×
+
+Cells report observed disagreements and observed/null ratio. 
+
+Not significant Aggregate only Robust across models Figure 6: Directed confusion inference. Each off-diagonal cell reports the observed count and observed-to-null ratio. Blue cells survive aggregate fixed-margin and checkpoint-level Holm correction; orange cells survive aggregate correction only. 
+
+Locality and direction. Locality and direction are separate findings. Adjacent values account for 50.9% of 6,153 semantic disagreements versus 24.4% under the null, while opposite values account for 6.4% versus 10.8% expected. Stimulation –Hedonism is a genuinely bidirectional boundary (18.2% versus 14.5% of the respective source values). By contrast, Universalism →Benevolence (29.5% versus 2.9% in reverse), Conformity →Security (16.5% versus 1.9%), and Tradition →Conformity 
+
+(13.7% versus 2.3%) indicate one-way category collapse. 
+
+Checkpoint fingerprints. Figure 7 shows that shared boundaries do not imply uniform model behavior. Qwen2.5-Coder-14B maps Universalism to Benevolence on 80% of Universalism items; SOLAR-10.7B favors Hedonism →Stimulation on 71%, whereas Granite-3.3-8B shows the reverse 
+
+Stimulation →Hedonism shift on 66%. GLM-4.7-Flash maps Achievement to Self-Direction 
+
+10 on 41%. Gemma-4-26B keeps most of the same transitions comparatively small while leading overall accuracy. Ach. → Self-Dir. 
+
+> Conf. → Sec.
+> Sec. → Power
+> Stim. → Hed.
+> Hed. → Stim.
+> Power → Ach.
+> Trad. → Conf.
+> Univ. → Benev.
+
+Gemma-4-26B 
+
+Qwen3.6-27B 
+
+Ministral-3-14B 
+
+T-Pro-it-2.1 
+
+Gemma-2-9B 
+
+Qwen3.6-35B-A3B 
+
+AVIBE 
+
+Mistral-Nemo 
+
+GigaChat3.1 
+
+GLM-4.7-Flash 
+
+Qwen2.5-14B 
+
+Qwen2.5-Coder-14B 
+
+YandexGPT-5-Lite 
+
+Ministral-8B 
+
+Qwen2.5-7B 
+
+Llama-3-8B 
+
+Mistral-7B 
+
+Granite-4.1-8B 
+
+Granite-3.3-8B 
+
+SOLAR-10.7B                                                                                                                                             
+
+> 22416 2423
+> 117 212 4464
+> 10 13 9420 9317
+> 311 610 618 13 44
+> 318 10 15 411 18 28
+> 12 21 64316 21
+> 12 29 21 17 4013 5
+> 510 928 011 16 61
+> 417 410 17 728 47
+> 41 28 446013 17
+> 516 14 27 410 17 23
+> 10 420 925 528 80
+> 20 22 025 01631
+> 10 26 15 52 010 18 50
+> 215 17 19 15 18 23 49
+> 824 25 38 7130 56
+> 926 30 461 017 0
+> 14 13 27 240 38 129
+> 14 11 23 66 013 10 19
+> 1730 271 11 10 25
+> 0.86
+> 0.81
+> 0.80
+> 0.78
+> 0.77
+> 0.75
+> 0.74
+> 0.73
+> 0.70
+> 0.70
+> 0.69
+> 0.67
+> 0.65
+> 0.63
+> 0.62
+> 0.60
+> 0.57
+> 0.56
+> 0.54
+> 0.52
+
+Acc@1 
+
+> 0.90
+> 0.87
+> 0.89
+> 0.90
+> 0.88
+> 0.86
+> 0.84
+> 0.88
+> 0.84
+> 0.81
+> 0.84
+> 0.84
+> 0.82
+> 0.82
+> 0.78
+> 0.81
+> 0.74
+> 0.70
+> 0.70
+> 0.69
+
+Higher-order         
+
+> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8
+
+Transition rate within the source value 
+
+Figure 7: Checkpoint-specific confusion fingerprints for the eight robust transitions. Cells are transition rates within the reference value (percent labels); side bars show strict Acc@1 and higher-order accuracy. 
+
+The checkpoint-by-value interaction test asks whether one general model-quality effect and one general value-difficulty effect explain the whole matrix. They do not ( χ2(171) = 3499 .0, p < . 001 ), and all eight transition-specific heterogeneity tests survive Holm correction. Within-family and between-family profile similarities are statistically indistinguishable (mean cosine similarity 0.634 versus 0.621; permutation p = .368 ). The shared result concerns difficult boundaries; their severity and direction remain checkpoint-specific. 
+
+5.3 Human Robustness, Interpretation, and Profile Distortion 
+
+The independently confirmed subsets produce slightly stronger recognition results. Table 2 shows higher Acc@1 and Acc@3, virtually unchanged checkpoint ranking, and retention of all eight full-set transitions on both subsets. The transition structure therefore persists under independent human confirmation. 11 Table 2: Human-confirmed sensitivity and higher-order profile distortion. Ranking correlations are Spearman ρ
+
+against the full 1,000-item ranking.                          
+
+> Human-confirmed sensitivity
+> Subset NA1 A3 ρRet. Full set 1000 .683 .892 –8/8 At least one 950 .691 .897 1.000 8/8 Both humans 611 .706 .901 .994 8/8
+> Higher-order profile
+> Orientation Ref. Pred. ∆pp Openness to Change 30.13 35.04 +4.91 Self-Enhancement 19.95 19.81 -0.14 Conservation 29.91 26.92 -3.00 Self-Transcendence 20.00 18.23 -1.78
+
+Semantic mechanisms and source controls. The structured audit of 62 high-consensus texts explains the recurring transitions: universal scope contracts to interpersonal care; rule-following is replaced by its safety outcome; inherited practice becomes obedience; protective control is read as dominance; autonomous process eclipses achievement goals; and pleasure cues eclipse novelty or arousal. The mechanisms concern beneficiary scope, authority, agency, outcome, and reward rather than isolated lexical cues. 
+
+Table 3: Structured audit of high-consensus cases. A case is included when at least 10 of 20 checkpoints produce the transition.               
+
+> Transition Cases Dominant mechanism Universalism →Benevolence 23 Universal scope contracts to interpersonal care Conformity →Security 11 Norm or means is replaced by the safety outcome Security →Power 9Protective control is interpreted as dominance Stimulation →Hedonism 9Pleasure cues eclipse novelty or arousal Tradition →Conformity 8Inherited practice is reduced to obedience Achievement →Self-Direction 2Autonomous process eclipses the achievement goal
+
+Source and length controls do not account for the pattern. TAPE is descriptively easier, but its controlled estimate is positive and imprecise (OR = 1 .76 , 95% CI [0.88, 3.54], p = .111 ); standardized length is unrelated to correctness (OR = 1 .05 , p = .670 ). Full coefficients are available in the linked repository. 
+
+Higher-order profile distortion. Strict higher-order accuracy is 0.820, yet 55.5% of semantic top-1 disagreements cross a higher-order boundary. Fine-grained errors produce a net profile shift: the pooled predicted profile overstates Openness to Change by 4.91 percentage points and understates Conservation by 3.00 points and Self-Transcendence by 1.78 points. Systems that aggregate predicted values into user, organization, or corpus profiles can consequently inherit a directional bias even when many individual mistakes concern neighboring categories. 
+
+## 6 Discussion 
+
+Recognition and Ranked Recovery. The gap between Acc@1 (0.683) and Acc@3 (0.892), together with 87.5% rescue for adjacent errors, shows that LLMs often locate the correct motivational neighbor-hood but rank neighboring values unstably. Evaluation should report ranked recovery alongside exact recognition. At the same time, Universalism, Conformity, and Tradition remain distinctly difficult, and the under-use of Universalism and Tradition shows that category-specific recall cannot be inferred from overall accuracy. 
+
+Shared Boundaries, Checkpoint-Specific Fingerprints. The eight robust transitions define a small shared error structure, but two mechanisms must be separated. Stimulation–Hedonism reflects bidirectional boundary ambiguity; Universalism →Benevolence, Tradition →Conformity, and 12 Conformity →Security are asymmetric category collapses. Checkpoints differ sharply in which collapse dominates, while family membership adds little explanatory similarity. Claims about “what LLMs confuse” require both cross-checkpoint replication and model-specific fingerprints. 
+
+Human Robustness and Practical Meaning. Independent support for 95.0% of items and preservation of every robust transition on both confirmed subsets strengthen the measurement claim. The case audit further shows that errors concern scope, beneficiary, authority, means versus outcome, agency, and reward, suggesting target-aware prompts, contrastive examples, and secondary labels for genuine overlap. Because over half of semantic errors cross a higher-order boundary, local confusions can systematically bias aggregate value profiles. 
+
+## 7 Limitations 
+
+The evaluation uses one Russian names-only forced-choice prompt; definitions, demonstrations, multi-lingual prompts, and multilabel instructions may yield different boundary structures. Each annotation records one primary value, leaving secondary values, confidence, evidence spans, and the holder or target of the expressed value for future extensions. Exact construction-model agreement emphasizes clear examples, so natural prevalence and ambiguity may differ. Source composition is non-uniform, although source-controlled and human-confirmed analyses preserve the main results. The higher-order analysis assigns the boundary value Hedonism to Openness to Change under an explicit non-overlapping convention. Leave-one-family-out tests reduce, but cannot eliminate, dependence among related check-points. Downstream profile effects are estimated from observed error pathways and motivate direct deployment studies. 
+
+## 8 Conclusion 
+
+Primary-value recognition exhibits a reproducible directional structure. On 1,000 unique Russian texts with complete two-annotator validation, pooled Acc@1 is 0.683 and Acc@3 is 0.892; most adjacent disagreements retain the reference within the top three. Eight directed transitions recur across checkpoints and human-confirmed subsets, with severity determined more by the checkpoint than by the model family. The errors reflect semantic shifts in scope, authority, agency, outcome, and reward. More than half cross a higher-order boundary and collectively shift the inferred profile toward Openness to Change. Reliable value-recognition evaluation should combine exact and ranked metrics, controlled directed confusions, independent validation, model-specific fingerprints, and analysis of each systematic shift. 
+
+## Data and Code Availability 
+
+The evaluation code and paper materials are available in the public VALAR repository. The complete LLM-run data are archived in the OSF run archive. 
+
+## References 
+
+[1] Schwartz, S.H.: Universals in the content and structure of values: Theoretical advances and empirical tests in 20 countries. Advances in Experimental Social Psychology 25, 1–65 (1992) [2] Schwartz, S.H., et al.: Refining the theory of basic individual values. Journal of Personality and Social Psychology 103(4), 663–688 (2012) 13 [3] Kiesel, J., Alshomary, M., Handke, N., Cai, X., Wachsmuth, H., Stein, B.: Identifying the human values behind arguments. In: ACL, pp. 4459–4471 (2022) [4] Kiesel, J., et al.: SemEval-2023 Task 4: ValueEval: Identification of human values behind arguments. In: SemEval, pp. 2287–2303 (2023) [5] Mirzakhmedova, N., et al.: The Touche23-ValueEval dataset for identifying human values behind arguments. In: LREC-COLING, pp. 16097–16113 (2024) [6] Ren, Y., Ye, H., Fang, H., Zhang, X., Song, G.: ValueBench: Towards comprehensively evaluating value orientations and understanding of large language models. In: ACL, pp. 2015–2040 (2024) [7] Sorensen, T., et al.: Value Kaleidoscope: Engaging AI with pluralistic human values, rights, and duties. In: AAAI, pp. 19937–19947 (2024) [8] Ye, H., Xie, Y., Ren, Y., Fang, H., Zhang, X., Song, G.: Measuring human and AI values based on generative psychometrics with large language models. In: AAAI, pp. 26400–26408 (2025) [9] Liu, X., Liu, P., Yu, D.: What’s the most important value? INVP: Investigating the value priorities of LLMs through decision-making in social scenarios. In: COLING, pp. 4725–4752 (2025) [10] Shen, H., Clark, N., Mitra, T.: Mind the value-action gap: Do LLMs act in alignment with their values? In: EMNLP (2025) [11] Han, J., Choi, D., Song, W., Lee, E., Jo, Y.: Value Portrait: Assessing language models’ values through psychometrically and ecologically valid items. In: ACL, pp. 17119–17159 (2025) [12] Epstein, Z., Jahanbakhsh, F., Piccardi, T., Gallegos, I., Zhao, D., Ugander, J., Bernstein, M.: Measuring value expressions in social media posts. arXiv:2511.08453 (2025) [13] Milkova, M., Rudnev, M.: Measuring human value expression in social media texts: Calibrated LLM annotation and encoder transfer. arXiv:2606.11018 (2026) [14] Hendrycks, D., Burns, C., Basart, S., Critch, A., Li, J., Song, D., Steinhardt, J.: Aligning AI with shared human values. In: ICLR (2021) [15] Forbes, M., Hwang, J.D., Shwartz, V., Sap, M., Choi, Y.: Social Chemistry 101: Learning to reason about social and moral norms. In: EMNLP, pp. 653–670 (2020) [16] Emelin, D., Le Bras, R., Hwang, J.D., Forbes, M., Choi, Y.: Moral Stories: Situated reasoning about norms, intents, actions, and consequences. In: EMNLP, pp. 698–718 (2021) [17] Babakov, N., Logacheva, V., Kozlova, O., Semenov, N., Panchenko, A.: Detecting inappropriate messages on sensitive topics that could harm a company’s reputation. In: BSNLP, pp. 26–36 (2021) [18] Taktasheva, E., et al.: TAPE: Assessing few-shot Russian language understanding. In: Findings of EMNLP, pp. 2472–2497 (2022) 14

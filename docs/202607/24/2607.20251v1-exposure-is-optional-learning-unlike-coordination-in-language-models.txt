@@ -1,0 +1,339 @@
+Title: Exposure is Optional: Learning Unlike Coordination in Language Models
+
+URL Source: https://arxiv.org/pdf/2607.20251v1
+
+Published Time: Thu, 23 Jul 2026 01:04:00 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# Exposure is Optional: Learning Unlike Coordination in Language Models 
+
+Jiamu Luo & Shane Steinert-Threlkeld 
+
+Department of Linguistics University of Washington Seattle, WA 98195, USA 
+
+{jiamuluo, shanest}@uw.edu 
+
+Abstract 
+
+Coordination, a fundamental linguistic structure, remains a subject of intense de-bate, and its exact nature continues to elude theoretical linguistics. A common view holds that only same-category constituents can be conjoined, which has been chal-lenged by the many grammatical unlike coordinations found in natural language. Treating language models as a computa-tional testbed, we investigate whether the acquisition of unlike coordination requires direct exposure in the training data, or whether it can emerge organically from gen-eral compositional abilities. Using Filtered-Corpus Training (FiCT), we train GPT-2 models on corpora from which all in-stances of unlike coordination have been removed. We find that direct exposure is not necessary: models trained on filtered data successfully generalize to unlike co-ordination, achieving perplexity and gram-maticality judgments comparable to models trained on unfiltered text. Furthermore, our analyses of internal representations indicate that language models process unlike coor-dination by treating the conjoined elements as belonging to similar structural categories or through a mechanism akin to deletion, both of which appear learnable from expo-sure to alike coordination alone. This work contributes to the growing understanding of how language models internally represent linguistic structures, while also adding to the broader debate on coordination by show-ing how models generalize and process un-like coordination without direct exposure. 
+
+1 Introduction 
+
+Coordination allows speakers to combine multiple constituents into one larger unit, with rough se-mantic implications that the conjuncts should be similar and equal in various perspectives. The-oretical treatments of coordination often assume that two elements may be coordinated only if they share the same syntactic category, a principle known as the Law of Coordination of Likes (LCL) (Chomsky, 1957; Williams, 1978, 1981). How-ever, there are apparent counterexamples. Con-juncts can differ syntactically, as in you can de-pend on [NP my assistant ] and [CP that he will be on time ]. Such cases appear to have “coor-dination of unlikes.” We leverage language mod-els (LMs) as a computational lens to explore this phenomenon, asking whether models require di-rect exposure to learn unlike coordination, or if they can generalize it entirely from the structures of alike coordination. Unlike human language acquisition, language models offer precise control over the training stim-ulus. To exploit this, we utilize Filtered-Corpus Training (FiCT), as termed by Patil et al. (2024), to establish a clean-slate learning environment where models are exclusively exposed to alike co-ordination. Specifically, we train models from scratch on corpora from which unlike coordina-tions have been systematically filtered and com-pare their generalization behaviors and internal representations against the models trained on un-filtered text. This strict isolation allows us to test whether direct exposure to category mismatches in coordination is necessary for acquisition. We demonstrate that unlike coordination is not a general exception to LMs and can be learned effectively from the indirect information present in alike coordination and other linguistic expres-sions. We show that LMs process unlike coordi-nation via two distinct mechanisms: treating con-joined elements as belonging to a shared "super-category," or through a process akin to deletion. Both mechanisms appear to be learnable from ex-posure to alike coordination alone. We then con-nect these computational behaviors directly to the-oretical linguistic debates. The successful perfor-mance of the models suggests that it does not pre-arXiv:2607.20251v1 [cs.CL] 22 Jul 2026 suppose a constraint where conjuncts must be of identical syntactic categories. Crucially, this can be viewed as evidence that individually motivated mechanisms and specialized grammatical rules are theoretically unnecessary. Moreover, our study highlights the value of lin-guistically grounded evaluations for interpreting model behavior. We curate a targeted suite of grammaticality judgment tests drawn from theo-retical linguistics literature to probe the bound-aries of model knowledge. These diagnostics ex-pose nuanced error and generalization patterns on subtle syntactic constraints across different train-ing condition. 
+
+2 Background and related work 
+
+Theoretical treatments of coordination A his-torically dominant perspective relies on the Law of Coordination of Likes (LCL), which posits that only elements of the same syntactic category can be coordinated (Chomsky, 1957; Williams, 1978, 1981). To account for grammatical counterexam-ples within this framework, theorists often reinter-pret unlike conjuncts to achieve underlying cate-gory matching. Proposed mechanisms include an-alyzing categories as feature bundles with shared supersets (Sag et al., 1985), or postulating ab-stract ”supercategories“, such as PredicateP (Bow-ers, 1993) and ModifierP (Rubin, 1994), alongside invisible elided structures to unify the mismatched conjuncts (Bruening and Al Khalaf, 2020). A competing line of inquiry rejects the neces-sity of the LCL. These approaches treat conjunc-tions as heads of their own phrases, allowing di-verse conjuncts to occupy specifier, complement, or adjunct positions without mandating category identity (Johannessen, 1998; Munn, 1992; Kayne, 1994). Patejuk and Przepiórkowski (2023) argue that the LCL is effectively illusory and that com-plex workarounds like ellipsis or null heads are overly abstract. 
+
+Assessing linguistic knowledge in language models Studies of linguistics knowledge in lan-guage models have grown from simple diagnostic classifiers (Hupkes et al., 2018; Giulianelli et al., 2018; Belinkov and Glass, 2019, i.a.) to sophis-ticated structural probes and successfully uncover a hierarchy of linguistic knowledge, from surface-level phenomena like word length or morpholog-ical features, to deeper semantic and relational structure, including long-range dependencies and world-knowledge facts (Conneau et al., 2018; Liu et al., 2019; ¸ Sahin et al., 2020; Klafka and Et-tinger, 2020; Hewitt and Manning, 2019, i.a.). Shifting from internal representations to external behavior, targeted syntactic evaluations (Linzen et al., 2016; Jumelet and Hupkes, 2018; Marvin and Linzen, 2018; Kann et al., 2019, i.a.) offer a complementary methodology, first widely popu-larized for LSTMs by Linzen et al. (2016). This approach adopts the minimal-pair paradigm, bor-rowed from experimental linguistics, to assess the linguistic knowledge of language models. Re-searchers have tested a wide array of complex syn-tactic structures, including argument structure, is-land constraints, and negative polarity item licens-ing (Marvin and Linzen, 2018; Warstadt et al., 2019; Futrell et al., 2019, i.a.). By directly test-ing models on these targeted challenges, this ap-proach provides a clear behavioral measurement of a model’s linguistic competence. 
+
+Controlled training environments Unlike hu-mans, artificial language learners allow precise manipulation of their training environments. Aprominent methodology leveraging this advan-tage is Filtered-Corpus Training (FiCT) (Warstadt and Bowman, 2022; Patil et al., 2024; Misra and Mahowald, 2024; Leong and Linzen, 2026), which involves training a model from scratch on a dataset that has been intentionally and systemat-ically altered. As Warstadt and Bowman (2022) emphasizes, this approach enables precise and hypothesis-driven investigations into the mecha-nisms of language learning in neural networks. By evaluating models trained on corpora system-atically stripped of specific linguistic structures, FiCT isolates the minimal and sufficient condi-tions required for acquisition. 
+
+3 Methods 
+
+The code and data for this study has been uploaded on GitHub, and will be provided if accepted. 
+
+3.1 Overview: Filtered-Corpus Training (FiCT) 
+
+Filtered-Corpus Training (FiCT) is the core methodology of this research. The central logic involves training multiple models from scratch on two distinct types of corpora and evaluating them on curated test sets: 1. A baseline corpus, which is an original and unfiltered collection of text. 2. One or more filtered corpora, from which some text is removed according to some criteria. In this study, we remove occurrences of unlike coordina-tion in two variants: all unlike coordination, and unlike coordination connected specifically by and 
+
+(unlike conjunction). 
+
+3.2 Data 
+
+The training data are derived from the training cor-pus of the English corpus used and released by Gulordava et al. (2018). We also use their vo-cabulary for tokenizers. To obtain filtered vari-ants, we apply two filtering procedures to the base corpus. Filter I produces the corpus filtered-all ,which excludes all sentences containing unlike co-ordination. Filter II produces the corpus filtered-and , which excludes all sentences containing un-like conjunctions. We further downsample the base corpus and 
+
+filtered-and to match the number of sentences in 
+
+filtered-all , yielding three training corpora: orig-inal , filtered-and , and filtered-all . Each corpus consists of 1,948,104 sentences, though the total number of tokens varies. Using token counts mea-sured with a GPT-2 tokenizer, filtered-and retains 91.02% of the tokens in original , while filtered-all 
+
+retains 88.49%. 
+
+3.3 Filters 
+
+The filters are built on top of the Berkeley Neu-ral Parser (Kitaev and Klein, 2018), and use the model benepar_en3 to parse each sentence in the training corpus. Coordination structures are automatically identified based on the presence of the CC (coordinating conjunction) label. Sen-tences containing unlike coordination are removed according to the criteria defined by each filter type: filter I simply removes them, and filter II removes them if the node labeled CC is the word and .Since no established benchmark currently exists for evaluating such filters on this topic, we assess their performance using our own evaluation sets. The evaluation sets for the filter performance con-tain a set of 100 sentences of unlike coordination (unlike ) and a set of the corresponding 100 sen-tences of alike coordination ( alike-from-unlike ). Details of the two evaluation sets are shown in Section 3.5. We report filtering results in Table 1. As suggested by the evaluation results, these two filters are strong filters. Each filter wrongly retains only a single sentence in unlike due to pars-ing errors, but also filters away some sentences                      
+
+> FILTERS u-all u-wrong a-all a-kept
+> Filter I 100 1100 83 Filter II 100 1100 83 Table 1: Filtering results on the evaluation sets. u=unlike set, a= alike set; all = total sentences, wrong =wrongly retained, kept = correctly kept.
+
+in alike , which ideally should remain. Closer in-vestigation reveals that these wrongly filtered sen-tences are because of parsing error, the complex case of be , and the strict implementation of the filters, which discard conjoined phrases that are not labeled identically, even if they might actu-ally belong to the same category by human judg-ment. This kind of strong filters may be, in fact, favorable. While additional removal of alike cases could reduce data representativeness and poten-tially degrade the performance, making the eval-uation results less convincing, our results sug-gest that this is not the case. On the other hand, the filters demonstrate high precision, effectively eliminating undesired unlike coordination. Conse-quently, these filters produce high-quality filtered corpora, providing a solid foundation for further analysis. 
+
+3.4 Model training 
+
+We use a causal, decoder-only Transformer (Vaswani et al., 2017) based on the GPT frame-work (Radford et al., 2019), with a configuration comparable to GPT-2 Large (1024 context length, 1280 embedding size, 36 layers, and 20 heads). We trained three models variants: original ,
+
+filtered-and , and filtered-all , each on its corre-sponding training corpus of the same name. We implemented these models using the Huggingface 
+
+transformers package (Wolf et al., 2020). To account for variability introduced by initialization, we trained multiple models with different random seeds for each variant. We used a random number generator to generate three random numbers: 291, 1543, and 9071, which serve as the random seeds. So, in total we trained 9 models, 3 models of dif-ferent random seeds for each variant. Please see Appendix 6.1 for the details of model training. 3.5 Evaluation 3.5.1 Evaluation corpora 
+
+We manually constructed five evaluation corpora, based on relevant literature or adapted from exam-ples of unlike coordination in the Penn Treebank (Marcus et al., 1993) found by Kallini and Fell-baum (2021): unlike , alike-from-unlike , supercat-deletion , deletion , and unlike-judgment . Each cor-pus targets a specific aspect of model evaluation. Appendix 6.2 provides examples from the evalua-tion corpus. The complete set of sentences are in our repository. 
+
+Unlike : This evaluation corpus contains 100 sentences that have unlike coordination. Follow-ing the findings in Kallini and Fellbaum (2021) on the ten most frequent unlike coordination pat-terns and their relative frequencies, the corpus in-cludes instances of: NP + SBAR, NP + VP, AP + VP, AdvP + PP, NP + AP, PP + VP, PP + AdvP, NP + PP, PP + NP, and VP + NP. The number of sentences for each pattern was adjusted to ap-proximate the relative frequencies, resulting in the following distribution: 18, 15, 11, 10, 10, 9, 9, 7, 6, and 5 sentences, respectively. The sentences are drawn from relevant literature when exempli-fying a given pattern, or from the Corpus of Con-temporary American English (Davies, 2015) pre-sented in Kallini and Fellbaum (2021). When these sources did not provide sufficient examples for a given pattern, additional sentences were con-structed based on attested examples from these sources. 
+
+Alike-from-unlike : This evaluation corpus con-sists of 100 sentences that have alike coordination, created on the basis of the sentences in unlike .Each sentence was adapted from a corresponding sentence in unlike with only minor modifications. This evaluation corpus can thus be viewed as a loose minimal-pair counterpart to unlike .
+
+Supercat-deletion : This evaluation corpus con-sists of sentences from unlike that show clear ev-idence of presupposing a supercategory, and they may also be interpreted as involving the deletion of shared elements. For example, in The phe-nomenon fall into place organically and with ease ,we can posit a shared supercategory of modifier phrases spanning both conjuncts. Alternatively, it may be viewed as derived from the deletion of the repeated phrase the phenomenon fall into place at the beginning of the second conjunct. In total, the corpus contains 62 sentences. 
+
+Deletion : This evaluation corpus consists of sentences from unlike that can be interpreted as involving deletion, but are incompatible with the same-supercategory hypothesis. For example, The movie was funny and made everyone laugh can be interpreted as involving deletion of the shared sub-ject the movie ; however, it is difficult to identify a non-overgenerating supercategory that accounts for this coordination. In total, this evaluation cor-pus contains 24 sentences. 
+
+Unlike-judgment : This evaluation corpus con-sists of 22 grammaticality judgment tests related to unlike coordination. The sentences were collected from relevant literature on coordination (Bruening and Al Khalaf, 2020; Patejuk and Przepiórkowski, 2023; Sag et al., 1985; Zhang, 2009; Peterson, 1981; Grosu, 1985) and adapted for this study and context. The tests are designed in a loose minimal-pair pattern. Note that two tests con-tain only grammatical sentences. These are chal-lenging cases involving unlike supercategories or single phrases with dual category status; in such cases, we focus on whether the models exhibit large differences in judgment rather than whether they can reject ungrammatical ones. 
+
+3.5.2 Evaluation metrics Perplexity: This is used to evaluate the general performance of models in the evaluation corpora excluding unlike-judgment .
+
+Average surprisal: Average surprisal, as the logarithmic form of perplexity, measures how un-likely a sentence is under a model, and is used to determine whether the model prefers grammat-ical sentences over ungrammatical ones in unlike-judgment . Passing a test means the model assigns a higher average surprisal to the ungrammatical sentence than to the grammatical one. 
+
+Average attention score: Average attention score is defined as 
+
+¯A(q, K ) = 1
+
+L · H · | K|
+
+> L
+
+X
+
+> ℓ=1
+> H
+
+X
+
+> h=1
+
+X
+
+> k∈K
+
+A(ℓ,h )
+
+> q,k
+
+where ¯A(q, K ) denotes the average attention from a query token q to a key phrase K, L is the number of Transformer layers considered, H is the number of attention heads, |K| is the number of tokens in the key phrase, and A(ℓ,h ) 
+
+> q,k
+
+represents the attention weight from query token q to key token k in layer ℓ
+
+and head h. In this study, the score is computed by averaging attention values from the middle layer to the final layer to capture all relevant contextual in-formation involved in processing and forming the representation of the query token. Averaging attention score provides a summary signal to measure the overall degree to which the model allocates attention from the query token to the key phrase across layers, heads, and phrase to-kens. Another common method in studying atten-tion is to use the maximum, which captures the strongest individual attention link, but can also be sensitive to spikes that might arise from irrelevant reasons. Since this study is concerned with the general attention patterns rather than identifying specialized heads, the average is the more appro-priate summary statistic characterizing the overall attention allocated to the phrase of interest. To compare and decide if models have differ-ent processing patterns for theoretically different types of unlike coordination, for the sentences in deletion and an equal number of sentences in 
+
+supercat-deletion , the average attention score is used to investigate how the models process these sentences. Given a query word, specifically, the first word in the second conjunct of the sentences in deletion and supercat-deletion , this score can be interpreted as 1. The model has a more supercategory-based interpretation of generating the coordination if the average attention score from the query to the first conjunct is greater than the score to the phrase that occupies a potential deletion position. 2. The model has a more deletion-based inter-pretation of generating the coordination if the opposite is true (excluding cases of equality). 3. Undefined if an equality appears. For example, in the sentence She mentioned the project and that it was already approved , the query word is that , and the two key phrases of interest are the first conjunct the project and the phrase oc-cupying the potential deletion position She men-tioned . We compare the average attention scores from the query word to the two key phrases to determine whether the coordination is better ex-plained by a supercategory-based analysis or by a deletion-based analysis. 
+
+Cosine similarity: For sentences in deletion and an equal number of sentences in supercat-deletion 
+
+and alike-from-unlike , the cosine similarity score is computed between the conjuncts of each sen-tence. They contrast with each other such as the deletion-based analysis should indicate the lowest similarity between conjuncts among the three for sentences in deletion , and the supercategory-based account predicts increased similarity between con-juncts for sentences in supercat-deletion , and 
+
+alike-from-unlike condition serves as a sanity check in which conjunct similarity should be the highest. For each corpus, we then calculate the mean cosine similarity across all sentences. This measure reflects whether the model tends to repre-sent phrases similarly when they appear in coordi-nation. 
+
+Clustering: The last-layer representations of the conjuncts are also used for a clustering analysis with the k-means algorithm, and k = 3 . For each model variant, we extract its last-layer represen-tations of the conjunct phrases in a sentence in a corpus, and average the representations if needed, then use these vectors as input. For each of the three model variants, we train a clustering sys-tem on deletion , together with an equal number of sentences from supercat-deletion and alike-from-unlike , in the way described above. This results in a total of 3 × 3 × 3 clustering systems (for each model variant there are three random seed models, each trained on the three corpora described above, and three model variants in total). The clustering results are intended to reflect the representations of conjuncts. 
+
+4 Results and analysis 
+
+General performance Figure 1 summarizes the mean perplexity of each model across the evalu-ation corpora. The three model variants do not show a clear preference for either alike or unlike coordination, and a performance ordering of orig-inal > filtered-and >= filtered-all . Also, the nu-merical advantage of the original model over the filtered models is relatively modest. In our pairwise t-test results comparing all model variants, the original model significantly outperforms both the filtered-all and filtered-and 
+
+variants across all evaluation corpora. Conversely, there is no statistically significant difference be-tween the two filtered models, despite a slight numerical advantage for the filtered-and variant. Furthermore, our within-model analysis reveals no significant difference in perplexity between alike Figure 1: Mean perplexity of models on the evalua-tion corpora, excluding unlike-judgment . The bar rep-resents the seed median value. 
+
+and unlike coordination for any model variant. In other words, once a model is fixed, its per-plexity remains stable across coordination types, suggesting that any observed differences in the between-model analysis stem from model varia-tion rather than inherent sensitivity to coordination type within a model. 
+
+Grammaticality judgment Table 2 summarizes the results, with per-test details in Appendix 6.3. Overall, models demonstrate a moderate ability to capture unlike coordination constraints, with the original model achieving the highest accu-racy. Also, there is no meaningful difference in performance among the three variants, which in-dicates that the penalty of filtering seems small for grammaticality judgment. The standard devia-tion further reveals a systematic effect of filtering on the stability of learned representations. Both the filtered-all model and the filtered-and model exhibit high stability, suggesting that reducing or eliminating conflicting evidence leads to more uni-form and readily generalization. In contrast, the 
+
+original model shows moderate variability due to competing structural patterns in natural data. Across conditions, the models perform well on constraints that operate primarily at the surface-syntactic level, including verb dependency, dele-tion, and conjunct position effects. For example, they correctly identify that the unlike coordina-tion is sensitive to the verb: ...depend on my as-sistant and that he will be on time is grammati-cal, but ...strengthens the claim and that he will be on time is infelicitous. They also recognize that certain unlike coordination constructions involve deletion, so She eats beans and with her hands is acceptable, and they correctly dislike the counter-part that cancels out the deletion, as in Beans and with her hands, she eats .In contrast, the models show difficulty with cases in which category mismatch is governed by more fine-grained constraints. For instances, the models do not clearly prefer Hobbs ended up lik-ing Rhodes and hating Barnes over Hobbs ended up liking Rhodes and to hate Barnes , and they prefers the wrong sentence You can depend on that he will be on time instead of the correct sentence 
+
+That he will be on time, you can depend on , in-dicating limited sensitivity to restrictions on cat-egory mismatch. Overall, the models exhibit a bias of processing unlike coordination the same as alike coordination. The original variant, trained on unfiltered natural data, can be even more gen-erous. Comparison of the error and success patterns across variants further suggests that all models de-velop a shared tendency toward organizing coor-dinated elements according to broad supercategor-ical similarities, which enables them to process many instances of unlike coordination. This ten-dency is supported positively by the models’ suc-cess on cases in which unlike conjuncts share a plausible supercategory, and negatively by their failure on more nuanced constraints where such constituents nevertheless cannot be conjoined. Moreover, in a test for unlike supercategory, all model variants exhibit a similar pattern, strongly disfavoring Reluctantly and embarrassed... , rela-tive to Reluctantly and in embarrassment... . In other words, the models uniformly prefer cases in which the conjoined phrases can plausibly be analyzed as sharing a higher-level supercategory, while rejecting constructions that involve coor-dination across genuinely mismatched supercat-egories. As filtering decreases, the models ap-pear to have an increasing capability to license deletion-based analyses. While this flexibility im-proves performance in some cases, it can also lead to overly permissive generalizations. 
+
+Attention pattern Table 3 provides a concise summary of the results. We analyze the atten-tion score differences using within-model Welch’s 
+
+t-tests and between-model paired t-tests. Within models, attention patterns differ between deletion 
+
+and supercat-deletion for all variants, though this difference is only statistically significant for the 
+
+original and filtered-and models. Between mod-els, processing of supercat-deletion shows no sig-nificant differences. In contrast, for the deletion 
+
+condition, the original model differs significantly Original Filtered-all Filtered-and 
+
+Median Row Acc. 0.75 0.70 0.70 Mean Acc. ( ± SD) 0.70 ± 0.04 0.67 ± 0.02 0.65 ± 0.08 Seed Corr. 0.71 0.79 0.78 
+
+> Table 2: Summary statistics for the grammaticality judgment tests. The second row reports the median row accu-racy, computed by comparing the median average surprisal assigned by a model to grammatical and ungrammatical sentences. The third row shows the mean accuracy across different random seeds, together with the correspond-ing standard deviation. The final row reports the mean Pearson correlation across random seeds. All values are rounded to two decimal places.
+
+from both filtered variants, while the difference between the filtered variants (no versus partial ex-posure) is nearly significant. Overall, the models exhibit different attention patterns for deletion versus supercat-deletion sen-tences. Models exposed to unlike coordination show a larger distinction in how they process deletion-type versus supercategory-type unlike co-ordination, whereas the filtered-all model exhibits a smaller difference. This reveals that the models can employ a different strategy to process unlike coordination in the deletion condition, but require more exposure to fully develop and robustly de-ploy it. 
+
+Similarity pattern Table 4 reports the average similarity between conjuncts, along with the stan-dard deviation, for each model across the evalu-ation corpora. The similarity scores clearly indi-cate that the models treat the three corpora differ-ently: conjuncts in alike show the highest simi-larity, those in supercat-deletion exhibit moderate similarity, and those in deletion show the lowest similarity. We use a linear mixed-effects model to pre-dict similarity from model variant, corpus, and their interaction (reference levels: original and 
+
+supercat-deletion ). Relative to supercat-deletion ,the alike corpus yields significantly higher simi-larity ( β = 0 .173 , p < . 001 ), while deletion sig-nificantly reduces it ( β = −0.084 , p < . 001 ). The similarity increase for alike is stable across all models. However, filtered-all shows a signifi-cant positive interaction with deletion (β = 0 .039 ,
+
+p = .002 ), indicating that it experiences a smaller reduction in similarity compared to the original 
+
+model. No such interaction occurs for filtered-and 
+
+(p = .987 ). Overall, these results suggest that 
+
+alike produces the highest similarity scores, dele-tion reduces similarity, and filtered-all is specifi-cally less affected by the deletion manipulation. 
+
+Clustering Figure 2 provides an illustration of the clustering patterns. The clustering further re-veals that the models treat both alike coordina-tion in alike-from-unlike and unlike coordination that can be considered alike within the same su-percategory in supercat-deletion as alike coordi-nation, since phrases grouped together are mostly conjuncts from the same sentence. In contrast, for sentences in deletion , where it is difficult to find an overarching alike category, the models recog-nize unlike coordination. Here, conjuncts from different sentences but sharing the same grammat-ical category are grouped together, showing a clear structure: nouns cluster with nouns, verbs with verbs, adjectives with adjectives, and so on. 
+
+5 Discussion and future work 
+
+The first thing our findings demonstrate is that un-like coordination is not an exception or a special case for language models (LMs). Crucially, direct training exposure is not strictly necessary to pro-cess it: our filtered-all model generalized effec-tively on both perplexity and grammaticality judg-ments despite having all unlike coordination re-moved from its training data. This implies LMs lack an inherent inductive bias toward a strict Law of Coordination of Likes (LCL); had they pre-supposed such bias like the LCL, the filtered-all model would have catastrophically failed. Instead, the ability to process unlike coordi-nation emerges from general compositional ca-pabilities learned via alike coordination. While latent structural cues (like supercategory simi-larity) are sufficient for models to license ba-sic unlike coordination, direct exposure does re-fine performance. Models with exposure ( orig-inal , filtered-and ) are better equipped to exploit deletion-based mechanisms and accommodate nu-Model Deletion Supercat-deletion                
+
+> deletion-based supercat-based deletion-based supercat-based
+> Original 15.00 ± 1.41 9.00 ± 1.41 10.00 ± 0.47 14.00 ± 0.47
+> Filtered-all 12.00 ± 1.25 12.00 ± 1.25 10.00 ± 2.45 14.00 ± 2.45
+> Filtered-and 14.00 ± 0.82 10.00 ± 0.82 10.00 ± 1.25 14.00 ± 1.25 Table 3: Overall results from the attention scores of a query word to the two key phrases on the two evaluation corpora. Numbers are median of seeds with the standard deviation.
+
+Model/Test Corpus Alike-from-unlike Supercat-deletion Deletion Original 0.6573 ± 0.0027 0.4880 ± 0.0086 0.4002 ± 0.0165 
+
+Filtered-all 0.6512 ± 0.0200 0.4716 ± 0.0159 0.4264 ± 0.0123 
+
+Filtered-and 0.6925 ± 0.0198 0.5113 ± 0.0117 0.4402 ± 0.0325 
+
+> Table 4: Median value of average similarity for each seed of each model variant on each corpus with standard deviation across seeds.
+
+anced structures like dual-role phrases. However, all models strongly reject combinations of unlike supercategories, suggesting that models rely heav-ily on conjunct similarity and struggle to bridge entirely opposing categories without specific dis-tributional evidence. Beyond the question of if models learn unlike coordination, our internal representation analysis illuminates how they process it. The models use two distinct mechanisms: supercategory and dele-tion. For supercategory cases, models cluster con-juncts by sentence context rather than syntactic category. This implies that the model constructs a unified functional "supercategory," deriving like-ness from shared contextual function. In contrast, unlike coordination with deletion yields the low-est similarity scores and is clustered strictly by grammatical category across sentences. Attention patterns corroborate this distinction: in deletion cases, models treat conjuncts as structurally inde-pendent, with the second conjunct attending heav-ily to the subject rather than the first conjunct. While the filtered-all model can utilize both strate-gies, exposure to unlike coordination significantly sharpens an LM’s ability to cleanly distinguish be-tween structures requiring a unified representation and those relying on implicit deletion. For the theory of unlike coordination and coor-dination in general, LMs offer a perspective that challenges the necessity of the LCL. The mod-els’ dual processing strategies support a hybrid theoretical framework. The processing mecha-nisms align with the "Feature Bundle" and Su-percategory theories (Sag et al., 1985; Bruening and Al Khalaf, 2020, i.a.) when a reasonable high-level node can be proposed. Meanwhile, cases that appear to involve deletion are best ac-counted for as true deletion constructions, rather than by appealing to other mechanisms. Most importantly, the fact that LMs are able to gener-alize from alike coordination to unlike coordina-tion suggests that unlike coordination does not re-quire a separately motivated grammatical mech-anism. Consequently, theoretical accounts that posit individually-motivated constraints or mecha-nisms for unlike coordination may be unnecessar-ily strong. Unlike coordination appears to emerge naturally from the same representational resources that underlie coordination more broadly, together with general strategies, such as category under-specification, or deletion-like operations. A future direction closely linked to the current study concerns the role of training data in shaping these generalizations. The filtered corpora used in this study provided strong indirect evidence that conjuncts typically match in syntactic category, but our results show that the models do not fully recognize this pattern as a categorical constraint. So, language models may rely on alternative cues, such as contextual compatibility or semantic sim-ilarity between conjuncts. Future work could di-rectly test this hypothesis by systematically ma-nipulating the training data, for example, by con-structing corpora that control for semantic similar-ity while varying syntactic category distributions, or by introducing targeted contrasts between syn-tactically matched but semantically incompatible conjuncts. Such experiments would help clarify Alike sentence    
+
+> Cluster 0
+> crumbling dangerous
+> Erosion has left the brick structures
+> crumbling and dangerous.
+> Cluster 1
+> Republican proud
+> Sandy is Republican and proud.
+> Cluster 2
+> the project the approval
+> She mentioned the project and the
+> approval.
+
+Supercat sentence    
+
+> Cluster 0
+> quickly without hesitation
+> She answered quickly and without
+> hesitation.
+> Cluster 1
+> a Republican proud of it
+> Sandy is a Republican and proud of it.
+> Cluster 2
+> a cultural hub vibrant
+> The city is a cultural hub and vibrant.
+
+Deletion category       
+
+> Cluster 0 verbal
+> works at the local hospital
+> descended from dinosaurs
+> develops software
+> Cluster 1 nominal
+> a doctor a tourist spot
+> a linguist
+> Cluster 2 adjectival
+> funny risky difficult
+
+Figure 2: Illustration of clustering results. For each corpus, nine clustering systems are trained with different random seeds and different model variants. As they produce largely similar clusterings, we collapse them into a single representative system for visualization purposes. 
+
+which cues the models prioritize. Finally, an important long-term goal is to con-nect these findings to human language processing. The relative lack of psycholinguistic data on un-like coordination makes direct comparison diffi-cult. Collecting targeted experimental data, such as acceptability judgments, reading-time studies, or eye-tracking experiments involving systemati-cally varied coordination structures, would make it possible to evaluate whether the strategies ob-served in language models correspond to patterns in human sentence processing. 
+
+6 Appendices 
+
+6.1 Training details 
+
+All models were trained using the same strat-egy. We used the Trainer class from the 
+
+transformers package. Training of each model was conducted on one NVIDIA L40 GPU for up to 10 epochs, using the default AdamW op-timizer (Loshchilov and Hutter, 2017) with mixed-precision. The effective batch size was set to 16, the initial learning rate to 5e-5, and the weight de-cay to 0.01. A complete list of training parameters is provided in Table 5. 
+
+6.2 Examples of evaluation corpora 
+
+This section presents examples of our evaluation corpora. For sentences in unlike , the following ex-amples each represent a different combination pat-tern in the corpus: num_train_epochs 10 per_device_train_batch_size 8gradient_accumulation_steps 2per_device_eval_batch_size 16 learning_rate 5e-5 warmup_steps 1000 weight_decay 0.01 max_grad_norm 1.0 fp16 True dataloader_drop_last True prediction_loss_only True metric_for_best_model ‘eval_loss’ save_strategy ‘steps’ save_steps 1000 save_total_limit 3
+
+Table 5: A list of the selected training parameters. Any values not listed, except for logging, are assumed to be the default settings in the transformers package, version 4.56.2. 
+
+(1) You can depend on my assistant and that he will be on time. 
+
+(2) Voids are a nightmare and initialed by the em-ployees. 
+
+(3) That was manipulative and designed to keep her in the dark. 
+
+(4) The phenomenon fell into place organically and with ease. 
+
+(5) My boss is a perfectionist and demanding. (6) Those leaders insist that they are still in charge and leading the people. 
+
+(7) I don’t know if I should take this exam in class or online. 
+
+(8) I punched him a lot of times and with all my might. 
+
+(9) More Americans work out of the house and longer hours. 
+
+(10) Erosion has left the brick structures crumbling and a clear safety hazard. 
+
+Each sentence in unlike has a corresponding counterpart in alike-from-unlike , as illustrated by the following examples: (1) You can depend on my assistant and his ability to be on time. 
+
+(2) Voids are a nightmare and a misery, which is initialed by the employees. 
+
+(3) That was manipulative and was designed to keep her in the dark. 
+
+(4) The phenomenon fell in to place organically and easily. 
+
+(5) My boss is a perfectionist and a demanding person. 
+
+(6) Those leaders insist that they are still in charge and are leading the people. 
+
+(7) I don’t know if I should take this exam in class or on Canvas. 
+
+(8) I punched him repeatedly and forcefully. 
+
+(9) More Americans work out of the house and in longer hours. 
+
+(10) Erosion has left the brick structures crumbling and dangerous. 
+
+The following examples illustrate the tests used in unlike-judgment . For each category, we pro-vide a grammatical sentence together with its cor-responding ungrammatical counterpart: (1) Selection Violation : You can depend on my assistant and that he will be on time. *You can depend on that he will be on time. 
+
+(2) Position Effect : You can depend on my as-sistant and that he will be on time. *You can depend on that he will be on time and my as-sistant. 
+
+(3) CP as NP Requirement : That he will be on time, you can depend on. *You can depend on that he will be on time. 
+
+(4) Mismatch Restriction : Hobbs ended up lik-ing Rhodes and hating Barnes. *Hobbs ended up liking Rhodes and to hate Barnes. 
+
+(5) Dual Roles : St. Peter did reside in Rome. St. Peter did die in Rome. St. Peter did reside and die in Rome. 
+
+(6) Unlike Supercategories : Reluctantly and in embarrassment, the white officer released the Black man. Reluctantly and embarrassed, the white officer released the Black man. 
+
+(7) Deletion : I eat meat and at home. *Meat and at home do I eat. 
+
+6.3 Grammaticality judgment results 
+
+Table 6 presents the per-test results of the gram-maticality judgment tests.                                                                              
+
+> Test Category OAll And
+> selection violation ✓✓✗
+> position effect ✓✓✓
+> CP as NP requirement ✗✗✗
+> CP as NP requirement ✓✓✓
+> verb dependency ✓✓✓
+> mismatch restricted ✗✗✗
+> position effect ✓✗✓
+> position effect ✓✓✗
+> mismatch restricted ✓✓✓
+> mismatch restricted ✗✗✗
+> mismatch restricted ✗✗✗
+> wrong topicalization ✓✗✓
+> deletion ✓✓✓
+> position effect ✓✓✓
+> mismatch restricted ✓✓✓
+> mismatch restricted ✓✓✓
+> dual roles –––unlike supercategory –––deletion ✓✓✓
+> deletion ✓✓✗
+> deletion ✓✓✓
+> deletion ✗✓✓
+> Table 6: Results of the three models on each test in
+> unlike-judgment .O=Original ;All =Filtered-all ;And
+> =Filtered-and .
+
+7 Acknowledgments 
+
+We thank the University of Washington’s Hyak Klone HPC for providing the computational re-sources used in this work. 
+
+References 
+
+Yonatan Belinkov and James Glass. 2019. Anal-ysis Methods in Neural Language Processing: A Survey. Transactions of the Association for Computational Linguistics , 7:49–72. John Bowers. 1993. The Syntax of Predication. 
+
+Linguistic Inquiry , 24(4):591–656. Benjamin Bruening and Eman Al Khalaf. 2020. Category Mismatches in Coordination Revis-ited. Linguistic Inquiry , 51(1):1–36. Noam Chomsky. 1957. Syntactic Structures . Syn-tactic Structures. Mouton, Oxford, England. Alexis Conneau, German Kruszewski, Guillaume Lample, Loïc Barrault, and Marco Baroni. 2018. What you can cram into a single $&!#* vector: Probing sentence embeddings for lin-guistic properties. In Proceedings of the 56th Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) ,pages 2126–2136, Melbourne, Australia. Asso-ciation for Computational Linguistics. Mark Davies. 2015. Corpus of Contemporary American English (COCA). Richard Futrell, Ethan Wilcox, Takashi Morita, Peng Qian, Miguel Ballesteros, and Roger Levy. 2019. Neural language models as psy-cholinguistic subjects: Representations of syn-tactic state. In Proceedings of the 2019 Con-ference of the North American Chapter of the Association for Computational Linguistics: Hu-man Language Technologies, Volume 1 (Long and Short Papers) , pages 32–42. Association for Computational Linguistics. Mario Giulianelli, Jack Harding, Florian Mohn-ert, Dieuwke Hupkes, and Willem Zuidema. 2018. Under the Hood: Using Diagnostic Clas-sifiers to Investigate and Improve how Lan-guage Models Track Agreement Information. In Proceedings of the 2018 EMNLP Workshop BlackboxNLP: Analyzing and Interpreting Neu-ral Networks for NLP , pages 240–248, Brussels, Belgium. Association for Computational Lin-guistics. Alexander Grosu. 1985. SUBCATEGORIZA-TION AND PARALLELISM. 12(2-3):231– 240. Kristina Gulordava, Piotr Bojanowski, Edouard Grave, Tal Linzen, and Marco Baroni. 2018. Colorless Green Recurrent Networks Dream Hierarchically. In Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguis-tics: Human Language Technologies, Volume 1 (Long Papers) , pages 1195–1205, New Orleans, Louisiana. Association for Computational Lin-guistics. John Hewitt and Christopher D. Manning. 2019. A Structural Probe for Finding Syntax in Word Representations. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguis-tics: Human Language Technologies, Volume 1 (Long and Short Papers) , pages 4129–4138, Minneapolis, Minnesota. Association for Com-putational Linguistics. Dieuwke Hupkes, Sara Veldhoen, and Willem Zuidema. 2018. Visualisation and ’Diagnos-tic Classifiers’ Reveal How Recurrent and Re-cursive Neural Networks Process Hierarchical Structure. Journal of Artificial Intelligence Re-search , 61:907–926. Janne Bondi Johannessen. 1998. Coordination .Oxford University Press. Jaap Jumelet and Dieuwke Hupkes. 2018. Do Language Models Understand Anything? On the Ability of LSTMs to Understand Nega-tive Polarity Items. In Proceedings of the 2018 EMNLP Workshop BlackboxNLP: Analyz-ing and Interpreting Neural Networks for NLP ,pages 222–231. Association for Computational Linguistics. Julie Kallini and Christiane Fellbaum. 2021. A Corpus-based Syntactic Analysis of Two-termed Unlike Coordination. In Findings of the Association for Computational Linguistics: EMNLP 2021 , pages 3998–4008, Punta Cana, Dominican Republic. Association for Compu-tational Linguistics. Katharina Kann, Alex Warstadt, Adina Williams, and Samuel R. Bowman. 2019. Verb Argu-ment Structure Alternations in Word and Sen-tence Embeddings. In Proceedings of the Soci-ety for Computation in Linguistics (SCiL) 2019 ,pages 287–297. R.S. Kayne. 1994. The Antisymmetry of Syntax .Linguistic Inquiry Monographs. MIT Press. Nikita Kitaev and Dan Klein. 2018. Constituency Parsing with a Self-Attentive Encoder. In Pro-ceedings of the 56th Annual Meeting of the As-sociation for Computational Linguistics (Vol-ume 1: Long Papers) , pages 2676–2686, Mel-bourne, Australia. Association for Computa-tional Linguistics. Josef Klafka and Allyson Ettinger. 2020. Spying on Your Neighbors: Fine-grained Probing of Contextual Embeddings for Information about Surrounding Words. In Proceedings of the 58th Annual Meeting of the Association for Compu-tational Linguistics , pages 4801–4811, Online. Association for Computational Linguistics. Cara Su-Yi Leong and Tal Linzen. 2026. Manip-ulating language models’ training data to study syntactic constraint learning: The case of en-glish passivization. Journal of Memory and Language , 149:104751. Tal Linzen, Emmanuel Dupoux, and Yoav Gold-berg. 2016. Assessing the Ability of LSTMs to Learn Syntax-Sensitive Dependencies. Trans-actions of the Association for Computational Linguistics , 4:521–535. Nelson F. Liu, Matt Gardner, Yonatan Belinkov, Matthew E. Peters, and Noah A. Smith. 2019. Linguistic Knowledge and Transferability of Contextual Representations. In Proceedings of the 2019 Conference of the North Ameri-can Chapter of the Association for Computa-tional Linguistics: Human Language Technolo-gies, Volume 1 (Long and Short Papers) , pages 1073–1094, Minneapolis, Minnesota. Associa-tion for Computational Linguistics. I. Loshchilov and F. Hutter. 2017. Decoupled Weight Decay Regularization. In International Conference on Learning Representations .Mitchell P. Marcus, Beatrice Santorini, and Mary Ann Marcinkiewicz. 1993. Building a large annotated corpus of English: The Penn Treebank. Computational Linguistics ,19(2):313–330. Rebecca Marvin and Tal Linzen. 2018. Targeted Syntactic Evaluation of Language Models. In 
+
+Proceedings of the 2018 Conference on Empir-ical Methods in Natural Language Processing ,pages 1192–1202, Brussels, Belgium. Associa-tion for Computational Linguistics. Kanishka Misra and Kyle Mahowald. 2024. Lan-guage models learn rare phenomena from less rare phenomena: The case of the missing AANNs. In Proceedings of the 2024 Confer-ence on Empirical Methods in Natural Lan-guage Processing , pages 913–929, Miami, Florida, USA. Association for Computational Linguistics. Alan Munn. 1992. A NULL OPERATOR ANAL-YSIS OF ATB GAPS. 9(1):1–26. Agnieszka Patejuk and Adam Przepiórkowski. 2023. Category Mismatches in Coordination Vindicated. Linguistic Inquiry , 54(2):326–349. Abhinav Patil, Jaap Jumelet, Yu Ying Chiu, Andy Lapastora, Peter Shen, Lexie Wang, Clevis Willrich, and Shane Steinert-Threlkeld. 2024. Filtered Corpus Training (FiCT) Shows that Language Models Can Generalize from Indirect Evidence. Transactions of the Association for Computational Linguistics , 12:1597–1615. P. G. Peterson. 1981. Problems with Constraints on Coordination. Linguistic Analysis , 8:449– 460. Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, and Ilya Sutskever. 2019. Language models are unsupervised multitask learners. OpenAI blog , 1(8):9. Edward Jon Rubin. 1994. Modification: A Syntac-tic Analysis and Its Consequences . Ph.D. thesis, Cornell University, United States – New York. Ivan A. Sag, Gerald Gazdar, Thomas Wasow, and Steven Weisler. 1985. Coordination and how to distinguish categories. Natural Language & Linguistic Theory , 3(2):117–171. Gözde Gül ¸ Sahin, Clara Vania, Ilia Kuznetsov, and Iryna Gurevych. 2020. LINSPECTOR: Mul-tilingual Probing Tasks for Word Representa-tions. Computational Linguistics , 46(2):335– 385. Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Ł ukasz Kaiser, and Illia Polosukhin. 2017. At-tention is all you need. In Advances in Neu-ral Information Processing Systems , volume 30. Curran Associates, Inc. Alex Warstadt and Samuel R. Bowman. 2022. What Artificial Neural Networks Can Tell Us about Human Language Acquisition. In Al-gebraic Structures in Natural Language . CRC Press. Alex Warstadt, Amanpreet Singh, and Samuel R. Bowman. 2019. Neural Network Acceptability Judgments. Transactions of the Association for Computational Linguistics , 7:625–641. Edwin Williams. 1978. Across-the-Board Rule Application. Linguistic Inquiry , 9(1):31–43. Edwin S. Williams. 1981. Transformationless Grammar. Linguistic Inquiry , 12(4):645–653. Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Clement Delangue, Anthony Moi, Pierric Cistac, Tim Rault, Remi Louf, Morgan Funtowicz, Joe Davison, Sam Shleifer, Patrick von Platen, Clara Ma, Yacine Jernite, Julien Plu, Canwen Xu, Teven Le Scao, Sylvain Gugger, Mariama Drame, Quentin Lhoest, and Alexander Rush. 2020. Transformers: State-of-the-art natural language processing. In Pro-ceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: Sys-tem Demonstrations , pages 38–45, Online. As-sociation for Computational Linguistics. Niina Ning Zhang. 2009. Coordination in Syntax ,volume 123. Cambridge University Press.
