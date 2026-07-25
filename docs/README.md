@@ -6,53 +6,46 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-24
-- 运行时间：2026-07-24 21:43:25 UTC
+- 最新运行日期：2026-07-25
+- 运行时间：2026-07-25 21:29:07 UTC
 - 运行状态：成功
-- 本次总论文数：11
-- 精读区：5
-- 速读区：6
+- 本次总论文数：8
+- 精读区：4
+- 速读区：4
 
 ### 今日简报（AI）
-今日共处理11篇论文，重点精读了两篇9分前沿工作：组合范畴语法神经符号提升LLM输出，以及语言模型中暴露度可选的协调学习。最值得关注的是神经符号方法与LLM的深度结合，以及语言模型对非协调结构的处理机制。建议优先精读这两篇高分论文，同时速读中的俄语用户记忆基准（RUMBA）对跨语言研究有参考价值。
-- 详情：[/202607/24/README](/202607/24/README)
+1) 今日精读两篇高分论文，聚焦神经符号学提升LLM组合能力与评估策略动态进化。  
+2) 最值得关注：利用组合范畴语法实现LLM符号化推理，以及让评估标准与策略协同自适应的新范式。  
+3) 建议优先精读这两篇9分论文，理解如何将符号逻辑注入神经网络以突破当前LLM的局限性。
+- 详情：[/202607/25/README](/202607/25/README)
 
 ### 精读区论文标签
-1. [From Dependency to Compositionality: A Neurosymbolic Lifting of LLM Outputs via Combinatory Categorial Grammar](/202607/24/2607.18961v2-from-dependency-to-compositionality-a-neurosymbolic-lifting-of-llm-outputs-via-combinatory-categorial-grammar)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：通过组合范畴语法对LLM输出进行神经符号提升，揭示语言结构表示
-2. [Exposure is Optional: Learning Unlike Coordination in Language Models](/202607/24/2607.20251v1-exposure-is-optional-learning-unlike-coordination-in-language-models)  
+1. [From Dependency to Compositionality: A Neurosymbolic Lifting of LLM Outputs via Combinatory Categorial Grammar](/202607/25/2607.18961v2-from-dependency-to-compositionality-a-neurosymbolic-lifting-of-llm-outputs-via-combinatory-categorial-grammar)  
    标签：评分：9.0/10、query:llm-ling
-   evidence：语言模型对句法并列结构的习得
-3. [CultureTalk-ID: A Multi-Task Dialogue Benchmark for Cultural Commonsense in Indonesian Local Languages](/202607/24/2607.21016v1-culturetalk-id-a-multi-task-dialogue-benchmark-for-cultural-commonsense-in-indonesian-local-languages)  
+   evidence：基于组合范畴语法的神经符号框架，将LLM输出提升为组合式推导
+2. [Co-Evolving LLM Evaluators and Policies via DynamicRubric](/202607/25/2607.20083v2-co-evolving-llm-evaluators-and-policies-via-dynamicrubric)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：首个基于对话的印尼本地语言文化常识基准
-4. [Scaling Interpretable Transformers with Parity Bottleneck Layers](/202607/24/2607.20652v1-scaling-interpretable-transformers-with-parity-bottleneck-layers)  
+   evidence：共同演化评估器和策略以改进LLM反馈
+3. [Where Animacy Lives in Large Language Models: Tracing the Circuits of the Animacy Concept](/202607/25/2607.20995v1-where-animacy-lives-in-large-language-models-tracing-the-circuits-of-the-animacy-concept)  
+   标签：评分：9.0/10、query:llm-lang-rep
+   evidence：追溯LLM中的生命性电路
+4. [What, Where, and How: Disentangling the Roles of Task, Language, and Model in Code Model Representations](/202607/25/2607.21491v1-what-where-and-how-disentangling-the-roles-of-task-language-and-model-in-code-model-representations)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：带有奇偶瓶颈层的可解释Transformer架构
-5. [Reexamining zero-shot summarization: Empirical investigation of trustworthiness of LLM-summarizers](/202607/24/2607.21010v1-reexamining-zero-shot-summarization-empirical-investigation-of-trustworthiness-of-llm-summarizers)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：评估LLM摘要器的可信度
+   evidence：代码模型中的语法概念神经表征
 
 ### 速读区论文标签
-1. [Which Values Do LLMs Confuse? A Schwartz-Based Recognition Study](/202607/24/2607.20270v1-which-values-do-llms-confuse-a-schwartz-based-recognition-study)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：评估LLM的价值观识别作为自然语言理解
-2. [KeySI: An Interaction Framework for Tuning Text Embeddings Based on Human Feedback](/202607/24/2607.20556v1-keysi-an-interaction-framework-for-tuning-text-embeddings-based-on-human-feedback)  
-   标签：评分：7.0/10、query:llm-lang-rep
-   evidence：调优文本嵌入以更好捕捉领域语义
-3. [RUMBA: Russian User Memory Benchmark](/202607/24/2607.21447v1-rumba-russian-user-memory-benchmark)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：针对LLM长期记忆评估的新基准
-4. [Surprisal Theory is Tautological (without Rational Grounding)](/202607/24/2607.21574v1-surprisal-theory-is-tautological-without-rational-grounding)  
-   标签：评分：7.0/10、query:llm-lang-rep
-   evidence：批评使用语言模型解释人类语言处理的理论基础
-5. [Multilingual Sentence Embeddings for Linguistic-Integrated Reliability Audit](/202607/24/2607.17466v1-multilingual-sentence-embeddings-for-linguistic-integrated-reliability-audit)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：多语句子嵌入用于评估可靠性
-6. [Sentence Splitter: Uncovering Latent Factual Structure for Self-Supervised Learning](/202607/24/2607.19845v1-sentence-splitter-uncovering-latent-factual-structure-for-self-supervised-learning)  
+1. [LatentMT: Machine Translation with Latent Reasoning](/202607/25/2607.18618v1-latentmt-machine-translation-with-latent-reasoning)  
+   标签：评分：7.0/10、query:llm-ling
+   evidence：使用循环语言模型进行机器翻译的潜在推理
+2. [From Modalities to Propositions: A Language-Centric Framework for Multimodal Intelligence](/202607/25/2607.16560v1-from-modalities-to-propositions-a-language-centric-framework-for-multimodal-intelligence)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：使用自监督方法揭示句子中的语义事实结构
+   evidence：基于原子命题的多模态数据语言中心表示
+3. [Learning to Detect Cross-Modal Negation: An Analysis of Latent Representations and an Attention-Based Solution](/202607/25/2607.17712v1-learning-to-detect-cross-modal-negation-an-analysis-of-latent-representations-and-an-attention-based-solution)  
+   标签：评分：6.0/10、query:llm-lang-rep
+   evidence：分析视觉语言模型中否定的潜在表示
+4. [Profiling Lightweight Large Language Models](/202607/25/2607.20806v1-profiling-lightweight-large-language-models)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：轻量级LLM的精确感知性能分析框架
 
 
 <div class="dpr-home-promo-card">

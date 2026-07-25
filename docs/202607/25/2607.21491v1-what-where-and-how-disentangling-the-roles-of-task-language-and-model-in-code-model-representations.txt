@@ -1,0 +1,758 @@
+Title: What, Where, and How: Disentangling the Roles of Task, Language, and Model in Code Model Representations
+
+URL Source: https://arxiv.org/pdf/2607.21491v1
+
+Published Time: Fri, 24 Jul 2026 01:17:45 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# What, Where, and How: Disentangling the Roles of Task, Language, and Model in Code Model Representations 
+
+Piotr Wilam University College London 
+
+piotrwilam@gmail.com 
+
+Abstract 
+
+When two language models are trained independently, on different data, do they come to represent the same thing in the same way? We answer this question for code. We extend a recently introduced concept-circuit extraction method to a 2 ×2 design — two languages (Python, Rust) crossed with two models (Qwen2.5-Coder-7B, DeepSeek-Coder-V1-6.7B) — and measure a complete inventory of grammatical concepts (58 Python, 57 Rust) identically in all four cells. This is the smallest design that can separate what depends on the task, what depends on the language, and what depends on the model. The answer splits into three parts. What earns dedicated circuitry is set by the task: the two models agree on which concepts receive circuits (Spearman ρ = 0 .638 for Python, 0.673 for Rust, both p < 10 −7). 
+
+Where those circuits sit is set by the model: Qwen processes concepts in a late band ( ∼L17–19), DeepSeek at L6–7 — a 12–13 layer gap that holds for both languages. How circuits grow across layers is also set by the model: Qwen gives its atomic concepts an early spike that DeepSeek does not. The question “are circuits universal?” therefore has no single answer. It is yes for What and no for Where and How: universality is a property of representational content, not of computational organisation. None of this quantitative structure was fixed in advance. The cross-model agreement could have landed anywhere between independence and identity; it lands at ρ ≈ 0.65 . Rust constructs receive 2–3 × more concept-specific circuitry than their Python equivalents, in both models. Both models share neurons between the two languages (6 of 7 and 7 of 7 paired constructs), and DeepSeek shares 1.94 × more than Qwen — a direction no prior result predicts. And Qwen binds nine keywords of Rust’s type-and-trait machinery into a single tight neuron cluster (within-group Jaccard 0.535 against a permutation null of 
+
+0.112 , p < 0.001 ), recovering a semantic dimension that is invisible in surface syntax. Causal ablation and linear probes confirm that the extracted circuits are functional. All claims are scoped to this 2 ×2. Two models are enough to show that the axes separate; whether the resulting per-model profile predicts a third model is the designed next test. 
+
+# 1 Introduction 
+
+When a model encounters a for loop in Python and a for loop in Rust, does it use the same neu-rons? When two independently trained models both process Python’s import , do they allocate circuitry of comparable depth, in the same layers, with the same growth pattern? Three questions about abstraction are fundamental to interpretabil-ity: how an abstraction is formed, where it lives, and how it is processed. This paper addresses the second and third; formation is the subject of sepa-rate developmental work. The obstacle to answering them has been methodological, not conceptual. Circuit discov-ery traces one behaviour in one model (Wang et al., 2023; Conmy et al., 2023). Probing tests one hypothesis at a time (Tenney et al., 2019; Be-linkov, 2022). Sparse autoencoders discover fea-tures bottom-up, but in a basis learned per model, so two models’ features have no built-in correspon-dence (Bricken et al., 2023; Cunningham et al., 2023). What the question needs is different: a sin-gle measurement, defined identically for any model and any language, taken over a complete inventory of constructs. This paper builds that measurement and uses it. We extend the extraction-and-marginalisation method of Wilam (2026), developed on a sparse 8-layer Python transformer, to a 2 ×2 design across Python and Rust on two dense production mod-1arXiv:2607.21491v1 [cs.CL] 23 Jul 2026 els. The unit of analysis is a structured inventory: 58 testable Python concepts and 57 testable Rust concepts, measured comparably in all four cells. Formal languages are the right setting to develop the method, because the grammar fixes the inven-tory of constructs in advance; natural language, where the inventory is messier but the questions matter most, is the eventual target. 
+
+Why the outcome was not a foregone conclusion. 
+
+A reasonable prior says that models trained on sim-ilar data should agree on content while differing in mechanism, so the direction of our headline result could have been guessed. But a direction is not a result, and before this study the expectation had no evidential basis: no prior work had measured a structured inventory of constructs comparably across two independently trained models. Nobody knew whether cross-model agreement on “what earns circuitry” would land near ρ = 0 .3, 0.65 , or 
+
+0.9 — three outcomes with very different implica-tions. The data picks the middle one: a conserved ranking, far from identity. Nothing in prior work fixes the direction of the model differences either. That DeepSeek shares 1.94 × more neurons across languages than Qwen; that the two models’ processing bands sit 12–13 layers apart, in a consistent order; that Rust earns 2– 3× more concept-specific circuitry than Python in both models — each could have gone the other way, or vanished. And the strongest structural finding is one nobody predicted: six independent measure-ments of the two models do not scatter into six separate differences. They collapse into two co-herent processing styles (§8). That is a statement about the dimensionality of cross-model variation, not the truism that different models differ. 
+
+What the decomposition enables. The axes have direct practical content. Because What transfers, a concept inventory measured on one model is a usable prior for another: concept-level results are portable. Because Where and How do not transfer, any layer-indexed technique — probing at a fixed depth, patching at a peak layer, editing a located cir-cuit — is model-specific and must be re-localised per model; our per-model band measurements say where. A practitioner porting an interpretability result across models should ask which axis it lives on. The central result is that the two models behave as carriers of two distinct processing styles: they agree on which constructs earn dedicated circuitry but diverge on where and how those circuits are organised. The What/Where/How dissociation or-ganises the evidence — and one discovery shows the method reaching past the syntax it was built to measure: Qwen binds Rust’s type-and-trait ma-chinery into a single neuron cluster, a semantic dimension absent from the surface code. 
+
+Roadmap. §2 situates the work and summarises the extraction method self-containedly. §3 walks through the pipeline, defining each term as it arises. §4 establishes the dissociation: What is conserved, Where diverges, How diverges. §5 develops the lan-guage axis. §6 develops organisation that survives the architecture change, including the type-trait cluster. §7 validates the decomposition causally and geometrically. §8 synthesises the measure-ments into a two-styles fingerprint and states the predictions it licenses. 
+
+# 2 Background and Related Work 
+
+Circuit discovery. Mechanistic interpretabil-ity reverse-engineers networks into human-understandable components — from curated case studies such as the indirect-object-identification circuit (Wang et al., 2023) to automated discovery via activation patching (Conmy et al., 2023) and its refinements (Heimersheim and Nanda, 2024). These methods start from a behaviour and find its circuit: one behaviour, one model at a time. Wilam (2026) inverts the stance — start from a structured concept inventory and find the circuitry for each concept. The inversion is what makes cross-model comparison possible, because the inventory, not the behaviour, becomes the common yardstick. 
+
+Features and superposition. Individual neurons respond to multiple unrelated features (Elhage et al., 2022). Sparse autoencoders address this by learning overcomplete feature bases in which rep-resentations are more interpretable (Bricken et al., 2023; Cunningham et al., 2023; Templeton et al., 2024), and neuron-level studies locate interpretable units directly (Gurnee et al., 2023). But SAE fea-tures are defined per model: two models’ dictionar-ies carry no a-priori correspondence, which is ex-actly what a cross-model comparison cannot work with. Our binary neuron-mask measurement is coarser, and deliberately so — it is defined identi-cally for any model with an MLP, which is what the 2×2 requires. §7.2 quantifies what the coarseness costs. 2Universality. Whether independently trained net-works converge on the same internal structures is a long-standing question (Olah et al., 2020; Chugh-tai et al., 2023). Recent work pursues it at scale: universal neurons recur across GPT-2 training runs (Gurnee et al., 2024); the Platonic Representation Hypothesis argues that models converge toward a shared representation of reality as they grow (Huh et al., 2024); and feature-space and mechanistic similarity across architectures are active measure-ment targets (Lan et al., 2024; Wang et al., 2024). This literature mostly poses universality as a single yes/no question; our contribution is to split it into axes that receive different answers. 
+
+Cross-model comparison. Cross-model represen-tational comparison is commonly done with sim-ilarity measures such as CKA (Kornblith et al., 2019). We instead compare a structured concept inventory directly. The trade is deliberate: an inven-tory comparison is blunter than a geometry compar-ison, but it separates agreement on concept identity 
+
+from divergence in layer placement — the distinc-tion the universality question turns on, and one a single similarity score cannot express. 
+
+Probing, and code models. Linear probes detect syntactic structure (Tenney et al., 2019; Belinkov, 2022); they ask whether information is decodable, a different question from which neurons carry it. §7.2 uses both views and measures where they agree. For code specifically, prior work probes syntax trees (Wan et al., 2022), studies relation decoding (Hernandez et al., 2024), and localises code syntax to early layers in a single model (Yin et al., 2025). Our cross-model design tests that last kind of claim directly: we find the band is model-determined — early in DeepSeek, late in Qwen — so “where code structure lives” is a per-model fact, not a general one. 
+
+Cross-lingual sharing. Multilingual models share representations across natural languages (Pires et al., 2019; Conneau et al., 2020; Muller et al., 2021), and recent mechanistic work sharpens the picture: models reuse the same circuits for shared syntac-tic processes while allocating language-specific components for language-unique ones (Zhang et al., 2025), with language-specific neurons concen-trated in the top and bottom layers (Tang et al., 2024), and shared concept spaces emerging over multilingual training (Körner et al., 2026). We ex-tend this line from natural to formal languages — and add the cross-model axis it lacks, asking not only whether circuits are shared across languages but whether the amount of sharing is a language fact or a model fact (§5.3: the ranking is shared; the amount is not). 
+
+The concept-circuit method, self-contained. 
+
+Wilam (2026) introduced the method on a sparse 8-layer Python model; since this paper stands on it, we summarise it fully. For each concept in a language’s inventory — say the Python AST node 
+
+For — one writes many prompts that all contain the concept while varying everything else. A neu-ron that fires on all of them is responding to the concept, not to any incidental feature. The inter-section of the active-neuron sets over the prompt family is therefore a marginalisation: it integrates out the varied dimensions and leaves the concept. A second family — checker prompts — places the concept’s keyword token outside its structural role, and the same construction yields the token’s circuit. Comparing the two separates the abstraction from the surface form. On the sparse model, the original paper established three things: the intersections stay populated (random sets of the same density shrink to empty); they recover known conceptual structure; and an atomicity distinction — modular keywords with no nested body versus body-scoped constructs — organises the circuits’ temporal be-haviour. Everything downstream in this paper is this method, held fixed, applied to four (model, language) cells. 
+
+# 3 Methodology 
+
+The pipeline has five stages. 
+
+Prompt generation. For each concept, two prompt sets: concept prompts place the construct in its structural role; checker prompts place the keyword token outside that role (in strings, com-ments, variable names). Fifty prompts per (concept, context) pair, with variance injected along lexical, structural, and padding dimensions, so marginali-sation washes out incidental features. Formal lan-guages give a finite a-priori inventory; we take the testable subset — constructs whose keyword token can also appear outside its structural role, which the contrast requires — excluding constructs whose token is inseparable from the concept (Rust own-ership operators) and tokenless constructs. This yields 58 testable Python and 57 testable Rust con-cepts; for the cross-language comparison (§5.3) we identify seven construct pairings among them. 3Extraction. Each prompt passes through the model once; forward hooks record the MLP output at the last token position of every layer. 
+
+Binarisation. A neuron is active if its absolute ac-tivation exceeds ε. We sweep ε ∈ { 0.001 , 0.1, 0.5}
+
+to probe permissive to strict: at 0.001 circuits are trivially full, at 0.1 concept-only fractions are near-zero, and structural signal emerges at ε = 0 .5,which we use throughout. A second filter would re-tain neurons active in ≥ 80% of prompt variations, but for these dense SwiGLU models every neuron passing ε fires on all variations, so it is inert and the sweep reduces to one parameter. (Artifact names and figure panels label this filter cons=0.8 , its fixed 80% setting; it does no work here.) The all-or-nothing firing means the selected neurons are stable concept detectors, robust to the injected vari-ance, rather than responders to incidental prompt features. 
+
+Marginalisation. For the Python AST concept 
+
+For , prompts place a for loop over many builtins (over a list , a dict , a range ); the universal circuit for For is the intersection of their active-neuron sets — neurons that fire regardless of which builtin appears — so intersecting marginalises the builtin out and leaves the concept. Builtin con-cepts are marginalised analogously across the AST constructs they appear inside. (“AST node” and “builtin” are Python’s categories; Rust constructs are marginalised across their complementary set.) Were a concept not encoded as a stable unit, the intersection would shrink toward empty, as for ran-dom sets of the same density; that it stays populated is what makes a universal circuit meaningful. 
+
+Decomposition. The universal mask A is com-pared against the checker mask B: concept-only 
+
+= A \ B, shared = A ∩ B, token-only = B \ A.The concept fraction |A \ B|/|A| is the central per-concept measurement. The result is a dataset indexed by concept, layer, model, and language. The analyses in §4–§7 use standard tools applied to this dataset: Spearman correlation for cross-model agreement (§4.2); Ward-linkage clustering with a permutation null over pairwise Jaccard simi-larity (§6.2); zero-ablation against a size-matched null (§7.1); and logistic-regression probes with co-sine comparison (§7.2). The pipeline separates into three layers — extraction (run once, frozen artifacts), analysis (seconds, on artifacts), and pre-sentation (one script per figure) — all released; because extraction is frozen, every number and               
+
+> Language nρpFlow-type agr. Python 58 0.638 <10 −788.6% Rust 57 0.673 <10 −785.1%
+
+Table 1: Cross-model concept-fraction ranking (Spearman ρ) and §6.1 flow-type assignment agree-ment, per language (§4.2). figure regenerates from the analysis layer without rerunning the model (Appendix R). 
+
+# 4 The What/Where/How Dissocia-tion 
+
+4.1 Calibration 
+
+The method recovers known positives and negatives. The atomicity super-cluster from Wilam (2026) replicates: in Qwen the Python 
+
+two_phase concepts are the six-concept set {As-sert, Break, Continue, Import, ImportFrom, Pass}, and in DeepSeek the same group appears via the smooth-onset build_and_hold shape; in Rust the only Qwen two_phase concepts are Super and Use, both module-system keywords. Calibra-tion negatives behave correctly: Python builtins have near-zero concept fractions (Qwen 0.024 ,DeepSeek 0.068 ), and Rust ownership operators (&, *, ’), where token and concept are inseparable, also return near-zero. 
+
+4.2 The “What” Is Conserved 
+
+Which constructs earn dedicated circuitry is task-determined and transfers across models. 
+
+Concept-fraction rankings agree (Figure 1, Ta-ble 1): Spearman ρ = 0 .638 for Python and 0.673 
+
+for Rust (both p < 10 −7), with flow-type classifi-cations agreeing at 88.6% and 85.1%. The ranking depends on the language and the prediction task, not on the particular model. The correlations are moderate, not near-unity — the unexplained vari-ance is the model-specific component the next two axes characterise. 
+
+4.3 The “Where” Diverges 
+
+Where a construct is processed is a property of the model, not the language. Qwen concentrates concept-specific processing in a late band (Python 
+
+∼L19, Rust ∼L17); DeepSeek at L6–7 for both languages (Figure 2), roughly 12–13 layers earlier. The within-model cross-language consistency is the load-bearing observation: each model’s band predicts where it processes both languages. This 40.0 0.2 0.4            
+
+> Concept fraction (QW)
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> Concept fraction (DS)
+> P: = 0.638 (a) Python ( ρ= 0 .638 ,n= 58 ). 0.0 0.2 0.4
+> Concept fraction (QW)
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> Concept fraction (DS)
+> R: = 0.673 (b) Rust ( ρ= 0 .673 ,n= 57 ).
+
+Figure 1: Concept fraction Qwen vs DeepSeek, one point per concept, with y = x reference. Rankings are conserved across models (§4.2). concerns which layer carries the cleanest concept-specific signal, not where most representational activity lives — that is circuit size, below. 
+
+4.4 The “How” Diverges 
+
+The same atomic concepts receive an early cir-cuit spike in Qwen that they do not in DeepSeek. 
+
+This claim lives on circuit size, a different met-ric from the concept-fraction peaks of §4.3. Fig-ure 3 plots circuit size by layer for the six Python atomicity concepts: Qwen shows a sharp early spike at layers 2–3 (early-bias 0.73 –0.90 ), while DeepSeek’s circuits are near-empty until layers 10–12 then climb smoothly (early-bias 0.05 –0.11 ). The presence versus absence of the early spike is the divergence. In Qwen the late-layer mask ap-proaches the full MLP dimension — saturation, not a meaningful peak — so the robust contrast is the early-layer difference, which the early-bias measure (normalising early against late) captures. Across three architectures the same concepts show three signatures: an inverted-U in the sparse CSP-Atlas model, an early spike in Qwen, smooth late onset in DeepSeek. 
+
+4.5 Interpretation 
+
+Circuit structure has at least three indepen-dent axes, and “are circuits universal?” con-flates them. Which concepts earn circuitry is task-determined and transfers. Where they are pro-cessed, and how their circuits build over layers, are model-determined and do not. A circuit can be universal in concept identity while non-universal in processing depth and dynamics. The answer to the universality question is: yes on What, no on Where and How. This refines the universality hypothesis (Olah et al., 2020; Gurnee et al., 2024; Huh et al., 2024), which holds that independently trained models con-verge to shared representations. We find the con-vergence is axis-dependent: it holds for what earns circuitry — representational content — but not for 
+
+where or how that circuitry is organised. Universal-ity is a property of content, not of computational organisation. Two statements bound the interpretation. First, the “-determined” terms are defined within this 2×2: task-determined means “constant across the model axis of this design”; model-determined means “constant across the language axis and vary-ing across the model axis”. With two models, “model-determined” attributes the variation to what-ever distinguishes the two training runs — corpus, trajectory, architecture, initialisation — without isolating which factor; isolating it requires designs that vary one factor at a time. Second, one may speculate that the divergence reflects a loss land-scape with multiple equally good solutions that agree on representational content while differing in computational strategy — but this is speculation: the study measures representations, not the loss landscape. 50 10 20 30 
+
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Concept fraction
+
+Python (eps=0.5, cons=0.8)    
+
+> Builtin QW
+> Modular QW
+> Non-modular QW
+> Builtin DS
+> Modular DS
+> Non-modular DS
+> 010 20 30
+> Layer
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Concept fraction
+
+Rust (eps=0.5, cons=0.8) 
+
+> Modular QW
+> Non-modular QW
+> Object QW
+> Modular DS
+> Non-modular DS
+> Object DS
+
+Figure 2: Layer-resolved concept-fraction profiles. Qwen peaks in a late band ( ∼L17–19); DeepSeek peaks at L6–7 in both languages (§4.3). 0 5 10 15 20 25 
+
+> Layer
+> 0
+> 1000
+> 2000
+> 3000
+> Circuit size (in neurons)
+
+Qwen × Python: two-phase    
+
+> Assert
+> Break
+> Continue
+> Import
+> ImportFrom
+> Pass
+> 010 20 30
+> Layer
+> 0
+> 1000
+> 2000
+> 3000
+> 4000
+> Circuit size (in neurons)
+
+DeepSeek × Python: build-and-hold 
+
+> Assert
+> Break
+> Continue
+> Import
+> ImportFrom
+> Pass
+
+Figure 3: Circuit size by layer for the six Python atomicity concepts. Qwen shows an early spike at L2–3 absent in DeepSeek; DeepSeek climbs smoothly from L10 (§4.4). 
+
+# 5 Language Design Determines Representation Strength 
+
+5.1 Rust vs Python 
+
+Rust constructs receive 2–3 × more concept-specific circuitry than Python equivalents, in both models and the same direction — a prop-erty of language design, not architecture. Mean concept fraction is Qwen 0.215 vs 0.074 (2.91 ×)and DeepSeek 0.201 vs 0.097 (2.07 ×) (Table 2). In Python (Qwen) a sharp three-tier hierarchy sep-arates modular keywords (atomic, no nested body: 
+
+import , assert , break , continue , pass )at 0.314 , non-modular control-flow constructs at 
+
+0.090 , and builtins at 0.024 — a 13:1 ratio. These three tiers sit within the testable subset, which by construction excludes the tokenless-AST tier of Wilam (2026) — tokenless constructs have no keyword and so no concept-versus-token con-trast. In Rust the three groups (Modular, Non-modular, Object) fall within 1.5× of one another: stricter syntax makes all constructs distinctive, so the hierarchy compresses. The sharp modular-keyword tier is itself Qwen-specific: in Python un-der DeepSeek the order inverts, with non-modular constructs ( 0.151 ) edging out modular ones ( 0.144 )(Table 2). (Counts: Python 6 + 18 + 34 = 58 ; Rust 
+
+6 + 15 + 36 = 57 .) 6Group P×QW P×DS R×QW R×DS Modular 0.314 0.144 0.294 0.264 Non-modular 0.090 0.151 0.222 0.213 Builtin / Object 0.024 0.060 0.200 0.185 
+
+Table 2: Mean concept fraction by group, per (lan-guage, model) cell. The Python (Qwen) tier hi-erarchy (13:1 ratio) compresses in Rust (within 
+
+1.5×) and inverts in Python (DeepSeek), where non-modular slightly exceeds modular (§5.1). 
+
+5.2 The Boost Is Largest for Python’s Weakest Concepts 
+
+The boost — the ratio of a concept’s Rust to Python concept fraction — is largest where Python is weakest. Concepts already strong in Python (While, Break, Continue) show modest boosts; concepts weak in Python (Return 7.2×, For 
+
+5.1×, If 4.4× — high token ambiguity) receive the largest. Import/Use is the one case where the ratio falls below 1: Python’s import has more distinc-tive syntax than Rust’s use . This follows the token-ambiguity principle of Wilam (2026): concept-only fraction is driven by how ambiguous a keyword’s surface token is, and Rust’s stricter syntax reduces that ambiguity for constructs like for and if , forc-ing structural representations. The fraction is pre-dictable from token ambiguity paired with struc-tural distinctiveness — across languages, not just within one. 
+
+5.3 Cross-Language Neuron Sharing 
+
+Both models share neurons for equivalent constructs across Python and Rust; what is shared is conserved, how much is model-determined. We select seven cross-language pair-ings of constructs that play equivalent roles — iter-ation, branching, loop control, function definition (def ↔fn ), module import, return, type definition (Table 3) — and measure whether the model shares neurons between them. A pairing shares if its shar-ing fraction (intersection of pooled concept-only sets over the smaller pool, averaged over layers) exceeds 10%; passing pairings sit well above this and the one miss well below, so the count is in-sensitive to the cutoff. DeepSeek shares 1.94 ×
+
+more cross-language than Qwen (Figure 4). All seven pass in DeepSeek; Qwen reaches six, miss-ing function definition at 3.8% — the model does not treat indentation-scoped def and brace-scoped 
+
+fn as equivalent despite their shared role, the sur-face forms differing too much. The ranking of how                                 
+
+> Equivalence class DS QW DS pass QW pass Iteration 0.525 0.340 ✓✓
+> Branching 0.517 0.271 ✓✓
+> Return 0.503 0.177 ✓✓
+> Type def 0.434 0.146 ✓✓
+> Loop control 0.330 0.289 ✓✓
+> Module import 0.250 0.129 ✓✓
+> Function def 0.149 0.038 ✓–
+
+Table 3: Cross-language sharing fraction (per layer mean) for the seven equivalence classes. Threshold for "passes" is ≥ 10% . DeepSeek passes all seven; Qwen reaches six (function definition fails) (§5.3). Branching 
+
+> Function def
+> Iteration
+> Loop control
+> Module import
+> Return
+> Type def
+> 0.0
+> 0.2
+> 0.4
+> Mean sharing
+> fraction
+> Cross-language sharing
+> 10%
+> DS
+> QW
+
+Figure 4: Cross-language neuron sharing by equiv-alence class. DeepSeek shares 1.94 × more than Qwen; the 10% threshold is shown as a dashed line (§5.3). shareable a pairing is, is conserved across mod-els (task-determined); the magnitude difference is model-determined, plausibly reflecting the §4.4 dy-namics, though the present data does not formally test this. 
+
+# 6 Architecture-Invariant Organi-sation 
+
+6.1 The Atomicity Super-Cluster 
+
+The atomicity super-cluster replicates across three architectures; the conserved set is task-determined, its temporal shape architecture-specific. In Qwen the Python two_phase con-cepts are exactly the six-concept CSP-Atlas atom-icity set {Assert, Break, Continue, Import, Import-From, Pass}. In DeepSeek the group appears via 
+
+build_and_hold ; the Rust analogues are Su-per and Use. The replication spans sparse 8-layer, dense 28-layer, and dense 32-layer models, with a different temporal shape in each. Flow-type agree-ment between the dense models is 88 .6% (Python) and 85 .1% (Rust). Appendix Figure 8 shows per-layer profiles for all four cells. 76.2 Semantic Clustering in Rust 
+
+Qwen represents Rust’s type-trait family as a strongly bound neuron cluster, recovering a type-theoretic dimension invisible at the surface level — but selectively. Hierarchical clustering at Qwen × Rust × L14 (Figure 5) suggests four groups; a permutation test (10,000 same-size ran-dom draws, fixed seed; Figure 6) sorts them:                      
+
+> Group Jacc. Null pVerdict Type-system traits 0.535 0.112 <0.001 strong Memory/ownership 0.190 0.112 0.044 marg. Data definition 0.199 0.112 0.035 marg. Control-flow/module 0.129 0.112 0.292 random
+
+The four hypothesised groups: type-system traits 
+
+(Enum, Send, Option, Iterator, Copy, Eq, Drop, De-bug, ToString), memory/ownership (Pin, Mutex, Arc, Box, Vec, Impl, Async, Move, Future), data definition (Struct, Let, String, Trait, Default, Dis-play, Hash, Return, Read), control-flow/module 
+
+(Fn, Pub, Use, Crate, While, Break, Loop, If, Match). The honest finding is one strongly bound cluster, two marginally significant, one random — not four equal clusters. The type-trait family is the striking case: nine keywords spanning four syntac-tic categories (marker traits, method-carrying traits, a sum-type keyword, a generic enum), which the model collapses on the basis of their shared role in Rust’s type-and-trait machinery — a dimension absent from surface syntax and the AST. Its cohe-sion is more than double the marginal groups. The control-flow negative result is informative: strong specialised machinery for the type system, none de-tectable for control flow, though both are syntacti-cally distinctive. For Python at the same layer (Ap-pendix Figure 9) control-flow keywords do cluster, so the model’s neuron-level organisation of control flow differs by language, sharpening rather than diluting the type-trait finding. 
+
+6.3 Meta-Circuit Structure 
+
+Rust’s richer circuitry produces more co-ordinated meta-circuit organisation, and DeepSeek’s smoother dynamics more than Qwen’s. DeepSeek produces roughly 3× more statistically significant meta-circuit structure; Rust meta-circuits are broader than Python in both models (Rust Loop control, Iteration, Branching show 5–7 significant layers each versus Python’s 0–7). This coheres with both the language-design effect and the processing-style difference. 
+
+# 7 Validation 
+
+7.1 Causal Validation: Double Dissocia-tion 
+
+Per-layer zero-ablation of concept-only neurons on Qwen Python, on concept and matched checker prompts, against a size-matched random null, fol-lowing the activation-patching tradition (Meng et al., 2022; Conmy et al., 2023). A clean double dissociation requires concept-only ablation to drop the target probability more on concept than checker prompts, and more than the random null. Six concepts satisfy the direction of the dissoci-ation. Four pass with clear margins: Import, Try, While, Assert (Figure 7, Table 4), with peak-effect layers inside the concept-fraction band (L18–21) — the Where signature, replicated causally — and spanning two clusters identified correlationally: the atomicity super-cluster (Import, Assert) and body-scoped control flow (Try, While). Two more — FunctionDef ( −0.018 against a null of −0.009 )and For ( −0.015 against −0.001 ) — satisfy the direction with thin margins, and we mark them marginal rather than counting them as clean passes. One concept fails outright: Break, whose concept-only ablation ( −0.032 ) produces a smaller dissociation than the random null ( −0.066 ) de-spite a large concept-only set; break is token-rare, drawing on general lexical context rather than a concept-selective pathway, so ablating any large set at L19 hurts it similarly. Concepts with concept-only sets below ∼20 neurons show no measurable effect, consistent with the probe result below. 
+
+Scope of the causal claim. This validation covers one of the four cells: Qwen × Python, deliberately the cell with the clearest two-phase profile, where single-layer ablation is best defined. DeepSeek’s build-and-hold profile has no clear peak layer, so validating it requires an extended design — multi-layer or cumulative ablation, not a rerun. Until then, the causal evidence supports the decomposition where tested, and the cross-model claims rest on the correlational and geometric evidence. 
+
+7.2 Geometric Validation: Linear Probes 
+
+Per-concept, per-layer logistic-regression probes classifying concept from checker prompts achieve 
+
+97 .6–99 .7% accuracy at every one of Qwen’s 28 layers, for the 24 keyword-bearing AST concepts (Figure 11). The distinction is linearly decodable from the earliest layers, independent of any thresh-old. Pairwise probe-direction cosine similarity cor-8Enum 
+
+> Send
+> Option
+> Ord
+> Debug
+> Iterator
+> Copy
+> Self
+> Eq
+> Drop
+> ToString
+> Pin
+> Mutex
+> Write
+> Arc
+> Impl
+> Box
+> Vec
+> Const
+> Static
+> Ref
+> As
+> Async
+> Move
+> Continue
+> For
+> Cell
+> HashMap
+> Await
+> Future
+> Clone
+> Default
+> Display
+> Struct
+> Let
+> Hash
+> Return
+> Read
+> String
+> Trait
+> Fn
+> Pub
+> Use
+> Crate
+> Super
+> While
+> Break
+> Loop
+> If
+> Match
+> Unsafe
+> Dyn
+> Where 0.0
+> 0.5
+> 1.0
+> 1.5
+> 2.0
+
+Hierarchical clustering R_QW L14 Figure 5: Rust semantic clustering at Qwen × L14 — Ward dendrogram on 1 − Jaccard over the non-empty concept-only sets. The four hypothesised groups (type-system traits, memory/ownership, data definition, control-flow/module) are tested for cohesion in Figure 6 (§6.2). type system traits     
+
+> memory ownership
+> data definition
+> control flow module
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Mean pairwise Jaccard  p <
+> 0.001
+> p =
+> 0.044
+> p =
+> 0.035 p =
+> 0.292
+> Within-group Jaccard cohesion R_QW L14
+> null mean 95th pct
+> observed (p < 0.05)
+> observed (p 0.05)
+
+Figure 6: Permutation test (10,000 same-size ran-dom draws, seed = 42) on the four hypothesised groups from Figure 5: one strongly bound cluster (type-system traits, p < 0.001 ), two marginal, one random. 
+
+Concept n L ∆co ∆null PImport 72 21 −0.054 −0.007 ✓
+
+Try 473 20 −0.053 +0 .066 ✓
+
+While 299 19 −0.051 +0 .042 ✓
+
+Assert 176 18 −0.032 +0 .004 ✓
+
+FunctionDef 86 20 −0.018 −0.009 ∼
+
+For 44 21 −0.015 −0.001 ∼
+
+Break 362 19 −0.032 −0.066 ×
+
+Table 4: Per-concept double dissociation, Qwen ×
+
+Python. ∆ is the change in log P (target ) between concept and matched checker prompts at the peak-effect layer; concept-only ablation must drop the target more than a size-matched random null. Four pass with clear margins; FunctionDef and For are marginal ( ∼); Break fails despite a large concept-only set (§7.1). relates with pairwise concept-only Jaccard simi-larity across 276 concept pairs, Pearson r peaking 0.05 0.00 0.05 
+
+log P(object) log P(checker) 
+
+> Import
+> Try
+> While
+> Assert
+> FunctionDef
+> For
+> Break
+> Lambda
+> If
+> len
+> n=72, L21
+> n=473, L20
+> n=299, L19
+> n=176, L18
+> n=86, L20
+> n=44, L21
+> n=362, L19
+> n=9, L19
+> n=15, L19
+> n=2, L18
+
+P_QW: double dissociation  
+
+> concept-only ablation random null
+
+Figure 7: Double dissociation by concept at the peak-effect layer. Four concepts (Import, Try, While, Assert) pass with concept-only ablation more dissociative than random null; Break fails; small-n concepts show no measurable effect (§7.1). at 0.645 at L20. The correlation is moderate, not unity: the two views agree on coarse structure but disagree on low-amplitude tails, the probe direc-tion spanning many neurons below ε = 0 .5 that the binary view does not capture. Where concept-only sets are large, ablation produces clean disso-ciations; where small, ablation has no effect but probes still exceed 97% — the representation ex-ists and is decodable but lives in a sub-threshold regime the binary method does not reach. The de-9Measurement Qwen DeepSeek Conc.-fraction peak late (L19/L17) early (L6–7) Atomicity flow (P) two-phase build-and-hold Rust type-trait (L14) J=0 .535 (p <      
+
+> 0.001 )not detected Meta-circuit signif. baseline ∼3×more Mean x-lang sharing 0.199 0.387 Flow-type agr. (P/R) 88.6% / 85.1% (QW ↔DS)
+
+Table 5: Per-model fingerprint: five per-model con-trasts separating Qwen vs. DeepSeek the same way — late/sharp vs. early/smooth processing style — plus the cross-model flow-type agreement (bottom, a pairwise quantity) (§8). composition is a correct but partial view, and the moderate correlation states where the two regimes meet. 
+
+# 8 Discussion 
+
+Two processing styles as a model fingerprint. 
+
+The findings yield a per-model profile (Table 5): six independent measurements — concept-fraction peak band, atomicity flow type, Rust cluster strength, meta-circuit significance rate, mean cross-language sharing, and the cross-model flow-type agreement — all separate or track the two mod-els the same way. Qwen’s late, sharp concentra-tion comes with fine-grained clustering and lower cross-language overlap; DeepSeek’s early, smooth growth comes with coarser clustering and more overlap. Six measurements could have varied inde-pendently; they cohere into two styles. That is the dimensionality finding: cross-model variation, at least here, is low-dimensional. 
+
+Scope of the fingerprint, and the predictions it licenses. Two models cannot show that the finger-print predicts : any pair of independently trained models will differ somehow, and coherence ob-served once could in principle be coincidence. What the fingerprint licenses is a set of falsifiable predictions for any third model — its peak band, atomicity flow type, cluster granularity, and cross-language sharing level should co-vary as one style rather than mixing freely. A model with an early peak band, for example, should show smoother atomicity onsets and higher cross-language shar-ing. Testing this on a third model is the designed next step; the present contribution is that the 2 ×2defines the fingerprint and shows its internal co-herence, which is what makes the prediction well-posed. 
+
+The language axis is orthogonal to the model axis. The language-design effect — Rust’s higher concept-specificity and the cross-language sharing pattern — holds in both models and the same di-rection, while the models differ on where and how they process concepts. The 2 × 2 design was built to detect this separability, and does: what earns circuitry is task-determined, where and how it is processed is model-determined, how strongly a construct is represented is language-determined — three independent sources of variation. 
+
+What this enables, operationally. Concept-level knowledge transfers: the ρ ≈ 0.65 rankings and the conserved sharing structure mean an inventory measured on one model is a usable prior for another. Layer-level knowledge does not: the 12–13 layer offset between the models’ bands means a fixed-depth probe or patch tuned on one model targets the wrong layers on the other. A practitioner porting an interpretability result should ask which axis it lives on; the fingerprint then says what must be re-measured (the band, the flow type) and what can be reused (the inventory, the pairings). 
+
+The method is generative. Measuring a struc-tured inventory exhaustively surfaces more regu-larities than one paper can pursue. We develop the three bearing on the master question, but the released artifacts contain further structure — the asymmetry in meta-circuit organisation, the per-language difference in control-flow grouping, the layer-band structure of concept-specific processing. The wide first stage surfaces; deeper stages and other work can mine. 
+
+Future work. A continuous-geometry extension, in progress, would capture the sub-threshold signal the binary view misses. The natural target is natu-ral language — the method’s eventual home, where the inventory is less clean but the questions mat-ter most. A developmental analysis over training checkpoints would ask when the What/Where/How split appears and whether What is conserved while Where and How drift. And formal languages with strict internal logic — a proof assistant such as Lean, where constructs carry logical content — would test whether the method reaches a quali-tatively different kind of abstraction. 
+
+# Limitations 
+
+Sub-threshold structure. The method captures high-amplitude neurons and misses distributed sub-10 threshold structure, quantified in §7.2; the continu-ous treatment is deferred. 
+
+Imperative languages only. Both languages are imperative; generalisation to declarative languages or proof assistants is open. 
+
+Layer-count mismatch. Layer counts differ (28 vs 32); body comparisons use absolute indices, ap-pendix profiles fraction-of-depth. 
+
+Causal validation scope. Causal validation is on Qwen Python only. 
+
+Degenerate consistency parameter. The consis-tency parameter, which varies meaningfully in the sparse model of Wilam (2026), is degenerate for these dense SwiGLU architectures, so the effective sweep is over ε alone. 
+
+Cross-model concept space. The full concept space differs across models; comparisons use the shared testable subsets. 
+
+# Ethical Considerations 
+
+This work analyses internal representations of pub-licly available open-source models. No new mod-els are trained, no human subjects are involved, no private data is used. Prompts are synthetic code generated programmatically. 
+
+Licenses and intended use. Qwen2.5-Coder-7B is distributed under the Apache-2.0 license; DeepSeek-Coder-V1-6.7B under the DeepSeek Li-cense Agreement. Both licenses permit research and commercial use, and our research-only use of these models is consistent with their stated terms. The code released with this paper uses Apache-2.0, and the dataset uses CC-BY-4.0; both are intended for research and commercial re-use with attribution, compatible with the upstream model licenses. 
+
+# Availability 
+
+Analysis code, figure scripts, and the frozen-numbers test suite are released at https:// github.com/piotrwilam/Atlas2x2 (re-lease v1.0.0 , Apache-2.0). The frozen ex-perimental artifacts are released as a dataset at https://huggingface.co/datasets/ piotrwilam/Atlas2x2 (CC-BY-4.0); the loaders in atlas/io/ auto-fetch missing files on demand. Every number and figure in the pa-per regenerates from the released analysis layer without rerunning a model; see Appendix A. 
+
+# References 
+
+Y. Belinkov. Probing classifiers: Promises, short-comings, and advances. Computational Linguis-tics 48(1), 2022. T. Bricken et al. Towards monosemanticity: De-composing language models with dictionary learning. Transformer Circuits Thread , 2023. B. Chughtai, L. Chan, and N. Nanda. A toy model of universality: Reverse engineering how net-works learn group operations. ICML , 2023. A. Conmy, A. Mavor-Parker, A. Lynch, S. Heimer-sheim, and A. Garriga-Alonso. Towards auto-mated circuit discovery for mechanistic inter-pretability. NeurIPS , 2023. A. Conneau, S. Wu, H. Li, L. Zettlemoyer, and V. Stoyanov. Emerging cross-lingual structure in pretrained language models. ACL , 2020. H. Cunningham, A. Ewart, L. Riggs, R. Huben, and L. Sharkey. Sparse autoencoders find highly interpretable features in language models. 
+
+arXiv:2309.08600 , 2023. N. Elhage et al. Toy models of superposition. Trans-former Circuits Thread , 2022. W. Gurnee, N. Nanda, M. Pauly, K. Harvey, D. Troitskii, and D. Bertsimas. Finding neurons in a haystack: Case studies with sparse probing. 
+
+TMLR , 2023. W. Gurnee, T. Horsley, Z. C. Guo, T. Rezaei Kheirkhah, Q. Sun, W. Hathaway, N. Nanda, and D. Bertsimas. Universal neurons in GPT2 language models. arXiv:2401.12181 ,2024. Z. Yin, X. Gu, and B. Shen. Neuron-guided inter-pretation of code LLMs: Where, why, and how? 
+
+arXiv:2512.19980 , 2025. S. Heimersheim and N. Nanda. How to use and interpret activation patching. arXiv , 2024. E. Hernandez, A. Sen Sharma, T. Haklay, K. Meng, M. Wattenberg, J. Andreas, Y. Belinkov, and D. Bau. Linearity of relation decoding in trans-former LMs. ICLR , 2024. M. Huh, B. Cheung, T. Wang, and P. Isola. The Platonic representation hypothesis. ICML , 2024. 11 S. Kornblith, M. Norouzi, H. Lee, and G. Hinton. Similarity of neural network representations re-visited. ICML , 2019. F. Körner, M. Müller-Eberstein, A. Korhonen, and B. Plank. When meanings meet: Investigating the emergence and quality of shared concept spaces during multilingual language model train-ing. EACL , 2026. M. Lan, P. Torr, A. Meek, A. Khakzar, D. Krueger, and F. Barez. Quantifying feature space univer-sality across large language models via sparse autoencoders. arXiv:2410.06981 , 2024. K. Meng, D. Bau, A. Andonian, and Y. Belinkov. Locating and editing factual associations in GPT. 
+
+NeurIPS , 2022. B. Muller, A. Anastasopoulos, B. Sagot, and D. Seddah. When being unseen from mBERT is just the beginning. NAACL , 2021. C. Olah, N. Cammarata, L. Schubert, G. Goh, M. Petrov, and S. Carter. Zoom in: An intro-duction to circuits. Distill , 2020. T. Pires, E. Schlinger, and D. Garrette. How multi-lingual is multilingual BERT? ACL , 2019. T. Tang, W. Luo, H. Huang, D. Zhang, X. Wang, X. Zhao, F. Wei, and J.-R. Wen. Language-specific neurons: The key to multilingual ca-pabilities in large language models. ACL , 2024. A. Templeton et al. Scaling monosemanticity: Ex-tracting interpretable features from Claude 3 Sonnet. Transformer Circuits Thread , 2024. I. Tenney, D. Das, and E. Pavlick. BERT rediscov-ers the classical NLP pipeline. ACL , 2019. Y. Wan, W. Zhao, H. Zhang, Y. Sui, G. Xu, and H. Jin. What do they capture? A structural anal-ysis of pre-trained language models for source code. ICSE , 2022. K. Wang, A. Variengien, A. Conmy, B. Shlegeris, and J. Steinhardt. Interpretability in the wild: A circuit for indirect object identification in GPT-2 small. ICLR , 2023. J. Wang, X. Ge, W. Shu, Q. Tang, Y. Zhou, Z. He, and X. Qiu. Towards universality: Studying mechanistic similarity across language model architectures. arXiv:2410.06672 , 2024. P. Wilam. CSP-Atlas: Concept-Specific Neu-ral Circuits in a Sparse Python Transformer. 
+
+arXiv:2605.24603 , 2026. R. Zhang, Q. Yu, M. Zang, C. Eickhoff, and E. Pavlick. The same but different: Structural similarities and differences in multilingual lan-guage modeling. ICLR , 2025. 12 A Reproducibility and Claim Verification 
+
+Code lives at https://github.com/piotrwilam/Atlas2x2 (release v1.0.0 ); data lives at https://huggingface.co/datasets/piotrwilam/Atlas2x2 , and missing files auto-fetch on demand. Every numerical claim in the paper is regenerable from this release. Run-ning pytest tests/test_paper_numbers.py verifies all locked numbers. Each figure regenerates from a config-named script under experiments/ , e.g. python experiments/ fig2_concept_scatter.py -config-name paper/figure2_concept_scatter repro-duces Figure 1. 
+
+Compute and infrastructure. The model-touching stages (extraction, ε-sweep, probes, ablation) run on a single NVIDIA A100 GPU (40GB) via Google Colab Pro+. Extraction is the dominant cost: ∼160k forward passes per cell across 115 concepts (58 Py + 57 Ru) × 50 prompts × 2 sets, repeated for 4 cells (Python/Rust × Qwen/DeepSeek), totalling ∼24 GPU-hours. Linear probes (§7.2) and zero-ablation (§7.1) add ∼2 GPU-hours combined. All analysis, plotting, and the locked paper-number tests run on CPU in seconds.                                     
+
+> Section Claim Value / Verifies via §3 Testable concept counts Py 58 ( 6+18+34 ), Ru 57 ( 6+15+36 )
+> f2_concept_group_counts
+> §4.2 Cross-model ρ0.638 (Py), 0.673 (Ru); p < 10 −7
+> f1_concept_fraction_spearman
+> §4.4/§6.1 Atomicity flow types 6 concepts two_phase ; agr. 88.6%/85.1%
+> f6_1_flow_type_agreement_between_models ,p_qw_two _phase_is_exactly_the_atomicity_super_cluster
+> §5.1 Rust/Python strength ratio 2.91 ×(QW), 2.07 ×(DS)
+> f3_rust_over_python_concept_fraction_ratios
+> §5.3 Cross-language sharing ratio 1.94 ×(DS/QW); 7/7 DS, 6/7 QW
+> f3_cross_language_sharing_ratio
+> §6.2 Type-trait cluster cohesion Jaccard 0.535, null 0.112, p < 0.001
+> f6_g1_trait_family_observed_jaccard ,f6_g1_permut ation_p_value
+> §6.2 Other cluster verdicts G2 0.044, G3 0.035, G4 0.292
+> f6_four_cluster_observed_and_p_value
+> §7.1 Double dissociation 4 pass; Break fails
+> f7_1_dissociation_results
+> §7.2 Probe accuracy band 97.6–99.7%, 24 AST concepts
+> f7_probe_accuracy_band ,f7_probe_accuracy_exact_e ndpoints
+> §7.2 Jaccard–cosine peak r= 0 .645 at L20, 276 pairs
+> f8_peak_jaccard_cosine_correlation
+
+Table 6: Every paper-cited number is locked in tests/test_paper_numbers.py with ±0.005 
+
+tolerance; the typewriter line under each value gives the verifying test function name (prefix test_ 
+
+omitted). Analysis routines — correlations, Jaccard, permutation tests, flow-type classification — live in 
+
+atlas/analysis/ ; the model-touching pipeline (extraction, probes, ablation) lives in circuits/ ,separated because it requires a GPU. 13 B Per-Layer Circuit-Size Profiles 
+
+Figure 8 shows per-layer circuit size for every testable concept across all four cells, the full data behind the flow-type classifications summarised in §6.1. 0 10 20 
+
+Layer 
+
+> 0
+> 1000
+> 2000
+> 3000
+> Circuit size
+
+Circuit size curves by flow type P_QW 
+
+> late_emergence (95)
+> two_phase (6)
+> unclassified (4)
+
+(a) Python × Qwen. 0 10 20 
+
+Layer 
+
+> 0
+> 1000
+> 2000
+> 3000
+> Circuit size
+
+Circuit size curves by flow type R_QW  
+
+> late_emergence (70)
+> two_phase (2)
+> unclassified (2)
+
+(b) Rust × Qwen. 0 10 20 30 
+
+Layer 
+
+> 0
+> 2000
+> 4000
+> Circuit size
+
+Circuit size curves by flow type P_DS 
+
+> build_and_hold (6)
+> late_emergence (89)
+> two_phase (1)
+> unclassified (9)
+
+(c) Python × DeepSeek. 0 10 20 30 
+
+Layer 
+
+> 0
+> 2000
+> 4000
+> Circuit size
+
+Circuit size curves by flow type R_DS  
+
+> build_and_hold (4)
+> late_emergence (63)
+> unclassified (7)
+
+(d) Rust × DeepSeek. 
+
+Figure 8: Per-layer circuit size for every testable concept, coloured by flow type (§6.1). Each panel shows one (language, model) cell. 14 C Concept Clustering Across Models 
+
+Figures 9 and 10 give the Python concept clustering for both models at L14, the cross-model companion to the Rust clustering in §6.2; the atomicity grouping replicates in both. sum 
+
+> str
+> sorted
+> round
+> reversed
+> property
+> min
+> map
+> len
+> iter
+> int
+> Global
+> YieldFrom
+> Nonlocal
+> Return
+> bytes
+> max
+> set
+> zip
+> print
+> super
+> ClassDef
+> any
+> Delete
+> Lambda
+> If
+> dict
+> Try
+> While
+> Raise
+> With
+> object
+> AsyncFor
+> For
+> Import
+> ImportFrom
+> Break
+> Continue
+> Assert
+> Pass
+
+0.0 
+
+0.5 
+
+1.0 
+
+1.5 
+
+2.0 
+
+2.5 
+
+Hierarchical clustering P_QW L14 
+
+Figure 9: Python concept clustering, Qwen × L14. The atomicity super-cluster and control-flow groupings emerge in the green tree (§6.2). Try 
+
+> While
+> AsyncFor
+> AsyncWith
+> ClassDef
+> With
+> Nonlocal
+> Raise
+> AsyncFunc
+> YieldFrom
+> For
+> Return
+> Global
+> Lambda
+> If
+> Yield
+> bool
+> map
+> property
+> all
+> zip
+> bytes
+> range
+> dict
+> str
+> float
+> input
+> sum
+> reversed
+> hash
+> set
+> round
+> type
+> Assert
+> ImportFrom
+> Continue
+> Pass
+> Break
+> Import
+> int
+> iter
+> object
+> list
+> filter
+> any
+> min
+> print
+> id
+> FunctionDef
+> max
+> len
+> tuple
+> Delete
+> next
+> open
+> sorted
+> complex
+> super
+
+0.0 
+
+0.5 
+
+1.0 
+
+1.5 
+
+2.0 
+
+Hierarchical clustering P_DS L14 
+
+Figure 10: Python concept clustering, DeepSeek × L14. Direct companion to Figure 9 (same layer in both models for apples-to-apples comparison). The atomicity grouping replicates as a coherent cluster (§6.2). 15 D Linear-Probe Validation Detail 
+
+Figure 11 gives the per-layer probe accuracy and the Jaccard–cosine correlation underlying §7.2. 0 10 20 
+
+> Layer
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> Probe 1 Accuracy
+> (object vs checker)
+> P_QW: Probe accuracy by layer
+> chance
+
+(a) Probe accuracy by layer (97.6– 99.7%, 28 layers). 0 20 
+
+Layer 
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> Pearson r (Jacc.~vs Cos.)
+
+r by layer     
+
+> 0.00 0.05 0.10 0.15 0.20
+
+Jaccard (neuron view) 
+
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> Cosine (vector view)
+
+L20 scatter (r = 0.645) 
+
+(b) Jaccard–cosine correlation. Peak r = 0 .645 at L20. 
+
+Figure 11: Linear-probe validation, Python × Qwen, 24 AST concepts (§7.2). Left: probe accuracy at every layer. Right: per-layer Pearson correlation between pairwise concept-only Jaccard and probe-direction cosine across 276 concept pairs, plus the L20 scatter where r peaks. 16
