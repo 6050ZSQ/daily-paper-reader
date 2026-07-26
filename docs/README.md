@@ -6,46 +6,43 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-25
-- 运行时间：2026-07-25 21:29:07 UTC
+- 最新运行日期：2026-07-26
+- 运行时间：2026-07-26 21:29:00 UTC
 - 运行状态：成功
-- 本次总论文数：8
-- 精读区：4
-- 速读区：4
+- 本次总论文数：7
+- 精读区：2
+- 速读区：5
 
 ### 今日简报（AI）
-1) 今日精读两篇高分论文，聚焦神经符号学提升LLM组合能力与评估策略动态进化。  
-2) 最值得关注：利用组合范畴语法实现LLM符号化推理，以及让评估标准与策略协同自适应的新范式。  
-3) 建议优先精读这两篇9分论文，理解如何将符号逻辑注入神经网络以突破当前LLM的局限性。
-- 详情：[/202607/25/README](/202607/25/README)
+1) 今日精选7篇论文，聚焦低资源大语言模型与轻量级模型性能评估，精读2篇高价值研究。
+2) 重点推荐8分精读：孟加拉语文化纠缠词基准数据集揭示低资源LLM歧义难题，以及轻量级LLM性能简析。
+3) 若关注实用部署，可优先阅读轻量级LLM比较与光网络自动化评估，这两项对行业落地有直接参考价值。
+- 详情：[/202607/26/README](/202607/26/README)
 
 ### 精读区论文标签
-1. [From Dependency to Compositionality: A Neurosymbolic Lifting of LLM Outputs via Combinatory Categorial Grammar](/202607/25/2607.18961v2-from-dependency-to-compositionality-a-neurosymbolic-lifting-of-llm-outputs-via-combinatory-categorial-grammar)  
-   标签：评分：9.0/10、query:llm-ling
-   evidence：基于组合范畴语法的神经符号框架，将LLM输出提升为组合式推导
-2. [Co-Evolving LLM Evaluators and Policies via DynamicRubric](/202607/25/2607.20083v2-co-evolving-llm-evaluators-and-policies-via-dynamicrubric)  
-   标签：评分：9.0/10、query:llm-eval
-   evidence：共同演化评估器和策略以改进LLM反馈
-3. [Where Animacy Lives in Large Language Models: Tracing the Circuits of the Animacy Concept](/202607/25/2607.20995v1-where-animacy-lives-in-large-language-models-tracing-the-circuits-of-the-animacy-concept)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：追溯LLM中的生命性电路
-4. [What, Where, and How: Disentangling the Roles of Task, Language, and Model in Code Model Representations](/202607/25/2607.21491v1-what-where-and-how-disentangling-the-roles-of-task-language-and-model-in-code-model-representations)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：代码模型中的语法概念神经表征
+1. [When a Name Is Not a Name: A Benchmark Dataset and Distilled Reasoning for Culturally Entangled Bangla Homographs in Low-Resource LLMs](/202607/26/2607.17828v1-when-a-name-is-not-a-name-a-benchmark-dataset-and-distilled-reasoning-for-culturally-entangled-bangla-homographs-in-low-resource-llms)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：孟加拉语同形异义词消歧的语言模型评测基准
+2. [Profiling Lightweight Large Language Models](/202607/26/2607.20806v1-profiling-lightweight-large-language-models)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：提出面向轻量级大语言模型的精度感知剖析框架
 
 ### 速读区论文标签
-1. [LatentMT: Machine Translation with Latent Reasoning](/202607/25/2607.18618v1-latentmt-machine-translation-with-latent-reasoning)  
-   标签：评分：7.0/10、query:llm-ling
-   evidence：使用循环语言模型进行机器翻译的潜在推理
-2. [From Modalities to Propositions: A Language-Centric Framework for Multimodal Intelligence](/202607/25/2607.16560v1-from-modalities-to-propositions-a-language-centric-framework-for-multimodal-intelligence)  
+1. [An Evaluation Framework for Structured Audio Captions Validated by Controlled Perturbations](/202607/26/2607.21424v1-an-evaluation-framework-for-structured-audio-captions-validated-by-controlled-perturbations)  
+   标签：评分：7.0/10、query:llm-eval
+   evidence：使用LLM评估结构化音频描述的框架
+2. [From Modalities to Propositions: A Language-Centric Framework for Multimodal Intelligence](/202607/26/2607.16560v1-from-modalities-to-propositions-a-language-centric-framework-for-multimodal-intelligence)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：基于原子命题的多模态数据语言中心表示
-3. [Learning to Detect Cross-Modal Negation: An Analysis of Latent Representations and an Attention-Based Solution](/202607/25/2607.17712v1-learning-to-detect-cross-modal-negation-an-analysis-of-latent-representations-and-an-attention-based-solution)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：分析视觉语言模型中否定的潜在表示
-4. [Profiling Lightweight Large Language Models](/202607/25/2607.20806v1-profiling-lightweight-large-language-models)  
+   evidence：提出一种以语言为中心的多模态数据表示，使用原子命题，与语言表示相关
+3. [Human Grounded Evaluation of Large Language Models for Optical Network Automation](/202607/26/2607.18068v1-human-grounded-evaluation-of-large-language-models-for-optical-network-automation)  
    标签：评分：6.0/10、query:llm-eval
-   evidence：轻量级LLM的精确感知性能分析框架
+   evidence：提出HuGLEN评估管线用于比较LLM
+4. [Human Grounded Evaluation of Large Language Models for Optical Network Automation](/202607/26/2607.18068v2-human-grounded-evaluation-of-large-language-models-for-optical-network-automation)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：提出用于网络自动化的LLM评估流水线
+5. [Agentic coding without the cloud: evaluating open-weight large language models on longitudinal data preparation tasks](/202607/26/2607.21482v1-agentic-coding-without-the-cloud-evaluating-open-weight-large-language-models-on-longitudinal-data-preparation-tasks)  
+   标签：评分：6.0/10、query:llm-eval
+   evidence：评估LLM代理在数据准备任务上的框架
 
 
 <div class="dpr-home-promo-card">
