@@ -1,0 +1,418 @@
+Title: ADAGE: A Language-Agnostic Pipeline for Analogical Reasoning Evaluation
+
+URL Source: https://arxiv.org/pdf/2607.23058v1
+
+Published Time: Tue, 28 Jul 2026 00:26:15 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# ADAGE: A Language-Agnostic Pipeline for Analogical Reasoning Evaluation 
+
+Ahmed Haj Ahmed, Alvin Grissom II 
+
+Haverford College  
+
+> Correspondence: ahajahmed@haverford.edu
+
+Abstract 
+
+Multilingual reasoning evaluation overwhelm-ingly relies on translating English benchmarks, a practice that introduces linguistic artifacts and fails to test culturally-grounded reasoning. We introduce ADAGE (Analogical Difficulty-by-design Assessment for Grounded Evaluation), a language-agnostic pipeline that combines native-speaker curation with LLM-assisted gen-eration to construct challenging, translation-free benchmarks for abstract analogical rea-soning. We validate ADAGE by constructing benchmarks for Arabic, Amharic, and Japanese. Evaluating 14 open-weight models, we find a consistent cultural reasoning gap: models that perform well on English proverb reason-ing struggle substantially on all three native benchmarks, with accuracy dropping by 12–52 percentage points relative to English. We re-lease the pipeline, all three benchmarks, and the full evaluation suite. 1
+
+1 Introduction 
+
+Large language models have demonstrated strong performance on tasks commonly interpreted as re-quiring complex reasoning (Hendrycks et al., 2021; Cobbe et al., 2021; Srivastava et al., 2023; Wei et al., 2023), yet this progress has been measured almost exclusively through English-centric bench-marks. The dominant approach to multilingual eval-uation is to machine-translate these benchmarks into other languages (Fabbri et al., 2025; Ghosh et al., 2025)—a practice which, we argue, creates the illusion of multilingual competence. Mean-while, even in English, recent work has shown that benchmark performance can reflect brittle heuris-tics rather than robust reasoning (Mirzadeh et al., 2025). If we cannot be confident of genuine reason-ing in English, the situation is far worse when these already-fragile evaluations are simply translated.  
+
+> 1Code and data: https://github.com/AhmedHajAhmed/ adage-benchmark
+
+Evaluation-by-translation is problematic for two reasons: first, machine translation introduces un-natural phrasing and subtle errors—translationese— that confound the measurement: a model’s fail-ure may reflect poor translation rather than poor reasoning (Graham et al., 2019; Dey et al., 2024). Second, and more fundamentally, translation pre-serves the source culture’s assumptions while dis-carding the target culture’s reasoning patterns (Rys-trøm et al., 2025). Abstract analogical reasoning— interpreting a proverb like “He who does not know the falcon will roast it” and applying it to a novel situation—cannot in general survive translation because the underlying cultural schema is non-transferable. Translation-based benchmarks there-fore test whether models can apply English-centric analogies in another language, not whether they can reason within another culture with different assumptions. 
+
+Cultural Reasoning We use the term cultural reasoning to refer narrowly to the appropriate appli-cation of abstract meaning using culturally shared metaphors, norms, and contextual assumptions not explicitly stated in text—a capacity that is intrinsi-cally language- and culture-bound (Gentner, 1983; Holyoak, 2012). Proverb interpretation is a prototypical instance of this capacity. Cognitive psychology has shown that proverb comprehension requires identifying structural correspondences between contexts that share little or no lexical overlap, rather than merely decoding literal meaning (Gentner, 1983; Nippold et al., 2001). Successful interpretation depends on executive functions and higher-order abstrac-tion (Nippold et al., 1998; Holyoak, 2012): the reasoner must infer the underlying metaphor, map that relational structure to a novel context, and de-rive non-literal conclusions (Honeck, 1997). These processes are not purely linguistic but culturally situated—proverb comprehension arises from the 1arXiv:2607.23058v1 [cs.CL] 25 Jul 2026 interaction of metaphorical mapping, world knowl-edge, and cultural familiarity (Alhazmi et al., 2025; Liu et al., 2024). This makes proverb reasoning a stringent test of whether a system can recover abstract meaning and apply it flexibly, rather than relying on surface co-occurrence patterns. A growing body of work has begun to address the gap between translation-based and native cul-tural reasoning through natively authored bench-marks. MultiNRC (Fabbri et al., 2025) targets culturally grounded reasoning in French, Spanish, and Chinese; IOLBENCH (Goyal and Dan, 2025) evaluates formal linguistic reasoning; and Jawa-her (Magdy et al., 2025) provides a multidialectal Arabic proverb collection. ProverbEval (Azime et al., 2025) benchmarks proverb understanding in low-resource Ethiopian languages. However, these efforts share two limitations: each is constructed 
+
+ad hoc for a single language or language group, with no replicable pipeline that other communities can follow; and most test proverb explanation or meaning retrieval rather than analogical applica-tion: whether a model can map a proverb’s abstract meaning onto a novel scenario. Recent evidence suggests that models can memorize proverbs yet fail to reason about them in culturally nuanced ways (Liu et al., 2024), underscoring the need for benchmarks that test application, not recall. We introduce ADAGE (Analogical Difficulty-by-design Assessment for Grounded Evaluation), a language-agnostic, semi-synthetic pipeline for constructing culturally-grounded reasoning bench-marks without translation. ADAGE combines native-speaker curation with LLM-assisted sce-nario generation and a novel distractor strategy: proverbs are clustered by theme, and this struc-ture is exploited to select same-cluster, cross-theme near-match, and random distractors, creating a con-trolled difficulty gradient within each item. Be-cause every stage operates on abstract thematic structure rather than language-specific features, the pipeline transfers directly to any language with a corpus of proverbs or analogous cultural reasoning artifacts. 
+
+Contributions We validate ADAGE’s portabil-ity by constructing benchmarks for three typolog-ically diverse languages—Arabic, Amharic, and Japanese—spanning two language families, three scripts, and three resource levels. Evaluating 14 open-weight models (270M–35B parameters) from three families under zero-shot conditions, we find a consistent cultural reasoning gap: models that perform well on English proverb reasoning (Ghosh and Srivastava, 2022) struggle substantially on all three native benchmarks, with accuracy dropping by 12–52 percentage points. Error analysis con-firms that the distractor strategy functions as de-signed, with cross-theme near-matches attracting disproportionate errors whose gradient sharpens with model capability. Our contributions are: 1. ADAGE , a replicable, language-agnostic pipeline for constructing culturally grounded reasoning benchmarks, empirically validated across three typologically diverse languages. 2. Three benchmarks —CAPR-ar, CAPR-am, and CAPR-ja (Culturally-grounded Analogi-cal Proverb Reasoning)—for abstract analogi-cal proverb reasoning in Arabic, Amharic, and Japanese, the first benchmarks targeting this task in these languages. 3. Empirical evidence of a cultural reasoning gap that is consistent across model families and scales, demonstrating that translation-based evaluation overestimates multilingual reasoning capabilities. 
+
+2 Related Work 
+
+Multilingual evaluation and its limits. Multilin-gual benchmarks have rapidly expanded language coverage. BenchMAX (Huang et al., 2025) eval-uates across dozens of languages; MMATH (Luo et al., 2025) extends mathematical reasoning to multilingual settings; and XCOPA (Ponti et al., 2020) tests causal commonsense across eleven languages. However, the dominant construction method remains translation from English, and the resulting benchmarks inherit English-centric rea-soning structures. SynDARin (Ghazaryan et al., 2024) attempts to scale multilingual reasoning data by generating reasoning steps in English and trans-lating them, perpetuating this dependency. Empiri-cal evidence confirms the problem: models often perform better when prompted in English, even when the content is about other languages (Dey et al., 2024; Belay et al., 2025), suggesting that translated prompts are a degraded signal. More fundamentally, Rystrøm et al. (2025) argue that multilingual fluency does not imply multicultural understanding; a model can generate grammatical 2Arabic while defaulting to Western assumptions about social norms and reasoning. 
+
+Native-authored and cultural reasoning bench-marks. A recent wave of work has moved be-yond translation and toward natively-constructed evaluation. MultiNRC (Fabbri et al., 2025) tar-gets wordplay and culturally-grounded reasoning in French, Spanish, and Chinese. IOLBENCH (Goyal and Dan, 2025) evaluates formal linguistic reasoning independent of cultural knowledge. Cul-turalBench (Chiu et al., 2025) and Global PIQA (Chang et al., 2025) probe culture-specific com-monsense across many languages. For Arabic specifically, ARB (Ghaboura et al., 2025) provides a comprehensive multimodal benchmark, and Jawa-her (Magdy et al., 2025) offers a multidialectal collection of proverbs with explanations. In the proverb reasoning space, ePiC (Ghosh and Sri-vastava, 2022) tests English proverb-to-narrative matching via BIG-bench, and ProverbEval (Az-ime et al., 2025) benchmarks proverb understand-ing in low-resource Ethiopian languages including Amharic. However, Jawaher and ProverbEval test proverb explanation —a knowledge retrieval task— not application to novel scenarios. ePiC targets application but is English-only. In contrast to our work, each of these benchmarks is constructed ad hoc, with no shared, replicable pipeline that com-munities can apply to new languages. 
+
+Positioning of ADAGE. ADAGE addresses three gaps in this landscape. First, it targets analogical 
+
+application : models must map a proverb’s abstract meaning onto a novel scenario, not merely explain it; second, it provides a replicable pipeline with a principled distractor strategy, clustering proverbs by theme enables same-cluster distractors that test fine-grained reasoning, not just topic recognition; and third, we validate the pipeline across three ty-pologically and orthographically diverse languages (Arabic, Amharic, and Japanese), demonstrating portability and flexibility. To our knowledge, ADAGE is the first methodology that enables com-munities of native speakers to construct rigorous, difficulty-controlled reasoning benchmarks in their own languages without translation infrastructure or ad hoc design. 
+
+3 Methodology 
+
+The ADAGE pipeline constructs a culturally grounded reasoning benchmark in seven stages:           
+
+> 1. Data Acquisition
+> Proverb corpus →normalize & deduplicate
+> 2. Thematic Clustering
+> Label →embed →cluster →name
+> 3. Scenario Generation
+> 10 scenarios/proverb via GPT-OSS-120B
+> 4. Automated Filtering
+> Language, length, keyword, embedding checks
+> Human Quality Audit
+> Native-speaker sanity check
+> 5. Distractor Selection & MCQ Assembly
+> Same-cluster + cross-theme near-match + random
+> 6. Multi-Agent Validation
+> 3 LLM judges ×3 rubrics
+> 7. Dataset Curation
+> Proverb-level train/dev/test split
+
+Figure 1: The ADAGE pipeline. Seven stages flow top-to-bottom: (1) acquire and deduplicate proverbs, (2) embed and cluster by theme, (3) generate scenarios via LLM, (4) filter by language/length/keyword/embed-ding checks, (5) assemble same-cluster, cross-theme near-match, and random distractors, (6) validate with 3 LLM judges × 3 rubrics, (7) split by proverb into train/dev/test. Solid boxes are automated; the dashed box (between stages 4 and 5) is a human quality audit. All stages except (1) are language-independent. 
+
+(1) data acquisition, (2) thematic clustering, (3) sce-nario generation, (4) automated filtering, (5) dis-tractor selection, (6) multi-agent validation, and (7) dataset curation. Each stage addresses a dis-tinct failure mode—generation targets quality, fil-tering targets validity, and distractor selection tar-gets difficulty—so that the stages are decoupled and individually portable across languages. Fig-ure 1 provides a visual overview. Full prompts and parameter settings are provided in the appendix; the complete pipeline is released as open-source code. 2
+
+3.1 Thematic Clustering and Distractor Strategy 
+
+The core methodological contribution of ADAGE is the use of thematic clustering to enable difficulty-by-design distractor selection. The clustering pro-
+
+> 2
+
+Code: https://github.com/AhmedHajAhmed/ adage-benchmark 
+
+3cedure operates in three passes. In Pass 1 , a large language model assigns a concise English theme label (e.g., “patience and perseverance,” “betrayal consequences”) to each proverb, given the proverb text and its native-language explanation. English labels are used because they serve only as intermediate cluster-ing targets—never exposed in the final benchmark items—and the labeling model exhibits stronger instruction-following in English (Dey et al., 2024). In Pass 2 , the unique theme labels are embedded using a multilingual sentence-transformer (Reimers and Gurevych, 2019) and grouped via agglomera-tive clustering with Ward’s linkage. The number of clusters k is selected by exhaustive search over 
+
+k ∈ [10 , 25] , choosing the value that maximizes the weighted silhouette coefficient (Rousseeuw, 1987). 3
+
+In Pass 3 , each cluster is given a descriptive name by prompting the LLM with its member la-bels. Clustering on theme labels rather than raw proverb text is a deliberate design choice. Proverb embeddings encode surface-level features along-side semantics; two proverbs expressing the same theme through different metaphors may produce distant embeddings. Theme labels abstract away this variation, producing thematically coherent groups that would be difficult to recover from text embeddings alone. The clusters are then used for distractor selec-tion. Each multiple-choice question (MCQ) item consists of one correct proverb and three distrac-tors, assembled as a controlled difficulty gradient: 1. Same-cluster distractor : a proverb from the same thematic cluster as the correct answer,                               
+
+> 3The optimal weighted silhouette scores are low across all three languages: 0.058 (Arabic, k=24 ), 0.052 (Amharic,
+> k=20 ), and 0.075 (Japanese, k=8 ). This is expected rather than problematic. Proverbs are inherently polysemous: a single proverb may encode overlapping themes (e.g., patience, humility, and social propriety), producing soft boundaries that hard cluster assignments cannot fully capture. The silhouette coefficient penalizes such overlap heavily, so low scores are a domain property rather than a pipeline failure. Crucially, the purpose of clustering in ADAGE is not to recover ground-truth semantic categories but to generate plau-sible distractors. Even imperfect clusters serve this purpose: a same-cluster distractor need only be thematically related to the correct answer, not thematically identical . The error anal-ysis in §4.4 confirms that the distractor strategy functions as designed—same-cluster distractors attract substantially more errors than random distractors across all three languages— providing empirical validation that the clustering granularity is sufficient for difficulty-by-design item construction.
+> Scenario
+> 数学の先生は答案用紙を電子ス キ ャ ン で二度
+> チェック し、誤植が残っていないか 慎重に校閲
+> した 上で、生徒に配布した 。
+> A math teacher double-checked exam papers with an elec-tronic scan, carefully proofreading for typos before dis-tributing them to students.
+> Which proverb best fits this scenario?
+> (A) 亀の甲より 年の功cross-theme near-match
+> “Experience is worth more than a tortoise’s shell.”
+> (B) 石橋を叩いて 渡るcorrect
+> “Tap the stone bridge before crossing.”
+> (C) 一寸先は闇same-cluster
+> “An inch ahead is darkness.”
+> (D) 十人十色random-cluster
+> “Ten people, ten colors.”
+
+Table 1: Example CAPR-ja item from the Boldness vs. Caution cluster. The correct proverb (B) means “look before you leap”; the cross-theme near-match (A) also evokes patience and wisdom but refers to the value of experience, not caution. 4 of 7 models that answered incorrectly chose (A). 4
+
+creating a thematic confusion trap. Candi-dates with embedding similarity above 0.85 are excluded to prevent near-synonyms from appearing as distractors. 2. Cross-theme near-match : the most embedding-similar proverb from the full pool (excluding same-cluster), subject to the same 0.85 cap. This traps models that rely on surface similarity as a proxy for correctness. 3. Random-cluster distractor : a proverb from a different cluster, serving as a lower-plausibility control that establishes a difficulty baseline. Answer order is shuffled with a seeded random number generator to eliminate positional bias. 
+
+3.2 Scenario Generation and Filtering 
+
+For each proverb, an LLM generates 10 candi-date scenarios—short, modern narratives in the target language that illustrate the proverb’s mean-ing through analogy. The ten social domains rotated across scenarios are: workplace, fam-ily, neighbors/local community, friendship, com-merce/marketplace, education, politics/public af-
+
+> 4These Japanese proverbs translate naturally into famil-iar English equivalents—Arabic proverbs typically do not, illustrating precisely why translation-based evaluation cannot capture culturally grounded reasoning.
+
+4Arabic Amharic Japanese                   
+
+> Seed source Jawaher ProverbEval Kotowaza.org Proverbs 822 484 69 Clusters 24 20 8Scenarios generated 8,185 4,809 690 After filtering 8,172 4,787 682 Test items 1,222 716 100
+> Table 2: Benchmark statistics for each language. All benchmarks are split 70/15/15 at the proverb level to prevent memorization of proverb–theme associations.
+
+fairs, travel/diaspora, sports/competition, and tech-nology/internet. We use GPT-OSS-120B (OpenAI et al., 2025), a 116.8B-parameter open-weight MoE model served locally via Ollama. The generation prompt enforces six constraints: concreteness, anal-ogy rather than paraphrase, lexical separation from the proverb text, domain diversity (rotating across 10 social contexts), native-language output, and structured JSON format 5. The prompt is written in English with a target-language output instruction, so the same template applies to all three languages without modification. Generated scenarios are filtered automatically: each must pass a language identification check (≥70% target-script characters), a length constraint (10–120 words), a keyword overlap check ( ≤30% content-word overlap with the proverb), and an embedding similarity check ( ≤0.85 cosine simi-larity to the proverb). Scenarios that paraphrase the proverb too closely or leak lexical cues are discarded. Between filtering and distractor selec-tion, a native-speaker quality audit on randomly sampled scenarios (100 per language, one native speaker each) confirmed that all generated texts are coherent and culturally appropriate. This step is a lightweight sanity check, not the primary valida-tion; rigorous item-level quality assessment is per-formed by the multi-agent validation stage (§3.5). 
+
+3.3 Cross-Linguistic Instantiation 
+
+We validate ADAGE’s portability by constructing benchmarks for three typologically diverse lan-guages, summarized in Table 2. 
+
+Arabic uses the Jawaher dataset (Magdy et al., 2025), a multidialectal proverb collection with ex-planations in Arabic and English, yielding 822 unique proverbs after normalization and dedupli-cation. Amharic draws on ProverbEval (Azime et al., 2025), which provides 484 proverbs with 
+
+> 5The full prompt and constraint rationale are described in appendix Figure 4.
+
+meanings in Amharic and English. Japanese uses proverbs from Kotowaza.org, a trilingual proverb dictionary, yielding 69 entries. Because this source provides only English-language meanings (no na-tive Japanese explanations), the theme labeling and scenario generation stages receive English expla-nations in the native-meaning prompt slot—a lim-itation that tests the pipeline’s robustness when native-language metadata is unavailable. The only other language-specific adaptations are the Unicode ranges for language identification, the stopword lists for keyword overlap, and a morphological an-alyzer (Janome 6) for Japanese word segmentation. All other stages—clustering, distractor selection, validation, and evaluation—are identical across lan-guages. 
+
+3.4 Evaluation Protocol 
+
+We evaluate fourteen open-weight models span-ning four families and 270M–35B parameters: Gemma 3 (270M, 1B, 4B, 12B, 27B) (Kamath et al., 2025), Qwen 3 (1.7B, 4B, 8B, 14B, 32B) (Yang et al., 2025), Aya 23 (8B, 35B) (Aryabumi et al., 2024), and Aya Expanse (8B, 32B) (Dang et al., 2024). All models are served locally via Ol-lama under zero-shot prompting: each receives a scenario and four answer options entirely in the tar-get language, with no demonstrations or chain-of-thought instructions. GPT-OSS-120B is excluded from evaluation to avoid generator-evaluator over-lap. Performance is measured by accuracy over valid responses. For cross-benchmark comparison, we evaluate the same models on ePiC (Ghosh and Srivastava, 2022), an English proverb-reasoning MCQ bench-mark from BIG-bench that tests the same cognitive task—matching narratives to proverbs—in an En-glish cultural context. 
+
+3.5 Multi-Agent Validation 
+
+Benchmark quality is assessed by a panel of three open-weight LLM judges—Gemma 3 27B, Mis-tral Small 3.2, and Aya Expanse 32B—selected for provider diversity and multilingual coverage. Each judge scores every item on three rubrics (scenario faithfulness, naturalness, distractor plausibility) us-ing a 1–5 Likert scale. The rubric definitions and full prompts are in Appendix (Figure 3). To screen for quality, items are flagged if their mean score falls below 3.0 on any rubric or if inter-judge dis-
+
+> 6https://janome.mocobeta.dev/
+
+5Rubric ar am ja             
+
+> Faithfulness ( ≥4) 98.7 100.0 98.7 Naturalness ( ≥4) 100.0 77.7 100.0 Distractors ( ≥3) 99.4 100.0 99.9 Flagged (%) 4.4 35.3 0.7
+> Table 3: Majority-vote pass rates (%) and flagging rates per language. Rubric column parenthetical values are the minimum Likert score (1–5) for a judge to rate an item acceptable. The Amharic naturalness gap reflects weaker judge reliability on low-resource languages.
+
+agreement exceeds 2 points. 
+
+4 Results 
+
+4.1 Benchmark Quality 
+
+Table 3 reports majority-vote pass rates (2 of 3 judges rating “acceptable”) across all three bench-marks. Arabic and Japanese achieve high pass rates on all rubrics ( ≥98.7%), with flagging rates of 4.4% and 0.7% respectively. Amharic shows a different pattern: faithfulness and distractor plausibility pass at 100%, but naturalness drops to 77.7%, and the overall flagging rate is 35.3%. This is driven by two factors: 367 items (7.7%) where all three judges failed to produce valid evaluations—likely reflect-ing weaker Amharic-language processing by the judge models—and high inter-judge disagreement on naturalness, where Gemma 3 rates substantially lower than Mistral and Aya (mean 3.28 vs. 4.92 and 3.59). This is consistent with Amharic’s status as a genuinely low-resource language for current LLMs, affecting judge reliability and generation quality. Flagged items are retained in the final benchmarks to preserve test set size, particularly for Amharic (37.6% of test items are flagged) and to avoid se-lection bias. As a robustness check, we also report accuracy on the unflagged subset in §4.4; results are consistent with the full-set evaluation. Inter-annotator agreement (IAA) on raw scores is low across all languages (Krippendorff’s α ranges from −0.42 to 0.32 ), but this reflects calibration differences—judges use the 1–5 scale at different offsets—rather than genuine disagreement about which items are good or bad. When each judge’s scores are standardized to zero mean and unit vari-ance ( z-score normalization), all negative α values disappear. Similarly, binarized agreement (Cohen’s 
+
+κ) appears low not because judges disagree, but be-cause nearly all items pass—when one category dominates, κ is deflated even at high raw agree-ment rates (the prevalence paradox). 7
+
+4.2 Overall Accuracy 
+
+Table 4 reports accuracy for all 14 models on ePiC (English) and the three CAPR benchmarks. Several patterns emerge. First, all three CAPR benchmarks are non-trivial: the best model achieves 70.1% on Arabic, 41.3% on Amharic, and 93.0% on Japanese. Amharic accuracy barely exceeds chance (25%), confirm-ing it as a genuinely hard low-resource benchmark; Japanese accuracy is notably higher (see Discus-sion). The smallest model (Gemma 3 270M) per-forms at or near chance on all benchmarks, confirm-ing that the tasks cannot be solved by positional heuristics. Second, no single model family dom-inates: Gemma 3 leads on Arabic, but Qwen 3 is competitive at multiple scales, and Aya Expanse consistently outperforms the older Aya models at matched sizes (e.g., 63.3% vs. 54.5% at 32–35B on Arabic), indicating that targeted multilingual training improvements contribute meaningfully to culturally grounded reasoning. Third, the cultural reasoning gap is consistent. Models that perform well on English proverb rea-soning drop substantially on native benchmarks. On Arabic, accuracy falls by 10–20 percentage points relative to ePiC for the strongest models; on Amharic, the drop is 32–52 pp, with most models near chance. Japanese shows smaller gaps, dis-cussed below. 
+
+4.3 Scaling Behavior 
+
+Figure 2 plots accuracy against model size (log scale) for all four families across the three lan-guages. Within each family, accuracy increases with model size (Figure 2), but with diminishing re-turns and family-specific ceilings. Gemma 3 shows the steepest scaling, rising from chance at 270M to 70.1% at 27B on Arabic—approximately log-linear across five sizes. Qwen 3 scales sharply from 1.7B to 8B (+20.8 pp on Arabic) but then plateaus: 8B to 32B yields only 1.9 pp. This pattern suggests that scaling within a fixed architecture and train-ing distribution encounters diminishing returns on culturally grounded reasoning well before the pa-rameter frontier. The Aya family reveals that training data com-position matters as much as scale. Aya Expanse 
+
+> 7Appendix Tables 8–11 report the full IAA results across all three languages.
+
+6Model Params ePiC-en (%) CAPR-ar (%) CAPR-am (%) CAPR-ja (%)                                                                            
+
+> Gemma 3 27B 27B 83.0 70.1 41.3 86.0 Qwen 3 32B 32B 82.0 67.4 30.7 89.0 Qwen 3 14B 14B 82.5 66.4 32.4 91.0 Qwen 3 8B 8B 79.8 65.5 28.9 77.0 Gemma 3 12B 12B 81.3 65.3 39.2 85.0 Aya Expanse 32B 32B 77.5 63.3 32.7 93.0 Qwen 3 4B 4B 77.8 58.1 25.8 77.0 Aya 35B 35B 74.7 54.5 25.0 80.0 Aya Expanse 8B 8B 69.0 53.5 25.4 76.0 Gemma 3 4B 4B 62.4 50.6 30.3 55.0 Qwen 3 1.7B 1.7B 57.4 44.7 29.6 38.0 Aya 8B 8B 58.5 44.4 25.1 62.0 Gemma 3 1B 1B 32.0 30.0 27.8 28.0 Gemma 3 270M 270M 18.4 24.5 24.0 22.0 Random baseline —20.0 25.0 25.0 25.0
+
+Table 4: Accuracy on ePiC (English, 5-choice) and the three CAPR benchmarks (4-choice), sorted by CAPR-ar accuracy. All evaluations are zero-shot. The random baseline differs because ePiC uses 5 answer choices. 0.3 1 4 12 32            
+
+> Parameters (B)
+> 20
+> 40
+> 60
+> 80
+> 100
+> Accuracy (%)
+> chance
+> Arabic (1,222 items)
+> 0.3 1412 32
+> Parameters (B)
+> Amharic (716 items)
+> 0.3 1412 32
+> Parameters (B)
+> Japanese (100 items)
+> Gemma 3 Qwen 3 Aya Aya Expanse
+
+Figure 2: Accuracy vs. model size (log scale) across three languages. Dashed line = 25% chance. Scaling yields clear gains on Arabic and Japanese but negligible improvement on Amharic, where most models cluster near chance regardless of size. 
+
+8B outperforms the original Aya 8B by 9.1 pp on Arabic (53.5% vs. 44.4%), a gain comparable to quadrupling parameters within the Gemma fam-ily. On Amharic, scaling effects largely vanish: all models cluster near chance (24–41%), suggesting that Amharic-language competence is the binding constraint rather than reasoning capacity. 
+
+4.4 Error Analysis Distractor type vulnerability. Table 5 reports the distribution of errors by distractor type. On Ara-bic, cross-theme near-matches attract the largest share of errors (34.4%), followed by same-cluster (31.2%) and random-cluster (26.9%)—mirroring the intended difficulty gradient. This gradi-ent sharpens with model capability: Gemma 3 27B shows a 16.2 pp gap between cross-theme near-match and random-cluster error rates, while Gemma 3 270M shows a flat distribution con-sistent with random guessing. On Japanese, a similar pattern holds with random-cluster distrac-tors attracting the fewest errors (30.1%). On Amharic, however, the distribution is nearly flat (32.9%/34.7%/32.4%), consistent with models per-forming near chance—the difficulty gradient can-not emerge when models lack the linguistic compe-tence to engage with the task content. 8
+
+Error convergence. When multiple models an-swer an item incorrectly, they tend to converge on the same wrong distractor. We measure this as the proportion of wrong answers that fall on the most-chosen distractor for each item, averaged across 
+
+> 8Appendix Tables 16, 17, and 18 report accuracy averaged across all 14 models for each thematic cluster on CAPR-ar, CAPR-am, and CAPR-ja respectively.
+
+7Distractor type ar (%) am (%) ja (%)          
+
+> Cross-theme near-match 34.4 32.9 34.2 Same cluster 31.2 34.7 35.8 Random cluster 26.9 32.4 30.1
+> Table 5: Aggregate error distribution by distractor type. The gradient mirrors the intended difficulty ordering on Arabic and Japanese; Amharic is flat, consistent with near-chance performance.
+
+items (1.0 = all wrong models pick the same option; 0.33 = uniform spread). The mean convergence score is 0.652 on Arabic, 0.616 on Japanese, and 0.527 on Amharic—all substantially above the 0.33 uniform baseline. Even on Amharic, where accu-racy is near chance, convergence exceeds 0.50, indi-cating that distractor design systematically exposes shared weaknesses in how LLMs represent proverb semantics rather than eliciting random noise. 
+
+Position bias. Position bias severity correlates inversely with model size. Models above 4B pa-rameters show near-uniform answer distributions, while Gemma 3 270M selects option D in 89.6% of cases, confirming that it has not learned the MCQ format and defaults to positional heuristics. 9.
+
+Robustness to item quality. To verify that flagged items do not distort the main findings, we re-evaluate the top 5 models on the unflagged sub-sets of each test set (Arabic: 1,166/1,222 items; Amharic: 447/716; Japanese: 100/100—zero items flagged). Accuracy on the unflagged subsets is within 1.3 pp of the full-set results across all models and languages, confirming that the cultural reason-ing gap is not an artifact of item quality variation. The largest shift is Qwen 3 32B on Amharic (+1.3 pp), despite removing 37.6% of test items. 
+
+5 Discussion 
+
+The most striking result is the accuracy spread across languages: 41.3% (Amharic), 70.1% (Ara-bic), 93.0% (Japanese). This variation is not a pipeline artifact; the same seven stages, the same models, and the same evaluation protocol produce dramatically different outcomes depend-ing on the target language. This variation val-idates the language-agnostic framing: because each benchmark tests culturally native content rather than translated English reasoning, the dif-ficulty differences reflect genuine gaps in language-
+
+> 9Exhaustive position bias data are in appendix Tables 12, 6, and 7
+
+specific competence that translation-based evalua-tion would obscure. The three-language compari-son also reveals that “multilingual” model perfor-mance is not a single capability but a composite of language-specific competences that vary by orders of magnitude within the same model. Amharic is the most revealing case. With the best model at 41.3% (chance = 25%), a flat dis-tractor gradient (32.9%/34.7%/32.4%), extreme po-sition bias even in large models ( χ2 > 100 for Gemma 3 27B and Qwen 3 32B), and near-zero cross-model agreement ( ρ = 0 .048 ), the evidence points to a language competence failure rather than a reasoning failure. Models cannot engage with Amharic text reliably enough for the designed diffi-culty gradient to emerge. This is itself a meaningful finding: current “multilingual” models have essen-tially no culturally grounded reasoning capability in genuinely low-resource languages, a gap that translation-based evaluation would never reveal. Japanese accuracy is notably high, but three fac-tors temper its interpretation. First, the test set contains only 100 items across 7 clusters, reduc-ing statistical power and thematic diversity rela-tive to Arabic (1,222 items, 23 clusters). Second, Japanese is a high-resource language with exten-sive pretraining coverage, so strong performance may reflect richer proverb representations in train-ing data. Third, some Japanese proverbs—for ex-ample, 一石二鳥 (“one stone, two birds”)—have well-known Chinese or English cognates, enabling cross-lingual transfer that is unavailable for Arabic or Amharic proverbs. These factors do not invali-date the Japanese benchmark but suggest it sets a lower ceiling for discriminative power; expanding the test set is a clear next step. The distractor strategy and scaling behavior in-teract with language competence in a consistent pattern. On Arabic, where models engage meaning-fully with the content, the intended difficulty gra-dient emerges clearly and sharpens with scale. On Japanese, where accuracy is high, the gradient is at-tenuated but random-cluster distractors remain the least deceptive. On Amharic, the gradient vanishes entirely. Similarly, scaling yields log-linear gains on Arabic, diminishing returns on Japanese, and negligible improvement on Amharic (Figure 2)— suggesting that parameter count helps only after a minimum threshold of language competence is met. Training data composition matters at least as much: Aya Expanse’s targeted multilingual training yields gains comparable to quadrupling parameters 8within the Gemma family on Arabic, yet provides no advantage on Amharic. 
+
+6 Conclusion 
+
+We introduced ADAGE, a language-agnostic pipeline for constructing culturally grounded rea-soning benchmarks without translation. By com-bining native-speaker curation with LLM-assisted generation and a cluster-based distractor strat-egy, ADAGE produces difficulty-controlled MCQ benchmarks that test abstract analogical reasoning as it is expressed natively in each language. We validated the pipeline’s portability by construct-ing benchmarks for three typologically diverse languages—Arabic, Amharic, and Japanese—and evaluating 14 open-weight models under zero-shot conditions. The results reveal a cultural reasoning gap that varies dramatically with language resource level. On Arabic, the best model reaches 70.1%— substantially below human performance—with a clear distractor difficulty gradient confirming that failures are systematic. On Amharic, accuracy barely exceeds chance (41.3%), with flat distrac-tor distributions and extreme position bias indicat-ing that current models lack the language compe-tence to engage with the task. On Japanese, ac-curacy reaches 93.0%, consistent with high pre-training coverage but constrained by a smaller test set. Across all three languages, models that achieve strong performance on English proverb reasoning drop by 12–52 percentage points on native bench-marks, and this gap does not close with scale alone. These findings demonstrate that evaluation-by-translation substantially overestimates multilingual reasoning capabilities. We release the pipeline, benchmarks, and evaluation suite to support expan-sion to additional languages. 
+
+Limitations 
+
+Test set size imbalance. The three benchmarks differ substantially in size: 1,222 items (Arabic), 716 (Amharic), and 100 (Japanese). The Japanese test set in particular limits statistical power and clus-ter coverage (7 of 8 clusters represented). Cross-language comparisons should be interpreted with this asymmetry in mind. 
+
+Zero-shot evaluation only. All models were evaluated under zero-shot prompting with a 300-second timeout. Qwen 3 models, which use chain-of-thought reasoning internally, produced a small number of unparseable responses—up to 3.8% on Amharic—likely due to exceeding this limit (details are described in Appendix A.1). Few-shot or chain-of-thought strategies may un-lock additional capability, and the gap between prompted and unprompted performance would it-self be diagnostic—large improvements would sug-gest latent cultural knowledge that models fail to access spontaneously. 
+
+Open-weight models only. The evaluation cov-ers models up to 35B parameters. Larger propri-etary models (GPT, Claude, Gemini) may exhibit qualitatively different performance, and their inclu-sion would provide a more complete picture of the current frontier. 
+
+LLM-generated scenarios and LLM judges. 
+
+Both scenario generation and multi-agent valida-tion rely on LLMs. While the human quality audit and high majority-vote pass rates (98.7–100% on Arabic and Japanese) provide evidence of qual-ity, systematic human annotation would strengthen confidence, particularly for Amharic where judge reliability is lower (35.3% flagging rate). 
+
+Cross-benchmark comparison. The English baseline (ePiC) differs from CAPR in format (5 vs. 4 options), scenario source (crowdsourced vs. LLM-generated), and human baseline (70% from unscreened MTurk workers). These differences ar-guably strengthen the comparison—the gap cannot be attributed to shared construction artifacts—but direct comparability is limited. 
+
+Ethical Considerations 
+
+The benchmarks contain proverbs that reference vi-olence, gender roles, religion, and social hierarchy. These reflect authentic cultural wisdom traditions and are retained without sanitization to preserve the reasoning challenges they encode. No scenarios depict graphic content; all are set in everyday mod-ern contexts. English translations of some proverbs may appear jarring when removed from their cul-tural context. 
+
+References    
+
+> Albatool Ahmad Alhazmi, Marwa Ibrahim Elamin, Muneera Muftah, and Umalhussein Adam Mo-hammad. 2025. Embodiment in colloquial arabic proverbs: A cognitive linguistic perspective. Open Linguistics , 11.
+
+9Viraat Aryabumi, John Dang, Dwarak Talupuru, Saurabh Dash, David Cairuz, Hangyu Lin, Bharat Venkitesh, Madeline Smith, Kelly Marchisio, Se-bastian Ruder, Acyr Locatelli, Julia Kreutzer, Nick Frosst, Aidan Gomez, Phil Blunsom, Marzieh Fadaee, Ahmet Üstün, and Sara Hooker. 2024. Aya 23: Open weight releases to further multilingual progress. 
+
+Preprint , arXiv:2405.15032. Israel Abebe Azime, Atnafu Lambebo Tonja, Tadesse Destaw Belay, Yonas Chanie, Bontu Fufa Balcha, Negasi Haile Abadi, Henok Biadglign Ademtew, Mulubrhan Abebe Nerea, Debela De-salegn Yadeta, Derartu Dagne Geremew, Assefa Ats-biha tesfau, Philipp Slusallek, Thamar Solorio, and Dietrich Klakow. 2025. Proverbeval: Exploring llm evaluation challenges for low-resource language understanding. Preprint , arXiv:2411.05049. Tadesse Destaw Belay, Ahmed Haj Ahmed, Alvin Gris-som II, Iqra Ameer, Grigori Sidorov, Olga Kolesnikova, and Seid Muhie Yimam. 2025. Culemo: Cultural lenses on emotion – benchmarking llms for cross-cultural emotion understanding. Preprint ,arXiv:2503.10688. Tyler A. Chang, Catherine Arnett, Abdelrahman Eldes-okey, Abdelrahman Sadallah, Abeer Kashar, Abolade Daud, Abosede Grace Olanihun, Adamu Labaran Mo-hammed, Adeyemi Praise, Adhikarinayum Meerajita Sharma, Aditi Gupta, Afitab Iyigun, Afonso Simplí-cio, Ahmed Essouaied, Aicha Chorana, Akhil Eppa, Akintunde Oladipo, Akshay Ramesh, Aleksei Dorkin, and 319 others. 2025. Global piqa: Evaluating physi-cal commonsense reasoning across 100+ languages and cultures. Preprint , arXiv:2510.24081. Yu Ying Chiu, Liwei Jiang, Bill Yuchen Lin, Chan Young Park, Shuyue Stella Li, Sahithya Ravi, Mehar Bhatia, Maria Antoniak, Yulia Tsvetkov, Vered Shwartz, and Yejin Choi. 2025. Cultural-bench: A robust, diverse, and challenging cultural benchmark by human-ai culturalteaming. Preprint ,arXiv:2410.02677. Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. 2021. Training verifiers to solve math word prob-lems. Preprint , arXiv:2110.14168. John Dang, Shivalika Singh, Daniel D’souza, Arash Ahmadian, Alejandro Salamanca, Madeline Smith, Aidan Peppin, Sungjin Hong, Manoj Govindassamy, Terrence Zhao, Sandra Kublik, Meor Amer, Viraat Aryabumi, Jon Ander Campos, Yi-Chern Tan, Tom Kocmi, Florian Strub, Nathan Grinsztajn, Yannis Flet-Berliac, and 26 others. 2024. Aya expanse: Combin-ing research breakthroughs for a new multilingual frontier. Preprint , arXiv:2412.04261. Krishno Dey, Prerona Tarannum, Md. Arid Hasan, Im-ran Razzak, and Usman Naseem. 2024. Better to ask in english: Evaluation of large language models on english, low-resource and cross-lingual settings. 
+
+Preprint , arXiv:2410.13153. Alexander R. Fabbri, Diego Mares, Jorge Flores, Meher Mankikar, Ernesto Hernandez, Dean Lee, Bing Liu, and Chen Xing. 2025. Multinrc: A challenging and native multilingual reasoning evaluation benchmark for llms. Preprint , arXiv:2507.17476. Dedre Gentner. 1983. Structure-mapping: A theoretical framework for analogy. Cognitive Science , 7(2):155– 170. Sara Ghaboura, Ketan More, Wafa Alghallabi, Omkar Thawakar, Jorma Laaksonen, Hisham Cholakkal, Salman Khan, and Rao Muhammad Anwer. 2025. Arb: A comprehensive arabic multimodal reasoning benchmark. Preprint , arXiv:2505.17021. Gayane Ghazaryan, Erik Arakelyan, Pasquale Min-ervini, and Isabelle Augenstein. 2024. Syndarin: Synthesising datasets for automated reasoning in low-resource languages. Preprint , arXiv:2406.14425. Akash Ghosh, Debayan Datta, Sriparna Saha, and Chi-rag Agarwal. 2025. A survey of multilingual reason-ing in language models. Preprint , arXiv:2502.09457. Sayan Ghosh and Shashank Srivastava. 2022. epic: Employing proverbs in context as a benchmark for abstract language understanding. Preprint ,arXiv:2109.06838. Satyam Goyal and Soham Dan. 2025. Iolbench: Bench-marking llms on linguistic reasoning. Preprint ,arXiv:2501.04249. Yvette Graham, Barry Haddow, and Philipp Koehn. 2019. Translationese in machine translation eval-uation. Preprint , arXiv:1906.09833. Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Stein-hardt. 2021. Measuring massive multitask language understanding. Proceedings of the International Con-ference on Learning Representations (ICLR) .Keith Holyoak. 2012. Analogy and relational reasoning. 
+
+The Oxford Handbook of Thinking and Reasoning .R.P. Honeck. 1997. A Proverb in Mind: The Cognitive Science of Proverbial Wit and Wisdom . L. Erlbaum Associates. Xu Huang, Wenhao Zhu, Hanxu Hu, Conghui He, Lei Li, Shujian Huang, and Fei Yuan. 2025. Benchmax: A comprehensive multilingual evaluation suite for large language models. Preprint , arXiv:2502.07346. Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin, Tatiana Matejovicova, Alexandre Ramé, Morgane Rivière, Louis Rouillard, Thomas Mesnard, Geoffrey Cideron, Jean bastien Grill, Sabela Ramos, Edouard Yvinec, Michelle Casbon, Etienne Pot, Ivo Penchev, Gaël Liu, and 196 others. 2025. Gemma 3 technical report. 
+
+Preprint , arXiv:2503.19786. 
+
+10 Chen Cecilia Liu, Fajri Koto, Timothy Baldwin, and Iryna Gurevych. 2024. Are multilingual LLMs culturally-diverse reasoners? an investigation into multicultural proverbs and sayings. In Proceedings of the 2024 Conference of the North American Chap-ter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 2016–2039, Mexico City, Mexico. As-sociation for Computational Linguistics. Wenyang Luo, Wayne Xin Zhao, Jing Sha, Shijin Wang, and Ji-Rong Wen. 2025. Mmath: A multilingual benchmark for mathematical reasoning. Preprint ,arXiv:2505.19126. Samar M. Magdy, Sang Yun Kwon, Fakhraddin Alwa-jih, Safaa Abdelfadil, Shady Shehata, and Muham-mad Abdul-Mageed. 2025. Jawaher: A multidialec-tal dataset of arabic proverbs for llm benchmarking. 
+
+Preprint , arXiv:2503.00231. Iman Mirzadeh, Keivan Alizadeh, Hooman Shahrokhi, Oncel Tuzel, Samy Bengio, and Mehrdad Farajtabar. 2025. Gsm-symbolic: Understanding the limitations of mathematical reasoning in large language models. 
+
+Preprint , arXiv:2410.05229. Marilyn Nippold, Susan Hegel, Linda Uhden, and Silvia Bustamante. 1998. Development of proverb compre-hension in adolescents: Implications for instruction. 
+
+Journal of Children’s Communication Development ,19. Marilyn A. Nippold, Melissa M. Allen, and Dixon I. Kirsch. 2001. Proverb comprehension as a function of reading proficiency in preadolescents. Language, Speech, and Hearing Services in Schools , 32(2):90– 100. OpenAI, :, Sandhini Agarwal, Lama Ahmad, Jason Ai, Sam Altman, Andy Applebaum, Edwin Arbus, Rahul K. Arora, Yu Bai, Bowen Baker, Haiming Bao, Boaz Barak, Ally Bennett, Tyler Bertao, Nivedita Brett, Eugene Brevdo, Greg Brockman, Sebastien Bubeck, and 108 others. 2025. gpt-oss-120b & gpt-oss-20b model card. Preprint , arXiv:2508.10925. Edoardo Maria Ponti, Goran Glavaš, Olga Majewska, Qianchu Liu, Ivan Vuli´ c, and Anna Korhonen. 2020. Xcopa: A multilingual dataset for causal common-sense reasoning. Preprint , arXiv:2005.00333. Nils Reimers and Iryna Gurevych. 2019. Sentence-bert: Sentence embeddings using siamese bert-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing . Associa-tion for Computational Linguistics. Peter J. Rousseeuw. 1987. Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. 
+
+Journal of Computational and Applied Mathematics ,20:53–65. Jonathan Rystrøm, Hannah Rose Kirk, and Scott Hale. 2025. Multilingual != multicultural: Evaluating gaps between multilingual capabilities and cultural align-ment in llms. Preprint , arXiv:2502.16534. Aarohi Srivastava, Abhinav Rastogi, Abhishek Rao, Abu Awal Md Shoeb, Abubakar Abid, Adam Fisch, Adam R. Brown, Adam Santoro, Aditya Gupta, Adrià Garriga-Alonso, Agnieszka Kluska, Aitor Lewkowycz, Akshat Agarwal, Alethea Power, Alex Ray, Alex Warstadt, Alexander W. Kocurek, Ali Safaya, Ali Tazarv, and 432 others. 2023. Be-yond the imitation game: Quantifying and extrap-olating the capabilities of language models. Preprint ,arXiv:2206.04615. Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou. 2023. Chain-of-thought prompting elic-its reasoning in large language models. Preprint ,arXiv:2201.11903. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Day-iheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, and 41 others. 2025. Qwen3 technical report. Preprint ,arXiv:2505.09388. 
+
+11 A Computational Resources and Prompts 
+
+A.1 Compute Environment 
+
+All generation, validation, and evaluation were per-formed locally on a Mac Studio with an Apple M3 Ultra (32-core CPU, 80-core GPU, 512 GB unified memory). Models were served via Ollama using each model’s native chat template. GPT-OSS-120B (116.8B parameters, MoE with 5.1B active parameters per forward pass) was loaded in its na-tive MXFP4 quantization (60.8 GiB) without CPU offloading. Generation used temperature 1.0; vali-dation judges used temperature 0.3; evaluation used temperature 0.0. No proprietary APIs were used at any pipeline stage. 
+
+A.2 Replication Details Invalid responses. All models were evaluated with a 300-second generation timeout. Qwen 3 models produced a small number of unparseable responses (no valid A/B/C/D extracted), likely due to extended chain-of-thought reasoning exceed-ing this limit. No other model family exhibited this behavior. Affected counts: Qwen 3 8B on Amharic (27/716, 3.8%), Qwen 3 4B on Amharic (23/716, 3.2%), Qwen 3 1.7B on Amharic (18/716, 2.5%), Qwen 3 14B on Amharic (7/716, 1.0%), Qwen 3 32B on Arabic (1/1,222), Amharic (2/716), and Japanese (1/100), and Qwen 3 4B on Japanese (1/100). Invalid responses were scored as incorrect. 12 System Prompt 
+
+You are an expert evaluator of educational assessment items. You will evaluate a multiple-choice question (MCQ) that tests understanding of proverbs through real-world scenarios. You must evaluate the item on exactly three rubrics, each scored from 1 (worst) to 5 (best): 1. Scenario Faithfulness :5: The scenario perfectly illustrates the proverb’s meaning through analogy. The connection is clear but requires inference — it is NOT a paraphrase. 4: Illustrates meaning well, with minor ambiguity. 3: Partially captures meaning but analogy is weak or unclear. 2: Only loosely relates; connection is forced or misleading. 1: No meaningful connection, or directly paraphrases the proverb. 2. Scenario Naturalness :5: Natural, coherent, well-written narrative that reads like a real-world situation. 4: Mostly natural with minor awkwardness. 3: Understandable but noticeably unnatural phrasing. 2: Significant language issues (grammar, coherence, register). 1: Largely incoherent, ungrammatical, or unreadable. 3. Distractor Plausibility :5: All 3 wrong answers are plausible but distinguishable by a knowledgeable reader. 4: 2–3 distractors plausible; at most one obviously wrong. 3: At least 1 distractor plausible; others somewhat easy to eliminate. 2: Distractors mostly implausible; correct answer obvious. 1: Distractors completely unrelated; item is trivial. Respond in the exact JSON format specified. Be rigorous and consistent in your scoring. 
+
+User Prompt 
+
+Evaluate the following proverb MCQ item. 
+
+Scenario: {scenario} 
+
+Options: 
+
+(A) {option_a} (B) {option_b} (C) {option_c} (D) {option_d} 
+
+Correct Answer: ({correct_letter}) {correct_text} Provide your evaluation: 
+
+Figure 3: Validation prompt with rubric definitions (verbatim). Structured JSON output is enforced via Ollama’s schema-constrained decoding. 
+
+13 System Prompt 
+
+You are an expert in {culture} culture and proverbs. Given a proverb with its meaning, generate {n} short real-world scenarios where this proverb applies. Rules: 1. Each scenario must be a concrete, specific story — not an abstract description. 2. Each scenario must express the proverb’s meaning through ANALOGY, not paraphrase. Do not restate or explain the proverb’s meaning directly. The reader should need to infer the connection. 3. Do NOT reuse any content words (nouns, verbs, adjectives) from the proverb text. 4. Each scenario must come from a DIFFERENT social context. Use these in order: {domains} 5. Write in {language}. Each scenario: {min_words}–{max_words} words. 6. Return ONLY a JSON array of strings. No other text. 
+
+User Prompt 
+
+Proverb: {proverb} Meaning ({language}): {native_explanation} Meaning (English): {en_explanation} English equivalent: {en_equivalent} Generate {n} scenarios: 
+
+Figure 4: Scenario generation prompt (verbatim). The same template is used for all three languages; only the culture descriptor, language name, and word-count bounds change. 
+
+14 B Supplemental Results 
+
+Model A B C D χ2
+
+Qwen 3 14B 145 210 183 171 12.3 Qwen 3 8B 130 196 181 182 14.6 Gemma 3 12B 182 129 231 174 29.3 Qwen 3 1.7B 168 179 238 113 45.1 Qwen 3 4B 131 116 221 225 57.8 Qwen 3 32B 95 124 222 273 116.3 Gemma 3 27B 75 229 266 146 122.8 Gemma 3 4B 134 330 190 62 215.8 Aya Expanse 32B 45 345 233 93 311.9 Gemma 3 1B 316 63 337 0 498.5 Aya 35B 136 132 429 22 507.4 Aya Expanse 8B 7 480 226 3 856.8 Gemma 3 270M 0 40 72 604 1,360.0 Aya 8B 43 62 611 0 1,401.4 
+
+Table 6: Position bias on CAPR-am (716 items). Ground truth: A=173, B=185, C=187, D=171. 
+
+Model A B C D χ2
+
+Qwen 3 4B 23 23 26 27 0.5 Aya Expanse 32B 26 24 28 22 0.8 Qwen 3 14B 24 24 29 23 0.9 Aya Expanse 8B 23 25 29 23 1.0 Qwen 3 32B 28 24 28 19 2.2 Gemma 3 12B 32 26 22 20 3.4 Qwen 3 8B 27 27 29 17 3.5 Gemma 3 27B 33 25 24 18 4.6 Gemma 3 4B 27 32 26 15 6.2 Qwen 3 1.7B 21 30 34 15 8.9 Aya 35B 19 24 38 19 9.7 Aya 8B 38 20 27 15 11.9 Gemma 3 1B 45 18 35 2 43.1 Gemma 3 270M 0 2 0 98 284.3 
+
+Table 7: Position bias on CAPR-ja (100 items). Ground truth: A=26, B=25, C=27, D=22. 
+
+Rubric Lang Kripp. α Fleiss κ ICC 
+
+Faithfulness ar 0.25 0.19 0.28 am −0.22 −0.10 0.02 ja 0.32 0.24 0.34 Naturalness ar −0.24 −0.22 0.03 am −0.33 −0.20 0.01 ja −0.19 −0.19 0.04 Distractors ar −0.14 −0.14 0.07 am −0.42 −0.24 0.00 ja −0.22 −0.22 0.04 
+
+Table 8: Primary inter-annotator agreement metrics per rubric and language. 
+
+Rubric Lang Gemma 3 Mistral Sm. Aya Exp. 
+
+Faith. ar 4.09 (.40) 4.23 (.53) 4.42 (.52) 
+
+am 3.37 (.61) 4.52 (.50) 4.51 (.50) 
+
+ja 4.13 (.41) 4.44 (.63) 4.42 (.52) 
+
+Natur. ar 4.52 (.50) 4.98 (.15) 4.00 (.39) 
+
+am 3.28 (.79) 4.92 (.28) 3.59 (.50) 
+
+ja 4.82 (.38) 4.98 (.13) 4.22 (.45) 
+
+Distr. ar 2.88 (.40) 3.75 (.46) 3.71 (.58) 
+
+am 2.38 (.48) 3.98 (.22) 4.23 (.44) 
+
+ja 3.04 (.25) 3.91 (.33) 3.75 (.52) 
+
+Table 9: Per-judge scoring means (std) by rubric and language. 
+
+Rubric Lang Raw α z-Norm α ∆
+
+Faith. ar 0.25 0.32 +0.07 am −0.22 0.05 +0.27 ja 0.32 0.39 +0.08 Natur. ar −0.24 0.09 +0.33 am −0.33 0.06 +0.39 ja −0.19 0.08 +0.26 Distr. ar −0.14 0.15 +0.29 am −0.42 0.00 +0.42 ja −0.22 0.11 +0.33 
+
+Table 10: Effect of z-score normalization on Krippen-dorff’s α. Normalization eliminates all negative values across all languages. 
+
+Rubric Lang Gem.–Mis. Gem.–Aya Mis.–Aya 
+
+Faith. ar 0.31 0.34 0.30 am 0.04 0.06 0.03 ja 0.40 0.39 0.41 Natur. ar 0.07 0.15 0.07 am 0.08 0.04 0.04 ja 0.05 0.20 −0.04 Distr. ar 0.16 0.17 0.10 am 0.01 0.00 0.00 ja 0.14 0.10 0.10 
+
+Table 11: Pairwise Spearman ρ per rubric. Arabic and Japanese faithfulness correlations are moderate ( ρ ≈
+
+0.3–0.4, p < 0.001 ); Amharic correlations are near zero, reflecting weaker judge reliability on low-resource text. 
+
+15 Model A B C D χ2
+
+Qwen 3 8B 283 312 304 323 2.8 Gemma 3 12B 330 267 317 308 7.3 Qwen 3 4B 305 278 348 291 9.1 Gemma 3 27B 258 335 327 302 11.8 Aya Expanse 8B 255 330 330 307 12.3 Qwen 3 14B 275 289 287 371 19.1 Aya 35B 374 261 263 324 28.9 Qwen 3 1.7B 240 324 397 261 49.1 Qwen 3 32B 236 280 298 407 51.9 Aya Expanse 32B 375 353 282 212 53.6 Gemma 3 4B 311 414 351 146 128.7 Aya 8B 410 445 202 165 199.1 Gemma 3 1B 526 148 517 31 633.4 Gemma 3 270M 3 89 35 1,095 2,732.8 
+
+Table 12: Position bias on CAPR-ar (1,222 items). Ground truth: A=321, B=308, C=287, D=306. 
+
+Model 1 Model 2 ρ
+
+Highest agreement 
+
+Qwen 3 14B Qwen 3 32B 0.549 Gemma 3 27B Qwen 3 14B 0.517 Gemma 3 12B Gemma 3 27B 0.512 Qwen 3 14B Qwen 3 8B 0.502 Gemma 3 27B Qwen 3 32B 0.500 
+
+Lowest agreement 
+
+Gemma 3 270M Qwen 3 4B −0.065 Aya 8B Gemma 3 270M −0.113 Aya Exp. 32B Gemma 3 270M −0.151 Gemma 3 270M Gemma 3 4B −0.218 Gemma 3 1B Gemma 3 270M −0.331 
+
+Table 13: Top-5 and bottom-5 pairwise Spearman ρ of item-level correctness on CAPR-ar. Mean ρ across all 91 pairs: 0.257. 
+
+Model 1 Model 2 ρ
+
+Highest agreement 
+
+Gemma 3 27B Gemma 3 12B 0.313 Aya Exp. 32B Aya Exp. 8B 0.291 Aya 8B Gemma 3 1B 0.244 Gemma 3 27B Gemma 3 4B 0.199 Gemma 3 12B Gemma 3 4B 0.161 
+
+Lowest agreement 
+
+Qwen 3 1.7B Gemma 3 270M −0.107 Gemma 3 4B Gemma 3 270M −0.165 Aya 8B Gemma 3 270M −0.198 Aya Exp. 8B Gemma 3 270M −0.201 Gemma 3 1B Gemma 3 270M −0.247 
+
+Table 14: Top-5 and bottom-5 pairwise Spearman ρ of item-level correctness on CAPR-am. Mean ρ: 0.048. 
+
+Model 1 Model 2 ρ
+
+Highest agreement 
+
+Qwen 3 32B Gemma 3 12B 0.568 Gemma 3 27B Gemma 3 12B 0.557 Qwen 3 32B Aya Exp. 32B 0.530 Gemma 3 27B Qwen 3 32B 0.503 Gemma 3 12B Aya Exp. 8B 0.485 
+
+Lowest agreement 
+
+Gemma 3 4B Gemma 3 270M −0.150 Qwen 3 8B Gemma 3 270M −0.226 Aya 8B Gemma 3 270M −0.231 Qwen 3 1.7B Gemma 3 270M −0.267 Gemma 3 1B Gemma 3 270M −0.277 
+
+Table 15: Top-5 and bottom-5 pairwise Spearman ρ of item-level correctness on CAPR-ja. Mean ρ: 0.165. 
+
+16 ID Cluster Items Avg (%) Best Worst 
+
+20 Greed & Corruption 20 65.7 100.0 20.0 18 Prudent Moderation 80 64.6 83.8 22.5 17 Cost & Worth 40 64.3 87.5 17.5 12 Effort & Resilience 90 64.0 85.6 27.8 22 Futile Efforts 30 63.1 90.0 16.7 5 Social Conduct & Limits 100 60.9 82.0 24.0 6 Growth & Stagnation 50 60.3 92.0 22.0 14 Avoiding Danger 49 60.1 77.6 28.6 0 Virtues & Vices 59 57.0 84.7 18.6 3 Interpersonal Bonds 88 56.3 76.1 27.3 23 Generosity & Reciprocity 49 55.4 77.6 18.4 1 Grounded Pragmatism 100 53.6 79.0 31.0 19 Patience & Virtue 80 51.9 65.0 25.0 8 Exploiting Opportunities 29 51.2 75.9 24.1 9 Teamwork & Unity 20 49.3 65.0 20.0 21 Hypocrisy Exposed 20 47.9 65.0 15.0 13 Unrealistic Hope 40 47.1 82.5 25.0 2 Responsibility & Consequence 39 46.9 61.5 17.9 15 Inevitable Consequences 89 45.4 60.7 16.9 16 Age & Heritage 50 42.3 56.0 26.0 4 Trust & Betrayal 60 40.4 60.0 25.0 7 Family Legacy & Bonds 20 32.1 60.0 10.0 10 Pretentious Facades 20 26.8 65.0 0.0 
+
+Table 16: Per-cluster accuracy on CAPR-ar, averaged across 14 models, sorted by descending accuracy. Best/Worst = highest/lowest single-model accuracy within the cluster. 
+
+ID Cluster Items Avg (%) Best Worst 
+
+16 Generosity & Gratitude 70 33.9 50.0 14.3 4 Proper Timing & Method 50 33.4 52.0 20.0 2 Futile Efforts 50 32.9 60.0 10.0 11 Greed & Selfishness 29 32.8 62.1 10.3 8 Honesty & Deception 30 32.1 43.3 16.7 7 Duty & Responsibility 30 31.4 50.0 13.3 12 Humility & Pride 10 30.7 70.0 10.0 5 Economic Inequality 58 30.3 43.1 15.5 14 Reciprocity & Value 40 29.3 47.5 17.5 17 Secrecy & Betrayal 70 28.8 44.3 22.9 1 Foolishness & Consequences 70 28.5 50.0 20.0 10 Inevitable Consequences 20 28.2 45.0 15.0 9 Adversity & Resilience 50 28.0 50.0 18.0 0 Wisdom & Moderation 40 27.1 40.0 12.5 6 Self Knowledge & Independence 40 26.8 60.0 10.0 3 Risk & Precaution 39 26.7 56.4 12.8 15 Family Ties 10 25.6 70.0 9.1 19 Strategic Planning 10 20.0 40.0 0.0 
+
+Table 17: Per-cluster accuracy on CAPR-am, averaged across 14 models. 
+
+ID Cluster Items Avg (%) Best Worst 
+
+7 Kindness & Generosity 10 82.1 100.0 10.0 4 Patience & Perseverance 10 80.0 100.0 30.0 5 Strategic Action & Time 30 72.6 93.3 20.0 1 Truth & Perception 10 65.7 100.0 0.0 3 Justice & Equality 10 65.0 100.0 10.0 6 Boldness vs Caution 20 60.0 95.0 10.0 0 Perspective & Influence 10 54.3 100.0 10.0 
+
+Table 18: Per-cluster accuracy on CAPR-ja, averaged across 14 models. 
+
+17 CAPR-ar (1,222) CAPR-am (716) CAPR-ja (100) Models correct Items % Items % Items %                                                
+
+> 0–1 107 8.8 74 10.3 00.0 2–3 118 9.7 219 30.6 33.0 4–5 141 11.5 231 32.3 66.0 6–7 162 13.3 131 18.3 99.0 8–9 244 20.0 55 7.7 21 21.0 10–11 234 19.1 60.8 34 34.0 12–13 215 17.6 00.0 27 27.0 14 10.1 00.0 00.0
+
+Table 19: Item difficulty distribution across all three benchmarks (14 models). Each row shows how many test items are answered correctly by the given number of models. Arabic is centered on 8–9 (well-calibrated), Amharic is skewed toward 2–5 (near-chance), and Japanese toward 10–13 (high accuracy). 
+
+18
