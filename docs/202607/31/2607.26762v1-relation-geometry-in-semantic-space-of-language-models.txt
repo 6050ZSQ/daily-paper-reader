@@ -1,0 +1,746 @@
+Title: Relation Geometry in Semantic Space of Language Models
+
+URL Source: https://arxiv.org/pdf/2607.26762v1
+
+Published Time: Thu, 30 Jul 2026 00:53:16 GMT
+
+Number of Pages: 31
+
+Markdown Content:
+# Short Paper 
+
+# Relation Geometry in Semantic Space of Language Models 
+
+# Zhihan Cao ∗,1, Hiroaki Yamada 2, Simone Teufel 3, Tatsuya Hiraoka 4,5,6,Kentaro Inui 4,7,5, Hitomi Yanaka 1,5,7, Takenobu Tokunaga 8 
+
+> 1
+
+Graduate School of Information Science and Technology, The University of Tokyo 
+
+zhihancao@g.ecc.u-tokyo.ac.jp, hyanaka@is.s.u-tokyo.ac.jp  
+
+> 2
+
+Faculty of Systems Design, Tokyo Metropolitan University 
+
+ymd@tmu.ac.jp  
+
+> 3
+
+Department of Computer Science and Technology, University of Cambridge 
+
+sht25@cam.ac.uk  
+
+> 4
+
+Mohamed bin Zayed University of Artificial Intelligence 
+
+tatsuya.hiraoka@mbzuai.ac.ae, Kentaro.Inui@mbzuai.ac.ae  
+
+> 5
+
+Center for Advanced Intelligence Project, RIKEN  
+
+> 6
+
+Division of Information Science, Nara Institute of Science and Technology  
+
+> 7
+
+Center for Language AI Research, Tohoku University  
+
+> 8
+
+School of Computing, Institute of Science Tokyo 
+
+take@c.titech.ac.jp 
+
+When it comes to generating vector representations of words, current language models are achieving high-quality results. However, what is not known is the extent to which knowledge about semantic relations is represented in the geometry of the semantic spaces created in this way. In order to answer this question, we study the relation geometry of such semantic spaces from three perspectives. We first examine whether words standing in a particular relation to a target word (called relata) occupy the same region in semantic space, and whether the regions corresponding to different relations are distinct from each other. We then verify to what extent semantic spaces reflect certain well-known properties of relations, such as symmetry, asymmetry, and transitivity. Finally, we consider which information about the target words and relata is more important for relation geometry: their surface forms, or their contexts. We conduct experiments on six semantic relations using causal, masked, and diffusion language models. The results show that relata in asymmetric relations relatively clearly occupy a distinct region in semantic space. Asymmetric relations’ properties are only moderately well encoded in the semantic space, yet better than those of symmetric ones. Furthermore, when considering the   
+
+> ∗Corresponding authors Action editor: {action editor name}. Submission received: DD Month YYYY; revised version received: DD Month YYYY; accepted for publication: DD Month YYYY. © 2025 Association for Computational Linguistics arXiv:2607.26762v1 [cs.CL] 29 Jul 2026 Computational Linguistics Volume vv, Number nn
+
+question which information source has the strongest impact on results amongst the models we evaluated, we find that lexical information tends to be more important for the causal language model, whereas contextual information is more important for the masked and diffusion language models. Our results empirically show that relation geometry is not equally well-represented for all relations in semantic space, suggesting that there is a difference in how well semantic relations might be learned from distributional information alone. This provides possible counter-evidence to the long-held distributional semantic view that the sense of words can be learned purely from their distribution. 
+
+1. Introduction 
+
+Transformer-based Language models (LMs) achieve strong empirical performance in a wide range of tasks such as word sense disambiguation (Mosolova, Candito, and Ramisch 2025; Meconi et al. 2025; Navigli 2026), semantic change detection (Periti et al. 2024; Umarova, Lee, and Kim 2025; de Sá et al. 2026), semantic similarity estima-tion (Zhou et al. 2025; Liu et al. 2025), semantic parsing (Stengel-Eskin and Van Durme 2023; Sherborne and Lapata 2023), and reading comprehension (Säuberli and Clematide 2024). However, it remains unclear whether, and to what extent, their performance stems from a real understanding of language meaning (Cheng and Amiri 2025). This concern has become a central topic in Computational Linguistics (CL). The semantic theory upon which we rely when we talk about LMs is distributional semantics (Harris 1954). In distributional semantics, a linguistic unit’s meaning is de-fined by its distribution alone. According to Harris, the distribution of a linguistic unit 
+
+w is the collection of w’s co-occurrent units in their particular positions. In practice, the distribution of w could be manifested by the sentences in which w occurs. Beyond the semantics of a single unit, we can also characterise the semantic relation between these units. For this, the distributions of two units need to be considered, as follows. 
+
+> If the environments of A are always different in some regular way from the environments of B, we state some relation between A and B depending on this regular type of difference. [...] If A and B have some environments in common and some not (e.g. oculist and lawyer), we say that they have different meanings, the amount of meaning difference corresponding roughly to the amount of difference in their environments. (Harris 1954, pp. 157)
+
+In short, if the distribution of w differs from that of v in a consistent way, then there should be a particular distributional relation between w and v. If w and v have near-identical distributions, they should be synonymy; but beyond synonymy, Harris did not discuss systematically how the distributional relations he defines map to semantic relations such as hypernymy and meronymy. Nevertheless, if Harris’s theory is correct and such a mapping exists, then models based on distributional semantics should be able to capture semantic relations. This motivates the need to examine such models, the results of which will provide an empirical foundation for better semantic theories. Among all types of models, LMs are the one type currently widely used, with word embedding models (e.g., Mikolov, Yih, and Zweig 2013) in second place. Both have in common that they define a semantic space based on vectors that represent linguistic units. 2Author’s Surnames Here Running Article Title Here 
+
+If these models really capture semantic relations, then these semantic relations should be translatable to geometric relations in semantic space. We refer to this cor-respondence as semantic relation geometry .A related notion is the linear representation hypothesis (Park, Choe, and Veitch 2024), which proposes that semantic features in LMs are encoded as linear directions in their internal vector spaces. Under this view, features such as gender, sentiment, or part correspond to specific directions, and varying these properties amounts to moving along those directions. What we develop in this article is an alternative view of semantics, where the space is defined by the location of the semantically related words of a target word in space. We call the semantically related words relata .Our working hypothesis is that, for a given target word, relata in the same relation occupy the same region, and relata in different semantic relations occupy linearly sepa-rable regions in the semantic space. We call such regions relata regions , as illustrated in Figure 1. If this is true, a simple prediction task should be able to reveal this correspon-Synonyms 
+
+> Hypernyms
+> Antonyms
+> Figure 1
+> Illustration of relata regions.
+
+dence: given a target word and a relatum in a particular relata region, we should be able to predict which relation applies. Semantic relation geometry concerns not only the existence of relata regions but also their properties. Each relation has a set of constitutive properties, which characterise the relation and differentiate it from other relations. For instance, hypernymy and hyponymy are transitive. If A is a hypernym of B and B is a hypernym of C, then A is a hypernym of C. However, holonymy (also called part-of relation) does not display transitivity. Similarly, antonymy is symmetric: if A is an antonym of B, then B is also an antonym of A. In contrast, hypernymy is known to be asymmetric. Asymmetric relations usually have a reverse relation . Hypernymy and hyponymy are reverse relations to each other, and so are holonymy and meronymy. We expect the properties of a relation to have an observable effect on that relation’s relata region, which allows us to verify the degree to which distributional semantics can capture semantic relations. There is also a practical benefit of learning about properties of semantic relations: knowledge about such properties can directly support a wide range of reasoning tasks. It can also provide explanations for the individual steps within the reasoning process. Our operationalisation of the concept of semantic space geometry is as follows. We hypothesise a function that maps a pair of tokens’ representations onto their relation. 3Computational Linguistics Volume vv, Number nn 
+
+We then train a relation probe f to approximate such a function in a LM M ’s semantic space. We interpret the relation probe’s performance as a measure of the extent to which our hypothesis on relation geometry holds. This article is motivated by two gaps in the current knowledge about LMs’ repre-sentation of semantic relations. First, existing methods of studying semantic relations do not view semantic relations as a geometric operation, but we think that it is indis-pensable for understanding semantic relation geometry fully (e.g., Garcia 2021; Lin and Ng 2022). Second, of all relations, only hypernymy is well-studied (e.g., Ravichander et al. 2020; Limisiewicz and Mareˇ cek 2021). We develop a new interpretable probe-based method that can analyse semantic relation geometry, and we expand the evidence about semantic relations under study beyond hypernymy to hyponymy, holonymy, meronymy, synonymy, and antonymy. We also provide a full study of the extent to which relata regions reflect the proper-ties (symmetry, asymmetry, and transitivity) for all relations covered. In what follows, we compare different types of LMs (masked, diffusion, and causal LMs) as to their ability to distinguish and represent semantic relations along those lines. We are additionally concerned with another question. Since the sense of a token is determined by contextual information (Harris 1954), which contrasts with the lexical information contained in the token, we study the question of the relative importance of these two types of information for semantic relation geometry. To do so, we develop a new methodology that quantitatively measures the importance of each regarding semantic relation geometry. The article is structured as follows. In Section 2, we summarise prior work about LMs and semantic relations. In Section 3 and 4, we explain our probe-based methodol-ogy and the materials, comprising over 6.8 million triplets consisting of a target token, relation, and relatum. Experiments and results follow in Section 5. We conclude the article in Section 6 with limitations and future work. 
+
+2. Related Work 
+
+Several empirical studies have concerned themselves with semantic spaces and seman-tic relations in connection with LMs. 
+
+2.1 Probing For Hypernymy 
+
+Ravichander et al. (2020) presented one of the earliest such studies, establishing the basic methodology for the study of semantic relations. Their method is based on the probing, the use of classifiers to study linguistic regularities in semantic space 1. Given the LM representations of two tokens, the probe’s task is to predict whether they stand in hy-pernymy relation or not. The performance of the probe is then interpreted as how clearly hypernymy is encoded in semantic spaces. The probe they used is a neural probe with a single hidden layer. They also studied the effect of lexical leakage during probe training. In one setting, both the target token and its hypernym are unseen in training the probe; in the other, the hypernym is unseen but the target token is seen. WordNet provided the gold standard, and 576 pairs were tested in total. The results showed that the probe performed close to the chance level (accuracy below 0.60) in the fully unseen condition, while achieving accuracy above 0.90 when the hypernym is unseen. Ravichander et al.  
+
+> 1See Belinkov’s (2022) survey on the history of probing in NLP
+
+4Author’s Surnames Here Running Article Title Here 
+
+concluded from this experiment that there is a danger of probe performance inflation, and that the semantic space created by BERT does not consistently reflect hypernymy. This immediately raises the question whether other semantic relations might establish a more consistent semantic geometry. Another limitation of this work is that it used only sense-unambiguous words (i.e., those with a single sense), but most words in the wild are polysemous. Limisiewicz and Mareˇ cek (2021) also used probing to evaluate BERT’s hypernymy knowledge against WordNet, but their task examines whether BERT representations encode structural information in the hypernymy hierarchy. Specifically, they derive two hypernymy-related quantities: the depth of each word and the path distance in the WordNet hierarchy. Their probe is linear and consists of two matrices: an orthogonal rotation matrix and a low-rank scaling matrix 2. Their results showed that the two hypernymy-related quantities can be accurately predicted using only roughly twenty dimensions of BERT’s semantic space. However, this result of a strong geometric rela-tionship between hyponym and hypernym only holds for pairs of tokens co-occurring in the same sentence. Intersentential contexts were not considered by Limisiewicz and Mareˇ cek, but these are interesting because a) there are many such occurrences in the wild and b) in those cases, the syntactic structure and context might well be very different. We will address this gap. 
+
+2.2 Hypernymy Transitivity 
+
+Aspillaga, Mendoza, and Soto (2021) were the first to study a relation property explicitly, namely, transitivity of hypernymy. To do so, they performed two tasks, hypernymy prediction and a newly invented task called hypernymy hierarchy reconstruction. They created a hypernymy hierarchy across a set of candidate pairs, based on the likelihood of a pair standing in hypernymy, as predicted by a probe. This way, the transitivity of hypernymy is directly modelled. Their probe is a Multi-layer Perceptron classifier. They used 230,215 hypernymy pairs from Princeton WordNet Gloss Corpus (Princeton University 2008), a corpus of WordNet synset definitions where all open-class words are sense-disambiguated. The gold standard for the hierarchy comes directly from WordNet. Aspillaga, Mendoza, and Soto’s (2021) experiment has the advantage over Ravichander et al.’s (2020) that they cover polysemous as well as monosemous words. They studied three model families (masked LMs, causal LMs, and static embedding methods). The results showed that, in general, masked LMs outperform the other types of LMs on both hypernymy prediction and hypernymy hierarchy reconstruction. Lin and Ng’s (2022) study on hypernymy transitivity, which also uses sense-disambiguated words, used the sense’s example sentences in WordNet. In total, Lin and Ng collected around 4,000 pairs, including direct and transitive hypernymy ones with non-hypernymy ones. Their probe was a one-nearest-neighbour classifier, classifying whether a concatenated representation forms a hypernymy relation. Lin and Ng found that if two hypernymy pairs (w, v ) and (v, u ) are successfully classified as hypernymy, the transitive pair (w, u ) is classified correctly for about 80% of the cases.  
+
+> 2They do not clarify whether they used monosemous or polysemous target words, which makes it harder to interpret their results.
+
+5Computational Linguistics Volume vv, Number nn 
+
+The results of the studies mentioned up to now, all of which used BERT to create the token representations, indicate that BERT acquires hypernymy transitivity to a certain extent. The results of Aspillaga, Mendoza, and Soto and Lin and Ng show that LMs may have learned transitivity, yet we still lack knowledge on either other relations or their properties. 
+
+2.3 Other Relations 
+
+Relations other than hypernym that were studied include synonymy. Garcia (2021) was the first to quantify how changes in contexts with respect to word senses influence synonymy. Garcia (2021) replaced a target word w in sentence S1 with a synonym of the target word in the same sense and same context, v, creating sentence S2, and compared this to u in sentence S3 that consists of the same context and a word u with an entirely different sense, as follows:    
+
+> S1: we’re going to the airport by coach .
+> S2: we’re going to the airport by bus .
+> S3: we’re going to the airport by bicycle .
+
+The working hypothesis is that if BERT encodes synonymy in its semantic space, the representation of w in S1 should be closer to the representation of v in S2 than the representation of u in S3. In other words, the inequality distance (w, v ) < distance (w, u )
+
+should hold consistently. However, this inequality was satisfied in fewer than half of the cases. When BERT was compared to the static embedding method, it was found that the static method satisfied the inequality in more than half of the cases. Garcia concluded that BERT does not reliably capture synonymy, possibly because it relies heavily on surrounding context and misrepresents words with different senses in similar sentences. More recently, Proietti and Lenci (2025) studied meronymy in LMs’ semantic space under the assumption of the linear representation hypothesis (Park, Choe, and Veitch 2024), namely that the difference between the holonym and the meronym is encoded as direction in semantic space. Using embedding and unembedding layers of LLaMA-2-7b (Touvron et al. 2023), they created representations of around 1,000 meronym-holonym pairs. They also created non-meronymy pairs. They then measured whether a meronymy direction vector exists. If so, such a vector should maximise the inner product of itself and the vector differences of the meronymy pairs and minimise the inner product of itself and the vector differences of the non-meronymy pairs. Such a meronymy vector was found only for specific categories, such as “vehicles” and “mam-mals”, suggesting meronymy is not linearly encoded uniformly across all meronym-holonym pairs. 
+
+2.4 Limitations of Existing Studies 
+
+The studies mentioned above have several limitations. The first of these is empirical, as non-hypernymy semantic relations were left unexplored. Some findings on hypernymy are insightful, but whether they can be transferred to other relations is unclear. Similarly, there are no studies about properties of semantic relations, with the exception of tran-sitivity of hypernymy (Aspillaga, Mendoza, and Soto 2021; Limisiewicz and Mareˇ cek 2021). For example, we have no knowledge about the symmetry of synonymy and antonymy, or the asymmetry of hypernymy and holonymy. As these properties provide 6Author’s Surnames Here Running Article Title Here 
+
+an intrinsic characterisation of their respective relations, studying them will provide much-needed knowledge about whether LMs can learn how two words are related, rather than just that they are related. The next two points concern methodology. In the previous studies by Aspillaga, Mendoza, and Soto and Lin and Ng, the probes learn hypernymy from both direct and indirect pairs at the same time, which means they can acquire transitivity relatively easily. However, if we were to apply this to our situation, we would run into a potential information leakage problem. We want to make sure that the probes are able to acquire a property in question without being exposed to explicit instances of that property. To explain what we mean by such exposure, let us look at the example of hypernymy; the same principle applies to the other properties. If two direct hypernymy pairs (A, B), (B, C), and one indirect pair (A, C) are in the dataset, then the probe’s learning of hypernymy transitivity is trivial, as these three alone are sufficient to signal transitivity. A stricter and more realistic evaluation of transitivity would require that the entire dataset contains only direct pairs, so that no information about properties can possibly leak into the probe’s learning. Another methodological limitation concerns the operation by which input repre-sentations into a probe are combined. In the existing literature, this is either done by concatenation (Ravichander et al. 2020; Aspillaga, Mendoza, and Soto 2021; Lin and Ng 2022) or difference (Limisiewicz and Mareˇ cek 2021; Garcia 2021; Proietti and Lenci 2025). However, concatenating two word representations yields a space that differs from the original semantic space of the LM studied, because it defines a space over token pairs rather than individual tokens. These studies found no general hypernymy geometry, but it is possible that this may partly stem from the concrete realisations of the probe inputs used. There is also an empirical argument against using concatenation. In experiments in computer vision and machine learning, Lei et al. (2024) and Mahapatra and Patra (2025) found empirically that vector concatenation was a weak method for capturing interac-tions within paired representations of various entities. We are therefore suspicious that if applied to semantic relations, this operation might also underperform. We can borrow more sophisticated methods of modelling relations from knowledge graph embeddings (see the recent survey in Cao et al. 2024). Nodes in a knowledge graph are represented as vectors, and relations between a target node and a relatum node are modelled as operations on these vectors. One of the most straightforward approaches is to model relations via vector addition (Bordes et al. 2013) or vector product (Sun et al. 2019). Later approaches abstracted addition and multiplication into more general functions over the target and relatum nodes. Such functions include linear mappings from a target node to a relatum node (Yu et al. 2022) and bilinear functions that take both nodes as input and predict whether a relation of interest holds (Nickel et al. 2016; Hayashi and Shimbo 2019). A bilinear function ϕr (w, v ), defined as Equation (1), scores how likely two nodes in the knowledge graph ( w and v) are in relation r, based on suitable representations 
+
+ew and ev of w and v, respectively, and Wr is the matrix that expresses to which degree relation r holds between w and v. Formally, it is 
+
+ϕr (w, v ) = eTwWr ev . (1) Bhattacharjee and Dasgupta found that bilinear models capture cross-dimensional in-teractions far better than methodologies that model relations as vector addition or vector product. 7Computational Linguistics Volume vv, Number nn 
+
+2.5 The Role of Contextual and Lexical Information 
+
+An example is the work of Garcia, who observed BERT’s sensitivity to contextual information. This sensitivity is not an isolated phenomenon and has also been observed outside the semantic relation domain (Zhuo et al. 2024). We therefore need to look at how contexts contribute to the identification of semantic relations. In addition to contextual information, lexical information has been shown to be theoretically and empirically important for some relations, such as antonymy (Justeson and Katz 1991; Cao, Yamada, and Tokunaga 2025). Furthermore, according to lexical semantic theory (Cruse 1986) and computational linguistics practice (Bevilacqua et al. 2021), sense disambiguation relies on both lexical and contextual information. Lexical information provides the set of candidate senses, and contextual information resolves which one is appropriate. Current LMs incorporate the lexical form of a token and the context in which it appears. As a result, the representations they produce include both types of information and therefore should encode the sense precisely (Loureiro et al. 2021). However, the roles of contextual and lexical information in semantic relations remain unclear. Studying them could provide a more detailed understanding of LMs and inform theories of lexical semantics. 
+
+2.6 Our Goals 
+
+The current article aims to provide a holistic evaluation of how semantic relations are represented in LMs’ semantic space. To broaden the empirical scope, we study a diverse set of semantic relations: hypernymy, hyponymy, holonymy, meronymy, synonymy, and antonymy. To achieve methodological interpretability, we use a probe that captures the interaction between representations and thus better characterises relational geometry. We, unlike in previous work by Limisiewicz and Mareˇ cek (2021), study inter-sentential related pairs. We replace existing simple probes based on the concatenation of vectors with a more sophisticated bilinear probe. When evaluating the performance of the probes, our criterion also addresses additional semantic relation properties. Finally, we propose a method to quantify the importance of contextual and lexical information. 
+
+3. Method 
+
+Recall that our working hypothesis is closely related to the probe performance Perf( f ):high Perf( f ) means that the semantic relation geometry is clear across semantic rela-tions. We will now develop the evaluation methodology to do so, by first defining a bilinear probe for our purposes. 
+
+3.1 Probe 
+
+The bilinear function in Equation (1) outputs a real number scoring how likely two ob-jects stand in a relation of interest. The probe f we are developing needs to estimate the probability distribution over several relations instead. We therefore apply the softmax as follows: 
+
+fr (w, v ) = ˆPr ( r | w, v ) = exp ( zr )
+
+P 
+
+> r′∈R
+
+exp ( zr′ ) (2) 
+
+zr = eTwWr ev (3) 8Author’s Surnames Here Running Article Title Here 
+
+where ew and ev are representations of w and v, respectively, and Wr is the relation matrix for r. R is a set of relations. We obtain the probability distribution over relations by concatenating outputs of all fr , as in Equation (4). 
+
+f (w, v ) = [ fr1 (w, v ), . . . , f r|R| (w, v )] (4) The relation with the highest probability estimate is the prediction by the probe. Bilinear models have a clear geometric interpretation. Note that 
+
+eTwWr ev = W Tr ew, e v . (5) Consider v, which is a relatum that stands in relation r with target word w. A triplet 
+
+(w, r, v ) then expresses that a target word w and a relatum v stand in relation r. If we form the inner product of ev (v’s representation) with Wr , then this inner product should be larger than the inner product of eu with Wr , for any u that is not in this relation with w. Given w and r, fr defines a hyperplane with normal vector W Tr ew. fr expresses the degree to which relata and non-relata are linearly separable along the direction 
+
+W Tr ew, that is, how many of w’s relata in r lie on the same side of this hyperplane. The full probe f , which considers all relations’ hyperplanes at once, can be viewed as a set of linear separators based on ew. It tests if it is possible to organise the relata of w into relation-specific regions, relata regions, in semantic space. According to our hypothesis, high probe performance on relation classification should indicate a situation where relata in different relations occupy different linear regions within the hyperplane set. 
+
+3.2 Metrics 
+
+We define three metrics for evaluating probes. Relation Predictability evaluates whether there is a clear relata region for a relation. Directionality and transitivity evaluate the extent to which the relata region of a relation reflects a specific relation property. In the upcoming experiments, we will perform |I|-fold cross-validation, where I
+
+is the set of all folds. The relation distribution over triplets is highly skewed, leading to large performance variations across folds and consequently unreliable estimates of the degree of relation geometry. We perform |I|-fold cross-validation over |J| repeated trials, where J is the set of trials (details in Section 4). We will explain below how this design interacts with the calculation of our metrics. 
+
+3.2.1 Relation Predictability. If token representation pairs in a given relation r exhibit a clear relata region, then the probe f should be able to predict the relations of the pairs in the test set. We use the F1-score, the harmonic mean of precision and recall, where precision is the proportion of correctly predicted instances over all instances predicted as r, and recall is the proportion of correctly predicted instances over all instances whose relation is r3.For one of our folds i from cross-validation, one of our trials j, and a given relation r,we measure the relation predictability score F{i,j } 
+
+> r
+
+. Each trial will therefore achieve a  
+
+> 3Full formulae in Appendix 7.
+
+9Computational Linguistics Volume vv, Number nn 
+
+trial-specific score Fjr by averaging over folds as follows: 
+
+Fjr = 1
+
+|I|
+
+X
+
+> i∈I
+
+F{i,j } 
+
+> r
+
+(6) We next derive relation-specific (Equation (7)) and summay relation predictabilities (Equation (8)) as follows: 
+
+Fr = 1
+
+|J|
+
+X
+
+> j∈J
+
+Fjr (7) 
+
+F = 1
+
+|R|
+
+X
+
+> r∈R
+
+Fr . (8) Note that we applied macro-averaging over relations to arrive at F. We decided against using micro-averaging because, again, the relation distribution in our upcoming exper-iments is extremely skewed, as we will see in Section 4. 
+
+3.2.2 Directionality. We next define directionality as a binary feature expressing whether the order of w and v in a triplet (w, r, v ) influences its meaning. It operates differently for symmetric and asymmetric relations. In symmetric relations, such as antonymy and synonymy, no influence of order should be observable because (w, r, v ) and (v, r, w )
+
+have the same meaning. In asymmetric relations, such as hypernymy/hyponymy and holonymy/meronymy, there should be a strong influence of order. We test the effect of order by exchanging the input order (w, v ). For a symmetric relation, we expect the prediction to remain the same, and for an asymmetric relation, we expect the prediction to indicate the reverse relation. For example, if (w, v ) stands in hypernymy relation, then we expect the probe to predict hyponymy for (v, w ).Following this intuition, the directionality score for relation r, fold i, and trial j, D{i,j } 
+
+> r
+
+(f ), is defined as: 
+
+D{i,j } 
+
+> r
+
+(f ) = 1
+
+|T {i,j } 
+
+> r
+
+|
+
+X 
+
+> (wi,r,v i)∈T{i,j }
+> r
+
+I [arg max f (wi, v i) = h (arg max f (vi, w i)) = r] , (9) where f is a probe, T {i,j } 
+
+> r
+
+are those triplets in fold i and trial j which stand in relation r.
+
+I is the indicator function and h maps a relation to its reverse relation, for example, 
+
+h(synonymy ) = synonymy and h(hypernymy ) = hyponymy. The directionality score ranges from 0 to 1, with higher values indicating that directionality is better encoded in the relata region of the relation. The same averaging procedure shown by Equation (6), (7), and (8) is applied to directionality, to arrive at Dr , the relation-specific directionality score and D, the summary directionality score per model. 
+
+3.2.3 Transitivity. Transitivity is a property of hypernymy and hyponymy (Cruse 1986). For instance, the new hypernymy triplet (“robin”, HYP, “animal”) is derived from the two hypernymy triplets (“robin”, HYP, “bird”) and (“bird”, HYP, “animal”). Transitivity introduces the concept of distance k between two senses, with direct triplets having a distance of one, and the distance of a derived indirect triplet being the sum of the 10 Author’s Surnames Here Running Article Title Here 
+
+distances of the triplets involved, with K being the maximum distance observed 4. Note that by the nature of transitivity, it can only be observed for indirect triplets, so we evaluate transitivity scores on indirect ones. T {i,j }{r,k } is calculated as the F1-score per fold 
+
+i, trial j, relation r, and distance k, on the indirect triplets in that fold. Based on this, we derive trial-specific transitivity scores T j 
+
+> {r,k }
+
+by averaging over folds, and distance-specific transitivity scores T{r,k } by next averaging over trials, anal-ogous to Equations (6) and (7), with the exception of the additional parameter k. Aver-aging over distance achieves relation-specific transitivity score Tr = 1
+
+> kmax −1
+
+Pkmax  
+
+> k=2
+
+T{r,k },and summary transitivity score T = 1
+
+> |R|
+
+P 
+
+> r∈R
+
+Tr , where kmax is the maximum distance. Transitivity scores range from 0 to 1, with higher scores meaning that the relata region of relation r reflects a higher degree of transitivity. 
+
+3.3 Random Control 
+
+A probe is itself a model, and its performance depends on two sources: the degree of semantic relation geometry in the semantic space under study, and the probe’s own ability to fit the label distribution in the training set. We follow Belinkov’s (2022) recommendation and train random probes (probes trained on random representations). As random probes learn only the label distribution, the difference between a real probe and its random version, which we call controlled performance, allows us to cancel out the second effect. We apply controlling after the final level of metrics we report, e.g., if we report Tr , we will perform control at the relation level, but if we report T , we will perform control at the macro-averaged level. We always report controlled performance, as it provides a clearer view of the portion of performance that reflects the semantic relation geometry. The performance of random probes is obtained as follows. For each token, we sample a random vector that has the same dimension as the token representations of a model to be controlled, and train it in the same way as the original representations. The elements of the random vector are independently drawn from a uniform distribution on [0 , 1] . Controlled performance can be negative when the probe fails to capture any relation geometry. According to our hypothesis, in that case, relation-specific relata regions cannot be linearly separated in the semantic space, or no relational properties are present in the relata regions. 
+
+3.4 Quantifying Contribution of Lexical and Contextual Information 
+
+We use ablation to examine how lexical and contextual information contribute to f in the following way. First, we remove lexical or/and contextual information from token representations; second, we train new probes on these manipulated representations; third, we measure the difference in performance Perf( f ) of those new probes against the original probe. These differences should reflect how important the lexical and contextual information are to f . We will now describe the three steps.  
+
+> 4The WordNet hypernymy hierarchy is a directed acyclic graph in which two senses may be connected by multiple paths (Richens 2008; Lohk, Orav, and Võhandu 2014). This means that some triplets have ambiguous hypernymy distances. We will deal with this problem in Section 4.4.
+
+11 Computational Linguistics Volume vv, Number nn 
+
+3.4.1 Removal of Lexical Information. Removal of lexical information is straightfor-ward because the status of lexical information is binary: it is either present or absent. This means that, for a sentence s and a target token wi, we only need to conceal wi
+
+while maintaining the rest. Removal of lexical information is different for bidirectional and unidirectional LMs. Bidirectional LMs predict a masked token using its contexts of both the left and right sides. In this case, all we need to do is to replace wi with the mask token. Because the mask hides the lexical information, its representation should now include only contextual information. Unidirectional LMs predict a token using its preceding context. The representation we need therefore must be based solely on the preceding context. The representation of the preceding token wi−1 meets this requirement and therefore is the representation we use. 
+
+3.4.2 Removal of Contextual Information. Removal of contextual information is more complex because of the continuous nature of contextual information. The attention mechanism dynamically creates the representation of a target token wi by adjusting the importance of each token in the context with respect to wi. This produces the attention score distribution of wi, which contributes to a correctly contextualised representation. Because of this entanglement between the attention mechanism and the contextual information, the contextual information cannot be removed without manipulating the attention mechanism itself. In principle, the attention score distribution of wi in a sentence s = [ w1, . . . , w n] is given as: 
+
+α(wi | s) = Softmax 
+
+ Ksqwi
+
+√d
+
+
+
+, (10) where Ks ∈ Rn×d is the key matrix for s and qwi ∈ Rd is the query vector for wi, both computed by earlier modules 5.We distort this distribution in order to obtain representations with contextual information removed. This can be achieved in two ways: make the attention score distribution uniform, or make the attention distribution one-hot for the target word. Both manipulations switch off the attention mechanism and decontextualise the repre-sentations, but in different ways. In the one-hot case, which we call degenerate decontextualisation , the original context does not contribute at all to the representation, because all information about anything but the target word is simply removed. In the uniform case, which we call egalitarian decontextualisation , the representation of wi includes incorrect contextual information. Under this manipulation, relevant con-textual tokens can no longer be distinguished from irrelevant ones, so all real informa-tion is lost. For degenerate decontextualisation, we simply replace each α(wi | s) with an iden-tity matrix whose diagonal elements are one and other elements are zero.   
+
+> 5Note that this is a simplification, as we omit both the layer and the attention head. In practice, each layer of an LM has multiple attention heads, and each head produces its own attention score distribution for wi.
+
+12 Author’s Surnames Here Running Article Title Here 
+
+Egalitarian decontextualisation can be realised by introducing a temperature pa-rameter τ into Equation (10): 
+
+α(wi | s, τ ) = Softmax 
+
+ Ksqwi
+
+τ √d
+
+
+
+, (11) where τ ∈ (0 , ∞). When τ approaches ∞, α(wi | s, τ ) approaches a uniform distribution, and the result is the egalitarian-decontextualised representation. 
+
+3.4.3 Lexical and Contextual Information Loss. We denote the set of lexical infor-mation statuses by L = {+, −} , whose two elements stand for the presence and ab-sence of lexical information, respectively. The set of contextual information statuses is 
+
+C = {degenerate , egalitarian , correct }.This means that in the upcoming experiments, there exist, for each metric, 2 × 3 = 6 
+
+controlled performance Perf ctrl for different combinations of lexical and contextual in-formation status. A particular probe that learns representations with lexical information status l ∈ L, and contextual information status c ∈ C is then expressed as f lc.To allow for statements about how the two types of information (lexical vs. contex-tual) influence the evaluation metrics, summary statistics are needed. We define the loss from lexical information ∆LEX as 
+
+∆LEX = 1
+
+|C|
+
+X
+
+> c∈C
+
+Perf ctrl (f − 
+
+> c
+
+) − Perf ctrl (f + 
+
+> c
+
+). (12) 
+
+∆LEX is the average performance loss from the absence of lexical information across contextual information statuses. It quantifies the overall importance of lexical informa-tion for a given metric. Similarly, the loss from correct contextual information ∆CTX is defined as 
+
+∆CTX = 1
+
+|L|
+
+1
+
+|C| − 1
+
+X
+
+> l∈L
+
+ X
+
+> c∈C\{ correct }
+
+Perf ctrl (f l
+
+> c
+
+) − Perf ctrl (f l
+
+> correct
+
+)
+
+. (13) 
+
+∆CTX is the average performance loss of correct contextualisations over incorrect cases. It quantifies the overall importance of correct contextual information for a given metric. For each metric, relation, and LM, we compute ∆LEX and ∆CTX . Smaller negative values of ∆LEX and ∆CTX indicate greater overall importance. If, for one situation, both losses are negative and small, this would mean that lexical and contextual infor-mation are complementary. This is generally expected, as the two information sources are very different in nature. If, on the contrary, we would find that the two losses are both close to zero, this would indicate that neither piece of information is helpful. If one of the two is negative and the other is around zero, then information coming from the latter one can be recovered from the former one. 
+
+4. Data and Experiments 
+
+We have introduced the methodology necessary for our experiments; we will now explain the materials used and the experimental setup. 13 Computational Linguistics Volume vv, Number nn 
+
+4.1 Target Words and Relata 
+
+The source of target words and relata in our study is SemCor (Miller et al. 1993). SemCor provides manual sense disambiguation for all nouns, verbs, adjectives, and adverbs in 352 articles from the Brown Corpus (Kuˇ cera et al. 1967) WordNet senses were used for this, i.e., each token was assigned a synset tag. WordNet establishes semantic relations between synsets, which are necessary for our experiments. We restrict ourselves to nouns as target words and relata, because only nouns support the six relations of interest. We exclude multiword expressions, named entities, and abbreviations because their interpretation relies on encyclopaedic knowledge or involves complex semantic compositional mechanisms, which introduce confounding factors and fall outside the scope of this study. We also exclude sentences with fewer than five tokens because they may not provide enough contextual clues for LMs to determine word senses. Additionally, the first words in a sentence are excluded as both target words and relata. This makes sure that all LMs under study, whether they are unidirectional or not, have at least some context to work with. After filtering, 68,228 tokens (10,953 types) remain, which correspond to 8,159 lem-mas. In total, the dataset contains 10,409 senses (synsets). For each token, we obtain its representation using LMs. If a token is split into multiple subwords, we use the average of the subwords’ representations as the token’s representation. 
+
+4.2 Triplets                                     
+
+> Table 1
+> Triplet statistics, by relation. Relation Sense Lemma Type Token HYP 3,571 6,123 12,649 769,979 HPO 3,573 6,127 12,750 753,224 HOL 353 546 1,174 186,536 MER 354 537 1,314 205,049 SYN 1,637 2,496 4,594 194,674 ANT 137 125 269 95,066 UNR 500,000 493,500 496,419 500,000 TOTAL 509,625 509,454 529,169 2,704,528
+
+We consider the six semantic relations: hypernymy (HYP), hyponymy (HPO), holonymy (HOL), meronymy (MER), synonymy (SYN), and antonymy (ANT). We will now describe the process of determining valid triplets, which takes the following steps: 1. Triplet collection: for each of the six relations, we extract triplets from SemCor, using WordNet information. We include a control class, unrelatedness (UNR), which contains pairs that do not stand in any semantic relation. For UNR, we randomly sample 500,000 triplets from all unrelated triplets and make sure that none of them is related in any relation defined in WordNet 6. 
+
+> 6Note that there is a minimal chance that the unknown triplets might stand in an actual relation, but only if the procedure happened to sample the target word and relatum of a real relation, and if that relation was missing from WordNet.
+
+14 Author’s Surnames Here Running Article Title Here 
+
+2. Triplet cleaning: amongst all triplets, there are some that would cause problems of property leakage (cf. Section 2.4). We remove those. 3. Duplicated lemma filtering: additionally, if a synonymy triplet is trivial, namely contains the same lemma twice (e.g. (“bird”, “birds”), we remove the triplet. 4. Intra-sentential removal: we also exclude triplets whose token pairs co-occur in the same sentence, since co-occurrence may provide a shortcut for probes to learn relations, as may have happened in Limisiewicz and Mareˇ cek’s (2021) experiment. As explained before on page 7, we need to make sure that during the training of probes, no property under study is ever explicitly exhibited. For transitivity, our evaluation only considers hyponymy and hypernymy pairs. To perform the transitivity experiments fairly, we remove all sense pairs that do not stand in a direct hypernymy and hyponymy relation from the probe training set. For directionality, when two sense pairs differ only in the order, we ensure that only one of the pairs appears in the relation mapping. There are two cases. For symmetric relations, we need to treat the cases where two sense pairs are swapped. For example, (“day”, ANT, “night”) and (“night”, ANT, “day”) cannot both be in the dataset. For non-symmetric relations, we need to treat the cases where there are two sense pairs with swapped senses and reverse relations. For example, if (“robin”, HYP, “bird”) and (“bird”, HPO, “robin”) cannot both be in the dataset. We randomly discard one triplet in such cases. Statistics at the sense, lemma, type, and token level are presented in Table 1. In total, there are 3,571 sense pairs for hypernymy, 3,573 for hyponymy, 353 for holonymy, 354 for meronymy, 1,637 for synonymy, and 137 for antonymy. At the token level, there are 769,979 triplets for hypernymy, 753,224 for hyponymy, 186,536 for holonymy, 205,049 for meronymy, 194,674 for synonymy, and 95,066 for antonymy. 
+
+4.3 Training and Test Set Division 
+
+We use a lemma-based strategy to split the training and test sets. Consider the set of all N triplets 
+
+T = {(wi, r i, v i) | i = 1 , . . . , N } . (14) We denote the lemmatisation function of a token by g. The sets of all wi and vi are called 
+
+W and V , respectively 7 . The set of lemmas that appear in all triplets of T is 
+
+M = {g(u) | u ∈ W ∪ V }. (15) We make sure that no lexical leakage (first observed by Ravichander et al. (2020), cf. Section 2.1) can occur. We split M into two subsets, Mtrain and Mtest , in such a way that triplets from the two subsets do not share any lexical information. In other words, the triplets of the training set contain only wi and vi with lemmas from Mtrain , and the triplets of the test set contain only wi and vi with lemmas from Mtest . To achieve this, we have to remove triplets where w is in Mtrain and v is in Mtest , or vice versa. For               
+
+> 7|W|= 10 ,867 ,|W|= 10 ,864 ,|W∩V|= 10 ,778 .
+
+15 Computational Linguistics Volume vv, Number nn 
+
+example, if (“body”, MER, “leg”) is in the training set, then triplets that include either “body”, “bodies”, “leg”, or “legs” do not appear in the test set. With this design, we ensure that probes are evaluated only on triplets whose tokens were not seen during training. Probe training and evaluation are based on cross-validation, enabling the use of all triplets in probe evaluation. To maintain lexical separation between training and test under cross-validation, we perform the training –test split for each fold at the lemma level as explained above. The full lemma set M is divided into I subsets {M1, ..., M I }.For fold i, the probe fi is trained on triplets Ti = {(w, r, v ) | g(w), g (v) ∈ M \ Mi}, and then evaluated on Mi. F and D scores are computed on each fold and averaged across folds. Note that UNR is not a semantic relation; we do not expect it to display any relation property. We therefore will not calculate D scores on UNR. We do not stratify across target labels (here, relations) during cross-validation. As a result, the relation distribution for each fold can be skewed. We repeat cross-validation over multiple trials in order to reduce the effect of skewness (cf. Section 3.2). 
+
+4.4 Indirect Hypernymy and Hyponymy Triplets                                         
+
+> Table 2
+> Statistics of indirect triplets, per distance. Distance Sense Lemma Type Token 27,682 12,627 27,549 1,672,725 37,921 12,325 28,057 1,688,907 47,268 10,085 23,216 1,180,959 55,871 7,199 16,822 910,786 64,541 4,871 12,041 704,070 73,432 3,415 8,755 417,708 82,138 2,037 5,151 203,862 91,232 1,145 2,866 101,881 TOTAL 40,085 53,704 124,457 6,880,898
+
+The indirect hypernymy and hyponymy triplets which we removed from the train-ing set constitute the sole test set for evaluating transitivity. We create more hyponymy test data by reversing all indirect hypernymy triplets and merging them with indirect hyponymy triplets, and vice versa by adding reversed indirect hyponymy triplets to hypernymy triplets. This is done separately for indirect triplets of each distance. As a result, the final sets of indirect hypernymy and indirect hyponymy triplets contain the same number of instances for each distance. We discard triplets with distances greater than 10 because their accumulated counts are too low 8 to ensure statistical reliability. We also discard triplets whose distances are not unique 9, as they would endanger the interpretability of the results. Table 2 reports the distribution of indirect triplets by distance. 16 Author’s Surnames Here Running Article Title Here 
+
+Table 3 
+
+Models used for generating token representations. Model Family Layers Dimensions Parameters modernbert-large MLM 28 1024 395M LLaDA-8B-Base DLM 32 4096 8B LLaMA-3.1-8B CLM 32 4096 8B fastText (baseline) Static n.a. 300 n.a. 
+
+4.5 Models 
+
+We use three LMs to obtain token representations, each from a different family, as given in Table 3. The first model is a masked LM (MLM), modernbert-large, with 28 layers and 395 million parameters, producing 1024-dimensional token representations. The second model is a diffusion LM (DLM) with 32 layers, LLaDA-8B-Base. The third model is a causal LM (CLM), LLaMA-3.1-8B. Both LLaDA-8B-Base and LLaMA-3.1-8B have 32 layers and 8 billion parameters, producing 4096-dimensional token representations. We use LLaMA-3.1-8B instead of larger variants in order to maintain comparability with LLaDA. MLMs and DLMs are bidirectional LMs since they can take the preceding and following context of the target token into account; in contrast, CLMs are unidirectional and only take the preceding context into account. The major component of an LM is a stack of Transformer layers. Given a sentence 
+
+s = [ w1, . . . , w n], each layer of M produces a vector representation for each token in s.In this study, we use the output of the final layer as the representation of a token 10 .We use fastText (Grave et al. 2018) as our baseline. In fastText, the representation of a word is computed as the average of the representations of its constituent subwords. Unlike representations produced by LMs, fastText representations are static, meaning that tokens with the same word type have the same representation independent of which context they appear in. The dimensionality of fastText representations is 300. We refer to modernbert-large, LLaDA-8B-Base, LLaMA-3.1-8B, and fasttext by Mod-ernBERT, LLaDA, LLaMA, and Static, respectively. 
+
+4.6 Experimental Details 
+
+We train our probes using cross-entropy loss, optimised with Adam (Kingma and Ba 2015). Training continues for five epochs with a batch size of 1,024. Four-fold cross-validation over ten trials is applied. In order to obtain degenerate and egalitarian decontextualised representations, τ is set to 100 11 .
+
+4.7 Statistical Tests 
+
+We perform two types of statistical tests. The first is to determine, for a given metric and relation, which model performs best, using a paired permutation test with the controlled       
+
+> 8This accounts for fewer than 1% of all triplets.
+> 9This causes a loss of 5% of indirect triplets.
+> 10 We also examine the results using outputs from other layers; results are reported in the Appendix 7.
+> 11 We experimentally examined various values of τand found that 100 is large enough to obtain a uniform attention score distribution.
+
+17 Computational Linguistics Volume vv, Number nn 
+
+performances of different models in each trial as data points. We perform the test only between a given model against the model with the numerically highest mean controlled performance among all remaining models. We will show the best model per relation and metric in boldface in the result tables that follow. The second is to determine, for a given metric and model, which relation the model performs best on. We first average performance across trials for each metric, model, and relation. Then we apply the non-paired permutation test to the mean controlled perfor-mance on the relation being tested and the second highest mean controlled performance across all remaining relations, for each model and metric. We will underline the relation where a model performs best for a metric in the result tables that follow. For both types of tests, we use a one-sided alternative hypothesis and estimate p-values using Monte Carlo approximation with 1,000,000 permutations. The significance level is set at α = 0 .01 . We apply the Bonferroni correction (Bland and Altman 1995) and set the significance level to 0.01 120 per test. This per-test significance level ensures that the probability of making at least one Type I error across all tests remains below α = 0 .01 .The correction is necessary because we perform 120 statistical tests in total. This raises a multiple-comparison problem, whereby conducting multiple tests inflates the overall probability of Type I errors. 
+
+5. Results 
+
+In this section, we first present the performance of probes that learn representations con-taining lexical information and correct contextual information, and then report how lex-ical and contextual information influence probe performance. We present the controlled performance throughout; the corresponding raw scores are provided in Appendix 7. 
+
+5.1 Relation Predictability                                     
+
+> Table 4
+> Controlled Frscores across relations rand models. Bold-faced values show the best model for the given relation, for each line. Underlined values show the best relation for that model, for each row. Relation Static ModernBERT LLaDA LLaMA HYP .12 .23 .19 .25
+> HPO .13 .20 .16 .22
+> HOL .14 .17 .17 .27
+> MER .12 .15 .14 .21
+> SYN .10 .12 .08 .10 ANT .16 .07 .04 .15 UNR .36 .42 .28 .46
+
+Table 4 presents the results of controlled F scores across relations and models. We can see from the results that models do not perform well, remaining below 0.30 across the real semantic relations. Models generally show higher scores on asymmetric relations (hypernymy, hyponymy, holonymy, and meronymy) than symmetric rela-tions (synonymy and antonymy): the best Fr scores for the four asymmetric relations are in the 0.20 to 0.30 range, with the lowest one observed at 0.12. Best scores for the two remaining symmetric relations are 0.12 and 0.16, with the lowest one observed at 0.07. 18 Author’s Surnames Here Running Article Title Here 
+
+Models generally reach good performance on unrelatedness (e.g. LLaMA at 0.46, ModernBERT and the static baseline at 0.42 and 0.36). This suggests that, given a token, the representations of tokens unrelated to it tend to occupy a distinct linear region in semantic space, which is more separable than those of the semantic relations. We also find that LLaMA clearly outperforms the other models on the four asym-metric relations. LLaMA’s advantage can also be seen in F, the macro-average over the Fr , which were measured at 0.16 for the static baseline, 0.15 for LLaDA, 0.20 for ModernBERT, and 0.24 for LLaMA in order of the value of F12 . However, the advantage of LLaMA is not observed on symmetric relations; the static baseline performs best on antonymy (0.16), and ModernBERT performs best on synonymy (0.12). In summary, all LMs can recognise asymmetric relations better than symmetric relations. This suggests a reasonably linearly separable relata region for asymmetric relations, but no comparably separable region for symmetric relations. 
+
+5.2 Directionality                               
+
+> Table 5
+> Controlled Drscores across relations and models. Bold-faces and underlining are as before. Relation Static ModernBERT LLaDA LLaMA HYP .06 .12 .04 .18
+> HPO .11 .13 .06 .17
+> HOL .03 .04 .02 .07
+> MER .04 .03 .03 .07
+> SYN −.04 −.02 .01 .02
+> ANT .12 .01 .00 .05
+
+Table 5 presents Dr scores across relations and models. We observe that no model reaches a score above 0.20 for any relation, with LLaMA reaching the maximum of all 
+
+Dr scores for hypernymy, at 0.18. The (macro-averaged) controlled D values, which do not exceed 0.10 for any relation, tell a similar story. LLaMA again outperforms the other models, although this time it only reaches 0.09, with LLaDA reaching 0.03, and ModernBERT and the static baseline reaching 0.05. Again, asymmetric relations fare better than symmetric ones, with the maxima at 0.18 and 0.17 reached for hypernymy and hyponymy, respectively. However, in what looks like an outlier, antonymy reaches 0.12 with the static baseline while otherwise scoring low. Amongst the asymmetric relations, models generally perform better on hypernymy and hyponymy than on holonymy and meronymy. Dr values for holonymy only range between 0.02 and 0.07, and for meronymy between 0.03 and 0.07. Symmetric relations fare even worse, with synonymy even scoring negatively for the static baseline and ModernBERT (indicating performance below random chance), and where all scores remain below 0.05. In short, only hypernymy and hyponymy yield moderate performance for direc-tionality. Taking together the results of relation predictability, we can safely conclude that even though the relation predictability of asymmetric relations is of a moderate degree, their directionality is generally captured poorly by the LMs we evaluated.      
+
+> 12 We only report F,D, and Tin texts.
+
+19 Computational Linguistics Volume vv, Number nn 
+
+5.3 Transitivity 2 3 4 5 6 7 8 9       
+
+> Hypernymy Distance
+> 0.3
+> 0.2
+> 0.1
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> Controlled Transitivity Score
+> HYP
+> 23456789
+> Hypernymy Distance
+> HPO
+> Model
+> Static
+> ModernBERT
+> LLaDA
+> LLaMA
+
+Figure 2 
+
+Controlled T{r,k } scores per distance, for hypernymy and hyponymy. 
+
+Figure 2 shows controlled transitivity scores T{r,k } per distance (2–9) for hypernymy and hyponymy. Our first observation is that for all models, the controlled transitiv-ity scores decline with increasing hypernymy distance. The performance trends over distance are similar across models, with LLaMA achieving the highest scores for both relations at almost all distances (with the exception of hypernymy at the distance of nine). In particular, for hypernymy and hyponymy triplets with distances between two and six, LLaMA maintains scores above 0.10, numerically higher than the scores of other models. However, for larger distances, LLaMA’s performance declines and eventually falls below zero at a distance of nine. The static baseline performs below chance at any distance for hyponymy, and after distance four for hypernymy. LLaDA performs similarly badly, dropping below random chance before 5 for both relations. 
+
+Table 6 
+
+Controlled Tr scores, averaged over hypernymy distances. Relation Static ModernBERT LLaDA LLaMA HYP −.06 .11 −.02 .15 
+
+HPO −.16 .06 −.06 .12 
+
+Table 6 shows the Tr scores, which are averaged across distances. LLaMA again outperforms other models over both relations. LLaMA’s advantage is observed in the summary T scores as well, where it achieves 0.13. In contrast, ModernBERT achieves 0.09, whereas LLaDA and the static only obtain −0.04 and −0.11 , respectively. There is a general trend whereby all models perform better on hypernymy. The Tr
+
+scores for the static baseline and LLaDA are negative, suggesting that for those models, the relation geometry does not reflect the transitivity of hypernymy and hyponymy. In summary, performance on transitivity decreases with increasing hypernymy distance. This suggests that indirect relations with long distances might have a different geometry from direct triplets in the semantic space. As a result, for probes which learn only from direct triplets with no possibility of any leakage of transitivity, it becomes increasingly harder to perform well on such long-distance indirect triplets. 20 Author’s Surnames Here Running Article Title Here 
+
+5.4 Influence of Lexical and Contextual Information 
+
+Tables 7, 8, and 9 shows ∆LEX and ∆CTX for Fr , Dr , and Tr scores across relations and models, respectively. Lower deltas correspond to more influence of the factor concerned. In these tables, boldface indicates for each model whether ∆LEX or ∆CTX is lower. 
+
+Table 7 
+
+∆LEX and ∆CTX for relation predictability Fr .Relation ModernBERT LLaDA LLaMA 
+
+∆LEX ∆CTX Fr ∆LEX ∆CTX Fr ∆LEX ∆CTX Fr
+
+HYP −.11 −.15 .23 −.12 −.17 .19 −.17 −.06 .25 HPO −.07 −.14 .20 −.04 −.10 .16 −.17 −.04 .22 HOL −.03 −.13 .17 −.03 −.15 .17 −.15 −.10 .27 MER −.03 −.12 .15 .00 −.13 .14 −.08 −.07 .21 SYN −.05 −.06 .12 −.03 −.06 .08 −.07 −.03 .10 ANT −.01 −.06 .07 +.01 −.06 .04 −.07 −.06 .15 UNR −.22 −.23 .42 −.19 −.24 .28 −.31 −.16 .46 
+
+We can see from Table 7 that ModernBERT and LLaDA prefer lexical information for relation predictability, whereas LLaMA prefers contextual information. For LLaMA, the lowest losses are observed for unrelatedness, whose ∆LEX is −0.31 , followed by hyponymy and hypernymy at 0.17 . For ModernBERT and LLaDA, ∆CTX is lowest for hypernymy and followed by either hyponymy or holonymy. In general, ∆CTX is lower for asymmetric relations than for symmetric relations, being as high as −0.06 for antonymy and symmetry. 
+
+Table 8 
+
+∆LEX and ∆CTX for directionality Dr .Relation ModernBERT LLaDA LLaMA 
+
+∆LEX ∆CTX Dr ∆LEX ∆CTX Dr ∆LEX ∆CTX Dr
+
+HYP −.06 −.08 .12 −.04 −.05 .04 −.17 −.02 .18 HPO −.07 −.08 .13 −.05 −.06 .06 −.17 −.01 .17 HOL .00 −.03 .04 .00 −.03 .02 −.04 −.02 .07 MER .00 −.02 .03 .00 −.03 .03 −.03 −.03 .07 SYN −.03 +.02 −.02 +.05 +.03 .01 −.03 +.02 .02 ANT −.01 −.01 .01 +.01 .00 .00 −.04 .00 .05 
+
+From Table 8, we can see the same marked trend for Dr as Fr , with ModernBERT and LLaDA showing a slight preference for lexical information and LLaMA generally preferring contextual information 13 . This effect is the most obvious for hypernymy and hyponymy. For LLaMA, hypernymy and hyponymy profit strongly from lexical information at ∆LEX of −0.17 . For ModernBERT and LLaDA, the influence of the two information sources is much more balanced for hypernymy and hyponymy (with a 0.04 to 0.07 drop for lexical information removal versus a 0.05 to 0.08 drop for context information removal).        
+
+> 13 There is only one exception: this time, for ModernBERT, synonymy receives more benefit from lexical information. For relations with small Dr, we can observe that the ∆LEX and ∆CTX tend to be close to zero. This is because, if the relata region reflects little directionality, the relative strength of contributing information is limited.
+
+21 Computational Linguistics Volume vv, Number nn                                   
+
+> Table 9
+> ∆LEX and ∆CTX for transitivity Tr.Relation ModernBERT LLaDA LLaMA
+> ∆LEX ∆CTX Tr∆LEX ∆CTX Tr∆LEX ∆CTX Tr
+> HYP −.10 −.06 .11 −.11 −.02 −.02 −.24 +.07 .15 HPO −.03 −.05 .06 +.05 +.09 −.06 −.20 +.08 .12
+
+From Table 9, which covers transitivity, we observe that all models generally prefer lexical information, with the exception of ModernBERT for hyponymy. When compar-ing Table 7 and Table 9, we can make statements about how the different models handle direct vs indirect hypernymy and hyponymy, and which information they use to do this job. For LLaMA, for both indirect and direct relations, it is lexical information that is consistently more important. LLaDA and ModernBERT, when it comes to direct hy-pernymy and hyponymy (Table 7), are different from LLaMA in that they rely more on contextual information. However, when it comes to indirect hypernymy and hyponymy, they tend to be similar to LLaMA in that they rely more on lexical information. 
+
+5.5 Discussion 
+
+One persistent finding in our experiments is that models perform poorly on synonymy. A possible reason is that we excluded trivial synonymy pairs, namely those sharing a lemma. This makes the task challenging but allows us to study whether LMs cap-ture synonymy at the semantic level. Our finding provides counter-evidence to the conventional distributional hypothesis, which states that distributional similarity is proportional to semantic similarity, and that learning distributions yields knowledge of synonymy (see the quote on page 2). Combining the finding on synonymy with the observation that all LMs perform better on other semantic relations, particularly hypernymy and hyponymy, we can raise an important issue regarding distributions and semantic relations. Our results partially support the distinction between semantic relatedness and semantic similarity, which has long been a concern in computational linguistics (Resnik 1995; Budanitsky and Hirst 2006; Turney 2006; Hill, Reichart, and Korhonen 2015). Our experiments show that learning of distributions results in relatively clear se-mantic relation geometry of hypernymy, hyponymy, meronymy, and holonymy. These are representative examples of semantic relatedness. On the other hand, no such seman-tic relation geometry was found for synonymy, which is an obvious case of semantic similarity. This is consistent with the findings of Hill, Reichart, and Korhonen, who found that semantic similarity was harder to capture than semantic relatedness for distributional semantic models. Note that in their experiments, co-occurrence-based and neural word embedding models are used. Despite the architectural difference, both word embedding models and the LMs evaluated in this study learn purely from word distributions. Therefore, this commonality suggests a potential limitation of distribu-tional semantics in accounting for semantic similarity. On antonymy, unlike synonymy, our static baseline outperforms the three LMs. One possible explanation is the fact that antonymy is not just a semantic relation but a lexico-semantic relation Fellbaum (1995). In other words, what signals the antonymy is the lexical identity of the two antonyms, to a higher degree than it does for other semantic 22 Author’s Surnames Here Running Article Title Here 
+
+relations. The static baseline disregards context when representing words, but has access to particularly rich information about lexical identity, which might well result in the better performance of our baseline for antonymy. Another finding confirms some aspects of Sahlgren’s (2008) theoretical assump-tions about the connection between relations and distributional semantics, while also revealing some aspects that should be further developed. Sahlgren stated that models learning only the shared neighbours of two words (such as our baseline) should be better at paradigmatic relations (e.g. semantic relations), whereas models learning the co-occurrence of two words should be better at syntagmatic relations (e.g. collocations and idioms). LMs learn both types of distributional information jointly, something that Sahlgren does not discuss. The static baseline we used is based on skip-gram with negative sampling, which implicitly factorises a word –word pointwise mutual information matrix, as has been shown by Levy and Goldberg (2014). This means our static baseline is a model accumu-lated from shared neighbours. LMs, in contrast, learn not only shared neighbours but also co-occurrences. The training objective of LMs requires them to predict a probability distribution over the vocabulary given a context. As a result, LMs learn the likelihood of linguistic units co-occurring with a given context and learn to assign numerically close probabilities to alternative units in the same context. The fact that our results show LMs’ relatively stronger performance on asymmetric relations over the static baseline suggests the presence of a synergistic effect of learning shared neighbours and learning co-occurrences, which seems to be particularly strong for asymmetric relations. We can conclude that the effect of joint learning shared neigh-bours and co-occurrences, which has not been addressed in the previous theoretical discussions, requires more theoretical explanation and experimentation. When it comes to direct and indirect hypernymy relations, we also found some differences in the behaviour of the LMs studied that call for an explanation. The results in Table 7 and 9 support the claim that LLaMA relies more on lexical information than on contextual information for both direct hypernymy and hyponymy (corresponding to our tasks of relation predictability) and indirect hypernymy and hyponymy (corre-sponding to our tasks of transitivity). At the same time, ModernBERT and LLaDA prefer contextual information over lexical information for direct hypernymy and hyponymy, but prefer lexical information over contextual information for indirect hypernymy and hyponymy. The differences in the behaviour of ModernBERT, LLaDA, and LLaMA for direct relations may lie in their respective language modelling objectives. ModernBERT is a MLM, whereas LLaDA is a DLM. MLMs and DLMs use the bidirectional context when predicting masked tokens, whereas CLMs such as LLaMA use the preceding context alone to predict the next token. MLMs and DLMs thus learn the dependencies between the word to be predicted and both preceding and subsequent context, whereas CLMs learn dependencies of the word on preceding context together with the distribution of plausible subsequent context. In other words, CLMs encode more varied information about the word, which might explain their larger performance drop observed when lexical information is removed. The commonality in the behaviours of all LMs studied for indirect hypernymy and hyponymy may lie in the distributional difference of those relations from direct ones. The context of a target word and the context of its relatum can be expected to be very similar to each other if the two tokens stand in direct hypernymy or short-distance indirect hypernymy. In contrast, a target word and a relatum in long-distance indirect hypernymy may exhibit little semantic overlap, and their contexts are likely to 23 Computational Linguistics Volume vv, Number nn 
+
+be dissimilar. In particular, the hypernym’s context may be general and abstract. There-fore, the contextual difference alone might suffice to identify direct, but not indirect, hypernymy or hyponymy. Consider the following sentences from SemCor. The target tokens are shown in boldface. 1. The parallel bars, horse ... and mats formerly in the school gyms were replaced by [...] football. 2. Some areas may already have been improved and contain buildings [...]. 3. In most cases, we recognise certain words, persons, animals or objects .Given the context, it is relatively easy to identify the hypernymy relation holding between “gym” and “building”, which is direct hypernymy. On one hand, the contexts include words such as “in” and “contain”, which signal that both refer to physical structures. This is different for indirect hypernym relation, like that holding between “object” and “gym”. Here, the available contextual cues are few, making the decision to recognise that this is hypernymy difficult. 
+
+6. Conclusion 
+
+We have studied the geometry of semantic relations in the semantic space of LMs. We addressed three questions: first, whether relata regions for semantic relations exist; second, whether such regions reflect well-known properties of relations; and third, how important lexical and contextual information are to these regions. Our contributions are as follows. 1. We presented an interpretable evaluation methodology that approximates the relata regions of semantic relations in semantic space using probing. These probes were evaluated from three perspectives: how separable relata regions are; and the extent to which the relata regions reflect directionality and transitivity. 2. We defined the statuses of lexical and contextual information and proposed methods, which we operationalise by manipulating the information going into token representations produced by LMs. Based on these methods, we proposed novel evaluation metrics that quantify the importance of lexical and contextual information for semantic relations. 3. Using these methods, we conducted an in-depth evaluation under a carefully designed experimental setting. The evaluation covers six semantic relations, five of which are relatively underexplored, with unrelatedness as the control condition, and three LM families, including a DLM (LLaDA-8B-Base), a MLM (modernbert-large), and a CLM (LLaMA-3.1-8B). The results showed that semantic spaces do not consistently distinguish between relations, whereas unrelated triplets can be linearly separated from related triplets. Models overall performed better on asymmetric relations than on symmetric relations. Among asymmetric relations, hypernymy and hyponymy showed best results across metrics. 24 Author’s Surnames Here Running Article Title Here 
+
+We also found that the relata regions learned for those two relations reflect direc-tionality to a moderate extent. When it comes to transitivity, models were performing reasonably well for short-distance transitivity, but were generally unable to capture long-distance transitivity. When comparing the LMs we tested, LLaMA performed better than LLaDA and ModernBERT in most cases. However, on antonymy, our simple word embedding baseline model outperformed all LMs. We designed an ablation method to quantify the importance of lexical and contex-tual information in the relata regions of semantic relations. This was motivated by the observation that semantic relations are defined over senses and the sense of a word in running text is determined based on lexical information and contextual information, yet it is unclear how lexical and contextual information contribute to these relations. In the experiments on this factor, we found that lexical information is consistently more important for LLaMA, whereas contextual information is more important for LLaDA and ModernBERT, except in the case of transitivity. Our results provide an empirical basis for further discussion of distributional se-mantics. Learning the distributions of words does not guarantee the acquisition of semantic relations, which we equate to the emergence of relation geometry in semantic space. Instead, our results call for further theoretical and methodological development in light of the contrast between our findings and the high performance of LMs in other tasks that require semantic knowledge. 
+
+7. Limitations and Future Work 
+
+We used linear probes because linearity is highly interpretable and is suitable for the purpose of our evaluation. This choice means that we cannot explore the question of whether semantic relations are represented non-linearly in semantic space. The question of non-linear semantic spaces has recently become the topic of discussion (Valeriani et al. 2023), and there are good reasons to believe that our research could profit from non-linear probes. After all, our probes perform extremely poorly on synonymy. Future work should therefore explore more complex relata regions in semantic space. Another limitation concerns the general interpretation of probing results. Probes can detect knowledge encoded in representations, but this does not necessarily imply that such knowledge is actually utilised in downstream tasks (Belinkov 2022). In some cases, LMs may perform well on tasks that require specific knowledge even without explicit access to that knowledge. We therefore do not make any claims here about the performance of LMs on tasks such as the construction of lexical resources (Santoro et al. 2025; Bergh, Waitelonis, and Siegel 2025); the relationship between the knowledge probed and performance on such tasks needs to be empirically established indepen-dently. When choosing LMs for this article, we did not attempt to address the full range of modelling approaches used in practice. Instead, we only used three LMs, which we did not match for parameters or training data. It is possible that the observed superiority of LLaMA in our experiments is due to the fact that it has more parameters than ModernBERT and the static baseline, and that it is trained with a broader context window and on a larger corpus than LLaDA. As LLaMA’s performance advantage is likely due to the combined effect of these factors, our results do not allow us to conclude absolutely that CLMs capture semantic relations more effectively than other models. Our choice of LMs follows from the purpose of this work, which is to study the limits of learning distributions alone, rather than engineering the best possible solution 25 Computational Linguistics Volume vv, Number nn 
+
+for the task of making LMs understand semantic relations. We therefore only mea-sure how a representative set of commonly used LMs would perform on our newly developed tasks. Models that incorporate multimodal information or alignment with human preferences, such as today’s large proprietary LMs, may overcome some of these limitations, but examining such models falls beyond the scope of this article. A further limitation of our work is that the experiments are conducted in highly controlled laboratory settings. For example, we only study relations between nouns, rather than at the subword or multiword expression level. There are also limitations in our data: SemCor’s sentences are drawn from the Brown Corpus, which reflects English before the 1970s and may differ from contemporary usage. It is therefore imperative for the future to study semantic relations in more contemporary and realistic settings. 
+
+Acknowledgments 
+
+> This work was supported by JSPS KAKENHI Grant Number JP25KJ1271.
+
+26 Author’s Surnames Here Running Article Title Here 
+
+Appendix A: Calculation of F1-score 
+
+F{i,j } 
+
+> r
+
+for relation r on fold i in trial j is calculated as follows. 
+
+F{i,j } 
+
+> r
+
+= 2 × R{i,j } 
+
+> r
+
+× P {i,j }
+
+> r
+
+R{i,j }r + P {i,j }
+
+> r
+
+(A.1) 
+
+R{i,j } 
+
+> r
+
+= T P {i,j }
+
+> r
+
+T P {i,j } 
+
+> r
+
++ F N {i,j }
+
+> r
+
+(A.2) 
+
+P {i,j } 
+
+> r
+
+= T P {i,j }
+
+> r
+
+T P {i,j } 
+
+> r
+
++ F P {i,j }
+
+> r
+
+(A.3) with T P {i,j } 
+
+> r
+
+standing for true positives and F N {i,j } 
+
+> r
+
+standing for false negatives within fold i of trial j, while evaluating relation r.
+
+Appendix B: Raw Probe Performance 
+
+We present here the performance across metrics, models, and relations of the raw probe (non-chance-controlled). 
+
+Table B.1 
+
+Performance across metrics, models, and relations Metric Model HYP HPO HOL MER SYN ANT UNR 
+
+Fr
+
+ModernBERT .42 .41 .20 .19 .08 .15 .53 LLaDA .41 .38 .22 .18 .05 .12 .47 LLaMA .49 .46 .32 .26 .15 .15 .62 
+
+Dr
+
+ModernBERT .17 .18 .04 .03 .03 .01 –LLaDA .11 .13 .03 .03 .02 .00 –LLaMA .25 .25 .07 .07 .03 .05 –
+
+Tr
+
+ModernBERT .46 .44 – – – – –LLaDA .37 .32 – – – – –LLaMA .55 .54 – – – – –
+
+Appendix C: Probe Performance on Representations by Different Layers 
+
+Regardless of whether an LM is unidirectional or bidirectional, its layers have distinct functions and capture different types of information (Jawahar, Sagot, and Seddah 2019; Rogers, Kovaleva, and Rumshisky 2020; Aspillaga, Mendoza, and Soto 2021; Merullo, Eickhoff, and Pavlick 2024). Hence, it is necessary to examine how different layers contribute to the relation probe. However, the number of layers varies across LMs and cannot be directly compared. In practice, we divide the layers of each LM into four subsets: lower layers, mid-lower layers, mid-upper layers, and upper layers. Outputs within each subset are averaged to obtain token representations which reflect the in-formation captured at different stages of the model. Figure C.1 shows the controlled performance of probes on representations from different layer subsets. 27 Computational Linguistics Volume vv, Number nn 0.1                       
+
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> Controlled Score
+> Metric = F1 | Model = ModernBERT Metric = F1 | Model = LLaDA Metric = F1 | Model = LLaMA
+> 0.1
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> Controlled Score
+> Metric = Directionality | Model = ModernBERT Metric = Directionality | Model = LLaDA Metric = Directionality | Model = LLaMA
+> HYP HPO HOL MER SYN ANT UNR
+> Relation
+> 0.1
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> Controlled Score
+> Metric = Transitivity | Model = ModernBERT
+> HYP HPO HOL MER SYN ANT UNR
+> Relation
+> Metric = Transitivity | Model = LLaDA
+> HYP HPO HOL MER SYN ANT UNR
+> Relation
+> Metric = Transitivity | Model = LLaMA
+> Layer
+> Lower
+> Mid-lower
+> Mid-upper
+> Upper
+
+Figure C.1 
+
+Controlled performance of different layers. 
+
+References 
+
+Aspillaga, Carlos, Marcelo Mendoza, and Alvaro Soto. 2021. Inspecting the concept knowledge graph encoded by modern language models. In Findings of the Association for Computational Linguistics: ACL-IJCNLP 2021 , pages 2984–3000, Association for Computational Linguistics, Online. Belinkov, Yonatan. 2022. Probing classifiers: Promises, shortcomings, and advances. 
+
+Computational Linguistics , 48(1):207–219. Bergh, Johann, Jörg Waitelonis, and Melanie Siegel. 2025. Leveraging LLMs for constructing WordNets automatically as bilingual resources. In Proceedings of the 13th Global Wordnet Conference , pages 203–211, Global Wordnet Association, Pavia, Italy. Bevilacqua, Michele, Tommaso Pasini, Alessandro Raganato, and Roberto Navigli. 2021. Recent trends in word sense disambiguation: A survey. In Proceedings of the Thirtieth International Joint Conference on Artificial Intelligence, IJCAI-21 , pages 4330–4338, International Joint Conferences on Artificial Intelligence Organization. Survey Track. 
+
+28 Author’s Surnames Here Running Article Title Here Bhattacharjee, Robi and Sanjoy Dasgupta. 2020. What relations are reliably embeddable in euclidean space? In Proceedings of the 31st International Conference on Algorithmic Learning Theory , volume 117 of Proceedings of Machine Learning Research , pages 174–195, PMLR. Bland, J Martin and Douglas G Altman. 1995. Multiple significance tests: the bonferroni method. 
+
+BMJ , 310(6973):170. Bordes, Antoine, Nicolas Usunier, Alberto Garcia-Duran, Jason Weston, and Oksana Yakhnenko. 2013. Translating embeddings for modeling multi-relational data. In Advances in Neural Information Processing Systems , volume 26, Curran Associates, Inc. Budanitsky, Alexander and Graeme Hirst. 2006. Evaluating WordNet-based measures of lexical semantic relatedness. Computational Linguistics , 32(1):13–47. Cao, Jiahang, Jinyuan Fang, Zaiqiao Meng, and Shangsong Liang. 2024. Knowledge graph embedding: A survey from the perspective of representation spaces. ACM Comput. Surv. ,56(6). Cao, Zhihan, Hiroaki Yamada, and Takenobu Tokunaga. 2025. On the distinctive co-occurrence characteristics of antonymy. In Proceedings of the 14th Joint Conference on Lexical and Computational Semantics (*SEM 2025) , pages 134–141, Association for Computational Linguistics, Suzhou, China. Cheng, Jiali and Hadi Amiri. 2025. Linguistic blind spots of large language models. In 
+
+Proceedings of the Workshop on Cognitive Modeling and Computational Linguistics , pages 1–17, Association for Computational Linguistics, Albuquerque, New Mexico, USA. Cruse, D. Alan. 1986. Lexical Semantics . Cambridge University Press, New York. Fellbaum, Christiane. 1995. Co-occurrence and antonymy. International Journal of Lexicography ,8:281–303. Garcia, Marcos. 2021. Exploring the representation of word meanings in context: A case study on homonymy and synonymy. In Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers) , pages 3625–3640, Association for Computational Linguistics, Online. Grave, Edouard, Piotr Bojanowski, Prakhar Gupta, Armand Joulin, and Tomas Mikolov. 2018. Learning word vectors for 157 languages. In Proceedings of the International Conference on Language Resources and Evaluation (LREC 2018) .Harris, Zellig S. 1954. Distributional structure. Word , 10:146–162. Hayashi, Katsuhiko and Masashi Shimbo. 2019. A non-commutative bilinear model for answering path queries in knowledge graphs. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP) , pages 2422–2430, Association for Computational Linguistics, Hong Kong, China. Hill, Felix, Roi Reichart, and Anna Korhonen. 2015. SimLex-999: Evaluating semantic models with (genuine) similarity estimation. Computational Linguistics , 41(4):665–695. Jawahar, Ganesh, Benoît Sagot, and Djamé Seddah. 2019. What does BERT learn about the structure of language? In Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics , pages 3651–3657, Association for Computational Linguistics, Florence, Italy. Justeson, John S. and Slava M. Katz. 1991. Co-occurrences of antonymous adjectives and their contexts. Computational Linguistics , 17:1–20. Kingma, Diederik P. and Jimmy Ba. 2015. Adam: A method for stochastic optimization. In 3rd International Conference on Learning Representations .Kuˇ cera, Henry, W. Nelson (Winthrop Nelson) Francis, W. F. (William Freeman) Twaddell, Mary Lois Marckworth, Laura M. Bell, and John Bissell Carroll. 1967. Computational analysis of present-day American English . Brown University Press. Lei, Jingsheng, Chente Shu, Qiang Xu, Yunxiang Yu, and Shengying Yang. 2024. FCPFNet: Feature Complementation Network with Pyramid Fusion for Semantic Segmentation. Neural Processing Letters , 56(2):60. Levy, Omer and Yoav Goldberg. 2014. Neural word embedding as implicit matrix factorization. In Advances in Neural Information Processing Systems , volume 27, Curran Associates, Inc. Limisiewicz, Tomasz and David Mareˇ cek. 2021. Introducing orthogonal constraint in structural probes. In Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers) ,pages 428–442, Association for Computational Linguistics, Online. 
+
+29 Computational Linguistics Volume vv, Number nn Lin, Ruixi and Hwee Tou Ng. 2022. Does BERT know that the IS-a relation is transitive? In 
+
+Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers) , pages 94–99, Association for Computational Linguistics, Dublin, Ireland. Liu, Xinyue, Zeyang Qin, Zeyu Wang, Wenxin Liang, Linlin Zong, and Bo Xu. 2025. Conditional semantic textual similarity via conditional contrastive learning. In Proceedings of the 31st International Conference on Computational Linguistics , pages 4548–4560, Association for Computational Linguistics, Abu Dhabi, UAE. Lohk, Ahti, Heili Orav, and Leo Võhandu. 2014. Some structural tests for WordNet with results. In Proceedings of the Seventh Global Wordnet Conference , pages 313–317, University of Tartu Press, Tartu, Estonia. Loureiro, Daniel, Kiamehr Rezaee, Mohammad Taher Pilehvar, and Jose Camacho-Collados. 2021. Analysis and evaluation of language models for word sense disambiguation. 
+
+Computational Linguistics , 47(2):387–443. Mahapatra, Amitav and Prashanta Kumar Patra. 2025. A unified and scalable machine learning framework for feature fusion in object classification using weighted PCA with adaptive concatenation and dynamic scaling. Discover Computing , 28(1):114. Meconi, Domenico, Simone Stirpe, Federico Martelli, Leonardo Lavalle, and Roberto Navigli. 2025. Do large language models understand word senses? In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 33897–33916, Association for Computational Linguistics, Suzhou, China. Merullo, Jack, Carsten Eickhoff, and Ellie Pavlick. 2024. Talking heads: Understanding inter-layer communication in transformer language models. In Advances in Neural Information Processing Systems , volume 37, pages 61372–61418, Curran Associates, Inc. Mikolov, Tomas, Wen-tau Yih, and Geoffrey Zweig. 2013. Linguistic regularities in continuous space word representations. In Proceedings of the 2013 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies , pages 746–751, Association for Computational Linguistics, Atlanta, Georgia. Miller, George A., Claudia Leacock, Randee Tengi, and Ross T. Bunker. 1993. A semantic concordance. In Human Language Technology: Proceedings of a Workshop Held at Plainsboro, New Jersey, March 21-24, 1993 .Mosolova, Anna, Marie Candito, and Carlos Ramisch. 2025. In the LLM era, word sense induction remains unsolved. In Findings of the Association for Computational Linguistics: ACL 2025 , pages 17161–17178, Association for Computational Linguistics, Vienna, Austria. Navigli, Roberto. 2026. Is word sense disambiguation dead in the llm era? Proceedings of the AAAI Conference on Artificial Intelligence , 40(46):39753–39762. Nickel, Maximilian, Kevin Murphy, Volker Tresp, and Evgeniy Gabrilovich. 2016. A review of relational machine learning for knowledge graphs. Proceedings of the IEEE , 104(1):11–33. Park, Kiho, Yo Joong Choe, and Victor Veitch. 2024. The linear representation hypothesis and the geometry of large language models. In Proceedings of the 41st International Conference on Machine Learning , ICML’24, JMLR.org. Periti, Francesco, Pierluigi Cassotti, Haim Dubossarsky, and Nina Tahmasebi. 2024. Analyzing semantic change through lexical replacements. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 4495–4510, Association for Computational Linguistics, Bangkok, Thailand. Princeton University. 2008. Princeton wordnet gloss corpus. Proietti, Mattia and Alessandro Lenci. 2025. The quasi-semantic competence of llms: a case study on the part-whole relation. CoRR , abs/2504.02395. Ravichander, Abhilasha, Eduard Hovy, Kaheer Suleman, Adam Trischler, and Jackie Chi Kit Cheung. 2020. On the systematicity of probing contextualized word representations: The case of hypernymy in bert. Proceedings of the Ninth Joint Conference on Lexical and Computational Semantics , pages 88–102. Resnik, Philip. 1995. Using information content to evaluate semantic similarity in a taxonomy. In 
+
+Proceedings of the 14th International Joint Conference on Artificial Intelligence - Volume 1 , IJCAI’95, page 448 –453, Morgan Kaufmann Publishers Inc., San Francisco, CA, USA. Richens, Tom. 2008. Anomalies in the WordNet verb hierarchy. In Proceedings of the 22nd International Conference on Computational Linguistics (Coling 2008) , pages 729–736, Coling 2008 Organizing Committee, Manchester, UK. Rogers, Anna, Olga Kovaleva, and Anna Rumshisky. 2020. A primer in bertology: What we know about how bert works. Transactions of the Association for Computational Linguistics ,
+
+30 Author’s Surnames Here Running Article Title Here 8:842–866. de Sá, Jáder Martins Camboim, Jooyoung Lee, Marcos Da Silveira, and Cedric Pruski. 2026. Semantic change characterization with LLMs using rhetorics. In The Proceedings for the 6th International Workshop on Computational Approaches to Language Change (LChange’26) , pages 110–123, Association for Computational Linguistics, Rabat, Morocco. Sahlgren, Magnus. 2008. The distributional hypothesis. The Italian Journal of Linguistics , 20:33–54. Santoro, Daniela, Beatrice Marchesi, Silvia Zampetta, Marco Del Tredici, Erica Biagetti, Eleonora Litta, Claudia Roberta Combei, Stefano Rocchi, Tullio Facchinetti, Riccardo Ginevra, and Chiara Zanchi. 2025. Exploring Latin WordNet synset annotation with LLMs. In Proceedings of the 13th Global Wordnet Conference , pages 66–76, Global Wordnet Association, Pavia, Italy. Säuberli, Andreas and Simon Clematide. 2024. Automatic generation and evaluation of reading comprehension test items with large language models. In Proceedings of the 3rd Workshop on Tools and Resources for People with REAding DIfficulties (READI) @ LREC-COLING 2024 , pages 22–37, ELRA and ICCL, Torino, Italia. Sherborne, Tom and Mirella Lapata. 2023. Meta-learning a cross-lingual manifold for semantic parsing. Transactions of the Association for Computational Linguistics , 11:49–67. Stengel-Eskin, Elias and Benjamin Van Durme. 2023. Calibrated interpretation: Confidence estimation in semantic parsing. Transactions of the Association for Computational Linguistics ,11:1213–1231. Sun, Zhiqing, Zhi-Hong Deng, Jian-Yun Nie, and Jian Tang. 2019. Rotate: Knowledge graph embedding by relational rotation in complex space. In Proceedings of the International Conference on Learning Representations .Touvron, Hugo, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine Babaei, Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, Dan Bikel, Lukas Blecher, Cristian Canton-Ferrer, Moya Chen, Guillem Cucurull, David Esiobu, Jude Fernandes, Jeremy Fu, Wenyin Fu, Brian Fuller, Cynthia Gao, Vedanuj Goswami, Naman Goyal, Anthony Hartshorn, Saghar Hosseini, Rui Hou, Hakan Inan, Marcin Kardas, Viktor Kerkez, Madian Khabsa, Isabel Kloumann, Artem Korenev, Punit Singh Koura, Marie-Anne Lachaux, Thibaut Lavril, Jenya Lee, Diana Liskovich, Yinghai Lu, Yuning Mao, Xavier Martinet, Todor Mihaylov, Pushkar Mishra, Igor Molybog, Yixin Nie, Andrew Poulton, Jeremy Reizenstein, Rashi Rungta, Kalyan Saladi, Alan Schelten, Ruan Silva, Eric Michael Smith, Ranjan Subramanian, Xiaoqing Ellen Tan, Binh Tang, Ross Taylor, Adina Williams, Jian Xiang Kuan, Puxin Xu, Zheng Yan, Iliyan Zarov, Yuchen Zhang, Angela Fan, Melanie Kambadur, Sharan Narang, Aurélien Rodriguez, Robert Stojnic, Sergey Edunov, and Thomas Scialom. 2023. Llama 2: Open foundation and fine-tuned chat models. CoRR , abs/2307.09288. Turney, Peter D. 2006. Similarity of semantic relations. Computational Linguistics , 32(3):379–416. Umarova, Khonzoda, Lillian Lee, and Laerdon Kim. 2025. Current semantic-change quantification methods struggle with discovery in the wild. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 35354–35367, Association for Computational Linguistics, Suzhou, China. Valeriani, Lucrezia, Diego Doimo, Francesca Cuturello, Alessandro Laio, Alessio Ansuini, and Alberto Cazzaniga. 2023. The geometry of hidden representations of large transformer models. In Proceedings of the 37th International Conference on Neural Information Processing Systems , NIPS ’23, Curran Associates Inc., Red Hook, NY, USA. Yu, Jinxing, Yunfeng Cai, Mingming Sun, and Ping Li. 2022. Spacee: Knowledge graph embedding by relational linear transformation in the entity space. In Proceedings of the 33rd ACM Conference on Hypertext and Social Media , HT ’22, page 64 –72, Association for Computing Machinery, New York, NY, USA. Zhou, Kaitlyn, Haishan Gao, Sarah Li Chen, Dan Edelstein, Dan Jurafsky, and Chen Shani. 2025. Rethinking word similarity: Semantic similarity through classification confusion. In 
+
+Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 5803–5817, Association for Computational Linguistics, Albuquerque, New Mexico. Zhuo, Jingming, Songyang Zhang, Xinyu Fang, Haodong Duan, Dahua Lin, and Kai Chen. 2024. ProSA: Assessing and understanding the prompt sensitivity of LLMs. In Findings of the Association for Computational Linguistics: EMNLP 2024 , pages 1950–1976, Association for Computational Linguistics, Miami, Florida, USA. 
+
+31
