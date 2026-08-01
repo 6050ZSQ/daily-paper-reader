@@ -1,0 +1,146 @@
+Title: The Tokenizer Tax: Quantifying and Explaining the Cross-Lingual Cost of Subword Tokenization for Indian Languages
+
+URL Source: https://arxiv.org/pdf/2607.24276v1
+
+Published Time: Tue, 28 Jul 2026 01:51:00 GMT
+
+Number of Pages: 5
+
+Markdown Content:
+# The Tokenizer Tax: Quantifying and Explaining the Cross-Lingual Cost of Subword Tokenization for Indian Languages 
+
+## Priyansh Srivastava 
+
+Sirena Ai India priyansh@sirenatech.com 
+
+Abstract 
+
+Large language models do not read text; they read tokens produced by a subword tokenizer fit predominantly to English data. We show that this design choice imposes a large, systematic, and measurable 
+
+tokenizer tax on Indian languages. Using the 997-sentence FLORES-200 development set as a content-controlled parallel corpus, we measure the fertility of six widely used tokenizers across ten Indian languages and four comparison languages. Under cl100k_base 
+
+(the tokenizer of GPT-3.5/GPT-4), Indian languages incur a mean tax of 8.0× relative to English, rising to 13 .0× for Malayalam— meaning an Indian-language user receives as little as 12% of the effective context window an English user receives for the same content. We trace this tax to a single mechanism: the rate at which the tokenizer’s byte-pair merges fail, leaving tokens stranded as un-merged single bytes, which alone correlates with the per-language tax at 𝑟 =0.89 . We show the tax is a remediable design choice rather than a property of the scripts: multilingual tokenizers (XLM-R) and OpenAI’s newer o200k_base reduce the mean Indic tax by 73% . We further demonstrate a model-free harm: at a fixed context budget, Indian languages retain a small fraction of real document content compared to English. Finally, we relate fertility to downstream reading-comprehension accuracy on the Belebele benchmark and find that the raw correlation is confounded by resource level, a finding we report transparently rather than overstating. 
+
+Keywords 
+
+tokenization, multilingual NLP, Indian languages, fairness, large language models, subword tokenizers 
+
+1 Introduction 
+
+A large language model (LLM) never operates on characters or words directly. Every input is first segmented by a tokenizer into subword units drawn from a fixed vocabulary, and a model’s con-text window, latency, and per-call cost are all denominated in these tokens [ 8, 15 ]. Because the vocabularies of today’s dominant tok-enizers are learned from corpora that are overwhelmingly English, they encode English with remarkable efficiency—often close to one token per word—while shattering other scripts into many small pieces. The number of tokens a tokenizer needs to encode a fixed unit of text is its fertility . When fertility is high for a language, the con-sequences compound. The same paragraph consumes more of a fixed context window, so a Hindi or Tamil user effectively receives a 
+
+smaller window than an English user for identical content. Commer-cial APIs price per token, so the same meaning costs more to send and receive. Generation cost scales with token count, so responses are slower. And over-fragmentation may destroy morphological structure in ways that harm comprehension. This disparity, which we call the tokenizer tax , was first systematically documented across many languages by Petrov et al. [ 12 ] and Ahia et al. [ 1]; we extend their measurement to explain its cause and test its remediability specifically for Indian languages. This paper asks three questions about Indian languages specifi-cally, which together span over a billion speakers across typologi-cally diverse scripts: (1) How large is the tax, and is it structured? We find a clean typological gradient, not a uniform penalty. (2) Why does it exist? We identify a failure of BPE merging— tokens left stranded as unmerged single bytes—as the domi-nant, quantifiable mechanism. (3) Is it remediable? We show that tokenizer choice—not the scripts—drives the tax, and that recent tokenizers already reduce it sharply. Our contributions are: (1) a fine-grained, content-controlled mea-surement of the tokenizer tax across ten Indian languages and six tokenizers; (2) a mechanistic explanation via the rate of unmerged single-byte tokens, which correlates with the tax at 𝑟 =0.89 ; (3) a cross-tokenizer analysis demonstrating that the tax is a design choice, with multilingual and newer tokenizers cutting it by 73% ; (4) a model-free demonstration of effective-context loss under a fixed token budget; and (5) an honest analysis of fertility versus down-stream accuracy that surfaces a resource-level confound rather than overclaiming causality. The entire study runs on a CPU in minutes and is fully reproducible. 
+
+2 Related Work 
+
+Subword tokenization. Byte-Pair Encoding [ 15 ] and the unigram language-model tokenizer [ 8], both popularized through Sentence-Piece [ 9], underlie virtually all modern LLMs. Their vocabularies are optimized for compression on the training corpus, which is the root cause of the cross-lingual disparities studied here. 
+
+Tokenization disparities across languages. The closest prior work establishes that tokenization is unequal across languages. Petrov et al. [ 12 ] show that tokenizers introduce systematic un-fairness, with some languages requiring many times more tokens than English, connecting this to context-length and cost disparities. Ahia et al. [ 1] quantify the monetary consequences of this dispar-ity for commercial APIs. We do not claim to be first to observe that tokenizers disadvantage non-English languages; that finding is established. Our contribution is narrower and more specific: we resolve the disparity within the Indian-language family at a finer typological grain than prior broad surveys, we identify a concrete, measurable mechanism (the rate of unmerged single-byte tokens) rather than reporting fertility ratios alone, and we show empirically arXiv:2607.24276v1 [cs.CL] 27 Jul 2026 , , Priyansh Srivastava 
+
+how much of the disparity newer and multilingual tokenizers have already closed. We view this as a focused case study and mechanis-tic explanation building on Petrov et al. and Ahia et al., not a new category of finding. 
+
+Fertility and downstream performance. Rust et al. [ 14 ] demon-strate that a dedicated tokenizer improves a multilingual model’s monolingual performance, implicating tokenizer quality in down-stream accuracy. We build on this by directly correlating per-language fertility with benchmark accuracy and controlling for resource level, and we report transparently when this confound dominates the raw correlation. 
+
+Indic NLP resources. Multilingual models such as mBERT [ 5 ], XLM-R [ 4], InfoXLM [ 3], and XLM-V [ 10 ], and Indic-focused efforts including IndicNLPSuite [ 7 ] and IndicTrans2 [ 6], have expanded coverage of Indian languages. We use several of their tokenizers as comparison points, and we use the Belebele benchmark [ 2 ] for our downstream-accuracy analysis. 
+
+3 Methodology 
+
+Corpus. We use the FLORES-200 development set [ 11 ], which provides 997 sentences professionally translated and aligned across 200+ languages. Because every language expresses the same content, fertility differences reflect the tokenizer and writing system rather than differences in what is being said. 
+
+Languages. We study ten Indian languages spanning two fami-lies and five scripts: Hindi, Marathi (Devanagari); Bengali (Bengali); Punjabi (Gurmukhi); Gujarati (Gujarati); Urdu (Perso-Arabic); and the four major Dravidian languages Tamil, Telugu, Kannada, and Malayalam, each in its own script. As comparison points we include English, Spanish, French, and Arabic. 
+
+Tokenizers. We evaluate six tokenizers spanning vendors and generations: OpenAI’s cl100k_base (GPT-3.5/GPT-4) and o200k_base 
+
+(GPT-4o); GPT-2 [ 13 ]; Qwen2.5; and the multilingual mBERT [ 5]and XLM-R [4] tokenizers. 
+
+Metrics. For each (tokenizer, language) pair we report: word fertility (tokens per whitespace-delimited word); character fertility 
+
+(tokens per character); bytes per token (encoding efficiency); and un-merged single-byte rate 1, the fraction of emitted tokens that surface as a single raw byte or the Unicode replacement character rather than a multi-byte learned subword. The headline quantity is the 
+
+tax multiplier : the ratio of a language’s word fertility to English’s under the same tokenizer. For a fixed token budget 𝐵 , we compute usable characters as 𝐵 /( char fertility ) and its ratio to English’s, the 
+
+context shrinkage .
+
+4 The Tax and Its Structure 
+
+Table 1 reports measurements under cl100k_base . The tax is large and structured : it is not a flat penalty on “non-English” but a smooth typological gradient (Figure 1). Latin-script European languages pay only 1.3–1.6×. Perso-Arabic scripts (Urdu, Arabic) sit near 3.4×.Indo-Aryan Brahmi scripts climb from Hindi ( 4.1×) through Bengali      
+
+> 1We avoid the term “byte fallback” in its strict sense, since cl100k_base is a byte-level BPE tokenizer for every language: all tokens are ultimately built from bytes, including English ones. What we measure is the rate at which the BPE merge process failed
+> to combine adjacent bytes into a larger learned subword, leaving them stranded as single-byte tokens—the practical symptom of insufficient vocabulary coverage for a script.
+
+Table 1: Per-language measurements under cl100k_base . Tax = word-fertility ratio vs. English; Byte/tok = bytes per token; Unmerged = unmerged single-byte token rate; Ctx = usable characters in an 8,192-token budget relative to English.                                                              
+
+> Lang Tax ×Byte/tok Unmerged % Ctx % eng 1.00 4.86 9.3 100.0 spa 1.31 3.81 7.1 77.1 fra 1.37 3.78 7.2 75.1 urd 3.45 1.96 13.3 22.7 hin 4.08 2.61 27.5 20.9 mar 5.84 2.58 29.2 19.9 ben 6.52 2.19 37.2 16.9 pan 6.69 1.61 39.1 12.9 guj 8.00 1.59 39.5 12.5 tam 9.89 2.03 33.9 15.3 tel 10.68 1.57 40.9 12.2 kan 12.06 1.56 41.0 11.9 mal 13.04 1.70 42.7 12.7 arb 3.39 2.56 4.1 29.1
+
+Figure 1: Tokenizer tax by language under cl100k_base , rela-tive to English. The penalty follows a typological gradient, heaviest for the Dravidian languages. 
+
+(6.5×) and Gujarati ( 8.0×), and the Dravidian languages are taxed most heavily: Tamil ( 9.9×), Telugu ( 10 .7×), Kannada ( 12 .1×), and Malayalam ( 13 .0×). Across the ten Indian languages the mean tax is 8.0×.The effective-context consequence is severe (Figure 2). At a fixed 8,192-token budget, Kannada and Telugu users receive only ∼12% of the usable characters an English user does; every Indian language studied receives under a quarter. 
+
+5 Why the Tax Exists: Unmerged Single-Byte Tokens 
+
+When a tokenizer’s learned vocabulary contains no subword cov-ering a span of text—common for scripts under-represented in training—its BPE merges fail to combine that span’s bytes into larger units, so it decomposes into individual single-byte tokens and fertility approaches the byte length of the text. Table 1’s rightmost The Tokenizer Tax: Quantifying and Explaining the Cross-Lingual Cost of Subword Tokenization for Indian Languages , , 
+
+Figure 2: Effective context per language: usable characters within an 8,192-token budget. Indian languages receive 12 –
+
+23% of the English window. 
+
+numeric column tells the story: English and European languages emit unmerged single-byte tokens for under 10% of their tokens, whereas the high-tax Indic languages do so for 27 –43% . Across the languages with valid word boundaries, this single-byte rate alone correlates with the tax multiplier at 𝑟 =0.89 . The unmerged single-byte rate explains most of the observed variance in tokenizer tax, suggesting that insufficient vocabulary coverage is a domi-nant mechanism, made concrete at the level of individual tokens. This also explains why Urdu and Arabic, despite sharing the Perso-Arabic script, sit at a comparatively low ∼3.4× tax: that script is sufficiently represented in cl100k_base ’s training data that its BPE merges succeed and the single-byte rate stays low, whereas the Dra-vidian scripts are sparse enough in the training data that merges routinely fail. 
+
+6 The Tax Is a Choice, Not a Property of the Script 
+
+If the tax were inevitable for complex scripts, no tokenizer could avoid it. Table 2 shows it is not. GPT-2 taxes Malayalam at 22 ×; the multilingual XLM-R tokenizer taxes the same language at 2.0×, and taxes Urdu and Hindi at near parity. Multilingual training, which exposes the tokenizer to these scripts, very nearly eliminates the tax. Strikingly, OpenAI’s own tokenizer improved sharply between generations: moving from cl100k_base to o200k_base cuts the mean Indic tax from 8.0× to 2.1×, a 73% reduction , with no change to the underlying scripts. The fairness of a model toward Indian languages is, to a first approximation, a decision made at tokenizer-training time. 
+
+7 From Cost to Consequence 
+
+Effective-context loss is model-free harm. The context-shrinkage result (Figure 2) demonstrates harm without invoking model accu-racy. Under any fixed token budget, high-fertility languages admit a fraction of the real content. Content that fits for an English user is truncated for an Indian-language user purely as a function of tokenization—a deterministic consequence, not a statistical ten-dency. 
+
+Table 2: Tax multiplier (vs. English) across six tokenizers.                                                                                     
+
+> Lang cl100k o200k gpt2 Qwen mBERT XLM-R eng 1.00 1.00 1.00 1.00 1.00 1.00 spa 1.31 1.11 1.68 1.29 1.09 1.01 urd 3.45 1.31 4.93 2.50 1.34 0.98 hin 4.08 1.34 6.34 3.79 1.50 1.08 mar 5.84 2.11 9.04 5.33 2.29 1.41 ben 6.52 1.91 10.73 5.65 2.10 1.54 pan 6.69 2.23 6.70 6.19 1.88 1.34 guj 8.00 1.87 12.70 7.03 2.49 1.48 tam 9.89 2.57 20.04 7.92 2.74 1.75 tel 10.68 2.49 16.67 9.02 2.74 1.71 kan 12.06 2.72 18.46 9.42 3.01 1.86 mal 13.04 2.85 22.06 10.54 3.80 2.00 Gini 0.35 0.19 0.39 0.33 0.22 0.14
+
+Fertility versus downstream accuracy. We correlate per-language word fertility under cl100k_base with published per-language reading-comprehension accuracy from the Belebele bench-mark [ 2 ], using InfoXLM’s Translate-Train-All scores [ 3] as the accuracy signal for our thirteen languages (Arabic is excluded here, as a matching Belebele/InfoXLM score was unavailable to us), with a log-resource proxy as a covariate. The raw correla-tion is moderate and negative ( 𝑟 = −0.61 , 95% CI [− 0.86 , −0.03 ],
+
+𝑛 =13 ): languages with higher fertility tend to score lower. How-ever, the partial correlation controlling for resource level is small and positive ( 𝑟 = 0.25 ), indicating that in this dataset, the appar-ent fertility–accuracy relationship is substantially explained by resource level rather than by fertility independently. Visual inspec-tion (Figure 3) clarifies why: English and the European languages cluster at high fertility-efficiency and high accuracy, while the ten Indian languages cluster together at lower accuracy across a wide range of fertility values (Hindi at 4.1× scores similarly to Malay-alam at 13 .0×). This pattern is more consistent with a threshold effect —non-Latin, lower-resource languages underperforming as a group—than with a smooth dose-response relationship between fertility and accuracy. We report this transparently: it tempers the causal interpretation of Section 5 and Section 6 without weakening them, since the context-loss result and the unmerged-single-byte mechanism are model-free and stand independently of this regres-sion. 
+
+The cost framing. The tax is also directly financial. Because APIs bill per token, a conversation that costs an English user one unit costs a Malayalam user roughly thirteen units under cl100k_base 
+
+for identical content—a regressive charge falling on speakers of exactly the languages least served by the technology [1]. 
+
+8 Discussion 
+
+The tokenizer tax on Indian languages is large ( 8× on average, 13 ×
+
+at worst under a frontier-model tokenizer), structured along typo-logical lines, mechanistically driven by a failure of BPE merging that leaves Indic text fragmented into unmerged single-byte tokens, and a remediable consequence of vocabulary coverage rather than an inherent cost of complex scripts. Newer and multilingual tokeniz-ers already demonstrate that most of the tax can be removed. The , , Priyansh Srivastava 
+
+Figure 3: Word fertility vs. Belebele accuracy (InfoXLM, Translate-Train-All). The Indian languages cluster at similar accuracy across a wide fertility range, suggesting a resource-level threshold effect rather than a smooth fertility effect. 
+
+downstream-accuracy picture is more nuanced: our data support a model-free context-loss harm and a strong mechanistic explana-tion, but not yet an independent causal claim that fertility—separate from resource level—degrades accuracy. We view this as an honest finding rather than a weakness: future work with finer-grained resource controls or controlled tokenizer interventions is needed to disentangle these factors. Three recommendations follow. For model builders : tokenizer vocabulary coverage for Indic scripts is a high-leverage, low-cost fairness intervention, and the unmerged single-byte rate is a simple diagnostic to monitor. For API providers : per-token pricing is regres-sive across languages. For practitioners building Indic applications: tokenizer choice materially changes effective context and cost, and should be selected deliberately. 
+
+9 Limitations 
+
+Word fertility depends on whitespace word segmentation; we there-fore rely on character fertility for scripts without word spaces (not used as headline languages here). FLORES sentences, while content-controlled, are translations and may exhibit translationese. Detec-tion of unmerged single-byte tokens is best-effort and tokenizer-specific. The accuracy data in Section 7 comes from a different tok-enizer (InfoXLM’s) than the fertility measurements ( cl100k_base ’s), since GPT-3.5/4 per-language accuracy figures were not available to us in machine-readable form; this is a limitation we flag explic-itly, and the 𝑛 =13 sample is modest. Establishing causality for the fertility–accuracy relationship would require controlled interven-tions on the tokenizer, which we leave to future work. 
+
+10 Conclusion 
+
+We have quantified the tokenizer tax on Indian languages, explained it through a failure of BPE merging that leaves Indic text fragmented into unmerged single-byte tokens, shown it to be a remediable design choice that newer tokenizers already reduce by 73% , and demonstrated a model-free context-loss harm. Our downstream-accuracy analysis is reported transparently, including a confound that tempers (without negating) the broader finding. The study requires no GPU and is fully reproducible. As LLMs become in-frastructure for a billion Indian-language speakers, the tokenizer deserves attention as a first-order determinant of equity. 
+
+Ethics and Privacy Statement 
+
+This work analyzes publicly available tokenizers and the FLORES-200 and Belebele benchmarks; it does not collect, process, or re-lease any personal or sensitive data. The societal aim of this pa-per is corrective: by quantifying a fairness gap that disadvantages Indian-language speakers in current LLM tokenization, we hope to motivate vocabulary-coverage improvements rather than to disad-vantage any language or community. We see no plausible misuse of these findings beyond their stated purpose of measuring and explaining an existing disparity. 
+
+Conflict of Interest and Funding 
+
+The authors declare no conflict of interest. This research received no external funding. 
+
+Reproducibility 
+
+The code, measurement pipeline, and scripts used in this study will be publicly released after the peer-review process. The arXiv version of this paper will be updated with a link to the repository upon release. 
+
+References                 
+
+> [1] Orevaoghene Ahia, Sachin Kumar, Hila Gonen, Jungo Kasai, David R. Mortensen, Noah A. Smith, and Yulia Tsvetkov. 2023. Do All Languages Cost the Same? Tokenization in the Era of Commercial Language Models. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP) .9904–9923. [2] Lucas Bandarkar, Davis Liang, Benjamin Muller, Mikel Artetxe, Satya Narayan Shukla, Donald Husa, Naman Goyal, Abhinandan Krishnan, Luke Zettlemoyer, and Madian Khabsa. 2024. The Belebele Benchmark: A Parallel Reading Com-prehension Dataset in 122 Language Variants. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) .749–775. [3] Zewen Chi, Li Dong, Furu Wei, Nan Yang, Saksham Singhal, Wenhui Wang, Xia Song, Xian-Ling Mao, Heyan Huang, and Ming Zhou. 2021. InfoXLM: An Information-Theoretic Framework for Cross-Lingual Language Model Pre-Training. In Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (NAACL-HLT) . 3576–3588. [4] Alexis Conneau, Kartikay Khandelwal, Naman Goyal, Vishrav Chaudhary, Guil-laume Wenzek, Francisco Guzmán, Edouard Grave, Myle Ott, Luke Zettlemoyer, and Veselin Stoyanov. 2020. Unsupervised Cross-lingual Representation Learn-ing at Scale. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics (ACL) . 8440–8451. [5] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding. In
+> Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics (NAACL-HLT) . 4171–4186. [6] Jay Gala, Pranjal A. Chitale, A. K. Raghavan, Varun Gumma, Sumanth Doddapa-neni, et al .2023. IndicTrans2: Towards High-Quality and Accessible Machine Translation Models for all 22 Scheduled Indian Languages. Transactions on Machine Learning Research (TMLR) (2023). [7] Divyanshu Kakwani, Anoop Kunchukuttan, Satish Golla, Gokul N.C., Avik Bhat-tacharyya, Mitesh M. Khapra, and Pratyush Kumar. 2020. IndicNLPSuite: Mono-lingual Corpora, Evaluation Benchmarks and Pre-trained Multilingual Language Models for Indian Languages. In Findings of the Association for Computational Linguistics: EMNLP 2020 . 4948–4961.
+
+The Tokenizer Tax: Quantifying and Explaining the Cross-Lingual Cost of Subword Tokenization for Indian Languages , , 
+
+[8] Taku Kudo. 2018. Subword Regularization: Improving Neural Network Transla-tion Models with Multiple Subword Candidates. In Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (ACL) . 66–75. [9] Taku Kudo and John Richardson. 2018. SentencePiece: A Simple and Language Independent Subword Tokenizer and Detokenizer for Neural Text Processing. In Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing (EMNLP): System Demonstrations . 66–71. [10] Davis Liang, Hila Gonen, Yuning Mao, Rui Hou, Naman Goyal, Marjan Ghazvininejad, Luke Zettlemoyer, and Madian Khabsa. 2023. XLM-V: Over-coming the Vocabulary Bottleneck in Multilingual Masked Language Models. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP) . 13142–13152. [11] NLLB Team. 2022. No Language Left Behind: Scaling Human-Centered Machine Translation. arXiv preprint arXiv:2207.04672 (2022). [12] Aleksandar Petrov, Emanuele La Malfa, Philip H. S. Torr, and Adel Bibi. 2023. Lan-guage Model Tokenizers Introduce Unfairness Between Languages. In Advances in Neural Information Processing Systems (NeurIPS) .[13] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, and Ilya Sutskever. 2019. Language Models are Unsupervised Multitask Learners . Technical Report. OpenAI. [14] Phillip Rust, Jonas Pfeiffer, Ivan Vulić, Sebastian Ruder, and Iryna Gurevych. 2021. How Good is Your Tokenizer? On the Monolingual Performance of Multilingual Language Models. In Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics (ACL) . 3118–3135. [15] Rico Sennrich, Barry Haddow, and Alexandra Birch. 2016. Neural Machine Translation of Rare Words with Subword Units. In Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (ACL) . 1715–1725.

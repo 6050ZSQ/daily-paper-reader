@@ -6,83 +6,59 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-31
-- 运行时间：2026-07-31 21:50:34 UTC
+- 最新运行日期：2026-08-01
+- 运行时间：2026-08-01 21:38:32 UTC
 - 运行状态：成功
-- 本次总论文数：21
-- 精读区：8
-- 速读区：13
+- 本次总论文数：13
+- 精读区：6
+- 速读区：7
 
 ### 今日简报（AI）
-今日共读21篇论文，其中精读8篇、速读13篇。最值得关注的两大方向：大模型语用推理（含意识别与取消）与语义空间中的关系几何。建议普通读者优先精读这两篇高分论文，再搭配提示压缩与逻辑推理的两篇速读文章拓展视野。
-- 详情：[/202607/31/README](/202607/31/README)
+今日共推荐13篇论文，精读6篇、速读7篇。最值得关注的是LLM自动化评估（9.0分）与语言无关的类比推理评估（8.0分）。建议优先精读这两篇，并留意速读中关于LLM社会认知与跨语言分词开销的发现。
+- 详情：[/202608/01/README](/202608/01/README)
 
 ### 精读区论文标签
-1. [Evaluating Communicative Belief Updates in Large Language Models via Implicature Recognition and Cancellation](/202607/31/2607.25094v1-evaluating-communicative-belief-updates-in-large-language-models-via-implicature-recognition-and-cancellation)  
+1. [(Towards) Scalable Reliable Automated Evaluation with Large Language Models](/202608/01/2607.28282v1-towards-scalable-reliable-automated-evaluation-with-large-language-models)  
    标签：评分：9.0/10、query:llm-eval
-   evidence：评估LLM对言外之意及其取消的理解，是直接的自然语言理解评测
-2. [Relation Geometry in Semantic Space of Language Models](/202607/31/2607.26762v1-relation-geometry-in-semantic-space-of-language-models)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：直接分析LM语义空间中语义关系的几何表征
-3. [From Found to Designed: Concepts as a Design Axis for Large Language Models](/202607/31/2607.26825v1-from-found-to-designed-concepts-as-a-design-axis-for-large-language-models)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：大语言模型中的概念级表示；探针与可解释性
-4. [From Found to Designed: Concepts as a Design Axis for Large Language Models](/202607/31/2607.26825v2-from-found-to-designed-concepts-as-a-design-axis-for-large-language-models)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：通过探针和字典学习分析LLM中的概念级语义表征
-5. [Understanding Is Done Early: A Depth Division of Labor in Large Language Models and Its Use for Unbounded-Context Memory](/202607/31/2607.28263v1-understanding-is-done-early-a-depth-division-of-labor-in-large-language-models-and-its-use-for-unbounded-context-memory)  
-   标签：评分：9.0/10、query:llm-lang-rep
-   evidence：研究Transformer深度如何构建语义表示，属于LLM语言表征的可解释性
-6. [Evaluating Communicative Belief Updates in Large Language Models via Implicature Recognition and Cancellation](/202607/31/2607.25094v2-evaluating-communicative-belief-updates-in-large-language-models-via-implicature-recognition-and-cancellation)  
+   evidence：利用多LLM两两比较与Elo评分实现输出自动评估
+2. [ADAGE: A Language-Agnostic Pipeline for Analogical Reasoning Evaluation](/202608/01/2607.23058v1-adage-a-language-agnostic-pipeline-for-analogical-reasoning-evaluation)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：通过新基准ImplicatureX评估LLM对言外之意及其取消的理解
-7. [ForgetBench: Benchmarking Forgetting Dynamics of Long-Term Parametric Memory in Language Models](/202607/31/2607.26455v1-forgetbench-benchmarking-forgetting-dynamics-of-long-term-parametric-memory-in-language-models)  
+   evidence：提出ADAGE语言无关管线以构建类比推理评测基准并评测14个开源模型，属于LLM评测方法。
+3. [TLA$^{+}$-Bench: An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA+ Specification Generation](/202608/01/2607.23425v1-tla-bench-an-execution-grounded-benchmark-and-dataset-for-natural-language-to-tla-specification-generation)  
    标签：评分：8.0/10、query:llm-eval
-   evidence：面向LLM持续知识编辑下遗忘动态的基准
-8. [Language Models are not Equally Robust to Non-Canonical Tokenization across Languages](/202607/31/2607.26831v1-language-models-are-not-equally-robust-to-non-canonical-tokenization-across-languages)  
+   evidence：面向自然语言到TLA+规范生成的可执行基准，用模型检测器评判正确性
+4. [Systematic Analysis of Large Language Models and Transformer-Based Machine Translation for English-Tamil and Tamil-English Across Diverse Datasets](/202608/01/2607.24515v1-systematic-analysis-of-large-language-models-and-transformer-based-machine-translation-for-english-tamil-and-tamil-english-across-diverse-datasets)  
+   标签：评分：8.0/10、query:llm-eval
+   evidence：在多个数据集上使用BLEU和chrF对多语言翻译模型进行系统评测
+5. [Phase Structure in Rotary Attention: A Spectral Framework for Semantic Continuity and Execution-Boundary Governance](/202608/01/2607.25507v1-phase-structure-in-rotary-attention-a-spectral-framework-for-semantic-continuity-and-execution-boundary-governance)  
    标签：评分：8.0/10、query:llm-lang-rep
-   evidence：跨语言研究非标准分词对LLM行为的影响，涉及文本编码机制
+   evidence：针对LLM表征中RoPE相位结构与语义漂移的谱分析
+6. [RepBench: Compiling Benchmarks into Capability Representations for Large Language Models](/202608/01/2607.28008v1-repbench-compiling-benchmarks-into-capability-representations-for-large-language-models)  
+   标签：评分：8.0/10、query:llm-lang-rep
+   evidence：通过基准构建能力表征探测资源，支持大语言模型表示的可解释性分析
 
 ### 速读区论文标签
-1. [Every Time I Hire a Linguist, Inference Costs Go Down: On Linguistic Rules as Effective Prompt Compressors](/202607/31/2607.25335v2-every-time-i-hire-a-linguist-inference-costs-go-down-on-linguistic-rules-as-effective-prompt-compressors)  
-   标签：评分：8.0/10、query:llm-ling
-   evidence：将词汇、句法、语义、话语等语言学规则用作大语言模型的提示词压缩器
-2. [Benchmarking LLM Competence on Logical Inference over Probability Operators](/202607/31/2607.27405v1-benchmarking-llm-competence-on-logical-inference-over-probability-operators)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：面向概率算子和等级认知情态词的LLM逻辑推理基准
-3. [Selecting Open-Weight Language Models for Zero-Shot Intent Classification: A Systematic Evaluation of 41 Models](/202607/31/2607.27421v1-selecting-open-weight-language-models-for-zero-shot-intent-classification-a-systematic-evaluation-of-41-models)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：对41个开源权重语言模型进行意图分类的零样本系统评测
-4. [From Single- to Cross-Document: Benchmarking Multi-Granularity Event Analysis of Large Language Models](/202607/31/2607.27654v1-from-single--to-cross-document-benchmarking-multi-granularity-event-analysis-of-large-language-models)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：提出系统评估LLM多粒度事件分析能力的MiGUE-Bench基准
-5. [IFHierBench: Hierarchical Instruction Following for Large Language Models](/202607/31/2607.27912v1-ifhierbench-hierarchical-instruction-following-for-large-language-models)  
-   标签：评分：8.0/10、query:llm-eval
-   evidence：提出分层指令跟随基准，直接属于LLM评测方法。
-6. [CDAE: Enhancing Perturbation Robustness in Pretrained Language Models with Contrastive Denoising](/202607/31/2607.28236v1-cdae-enhancing-perturbation-robustness-in-pretrained-language-models-with-contrastive-denoising)  
-   标签：评分：8.0/10、query:llm-lang-rep
-   evidence：预训练语言模型中的语义表示对文本扰动的鲁棒性
-7. [From Isolated Tasks to Structured Capabilities: A Multilayer Taxonomy for Large Language Models](/202607/31/2607.22182v1-from-isolated-tasks-to-structured-capabilities-a-multilayer-taxonomy-for-large-language-models)  
+1. [Zing: Social Mind for LLMs](/202608/01/2607.23740v1-zing-social-mind-for-llms)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：提出多层LLM能力分类体系，以组织跨任务的评测证据
-8. [Modeling Memory-Dependent Reliability of LLMs: A Hidden Markov Model](/202607/31/2607.22951v1-modeling-memory-dependent-reliability-of-llms-a-hidden-markov-model)  
+   evidence：构建SoMBench心理学基准，系统评估大语言模型的社交智能
+2. [The Tokenizer Tax: Quantifying and Explaining the Cross-Lingual Cost of Subword Tokenization for Indian Languages](/202608/01/2607.24276v1-the-tokenizer-tax-quantifying-and-explaining-the-cross-lingual-cost-of-subword-tokenization-for-indian-languages)  
+   标签：评分：7.0/10、query:llm-lang-rep
+   evidence：量化印度语言子词分词代价，揭示跨语言编码低效
+3. [Every Time I Hire a Linguist, Inference Costs Go Down: On Linguistic Rules as Effective Prompt Compressors](/202608/01/2607.25335v2-every-time-i-hire-a-linguist-inference-costs-go-down-on-linguistic-rules-as-effective-prompt-compressors)  
+   标签：评分：7.0/10、query:llm-ling
+   evidence：将词法、句法、语义和语篇语言规则用作LLM提示压缩器
+4. [MMAC: A Massive Multi-dimensional Benchmark for Audio Captioning](/202608/01/2607.27109v1-mmac-a-massive-multi-dimensional-benchmark-for-audio-captioning)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：使用隐马尔可夫模型评估LLM序列可靠性，推进评测方法。
-9. [Evaluating Prompt Scope and Demonstration Similarity in Local LLM Machine Translation](/202607/31/2607.26286v1-evaluating-prompt-scope-and-demonstration-similarity-in-local-llm-machine-translation)  
+   evidence：大规模多维音频描述生成评测基准，15个维度检验信息覆盖与一致性
+5. [MMOOC: A Comprehensive Benchmark for Out-of-Context Evaluation in Multimodal Large Language Models](/202608/01/2607.27637v1-mmooc-a-comprehensive-benchmark-for-out-of-context-evaluation-in-multimodal-large-language-models)  
    标签：评分：7.0/10、query:llm-eval
-   evidence：评估不同提示范围与示例条件下的LLM翻译行为，属于生成评估
-10. [MMAC: A Massive Multi-dimensional Benchmark for Audio Captioning](/202607/31/2607.27109v2-mmac-a-massive-multi-dimensional-benchmark-for-audio-captioning)  
-   标签：评分：7.0/10、query:llm-eval
-   evidence：面向AudioLLM生成字幕的多维基准评测
-11. [ABISS: Evaluating Text-to-SQL Systems Through Agent Interaction](/202607/31/2607.23340v1-abiss-evaluating-text-to-sql-systems-through-agent-interaction)  
-   标签：评分：6.0/10、query:llm-eval
-   evidence：提出统一的歧义/不可答问题分类法及多智能体基准生成流水线用于Text-to-SQL评测
-12. [Grounding latent algorithm routing in transformer reasoning](/202607/31/2607.24471v1-grounding-latent-algorithm-routing-in-transformer-reasoning)  
+   evidence：大规模基准，评估多模态LLM在上下文外和偏移上下文问题上的拒绝与稳健回答能力
+6. [J-CoT: Chain-of-Thought in J-Space](/202608/01/2607.21981v1-j-cot-chain-of-thought-in-j-space)  
    标签：评分：6.0/10、query:llm-lang-rep
-   evidence：基于激活干预的Transformer内部路由可解释性研究，关注内部表示但不针对语言
-13. [The Case Against Generation for Retrieval: Discriminative Language Models as Effective Retrievers](/202607/31/2607.25346v1-the-case-against-generation-for-retrieval-discriminative-language-models-as-effective-retrievers)  
-   标签：评分：6.0/10、query:llm-lang-rep
-   evidence：将LLM用作语义表示主干，利用EOS令牌池化获得紧凑的序列嵌入
+   evidence：提出基于词汇索引的连续空间，用于语言可扎根的推理中间表征
+7. [IndicTalk: A Large-Scale Persona-Based Multilingual Conversational Corpus for Indic Languages](/202608/01/2607.23242v1-indictalk-a-large-scale-persona-based-multilingual-conversational-corpus-for-indic-languages)  
+   标签：评分：6.0/10、query:llm-ling
+   evidence：利用LLM生成的印度语言多语言对话语料库，包含语言学分析
 
 
 <div class="dpr-home-promo-card">

@@ -1,0 +1,605 @@
+Title: TLA^+-Bench: An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA+ Specification Generation
+
+URL Source: https://arxiv.org/pdf/2607.23425v1
+
+Published Time: Tue, 28 Jul 2026 01:04:30 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# TLA +-Bench : An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA + Specification Generation 
+
+# Arslan Bisharat 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# Eric Spencer 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# Brian Ortiz 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# Khushboo Bhadauria 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# Mujtaba Nazari 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# Beatriz Santos 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# Anisa Ramos 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# TaiNing Wang 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# George K. Thiruvathukal 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# Konstantin Läufer 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+# Mohammed Abuhamad 
+
+Loyola University Chicago Chicago, Illinois, USA 
+
+## Abstract 
+
+Large language models increasingly write TLA + formal specifica-tions from natural-language descriptions, but progress is hard to measure: existing resources grade by resemblance to a reference or by whether the output parses, neither of which shows correctness. We present TLA +-Bench , a dataset and benchmark that grades by execution. Every gold specification ships a configuration the TLA +
+
+model checker runs over the full reachable state space, deciding exactly whether the specification holds the properties that configu-ration names. The dataset holds 403 model-checked gold and 897 parse-only silver specifications from 13 public repositories, sub-sumes prior TLA + generation data, and carries four model-written descriptions in two styles from two providers, with difficulty and category labels. Our main finding is about measurement itself: an exact oracle gives not one correctness number but a range. Varying only the grading choices earlier benchmarks leave unstated, on one fixed set of model outputs, the correct rate moves sixfold, from 10.0% to 1.7%; adding the interface-supply choice, where the model is told the configuration’s names, widens the range to elevenfold, from 18.7% to 1.7%. We call this range the correctness envelope and measure each of its bounds. The findings inside it are stable. Every model writes valid TLA + far more often than correct TLA +: the strongest is correct 16% of the time by default and 26% when given the interface names, open models at most 1%, and correctness falls sharply with difficulty. 
+
+## CCS Concepts 
+
+• Software and its engineering → Software verification ; •
+
+Computing methodologies → Machine learning .
+
+## Keywords 
+
+benchmark, dataset, formal specification, TLA+, model checking, large language models, execution-grounded evaluation, code gen-eration 
+
+## 1 Introduction 
+
+Formal specifications state what a system must do precisely enough that a tool can check them. TLA + is a widely used specification language for concurrent and distributed systems. It comes with a parser and a model checker that decide, over the full reachable state space, whether a specification holds its stated properties [ 18 ]. A growing body of work asks large language models to write TLA +
+
+from a natural-language description. That raises a basic question for the field. How do we measure progress on this task in a way that reflects correctness rather than surface form? The data-science community meets this question whenever a model turns a descrip-tion into an executable artifact, as in natural-language to SQL [ 23 ]or to code, where graders based on textual overlap or a finite test set overstate capability. What is unusual here is that the artifact comes with a decidable oracle, so correctness can be measured exactly rather than approximated. Existing resources answer this only partly. The closest prior benchmark takes its descriptions from code comments and grades without an exact oracle [ 5]. Related work in formal modeling grades a different task with a model in the loop [ 8]. Neither offers a con-trolled way to vary the input over a fixed specification. Neither carries the difficulty and tier labels needed to break results down by problem hardness or by grading strength. The broader lesson from code generation is that a weak oracle inflates apparent capa-bility [ 16 , 21 ], and that lesson has not reached natural-language to TLA + data at scale with a decidable check. We present TLA +-Bench ,1 a dataset and benchmark for natural-language to TLA + specification generation that is graded by running the output. Every gold specification ships a runnable configuration. A generated specification is checked with the TLA + model checker, which walks the full reachable state space and decides property sat-isfaction exactly against the reference configuration and its bound constants. This is an exact decision rather than an approximation from test cases. The dataset holds 403 model-checked gold spec-ifications and 897 parse-only silver specifications from 13 public repositories, and it contains the specifications used by prior TLA +
+
+generation work (Table 1). Every specification comes with four model-written descriptions, two styles from each of two providers, together with a difficulty label and, in the gold tier, a category label.  
+
+> 1Dataset: 10.5281/zenodo.21310317 (resolves on publication; reviewer preview). Code and grading tools: github.com/LUC-AI4FM/tla_benchmark. arXiv:2607.23425v1 [cs.SE] 26 Jul 2026 KDD ’27, August 2027, City, Country Bisharat et al.
+
+Measuring this task well calls for three properties no prior resource provides together: an exact oracle rather than approx-imate tests, specifications from real projects rather than toys, and a natural-language-driven task. On top of these, TLA +-Bench adds study axes prior TLA + resources do not ship: two description styles and two providers per specification, a difficulty label, and a model-checked gold tier separated from a parse-only silver tier, which let a user vary the input, stratify by difficulty, and choose a grading strength. Table 2 contrasts TLA +-Bench with prior resources along both. Our main finding is about measurement itself. An exact oracle is often treated as settling what a model got right. It does not. The or-acle decides property satisfaction only after three choices: whether the model must recover the exact interface names or is told them, whether a passing run must exercise real behavior rather than sit in its initial state, and whether the property that run checks must be shown to do work. Prior benchmarks make these choices quietly and report a single number. We make all three explicit and measure the bounds on the same specifications, and the reported correct rate moves from 18.7% down to 1.7%, an elevenfold difference. The interface choice is answered by re-querying with the names sup-plied; the two vacuity choices are graded on one fixed set of outputs, across which the rate still spans sixfold, from 10.0% to 1.7%. We call this range the correctness envelope. Its bounds are not compet-ing estimates of one quantity; each answers a different question, and TLA +-Bench is the instrument that measures them together, with the shipped configurations setting the interface bound and the pass-quality probes the two vacuity bounds. A fourth choice, whether the trivial fixtures a public corpus carries are graded at all, is left to the user, since the release flags every one. The findings inside the envelope are stable. Every model writes valid TLA + far more often than it writes correct TLA +. The most correct model parses 87% of the time and is correct 16% of the time under the default rules. Correctness drops sharply as problems grow harder. Models fail in distinct ways that repeat across models on the same specification. Researchers can use TLA +-Bench to measure how far models are from writing correct TLA +, to study where and how they fail, and to build stronger graders on top of an exact oracle. This paper makes the following contributions. ❶ A dataset and benchmark for natural-language to TLA + generation that is graded by an exact SANY parse and TLC model check rather than by approximate tests. ❷ A curated resource of 403 gold and 897 silver specifications from 13 public repositories, built through an audited pipeline, which contains the TLA + generation data used by prior work. ❸ Rich metadata, namely two description styles and two providers per specification together with difficulty and category labels, shipped so a user can vary the input style or provider and stratify by difficulty; this paper exercises the difficulty axis and ships the style and provider axes for future study. ❹ The correctness envelope. The reported correct rate moves elevenfold, from 18.7% to 1.7%, as a function of interface supply, behavioral screening, and vacuity screening; the three grading-only bounds span sixfold on one fixed set of outputs. We measure every bound on the same specifications, and we report a correctness cliff by difficulty together with a checker-grounded taxonomy of how models fail. ❺ An open release of the specifications, the descriptions, the model outputs, 
+
+Table 1: TLA +-Bench subsumes prior TLA + generation re-sources: FormalLM is drawn entirely from the TLA + Exam-ples corpus, which TLA +-Bench in turn contains, so the rows are nested subsets and TLA +-Bench adds the remaining spec-ifications beyond prior work.        
+
+> Resource (nested subsets) Specifications
+> FormalLM 206
+> ⊆TLA +Examples corpus 299
+> ⊆TLA +-Bench 1,300
+
+and the grading tools, together with a catalog of research questions the dataset enables. The rest of the paper is organized as follows. Section 2 reviews prior data and states the gap. Section 3 defines the task and the data format. Section 4 describes construction and Section 5 reports the statistics. Section 6 covers quality and validation and Section 7 defines the grading. Section 8 reports the benchmark results. Sec-tion 9 discusses limitations, Section 10 outlines future work, and Section 11 concludes. The appendix provides the ethics statement, reproducibility details, per-repository provenance, the datasheet, and the full prompts. 
+
+## 2 Related Work 
+
+We review prior specification and code datasets and their grading, and we close with a gap analysis that states what the existing data lacks. Table 2 places TLA +-Bench against the most relevant benchmarks. 
+
+## 2.1 TLA + and Model Checking 
+
+TLA + is a specification language for concurrent and distributed systems, with a parser (SANY) and an explicit-state model checker (TLC) [ 18 ]. Given a configuration that binds constants and names the invariants and temporal properties to check, TLC explores the full reachable state space, so its verdict is exact for the reference configuration rather than a sample of behaviors, though it decides property satisfaction for that configuration and its bound constants rather than correctness in general. A model checker can still pass a specification that asserts nothing, a problem known as vacuity [4 ,17 ], which we use to separate a meaningful pass from a trivial one. 
+
+## 2.2 Specification and Code Generation Benchmarks 
+
+The closest prior benchmark for natural-language to TLA + gener-ation is FormalLM [ 5], which is our own earlier benchmark; we state the delta explicitly rather than let the overlap be discovered. FormalLM derives descriptions from code comments, grades with-out an exact oracle, and is drawn entirely from the TLA + Examples corpus with no specifications of its own. Relative to it, TLA +-Bench 
+
+adds an exact model-checker oracle, the two-style and two-provider description axes, the gold and silver tiers, and the checker-grounded failure taxonomy, and it subsumes FormalLM’s specifications while extending the corpus to 13 repositories (Table 1). SysMoBench eval-uates models on modeling real systems in TLA + and finds that TLA +-Bench : An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA + Specification Generation KDD ’27, August 2027, City, Country 
+
+they handle small artifacts but struggle on large ones [ 8], but it grades a different task, code to model, with a model in the loop and without a controlled description axis or difficulty labels. In the verification setting, DafnyBench [ 24 ] and VERINA [ 37 ] target proof hints and verifiable code, and theorem-proving and auto-formalization work [ 3 , 36 ] maps mathematics to a proof assistant rather than a description to an executable specification. For general code, HumanEval [ 7] and MBPP [ 2 ] grade with tests, and EvalPlus shows that this under-tests generated code, dropping pass rates by up to about 19 points and reordering models [ 21 ]. The recur-ring lesson is that a weak oracle inflates apparent capability, which an exact model checker avoids. NL2SQL-BUGs [ 23 ] contributes a semantic-error taxonomy for a related task that informs our failure categories. 
+
+## 2.3 Natural Language to Formal Specifications 
+
+A separate line translates natural language directly into formal specifications. For temporal logic, nl2spec decomposes an English requirement into linear temporal logic subformulas with interactive correction [ 9], and related work translates structured English into LTL for planning and verification [ 22 ]. For code-level contracts, SpecGen generates JML and ACSL specifications for programs and checks them with a verifier [ 25 ], and Clover checks consistency between code, documentation, and formal annotations rather than generating a specification from a description [ 30 ]. These efforts target temporal-logic formulas or in-code contracts and are graded by a solver or a consistency check on a single artifact. Our task differs in producing a complete executable TLA + module from a description and grading it with an explicit-state model checker over the full reachable state space. 
+
+## 2.4 Gap Analysis 
+
+Table 2 summarizes how prior resources compare, and three gaps remain that TLA +-Bench is built to close. First, no large natural-language to TLA + dataset is graded by an exact oracle: FormalLM has the task but grades without one [ 5], and SysMoBench has an exact oracle but for a different task with a model in the loop [ 8 ], so the code lesson that a weak oracle inflates capability [ 16 , 21 ] has not been carried here. Second, prior resources give one description per specification, whereas TLA +-Bench ships two styles from two providers and turns the input into an experimental variable. Third, prior TLA + data is a flat pool, whereas TLA +-Bench adds difficulty and category labels and a gold/silver tier split for stratified analysis. 
+
+## 3 Data Format and Task 
+
+An instance. Each entry in TLA +-Bench is a specification with its metadata. A gold specification consists of a TLA + module, a runnable model-checking configuration, four natural-language de-scriptions (two styles, each written by two providers), a difficulty la-bel, a category label, and a pointer to the source repository. A silver specification carries the same metadata but no runnable configura-tion. Files are named by a numeric identifier so that a description, a module, and a configuration for one specification can be joined by that identifier. Figure A1 in Appendix A3 shows one specification with its two description styles side by side. 
+
+Task. Given a natural-language description 𝑑 of a system, the task is to produce a TLA + module 𝑚 that captures the described behavior. We grade 𝑚 in two stages. First, 𝑚 must parse under the SANY parser. This is the validity gate. Second, we place the specification’s reference configuration beside 𝑚 and run TLC. TLC explores the full reachable state space of that configuration and reports whether any property named in the configuration is vio-lated. A run with no violation passes the semantic gate. We call 𝑚 
+
+correct when it passes both gates. Because the second gate visits every reachable state rather than a finite set of test inputs, a cor-rect verdict is exact relative to the reference configuration and its constant bindings. It is a check that 𝑚 satisfies the properties the configuration names, read as 𝑚 itself defines them. It is not a proof that 𝑚 reproduces the reference behavior. 
+
+Two description styles. Every specification ships two descrip-tion styles. The declarative style keeps the module’s real names and describes what it specifies, so the model is asked to reproduce a known interface. The intent style hides the module’s names and states only what the system should do, so the model is asked to design the specification from the requirements. Each style is written independently by two providers, which gives the four description sets above and lets a study hold the specification fixed while vary-ing either the style or the provider. The evaluation in this paper uses the declarative style only, so the style axis is shipped rather than exercised here (Section 9). 
+
+What the silver tier is for. The semantic gate applies only to the 403 gold specifications, so the headline evaluation (Section 8) runs on the gold tier’s system category. The 897 silver specifications support parse-rate studies at a scale the gold tier cannot reach, form the pool from which future configuration authoring can promote specifications into the gold tier, carry the same canary string as gold so a leak of any part of the corpus stays detectable, and anchor corpus-level statistics that a gold-only view would bias toward configurable modules. 
+
+## 4 Construction 
+
+We build TLA +-Bench in two stages. First we collect and clean a corpus of real TLA + specifications. Then we augment that corpus with model-written descriptions and labels. 
+
+Collection and cleaning. We crawl 13 public repositories and, after removing exact duplicate files, obtain 1,614 candidate modules (Figure A2). An audited cleaning pipeline then removes 314 of them. It drops 101 near-duplicate or non-conforming modules, 88 that fail to parse under SANY, 68 that are tooling or counterexample modules, 42 that are test scaffolding rather than specifications of a system, and 15 that fail at run time. The 1,300 modules that survive form the released corpus. A module that parses under SANY and model-checks under TLC with a runnable configuration enters the gold tier. A module that parses but has no runnable configuration enters the silver tier. This split gives 403 gold and 897 silver speci-fications. Appendix A4 reports the per-repository counts and the full exclusion table. 
+
+Trivial fixtures are kept and flagged. Some retained specifica-tions are nonetheless trivial fixtures. A public TLA + corpus carries regression files from the tools themselves, and a number of these are valid specifications with a single reachable state, which exercise no behavior that passes its checks because nothing ever changes. KDD ’27, August 2027, City, Country Bisharat et al. 
+
+Table 2: TLA +-Bench versus prior specification- and code-generation benchmarks. ¥ Yes,  Partial, q No. The first three columns are properties we argue any benchmark for this task needs; the rest are study axes TLA +-Bench adds. Exact oracle: correctness decided by a model checker or verifier over the full state space rather than approximated by tests; for TLA +-Bench ,exact relative to each reference configuration and its bound constants (Sections 6, 9). Two styles: a name-revealing declarative and a name-hidden intent description per specification. Quality tiers: a model-checked gold tier plus a parse-only silver tier.                                                                   
+
+> Benchmark Task / language Exact oracle Real specs NL-driven Two styles Difficulty tiers Quality tiers Public release
+> HumanEval / MBPP Code (Python) q¥qqq¥
+> EvalPlus Code (Python) q¥qqq¥
+> SWE-bench †Issue fix (repos) ¥¥qq¥
+> DafnyBench †Verification (Dafny) ¥qqq¥
+> VERINA Verifiable code (Lean) ¥¥¥qqq¥
+> FormalLM NL to TLA +q¥qqq¥
+> SysMoBench Code to TLA +¥¥qqq¥
+> TLA +-Bench NL to TLA +¥¥¥¥¥¥¥
+> †Graded against finite checks rather than a full behavioral oracle: SWE-bench uses each repository’s test suite, and DafnyBench verifies programmer-supplied annotations rather than full behavior. We mark both partial for consistency with how we score other bounded graders.
+
+They are not rare. Within the gold tier’s system category, which be-comes the evaluation set, 46 of 146 specifications are trivial fixtures. We keep them in the release, because they are valid specifications, and we flag every one of them in the manifest. A trivial fixture passes for any model, so including it raises every model’s correct rate by the same amount. The evaluation in Section 8 therefore excludes them. This is the fourth grading choice of Section 8.2, and the released flags leave it open, so a user can grade the unpruned set instead and see how much the reported rate moves. 
+
+Augmentation. On top of the cleaned corpus we add the meta-data that makes the resource useful for evaluation. For every specifi-cation we generate one description in each of two styles, declarative and intent, from each of two providers, GPT-5 and Claude Opus 4.5, which gives four description sets in total. We also assign every specification a difficulty label and, in the gold tier, a category label. The difficulty label was assigned by the author team following a three-tier rubric keyed to the depth of TLA + constructs a speci-fication uses: basic for a single-process or state-machine module over simple data, intermediate for multi-process or multi-module specifications with quantifiers and non-trivial invariants, and ad-vanced for those using temporal properties, fairness, refinement, or unbounded structures. Section 8.4 reports an inter-annotator reliability check on the difficulty labels. The specification files them-selves are released unchanged from their sources, and each carries the SHA-256 of its released file so that a user can confirm this. The augmentation therefore adds a layer of metadata without altering any original specification. 
+
+## 5 Dataset Statistics 
+
+Table 3 summarizes the released corpus. Sizes are reported as non-comment lines of code, since TLA + specifications are heavily com-mented and raw line counts would overstate the amount of logic; by this measure the corpus is mostly small specifications with a long tail, a median of 23 lines against a mean of 62.3. Within the gold tier the system category, which models a system with behavior worth checking, becomes the evaluation set of Section 8 once its trivial fixtures are removed, and the utility category holds the rest. Two properties of the gold tier matter for grading. Of the 403 gold configurations, 291 name an explicit safety or temporal property while the remaining 112 name only the specification, so they con-firm only that the module runs. The mutation bound of Section 8.7 acts on the safety-invariant subset of these 291, since a temporal property cannot be mutated to TRUE ; the substantive-pass screen applies to all 291. Separately, 178 of the 403 import a non-standard module, so the released gold tier covers composition even though the evaluation set draws only 17 of its 100 from that group (Sec-tion 9). Within each provider the intent style runs longer than the declarative style, consistent with stating requirements from scratch rather than naming existing constructs, though the absolute lengths also reflect provider-specific length guidance (Appendix A11). A breakdown by difficulty tier (Appendix A5, Table A3) shows mean size growing steeply across tiers, from 17 lines in the basic tier to 209 in the advanced tier, so the labels correlate strongly with specification size. Size alone is a surface cue, so we do not rest the labels on this gradient. Section 8.4 reports an inter-annotator relia-bility check on the labels and a robustness check that replaces them with a measure derived from each specification’s TLA + constructs. 
+
+## 6 Data Quality and Validation 
+
+Oracle scope. Every gold specification parses under SANY and model-checks under TLC with its own reference configuration before it enters the dataset, so the reference verdict for each gold specification is the model checker’s verdict rather than a human judgment. The oracle is exact in the sense that TLC explores the full reachable state space, but its strength is bounded by what each reference configuration checks. Of the 403 gold configurations, 291 check an explicit safety or temporal property. The remaining 112 name only the specification, so they confirm that the module is executable rather than that it satisfies a stated property. The oracle therefore certifies that a module runs and satisfies the properties its configuration names. It does not certify behavioral equivalence TLA +-Bench : An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA + Specification Generation KDD ’27, August 2027, City, Country 
+
+Table 3: TLA +-Bench dataset statistics. Counts computed directly from the released files.                            
+
+> mean median max
+> Specifications
+> Gold (parse + model-check) 403 Silver (parse only) 897 Total 1,300 Source repositories 13
+> Gold tier composition
+> System category 146 Utility category 257 Trivial fixtures (flagged) 46 Evaluation set (Sec. 8) 100 Import a non-standard module 178
+> Checked properties
+> Per gold specification 2.2 140 Configurations naming an explicit property 291 of 403
+> Description length (words)
+> Declarative (GPT-5) 91 90 186 Declarative (Claude) 202 202 282 Intent (GPT-5) 246 239 483 Intent (Claude) 288 289 585
+
+to the reference. Those 291 configurations are also what make the vacuity bound of Section 8.7 measurable, since a mutation test needs a named property to act on. We record the SHA-256 of every released module, so a user can confirm that the file they receive is the file we graded. Section 9 returns to what this scope means for the reported correct rate. 
+
+Description validation. The descriptions are model-generated, a limitation we return to in Section 9. We take three steps to make them trustworthy for evaluation. First, we record the provider and the style of every description, so a user can pick a subset or compare across providers rather than treat the descriptions as one undifferen-tiated pool. Second, the two styles are built to differ in a controlled way, with the declarative style keeping the module’s names and the intent style hiding them, and the release ships both so that the contrast can be checked directly against the specifications. Third, we validate the descriptions against the specifications with a hu-man faithfulness audit. Six annotators with TLA + expertise took part. We sampled 100 descriptions from each of the four descrip-tion sets, for 400 in total, and assigned two annotators to every description, so every judgment in the audit is double-read. Each annotator read a description beside its reference specification and judged it faithful, partially faithful, or unfaithful to the module. The GPT-5 declarative descriptions used for evaluation are judged fully faithful in 83% of cases, partially faithful in 14%, and unfaithful in 3%, so 97% are faithful or partially faithful. Across all four sets, 5% are judged outright unfaithful, the two annotators agree on 94% of the 400 double-read judgments, and their agreement reaches a Cohen’s 𝜅 of 0.84. The annotators include members of the author team, which we disclose because the audit is not blind to authorship. The weakest set is the intent style from GPT-5, which is also the shorter of the two intent sets (Table 3), consistent with the shorter length guidance in the GPT-5 prompts (Appendix A11). That is a gap in description quality rather than a property of the evaluated task, since the evaluation uses the declarative style. 
+
+The descriptions are not the bottleneck. The dominant fail-ure is configuration binding, not comprehension: across the frontier models 64% of failures are well-formed but mis-named modules and only 23% are parse failures, and the same description yields different outcomes for different models, so the difficulty lies in the models and the task rather than in the descriptions. Appendix A9 gives the full argument. 
+
+## 7 Grading 
+
+Metrics. We report two primary metrics. The parse rate is the frac-tion of generated specifications that SANY accepts, which measures validity. The correct rate is the fraction that TLC confirms over the full reachable state space of the reference configuration, satisfying the properties the configuration names (Section 3), which measures behavior. This is the default regime of the correctness envelope, and the probes below define the stricter regimes (Section 8.2). We grade with the exact model checker rather than an approximate proxy. In particular, we do not use a language model as a judge. A judge introduces the same biases the resource is meant to avoid, and prior work reports that ground-truth grading is more reliable [8, 32]. 
+
+Pass quality. A model checker can pass a specification that verifies nothing, for example an invariant that is trivially true or a specification whose only reachable state is its initial state [ 4, 17 ]. We therefore probe each pass in two ways. A substantive-pass screen 
+
+counts a pass only when the specification reaches more than one state and the property it checks is neither a tautology nor a pure type invariant. A mutation test probes whether the checked property is load-bearing at all. Section 8.7 defines both probes precisely and reports their results. The gap between the raw correct rate and these stricter measures is what the correctness envelope records. 
+
+Failure taxonomy. For each failed generation we record why it failed. The recorded category comes from the model checker’s own output rather than from an inferred label. Table 4 defines the cate-gories and grounds each in prior work. Most categories correspond to failure types named in prior formal-methods evaluation, chiefly the syntax, configuration, and invariant categories of SysMoBench for TLA + [ 8 ] and the error types of contract-verification bench-marks such as FormalBench [ 20 ] and LiveFMBench [ 35 ]. Three categories have no counterpart in that prior work. Malformed tem-poral formulas are explicitly out of scope for SysMoBench, and deadlock and resource exhaustion appear in none of the surveyed benchmarks, so we add all three here. The taxonomy lets us describe not only how often models fail but how they fail, which a plain pass-or-fail score cannot. The classifier is frozen and deterministic, and it applies one tie-break. A generation for which the model checker finds no runnable configuration counts as a configuration-binding failure, since a missing configuration is an interface failure. A user running the released grader reproduces every table on comparable hardware, with the resource-limit category dependent on the stated compute budget (Appendix A2). 
+
+## 8 Experiments 
+
+We use the benchmark to validate the dataset and to answer three questions the gap analysis (Section 2.4) raises. EQ1 (valid vs. cor-rect): how large is the gap between the fraction of generated spec-ifications that parse and the fraction the model checker confirms as correct, and does a parse-level pass overstate correctness [ 5 , 8]? KDD ’27, August 2027, City, Country Bisharat et al. 
+
+Table 4: The failure taxonomy and its grounding. Most cate-gories are named in prior formal-methods evaluation. The three marked this work have no counterpart in the surveyed benchmarks. Categories are listed in the order the grading pipeline encounters them.              
+
+> Category Meaning Grounding
+> Parse failure Invalid TLA +grammar [8, 20] Config-binding Names do not match the con-figuration [8] Malformed tempo-ral Ill-formed temporal formula this work Safety violation A checked invariant is vio-lated [8] Liveness violation A temporal property is vio-lated [8] Run-time error Evaluation crashes on some state [8] Deadlock No successor state exists this work Resource limit State explosion or memory limit this work
+
+EQ2 (difficulty and failure): how does correctness scale with difficulty, and do models fail in distinct, diagnosable ways across a checker-outcome taxonomy [ 8, 16 ]? EQ3 (pass quality): how common are specifications that pass the checker yet verify nothing, and does a mutation-sensitive measure separate meaningful passes from trivial ones [4, 37]? 
+
+## 8.1 Setup 
+
+We evaluate three frontier models, GPT-5 [ 26 ], Gemini-2.5-pro [ 12 ], and Claude Opus 4.5 [ 1 ], and three open models, qwen2.5-coder-32b [14], llama3.3-70b [13], and gpt-oss-20b [27]. The evaluation set is the entire system category of the gold tier after one objective filter, not a sample chosen for size or difficulty. We start from all 146 gold system specifications and remove every trivial fixture, a valid specification with a single reachable state, since such a fixture passes for every model regardless of skill; this mechanical, reproducible rule removes 46, leaving 100. Because it discards specifications every model would pass, the filter works against a high headline number rather than flattering the results. The 100 fall close to evenly across difficulty (35 basic, 34 inter-mediate, 31 advanced), unlike the corpus at 766/289/245 (roughly 59/22/19), since the system category minus fixtures spreads more evenly; the pooled 10.0% is thus the rate over this evaluation set, not a corpus-weighted rate. Sampling error on these rates is quantified in Section 9. Each model receives the same GPT-5-written declarative de-scription of each specification inside the generation prompt of Appendix A11, and it produces one output per specification. Be-cause every model is graded on descriptions written by a single provider, the top-ranked model in our results solves inputs written by a competing provider rather than its own, so its standing cannot be an artifact of grading a model on descriptions it authored. GPT-5 is the exception, since it is graded on its own descriptions, and it scores lowest among the frontier models, which is consistent with the absence of a self-description advantage. The prompt contains the description only. The model does not see the reference con-figuration, its constant assignments, or the names of the checked properties. We grade each output by running SANY and then TLC with the reference configuration, as defined in Section 7. TLC runs with deadlock checking left at its default, which is enabled, across all evaluations. Decoding settings follow each provider’s interface, so they are not uniform across models. Gemini-2.5-pro is decoded greedily at temperature 0 while the other models use their provider defaults, which means the cross-model comparison confounds de-coding with capability and the frontier ordering should be read as indicative rather than definitive. 
+
+## 8.2 The Correctness Envelope 
+
+Before reporting per-model results we fix what a correct rate means here, because the same task supports several defensible rates. Ta-ble 5 reports four of them, pooled over the three frontier models on the evaluation set. Three of the four grade one fixed set of 300 out-puts and differ only in grading regime; the fourth, the configuration-aware rate, re-queries the model with the interface names supplied, so it varies the input rather than only the grading and is reported as an adjacent bound. The default regime is the one used through the rest of this section. It gives the model the description only and counts any TLC pass. The configuration-aware regime relaxes the interface requirement by supplying the constant and property names in the prompt (Sec-tion 8.6), which is a fresh set of generations. The substantive regime tightens the pass requirement by demanding that the specification move and check a behavioral property (Section 8.7). The mutation regime tightens it further by demanding that the named property itself be load-bearing. The four rates run from 18.7% to 1.7%, a factor of eleven; the three grading-only rates alone span sixfold, from 10.0% to 1.7%, on one fixed set of outputs. They are not competing estimates of one quantity. The configuration-aware rate answers whether the model can build a correct module when the interface is given. The mutation rate answers whether the modules it does get past the checker verify anything. A benchmark that reports one number picks one of these silently. TLA +-Bench ships the assets that make each of them measurable, namely a runnable configuration per gold specification for the interface bound and gold configurations that name real properties for the two vacuity bounds. Every rate here pools the three frontier models, so the default row of 10.0% is the pooled figure, while Table 6 reports the same regime per model. A fourth choice sits outside the table. The 46 trivial fixtures we exclude (Section 8.1) are flagged in the released manifest, so a user who wants the unpruned rate can compute it from the release. We report the pruned rate throughout, which is the conservative choice, since every excluded fixture would pass for every model. 
+
+## 8.3 Validity versus Correctness 
+
+Table 6 answers EQ1. Every model writes syntactically valid TLA +
+
+far more often than correct TLA +, and the open models sit far below the frontier ones, so the benchmark separates the two groups TLA +-Bench : An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA + Specification Generation KDD ’27, August 2027, City, Country 
+
+Table 5: The correctness envelope. Four correct rates over the three frontier models on the same 100 specifications. The default, substantive, and mutation rows grade one fixed set of 300 outputs and differ only in grading regime; the configuration-aware row supplies the interface names in the prompt, a separate set of generations. Denominators are 300 throughout. 
+
+Regime What it asks Correct 
+
+Configuration-aware Interface names supplied 18.7% Default Interface must be recovered 10.0% Substantive Pass must exercise behavior 4.0% Mutation-surviving Named property must do work 1.7%       
+
+> GPT-5 output (reference config: SPEC HC; INV HCini)
+> - MODULE HourClock -EXTENDS Integers CONSTANTS Hrs ASSUME Hrs = 1..12 VARIABLES hr HCini == hr \in Hrs HCnxt == hr '= IF hr # 12 THEN hr+1 ELSE 1 Spec == HCini /\ [][HCnxt]_hr
+> Model checker verdict
+> Error: The constant parameter Hrs is not assigned a value by the configuration file.
+
+Figure 1: A worked example (full reference in Appendix A6). The output parses under SANY, so it is valid TLA +, but it differs from the reference in at least two binding-relevant ways: it introduces a constant Hrs the configuration does not assign, and it names its top-level formula Spec where the configuration expects HC . Either blocks binding, so TLC can-not instantiate the module. This is a configuration-binding failure, and it shows why valid output is not correct output. 
+
+rather than saturating. A parse-level pass therefore badly overstates correctness, the exact-oracle counterpart of the inflation weaker test suites produce for code generation [ 21 ], and a benchmark that stopped at parsing would rank these models as broadly capable when the model checker shows they are not. With one sample per specification, a binomial 95% interval is roughly ±4 to 7 points, so small frontier differences are indicative rather than definitive, while the frontier-versus-open and validity-versus-correct gaps are far larger. Figure 1 shows a representative case where a model rewrites the reference HourClock in a way that parses but introduces a constant the fixed configuration does not assign. 
+
+## 8.4 Correctness and Difficulty 
+
+The first part of EQ2 asks how correctness scales with difficulty. Pooled across the three frontier models, the correct rate falls from 25% on basic specifications to 2% on intermediate and advanced specifications, while the parse rate stays high, from 86% down to 76%. Correctness does not decline gently but drops sharply once problems leave the basic tier and then stays near the floor. Table A6 in Appendix A5 breaks this down by model, where Gemini-2.5-pro’s parse rate collapses from 83% on basic specifications to 47% at the intermediate tier, the parser-heavy fingerprint of Section 8.5. Because the difficulty labels are ours, we check that the cliff does not depend on them: an inter-annotator reliability check finds 
+
+Table 6: Parse rate and exact TLC-correct rate on the 100-specification evaluation set with the declarative description, under the default regime of Section 8.2. All six models are evaluated on the same specifications. Every model writes valid TLA + far more often than correct TLA + and the open models sit far below the frontier models. 
+
+Model Parse (SANY) Correct (TLC) 
+
+Frontier 
+
+Claude Opus 4.5 87% 16% Gemini-2.5-pro 63% 10% GPT-5 89% 4% 
+
+Open 
+
+qwen2.5-coder-32b 29% 1% llama3.3-70b 23% 0% gpt-oss-20b 7% 1% 
+
+substantial agreement, and repeating the analysis with a difficulty measure derived mechanically from the TLA + constructs each spec-ification uses reproduces the same collapse, from 22% to 4% (Ap-pendix A10). This mirrors the difficulty gradient reported for code and formal-modeling tasks, where models handle small problems and fail on larger ones [8, 16]. 
+
+## 8.5 Failure Fingerprints 
+
+The second part of EQ2 asks how models fail. Under the taxonomy of Section 7, the three models show distinct failure profiles on the same specifications (Appendix A5, Table A4). Configuration binding is the largest category for all three, but its dominance varies. It accounts for 74% of GPT-5’s failures and 73% of Opus 4.5’s, while Gemini-2.5-pro splits nearly evenly between binding at 47% and the parser at 41%, a share roughly triple that of the other two. At least two of the three models produce the same outcome for 85 of the 100 specifications, and all three fail in the same category on 30 (of which 29 are configuration-binding), so failure is driven as much by the specification as by the model. The failure mix also shifts with difficulty. Parse failures grow from 14% of basic-tier outputs to 24% at the advanced tier, while configuration binding remains the largest category in every tier (Ta-ble A5). Malformed-temporal failures peak at the intermediate tier and nearly vanish at the advanced tier, where 91% of outputs already fail at parsing or binding and never reach semantic evaluation. 
+
+## 8.6 Two Evaluation Modes 
+
+Because every gold specification ships with its runnable configu-ration, TLA +-Bench supports two evaluation modes on the same specifications. The default mode gives the model only the descrip-tion, testing whether it can both model the system and recover the exact interface. The configuration-aware mode additionally supplies the constant and property names, isolating modeling skill from interface matching. Table A7 reports both modes for all six models: supplying the names raises correctness for every model and preserves the ranking, lifting the strongest from 16% to 26% while the parse rate stays near 90%, so much of the default-mode KDD ’27, August 2027, City, Country Bisharat et al. 
+
+failure is interface recovery rather than modeling. Even with the interface supplied the best model tops out near 26%, and the wide gap between a 90% parse rate and a correct rate below 30% is what the exact oracle exposes and a parse-only benchmark would miss. 
+
+## 8.7 Pass Quality 
+
+EQ3 asks whether the passes that models earn are meaningful. We apply two distinct probes to the 30 correct outputs pooled across the three frontier models, and because they test different things they give different counts. 
+
+The substantive-pass screen asks whether a pass exercises real be-havior. A pass counts as substantive when its specification reaches more than one state, the property it checks is not a syntactic tautol-ogy, and that property is a behavioral one rather than a pure type or well-formedness invariant. 12 of the 30 passes meet this bar. Of the other 18, none check a literally tautological property. Nine never leave their initial state, unlike their references, which the fixture filter of Section 8.1 guarantees are multi-state. The remaining nine check only a type invariant, which holds by construction and rules out nothing about the system’s behavior. The plain correct rate therefore overstates genuine capability by roughly 2.5 times. 
+
+The mutation test asks whether the checked property is load-bearing. For each passing output we replace every checked safety invariant named by the configuration with the literal TRUE and re-run TLC. When the configuration checks a temporal property rather than a mutable safety invariant, the test does not apply and the pass is scored as non-surviving, so the test is a lower bound on vacuity. Of the 30 passes, 12 (distinct from the twelve substantive passes above) check a temporal property with no mutable safety invariant and are scored non-surviving on that ground, while 18 name a safety invariant the test can act on. A pass survives when the mutated run still fails, which shows the property genuinely constrains behavior. A pass whose mutated run then succeeds was vacuous. 5 of the 18 testable passes survive, an even stricter cut than the substantive-pass screen because it demands the specific property do work, not merely that the module move. Counted against all 300 outputs this is 5 of 300, the 1.7% envelope bound; because the 12 temporal-only passes are scored against the rate rather than excluded, that 1.7% is a conservative lower bound rather than a direct vacuity measurement. We report the mutation result where it bears on oracle scope in Section 9. The two counts, 12 substantive and 5 mutation-surviving, are consistent rather than contradictory. They measure different bars, and the stricter mutation test, which demands the named property itself do work, admits fewer passes than the substantive screen, which only asks that the module move and avoid a tautology. Re-porting pass quality alongside the raw rate shows how often a model produces a specification that both binds and verifies some-thing real. 
+
+## 9 Limitations 
+
+Several things this paper does not establish. The descriptions are model-generated and audited faithful (Section 6), not a substitute for descriptions elicited from practitioners requesting a specifica-tion from scratch. We draw one sample per specification, so the rates carry binomial sampling error of roughly ±4 to 7 points, small frontier differences are indicative, and pass@k under an exact ora-cle is left to future work. The main results grade every model on the GPT-5-written declarative descriptions, holding the input fixed but leaving the ranking under the second provider untested; the dataset ships both so the check can be run, though the providers had differ-ent length guidance, so the provider axis is confounded with prompt wording. The name-hidden intent description ships for every spec-ification as a control for identifier recall, but the evaluation uses only the declarative style, so we make no contamination-controlled claim and leave the intent run to future work (Section 10). The difficulty-label reliability check is a 50-specification sample with non-blind annotators (Appendix A10), defending the labels against arbitrariness rather than establishing a direct measure of difficulty. Finally, composition and refinement, where modeling is hardest, are under-represented in the evaluation set, which draws only 17 of its 100 from the 178 multi-module gold specifications. Two scope limits are bounds we measure rather than only state, both regimes of the correctness envelope (Section 8.2): the oracle is property-scoped, so a weaker-than-intended property can pass, which the substantive and mutation regimes bound; and the domi-nant failure mode is harness-coupled, since configuration-binding conflates modeling error with name mismatch, bounded by the configuration-aware regime. A reference-varying behavioral gate is future work. 
+
+## 10 Future Work 
+
+The dataset supports a broader set of studies, catalogued in full in Appendix A7; four are most immediate. A name-leakage study over the paired declarative and intent descriptions would measure how much correctness drops when identifier names are hidden [ 19 ,28 ], the study the shipped intent style is built for and the one axis the present evaluation leaves unexercised. Reference-mutation grading would extend the pass-quality probes by perturbing the reference and requiring the checker to detect the change, crediting correctness only to specifications that constrain behavior against an independently varied ground truth [ 4, 37 ], lifting the restriction that makes our mutation test a lower bound. A contamination-over-time study would use the recorded repositories and a recency split to test whether accuracy tracks repository age [ 15 , 34 ]. A cross-provider study would hold the specification fixed and vary the description’s author, isolating the prompt-source effect from the solving model [32]. 
+
+## 11 Conclusion 
+
+TLA +-Bench grades natural-language to TLA + generation by exe-cution rather than resemblance, over 403 model-checked gold and 897 parse-only silver specifications from 13 repositories. Its central lesson is that an exact oracle does not settle correctness on its own: the same outputs admit a range of defensible rates, from 18.7% down to 1.7%, and naming that correctness envelope is what lets a bench-mark report where a model sits rather than a single silent number. Inside the envelope the findings are stable, with every model far better at valid than correct TLA + and a sharp fall in correctness with difficulty. We release the specifications, descriptions, outputs, and grading tools so these measurements can be reproduced and extended. TLA +-Bench : An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA + Specification Generation KDD ’27, August 2027, City, Country 
+
+## References 
+
+[1] Anthropic. 2025. Claude Opus 4.5. https://www.anthropic.com/news/claude-opus-4-5. [2] Jacob Austin, Augustus Odena, Maxwell Nye, Maarten Bosma, Henryk Michalewski, David Dohan, Ellen Jiang, Carrie Cai, Michael Terry, Quoc Le, and Charles Sutton. 2021. Program Synthesis with Large Language Models. arXiv preprint arXiv:2108.07732 (2021). [3] Zhangir Azerbayev, Bartosz Piotrowski, Hailey Schoelkopf, Edward W. Ayers, Dragomir Radev, and Jeremy Avigad. 2023. ProofNet: Autoformalizing and For-mally Proving Undergraduate-Level Mathematics. arXiv preprint arXiv:2302.12433 
+
+(2023). [4] Ilan Beer, Shoham Ben-David, Cindy Eisner, and Yoav Rodeh. 2001. Efficient Detection of Vacuity in Temporal Model Checking. Formal Methods in System Design 18, 2 (2001), 141–163. [5] Arslan Bisharat, Brian Ortiz, Eric Spencer, Khushboo Bhadauria, TaiNing Wang, George K. Thiruvathukal, Konstantin Läufer, and Mohammed Abuhamad. 2026. Can LLMs Write Correct TLA+ Specifications? Evaluating Natural-Language-to-TLA+ Generation. In Proceedings of the International Conference on Software Technologies (ICSOFT) .[6] Arslan Bisharat, Eric Spencer, Brian Ortiz, Khushboo Bhadauria, Mujtaba Nazari, Beatriz Santos, Anisa Ramos, TaiNing Wang, George K. Thiruvathukal, Kon-stantin Läufer, and Mohammed Abuhamad. 2026. TLA+-Bench: An Execution-Grounded Dataset for Natural-Language to TLA+ Specification Generation . doi:10 .5281/zenodo.21310317 [7] Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de Oliveira Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, et al . 2021. Evaluating Large Language Models Trained on Code. arXiv preprint arXiv:2107.03374 (2021). [8] Qian Cheng, Ruize Tang, Emilie Ma, Finn Hackett, Peiyang He, Yiming Su, Ivan Beschastnikh, Yu Huang, Xiaoxing Ma, and Tianyin Xu. 2025. SysMoBench: Evaluating AI on Formally Modeling Complex Real-World Systems. arXiv preprint arXiv:2509.23130 (2025). ICLR 2026. [9] Matthias Cosler, Christopher Hahn, Daniel Mendoza, Frederik Schmitt, and Caroline Trippel. 2023. nl2spec: Interactively Translating Unstructured Natural Language to Temporal Logics with Large Language Models. In Computer Aided Verification (CAV) .[10] Yihong Dong, Xue Jiang, Huanyu Liu, Zhi Jin, Bin Gu, Mengfei Yang, and Ge Li. 2024. Generalization or Memorization: Data Contamination and Trustworthy Evaluation for Large Language Models. arXiv preprint arXiv:2402.15938 (2024). ACL 2024. [11] Timnit Gebru, Jamie Morgenstern, Briana Vecchione, Jennifer Wortman Vaughan, Hanna Wallach, Hal Daumé III, and Kate Crawford. 2021. Datasheets for Datasets. 
+
+Commun. ACM 64, 12 (2021), 86–92. doi:10.1145/3458723 [12] Google DeepMind. 2025. Gemini 2.5: Pushing the Frontier with Advanced Rea-soning, Multimodality, Long Context, and Next Generation Agentic Capabilities. https://deepmind.google/technologies/gemini/. [13] Aaron Grattafiori, Abhimanyu Dubey, et al . 2024. The Llama 3 Herd of Models. arXiv:2407.21783 [14] Binyuan Hui, Jian Yang, Zeyu Cui, et al . 2024. Qwen2.5-Coder Technical Report. arXiv:2409.12186 [15] Naman Jain, King Han, Alex Gu, Wen-Ding Li, Fanjia Yan, Tianjun Zhang, Sida Wang, Armando Solar-Lezama, Koushik Sen, and Ion Stoica. 2025. Live-CodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code. In International Conference on Learning Representations (ICLR) .arXiv:2403.07974 [16] Carlos E. Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, and Karthik Narasimhan. 2024. SWE-bench: Can Language Models Resolve Real-World GitHub Issues?. In International Conference on Learning Representations (ICLR) . arXiv:2310.06770 [17] Orna Kupferman and Moshe Y. Vardi. 2003. Vacuity Detection in Temporal Model Checking. International Journal on Software Tools for Technology Transfer (STTT) 
+
+4, 2 (2003), 224–233. [18] Leslie Lamport. 2002. Specifying Systems: The TLA+ Language and Tools for Hardware and Software Engineers . Addison-Wesley. [19] Cuong Chi Le, Minh V. T. Pham, Cuong Duc Van, Hoang N. Phan, Huy N. Phan, and Tien N. Nguyen. 2025. When Names Disappear: Revealing What LLMs Actually Understand About Code. arXiv preprint arXiv:2510.03178 (2025). [20] Thanh Le-Cong, Bach Le, and Toby Murray. 2025. Evaluating the Ability of Large Language Models to Generate Verifiable Specifications in VeriFast. arXiv preprint arXiv:2503.04779 (2025). FormalBench. [21] Jiawei Liu, Chunqiu Steven Xia, Yuyao Wang, and Lingming Zhang. 2023. Is Your Code Generated by ChatGPT Really Correct? Rigorous Evaluation of Large Lan-guage Models for Code Generation. In Advances in Neural Information Processing Systems (NeurIPS) . arXiv:2305.01210 [22] Jason Xinyu Liu, Ziyi Yang, Ifrah Idrees, Sam Liang, Benjamin Schornstein, Stefanie Tellex, and Ankit Shah. 2023. Translating Natural Language to Linear Temporal Logic with Large Language Models. In Robotics: Science and Systems (RSS) .[23] Xinyu Liu, Shuyu Shen, Boyan Li, Nan Tang, and Yuyu Luo. 2025. NL2SQL-BUGs: A Benchmark for Detecting Semantic Errors in NL2SQL Translation. In 
+
+Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD) . doi:10.1145/3711896.3737427 [24] Chloe Loughridge, Qinyi Sun, Seth Ahrenbach, Federico Cassano, Chuyue Sun, Ying Sheng, Anish Mudide, Md Rakib Hossain Misu, Nada Amin, and Max Tegmark. 2024. DafnyBench: A Benchmark for Formal Software Verification. 
+
+arXiv preprint arXiv:2406.08467 (2024). [25] Lezhi Ma, Shangqing Liu, Yi Li, Xiaofei Xie, and Lei Bu. 2025. SpecGen: Automated Generation of Formal Program Specifications via Large Language Models. In 
+
+International Conference on Software Engineering (ICSE) .[26] OpenAI. 2025. GPT-5 System Card. https://openai.com/index/gpt-5/. [27] OpenAI. 2025. gpt-oss-120b and gpt-oss-20b Model Card. https://openai.com/ind ex/gpt-oss/. [28] Kun Qian, Shunji Wan, Claudia Tang, Youzhi Wang, Xuanming Zhang, Maximil-lian Chen, and Zhou Yu. 2024. VarBench: Robust Language Model Benchmarking Through Dynamic Variable Perturbation. arXiv preprint arXiv:2406.17681 (2024). [29] Musfiqur Rahman, SayedHassan Khatoonabadi, and Emad Shihab. 2026. Open-ClassGen: A Large-Scale Corpus of Real-World Python Classes for LLM Research. In International Conference on Evaluation and Assessment in Software Engineering (EASE) . arXiv:2504.15564 [30] Chuyue Sun, Ying Sheng, Oded Padon, and Clark Barrett. 2023. Clover: Closed-Loop Verifiable Code Generation. arXiv preprint arXiv:2310.17807 (2023). [31] Ke Weng, Lun Du, Sirui Li, Wangyue Lu, Haozhe Sun, Hengyu Liu, and Tiancheng Zhang. 2025. Autoformalization in the Era of Large Language Models: A Survey. 
+
+arXiv preprint arXiv:2505.23486 (2025). [32] Colin White, Samuel Dooley, Manley Roberts, Arka Pal, Ben Feuer, Siddhartha Jain, Ravid Shwartz-Ziv, Neel Jain, Khalid Saifullah, Sreemanti Dey, Shubh Agrawal, Sandeep Singh Sandha, Siddartha Naidu, Chinmay Hegde, Yann LeCun, Tom Goldstein, Willie Neiswanger, and Micah Goldblum. 2025. LiveBench: A Challenging, Contamination-Limited LLM Benchmark. In International Confer-ence on Learning Representations (ICLR) . arXiv:2406.19314 [33] Yuhuai Wu, Albert Q. Jiang, Wenda Li, Markus N. Rabe, Charles Staats, Mateja Jamnik, and Christian Szegedy. 2022. Autoformalization with Large Language Models. In Advances in Neural Information Processing Systems (NeurIPS) .[34] Cheng Xu, Shuhao Guan, Derek Greene, and M-Tahar Kechadi. 2024. Bench-mark Data Contamination of Large Language Models: A Survey. arXiv preprint arXiv:2406.04244 (2024). [35] Dong Xu, Jialun Cao, et al . 2026. LiveFMBench: Benchmarking Formal Methods Reasoning of Large Language Models on Live Verification Tasks. arXiv preprint arXiv:2605.01394 (2026). [36] Kaiyu Yang, Aidan M. Swope, Alex Gu, Rahul Chalamala, Peiyang Song, Shix-ing Yu, Saad Godil, Ryan Prenger, and Anima Anandkumar. 2023. LeanDojo: Theorem Proving with Retrieval-Augmented Language Models. In Advances in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track .arXiv:2306.15626 [37] Zhe Ye, Zhengxu Yan, Jingxuan He, Timothe Kasriel, Kaiyu Yang, and Dawn Song. 2026. VERINA: Benchmarking Verifiable Code Generation. In International Conference on Learning Representations (ICLR) . arXiv:2505.23135 [38] Hugh Zhang, Jeff Da, Dean Lee, Vaughn Robinson, Catherine Wu, Will Song, Tiffany Zhao, Pranav Raja, Charlotte Zhuang, Dylan Slack, Qin Lyu, Sean Hendryx, Russell Kaplan, Michele Lunati, and Summer Yue. 2024. A Careful Examination of Large Language Model Performance on Grade School Arithmetic. In Advances in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track . arXiv:2405.00332 KDD ’27, August 2027, City, Country Bisharat et al. 
+
+## Appendix A1 Ethics 
+
+The specifications are third-party material from 13 public reposito-ries, and each specification records its source repository, its URL, and its path, so the original license applies and can be traced. All 13 repositories carry a license that permits redistribution with at-tribution, so every specification is re-hosted unchanged with its recorded checksum; we include each repository’s license in the released manifest. Our own contributions, namely the descriptions, the labels, and the manifest, are released under CC BY 4.0. The two annotation studies in this paper, the faithfulness audit of Section 6 and the difficulty relabeling of Section 8.4, were carried out by members of the author team and close collaborators rather than by recruited participants. We collected no personal data about them and we release no annotator identifiers, so no ethics-board review applies. We disclose the arrangement in both places because it means neither study is blind to authorship. We ask that the dataset not be used as training data. It is an evaluation resource, and training on it would defeat its purpose and contaminate future evaluations that rely on it. A permissive license cannot enforce this request, so the release embeds a canary string that makes later contamination of the benchmark detectable. 
+
+Use of large language models. Large language models are the object of study here, and their role in producing the dataset, namely writing the natural-language descriptions, is described in Section 4. Separately, in preparing the manuscript itself the authors used a large language model only to improve wording and to assist with figures and code. Every suggestion was reviewed by the authors, who take full responsibility for the findings and all content in this paper. 
+
+## A2 Reproducibility and Accessibility 
+
+We release the full dataset, namely the gold and silver specifications with their runnable configurations, the four description sets, and a manifest recording every specification’s tier, labels, provenance, and file checksum. The prompts are reproduced in Appendix A11 and a lifecycle datasheet in Appendix A12. Grading is defined in Section 7 over the standard TLA + tools, so a user with those tools reproduces the verdict for any generated specification. The release also carries what each bound of the correctness enve-lope needs. The fixture flags in the manifest set the pruning choice, the runnable configurations support the configuration-aware mode, and the gold configurations that name real properties give the mutation test something to act on. We release the model outputs alongside the specifications, so the default, substantive, and muta-tion rows of Table 5 can be recomputed from the released outputs without querying a model; the configuration-aware row is a sepa-rate set of generations produced by re-querying with the interface names supplied, and we release those outputs as well. The model checker is run with a single worker at the Java de-fault heap under a 300-second per-specification wall-clock limit, with SANY parsing bounded at 60 seconds, and state explosion is bounded by that time limit rather than an explicit state cap. A user running the released grader reproduces every table on comparable hardware, with the resource-limit category dependent on the stated time and memory budget, since a run that exhausts the 300-second limit on slower hardware or a smaller heap is recorded as a resource limit. Deadlock checking is left enabled, its TLC default, and each gold reference is verified under this budget as part of tier assign-ment (Section 4), so a deadlock outcome on a generated output reflects a model error rather than a harness default. Each model was queried once per specification with a fixed gen-eration budget of 16,000 tokens. The three frontier models were the hosted gpt-5 , claude-opus-4-5 , and gemini-2.5-pro endpoints, and the open models were qwen2.5-coder-32b , llama-3.3-70b ,and gpt-oss-20b served locally through Ollama. The frontier mod-els were queried in July 2026 and the open models in late June 2026. The hosted endpoints were not pinned to dated snapshots, so a later query may return a different underlying model; we release the gen-erated outputs so the graded results do not depend on re-querying. Decoding settings follow each provider’s interface. Gemini-2.5-pro was decoded greedily at temperature 0. GPT-5 was decoded at its default temperature, since the reasoning model rejects an explicit temperature of 0. Claude Opus 4.5 and the open models were de-coded at their provider default temperature. Because we draw a single sample per specification, the reported rates carry binomial sampling error, quantified in Section 9; reporting the full sampling distribution over multiple samples per specification is left to future work. The release is archived on Zenodo under the persistent iden-tifier 10.5281/zenodo.21310317 so that a specific version can be cited [ 6]. The grading tools and the code used to produce the results in this paper are available at https://github.com/LUC-AI4FM/tla_benchmark/tree/reviewer-release. 
+
+## A3 A Benchmark Instance 
+
+Figure A1 shows one complete instance from TLA +-Bench , refer-enced from Section 3. It gives the gold specification with its configu-ration, and one description of each style for the same specification. 
+
+## A4 Provenance and Exclusions 
+
+Table A1 lists the specifications contributed by each source repos-itory, split by tier and by difficulty. The dataset draws from 13 public repositories across 9 GitHub organizations. Two repositories, 
+
+apalache-mc/apalache and tlaplus/tlaplus , contribute 776 of the 1,300 specifications between them, so the corpus is concen-trated in the largest public TLA + collections even though it spans 13 sources. 
+
+Excluded specifications. The crawl, after removal of exact dupli-cates, yielded 1,614 candidate modules, and the cleaning pipeline re-moved 314 of them before the 1,300 release (Table A2). The pipeline ran over the pooled candidate set rather than repository by reposi-tory, so the drop counts are corpus-wide and cannot be attributed to a source. The per-repository counts in Table A1 are therefore counts of released specifications, and the manifest records the source of every one of them. TLA +-Bench : An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA + Specification Generation KDD ’27, August 2027, City, Country 
+
+Gold specification and configuration     
+
+> ----------- MODULE HourClock -----------EXTENDS Naturals VARIABLE hr HCini == hr \in (1 .. 12) HCnxt == hr '= IF hr # 12 THEN hr + 1 ELSE 1 HC == HCini /\ [][HCnxt]_hr ----------------------------------------THEOREM HC => []HCini ======================================== cfg: SPECIFICATION HC INVARIANT HCini
+
+Declarative description (name-revealing)           
+
+> The module models a simple 12-hour clock. The single variable hr represents the current hour. The initial condition HCini constrains hr to be a natural number in the range 1 through 12. The next-state relation HCnxt advances the clock by one hour each step and wraps from 12 back to 1. The configuration checks HCini as an invariant.
+
+Intent description (name-hidden) 
+
+> Write a TLA+ specification for a simple 12-hour clock. The clock maintains a single hour counter that always holds a value between 1 and 12 inclusive. Each tick advances the hour by one and wraps from 12 back to 1. The system begins in any valid hour state and transitions by this cyclic increment rule, with stuttering steps permitted. The key correctness property is that the hour value remains within 1 through 12 at all times.
+
+Figure A1: One benchmark instance. The gold specification and its configuration (top), and one description of each style for the same specification. The declarative style keeps the module’s names and the intent style hides them. Labels for this specification are difficulty basic and category system .This is the same specification used in the worked failure of Figure 1 and Appendix A6, so a reader can follow one instance from its description through to a graded model output. Table A1: Specifications per source repository, by tier and difficulty, sorted by total contribution. The 13 repositories span 9 GitHub organizations. 
+
+Source repository Gold Silver Total Basic Interm. Adv. 
+
+apalache-mc/apalache 84 341 425 327 64 34 
+
+tlaplus/tlaplus 140 211 351 197 89 65 
+
+tlaplus/Examples 123 176 299 122 84 93 
+
+josehu07/learn-tla 35 31 66 28 25 13 
+
+tlaplus/CommunityModules 5 57 62 42 13 7
+
+tendermint/spec 0 49 49 32 6 11 
+
+pingcap/tla-plus 9 9 18 8 1 9
+
+microsoft/CCF 6 10 16 8 4 4
+
+atomix/atomix-tlaplus 0 6 6 2 1 3
+
+Azure/azure-cosmos-tla 0 3 3 0 0 3
+
+TeamTilapia/vscode-tilapia 1 1 2 0 0 2
+
+tlaplus/ValidationTestSuite 0 2 2 0 2 0
+
+tlaplus/DrTLAPlus 0 1 1 0 0 1
+
+Total 403 897 1,300 766 289 245 
+
+Table A2: Specifications excluded during cleaning (corpus-wide), largest category first. 
+
+Exclusion reason Count 
+
+Near-duplicate / non-conforming 101 SANY parse failure 88 Tooling / counterexample modules 68 Test scaffolding 42 Runtime failure 15 
+
+Total excluded 314 
+
+Raw candidates 1,614 Released (gold + silver) 1,300 
+
+## A5 Additional Tables 
+
+This appendix collects tables referenced from the main text. They are the corpus breakdown by difficulty tier (Table A3, from Sec-tion 5), the full per-model failure distribution over the taxonomy (Ta-ble A4, from Section 8.5), the failure-by-difficulty cross-tabulation (Table A5, from Section 8.5), the difficulty-stratified parse and correct rates (Table A6, from Section 8.4), and the default-versus-configuration-aware comparison (Table A7, from Section 8.6). The tables appear in this order. 
+
+Table A3: TLA +-Bench by difficulty tier. Size is non-comment lines of code. Mean size grows steeply across tiers, so the la-bels correlate strongly with specification size. Section 8.4 re-ports the inter-annotator reliability check and the construct-derived robustness check that defend the labels beyond this gradient. 
+
+Difficulty Specs Gold Silver LOC mean LOC median 
+
+Basic 766 260 506 17.1 13 Intermediate 289 83 206 58.0 48 Advanced 245 60 185 208.8 109 
+
+Total 1,300 403 897 62.3 23 
+
+## A6 A Worked Failure in Full 
+
+To make the grading concrete, we reproduce the evaluation case of Figure 1 in full, adding what the main text omits, namely the complete model-checker log, verbatim. The offending line in the model output and the error line in the log are marked in bold red .This is the same specification shown as a complete benchmark instance in Appendix A3, so the description, the reference, and a graded model output can be read together. KDD ’27, August 2027, City, Country Bisharat et al. 
+
+Figure A2: Construction and evaluation pipeline. We collect specifications from 13 public repositories (1,614 candidates), clean them with SANY parsing, TLC model checking, and heuristic filters (1,300 specifications), generate two description styles from two providers for each specification, split the corpus into a model-checked gold tier and a parse-only silver tier, and evaluate models with automated SANY and TLC grading. Table A4: Failure distribution over the taxonomy on the 100-specification evaluation set, by model. Each column counts outputs of that model. Models fail in visibly different ways on the same specifications. 
+
+Outcome GPT-5 Gemini-2.5-pro Opus 4.5 
+
+Correct 4 10 16 Config-binding failure 71 42 61 Parse failure 11 37 13 Malformed temporal 12 6 3Deadlock 1 2 3Safety violation 0 1 2Liveness violation 0 0 0Run-time error 0 1 1Resource limit 1 1 1
+
+Total 100 100 100            
+
+> 1----------- MODULE HourClock -----------
+> 2EXTENDS Naturals
+> 3VARIABLE hr
+> 4HCini == hr \in (1 .. 12)
+> 5HCnxt == hr '= IF hr # 12 THEN hr + 1 ELSE 1
+> 6HC == HCini /\ [][HCnxt]_hr
+> 7----------------------------------------
+> 8THEOREM HC => []HCini
+> 9========================================
+
+The configuration checks HCini as an invariant of HC and declares no constants. 
+
+Table A5: Outcome category by difficulty tier, pooled across the three frontier models on the 100-specification evaluation set, for 300 outputs. Column sums are the per-tier output counts, which are three models times 35, 34, and 31 specifica-tions. Configuration binding stays the dominant failure in every tier. Counts use the frozen grading of Section 7, under which a missing configuration counts as a configuration-binding failure, so the configuration-binding row reconciles with Table A4. 
+
+Outcome Basic Inter. Adv. 
+
+Correct 26 2 2Parse failure 15 24 22 Config-binding failure 53 58 63 Malformed temporal 6 14 1Safety violation 1 0 2Run-time error 0 2 0Deadlock 2 2 2Resource limit 2 0 1
+
+Total 105 102 93            
+
+> 1----------- MODULE HourClock -----------
+> 2EXTENDS Integers
+> 3CONSTANTS Hrs
+> 4ASSUME Hrs = 1..12
+> 5VARIABLES hr
+> 6HCini == hr \in Hrs
+> 7HCnxt == hr '= IF hr # 12 THEN hr + 1 ELSE 1 TLA +-Bench : An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA +Specification Generation KDD ’27, August 2027, City, Country
+
+Table A6: Parse (P) and correct (C) rate within each diffi-culty stratum on the 100-specification evaluation set with the declarative description, under the default regime. Denom-inators are 35, 34, and 31 per stratum, and 105, 102, and 93 for the pooled cells. The pooled row matches the cliff quoted in Section 8.4. 
+
+Basic Inter. Adv. Model P C P C P C
+
+Claude Opus 4.5 83% 40% 94% 3% 84% 3% Gemini-2.5-pro 83% 26% 47% 3% 58% 0% GPT-5 91% 9% 88% 0% 87% 3% Pooled 86% 25% 76% 2% 76% 2% 
+
+Table A7: Default versus configuration-aware correct rate per model. The two modes are defined in Section 8.6, where the configuration-aware mode additionally supplies the constant and property names the configuration uses. Default rates are the correct column of Table 6. Supplying the interface names raises correctness for every model while the ranking is preserved, and the best model still tops out at 26%. Pooled over the three frontier models these columns give the default and configuration-aware rows of Table 5. 
+
+Model Default Config-aware 
+
+Frontier 
+
+Claude Opus 4.5 16% 26% Gemini-2.5-pro 10% 19% GPT-5 4% 11% 
+
+Open 
+
+qwen2.5-coder-32b 1% 4% llama3.3-70b 0% 2% gpt-oss-20b 1% 3%    
+
+> 8Spec == HCini /\ [][HCnxt]_hr
+> 9========================================
+
+The output parses under SANY, so it is valid TLA +. It differs from the reference in two binding-relevant ways. First, the model introduces a declared constant Hrs and an assumption about it, rather than writing the range 1 .. 12 inline as the reference does; because the reference configuration declares no constants, it assigns no value to 
+
+Hrs , so the model checker cannot instantiate the module. Second, the model names its top-level formula Spec where the configuration expects HC , a further binding mismatch. Either one alone blocks binding under the default regime.           
+
+> 1TLC2 Version 2026.04.22
+> 2Running breadth-first search Model-Checking ...
+> 3Semantic processing of module Naturals
+> 4Semantic processing of module Integers
+> 5Semantic processing of module HourClock
+> 6Linting of module HourClock
+> 7Starting...
+> 8Error: The constant parameter Hrs is not
+> 9assigned a value by the configuration file.
+> 10 Finished in 00s
+
+This is a configuration-binding failure. The model produced a well-formed module whose only defect, relative to the fixed configura-tion, is the names and parameters it chose. The failure is a mismatch between the module’s interface and the interface the configuration expects, not a failure to parse. The module’s clock transition logic matches the reference’s, differing only in the interface names, which is why we classify this failure as binding rather than modeling. This case is also the clearest illustration of why the correctness envelope has an interface bound. Under the default regime this output is simply wrong, while under the configuration-aware mode of Sec-tion 8.6 the model is given the names the configuration expects and the same clock logic is graded on its merits. 
+
+## A7 Catalog of Research Questions Enabled by the Dataset 
+
+Table A8 lists research questions the dataset lets others answer. Each is tied to a specific finding or an explicitly stated future-work or limitations direction in prior work, and the Source column gives that citation. Questions answerable from released data are tagged 
+
+[c] (computed), and those needing new inference or checking are tagged [r] (needs-runs). The Asset column names the part of the dataset that enables the question. This paper answers four of them, which shows the catalog is a description of what the resource supports rather than a list of intentions. RQ10 is Section 8.3, RQ14 is the pass-quality analysis of Section 8.7, RQ17 is the correctness cliff of Section 8.4, and RQ20 is the failure fingerprints of Section 8.5. RQ5 is answered in part, since Section 4 reports that 46 of the 146 system-category gold specifications are trivial fixtures, while the effect of pruning on measured accuracy is left for a user to compute from the released flags. The remaining questions need work this paper does not do. 
+
+## A8 Relevance to the Data Science and Knowledge-Discovery Community 
+
+TLA +-Bench is a datasets-and-benchmarks contribution, and we outline here why it is of interest to the broader KDD community rather than only to the formal-methods audience. 
+
+An execution-grounded benchmark for a generation task. 
+
+The central methodological artifact is an exact, automatic correct-ness oracle for a natural-language-to-structured-artifact generation task. This is the same evaluation problem that recurs across data science whenever a model produces an executable artifact from a description, for example natural-language to SQL, to code, or to query plans, where the field has repeatedly found that approximate oracles based on textual overlap or a finite test set overstate capa-bility. TLA +-Bench provides a setting where the oracle is decidable KDD ’27, August 2027, City, Country Bisharat et al. 
+
+rather than approximate. The construction recipe also transfers. Any domain that ships an executable ground truth with checkable properties can pair each instance with a fixed reference configura-tion and grade generated artifacts by running the checker over the full state space against the properties that configuration names. The NL2SQL semantic-error line [ 23 ] that has appeared at this venue is the closest analogue, and TLA +-Bench extends that concern from query translation to full specification generation. 
+
+The correctness envelope transfers further than the oracle does. The oracle is specific to TLA +, but the finding it produces is not. Any benchmark that grades a generated artifact by running it faces the same three choices we make explicit in Section 8.2. It must decide which instances are worth grading, since a corpus scraped from public sources carries degenerate cases that every model passes. It must decide how much of the target interface the model is required to recover, since an artifact can be functionally right and fail on a name. And it must decide whether a passing run is required to check anything, since a test suite or a property set can be satisfied vacuously. A benchmark that leaves these implicit reports one number from a range, and our range is a factor of eleven wide, and sixfold on fixed outputs. We suggest that resource builders in adjacent settings report the range rather than a point, and we release the assets that let a reader recompute ours. 
+
+A resource with reusable structure for data-centric study. 
+
+Beyond the single evaluation we report, the release is built to sup-port data-centric machine-learning research. It ships two descrip-tion styles and two providers per specification, difficulty labels and, for the gold tier, category labels, a model-checked gold tier and a parse-only silver tier, per-file checksums, and a catalog of research questions (Appendix A7). These turn the input, the difficulty, the description provider, and the grading strength into controllable variables, so a data-mining researcher can study robustness, con-tamination, and data quality on a fixed corpus. The name-hidden intent style, in particular, is shipped as a control that a user can apply to study how much of a model’s measured performance de-pends on identifier names rather than on the description, a question of direct interest to anyone building or evaluating models on public-code corpora. 
+
+Public, documented, and reproducible. The dataset is re-leased openly on a persistent archive with a datasheet (Appen-dix A12), full provenance (Appendix A4), and the open grading tools, so the resource meets the accessibility, documentation, and reproducibility criteria the track asks for and can be picked up without contacting the authors. 
+
+## A9 The Descriptions Are Not the Bottleneck 
+
+A natural concern is that models fail because the descriptions are inadequate rather than because the task is hard. We draw on the graded outputs of Section 8, and three observations argue against the concern. First, the descriptions carry enough information to solve the task: at least one model produces a fully correct specifica-tion for 19 of the 100 evaluation specifications, and every specifi-cation is parsed by at least one model, so a workable description exists even where other models fail on the same input. Second, the dominant failure is not comprehension. Across the three frontier models, 64% of the 270 failures are configuration-binding failures, where the model understood the description well enough to build a well-formed module and named its constants or properties dif-ferently from the fixed configuration; only 23% are outright parse failures, and a model that produces a well-formed but mis-named module has clearly read the description. Third, the set of specifica-tions each model gets right differs from model to model on the same descriptions, and no single model solves all 19 that some model solves, which could not happen if the description alone determined the result. Together these observations place the difficulty in the models and the task rather than in the descriptions. 
+
+## A10 Difficulty-Label Reliability 
+
+To check the difficulty labels that drive the correctness cliff of Section 8.4, two TLA +-literate annotators independently relabeled a random 50-specification sample under the same three-tier rubric. Their labels reach a Cohen’s 𝜅 of 0.8, substantial agreement for a three-way judgment; because the tiers are ordinal, an ordinal-weighted agreement, which penalizes an adjacent basic-versus-intermediate disagreement less than a basic-versus-advanced one, rises to 0.85. The annotators are close collaborators rather than independent third parties, so the check is not blind, a caveat we disclose as we do for the faithfulness audit. As a robustness check we repeat the difficulty analysis with a measure derived mechanically from the TLA + constructs each specification uses, and the same collapse appears, from 22% to 4%. Because the rubric is itself keyed to construct depth (Section 4), this measure shares a construct family with the labels, so it tests whether the labels were applied consistently rather than supplying a fully independent notion of difficulty; the cliff survives under both the hand labels and the mechanical proxy. 
+
+## A11 Exact Prompts Given to the Language Models 
+
+This appendix reproduces the prompts behind the dataset and the evaluation. The two description prompts below are the ver-sions issued to Claude Opus 4.5, reproduced verbatim from the release scripts. The GPT-5 descriptions were generated from the same templates but with shorter length guidance, which is why the GPT-authored descriptions are shorter on average than the Claude-authored ones in Table 3. Because the wording differs by provider, the provider axis is confounded with the prompt, a limitation we state in Section 9. The exact GPT-5 prompts were not recorded in the release scripts. We reconstruct them as the templates below with a length guidance of 80 to 120 words rather than the 120 to 220 issued to Claude. We flag this reconstruction explicitly because the GPT-5 declarative descriptions are the evaluation input of Section 8, so a user repro-ducing the corpus from these templates may obtain descriptions that differ in length from the released ones. The released descrip-tions themselves are fixed and archived, so the evaluation in this paper is reproducible from the release even though the prompt that produced them is not recorded exactly. The generation prompt is shared across all evaluated models and is reproduced verbatim. The token “{description}” marks where the natural-language description is substituted. TLA +-Bench : An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA + Specification Generation KDD ’27, August 2027, City, Country 
+
+Declarative description prompt (Claude version, verbatim).                                                             
+
+> Declarative Description
+> You are aTLA+ specification expert. You will be given the source of aTLA+ module (and its model-checking config, if any). Write afaithful, declarative description of what the module specifies. Cover, when present, the system or algorithm being modeled, the CONSTANTS and VARIABLES, the key actions or next-state relation, the temporal specification and any fairness conditions, and the safety and liveness properties or invariants checked. Describe what the spec is and does. Do not editorialize or suggest changes. Be faithful: do not claim properties the module does not contain, and do not omit amajor behavior it does contain. Write 120 to 220 words in plain prose with no TLA+ code.
+
+Intent description prompt (Claude version, verbatim).                                           
+
+> Intent Description
+> You are writing a specification request, the way a person would describe a system they want formally specified in TLA+. You are shown an existing TLA+ module, but your task is not to describe that code. Recover the underlying intent and state it as afrom-scratch request. State what system or algorithm should be modeled, what it must do, and the key correctness properties it must guarantee. Describe the goal and the requirements, not the implementation. Do not name the module’s variables, operators or PlusCal structure, and do not walk through the actions step by step.
+
+Specification-generation prompt (verbatim).                                
+
+> Specification Generation
+> You are aTLA+ specification engineer. You will receive anatural language description of asystem. Produce acomplete, syntactically correct TLA+ specification that faithfully captures the described behavior. The output must be avalid TLA+ module that passes the SANY parser. Include the MODULE declaration, EXTENDS, CONSTANTS, VARIABLES, Init, Next and Spec. Include all safety invariants and liveness properties described, and any fairness conditions mentioned. Output only the TLA+ specification. System description: {description}
+
+## A12 Datasheet for Datasets 
+
+We document TLA +-Bench following the datasheet framework [ 11 ]. 
+
+Motivation. The dataset was created to measure natural-language to TLA + specification generation with an exact model-checker oracle, because prior resources grade by textual similarity or by whether output parses, neither of which establishes correctness. It was created by the authors. 
+
+Composition. Each instance is a TLA + specification with meta-data. The dataset contains 1,300 specifications, 403 in a gold tier that both parses under SANY and model-checks under TLC with a runnable configuration, and 897 in a silver tier that parses only. Each instance carries a tier, a difficulty label, a category label for the gold tier, its source repository with URL and path, the SHA-256 of its released file, and four model-written descriptions. Gold instances additionally carry a runnable configuration, and instances that are trivial fixtures carry a flag. The release also includes the model outputs graded in Section 8. The specifications are drawn from 13 public repositories across 9 organizations. The dataset contains no personal data and, to our review, no offensive content. 
+
+Recommended splits. The gold and silver tiers are the primary split, and they differ in grading strength rather than in sampling, since only the gold tier supports the semantic gate. The evaluation set used in this paper is the system category of the gold tier with trivial fixtures removed, which gives 100 specifications, and it is reconstructible from the released labels and flags. We recommend no train and test split, since the dataset is an evaluation resource and should not be trained on. 
+
+Collection process. The specifications were crawled from pub-lic repositories. After removal of exact duplicates the crawl yielded 1,614 candidate modules. An audited pipeline removed 314 modules that fail to parse, are test scaffolding, fail at run time, are tooling rather than specifications, or are near-duplicates. The remaining 1,300 form the release. The descriptions were generated by GPT-5 and Claude Opus 4.5 with the prompts in Appendix A11. 
+
+Preprocessing, cleaning, and labeling. The specification files are released unchanged from their sources, verifiable through the recorded checksums. The cleaning removed test scaffolding and non-specification modules as above. Trivial fixtures, which are valid specifications with a single reachable state, are retained in the re-lease, flagged in the manifest, and excluded from the evaluation set. Difficulty labels were assigned to every specification and cate-gory labels to the gold tier. Section 8.4 reports an inter-annotator reliability check on the difficulty labels, and Section 6 reports a faithfulness audit of the descriptions. The gold tier was defined by running SANY and TLC. 
+
+Uses. The dataset is intended to evaluate models that generate TLA + from natural-language descriptions. It should not be used as training data, since training on an evaluation benchmark defeats its purpose and contaminates future evaluations. The name-hidden intent style additionally supports controlled studies of reliance on identifier names, and Appendix A7 catalogs further uses the release enables. Users should note that a reported correct rate depends on the grading regime, so a number from this benchmark should be reported with the regime that produced it (Section 8.2). 
+
+Distribution. The dataset is released on Zenodo under a per-sistent identifier and licensed under CC BY 4.0 for the descriptions and annotations. The specification files remain under the licenses of their source repositories, which are recorded per instance. 
+
+Maintenance. The authors maintain the dataset. Corrections and additional description sets will be released as new versions under the same persistent identifier, so that a specific version can be cited. Errors found in a label or a configuration will be corrected KDD ’27, August 2027, City, Country Bisharat et al. 
+
+in a new version with the change recorded in a changelog rather than by silently amending the archived one, so a result reported against a given version stays reproducible. TLA +-Bench : An Execution-Grounded Benchmark and Dataset for Natural-Language to TLA + Specification Generation KDD ’27, August 2027, City, Country 
+
+Table A8: Research questions enabled by the dataset, grouped by theme. [c] = computable from released data, [r] = needs new runs. Every row is backed by a cited source. The five rows marked † are answered in whole or in part by this paper. 
+
+# Research question Dataset asset Source Tag 
+
+Contamination 
+
+RQ1 Does accuracy decline with source-repository release date? Dated repos + exact oracle [15, 34] [r] 
+
+RQ2 Can an exact model-checker signal be a contamination-robust metric where paraphrase decontamination fails? Oracle + paraphrase de-scriptions [34] [r] 
+
+RQ3 Does the static-to-dynamic overfitting effect reproduce in TLA +? 2×2 description matrix [38] [r] 
+
+RQ4 Do CDD/TED contamination detectors extend to formal-spec gen-eration? Oracle + multi-sample [10] [r] 
+
+RQ5 † What fraction of a public corpus is tooling/test-fixture material, and how much does pruning move accuracy? Fixture-flagged sources [2, 29] [c] /[r] 
+
+Memorization and Name Leakage 
+
+RQ6 Does hiding names (intent vs. declarative) reduce correctness though the task is unchanged? Name-leakage axis [19] [r] 
+
+RQ7 Does the GSM8K-style perturbation drop appear in TLA +? Intent as perturbation [28] [r] 
+
+RQ8 Do models succeed by memorizing lexically-similar specs (novel-structure split)? Spec text + source prove-nance [36] [r] 
+
+RQ9 Does pre/post-obfuscation reporting reorder model rankings? Declarative/intent pair [19, 32] [r] 
+
+Oracle: Validity vs. Correctness 
+
+RQ10 † How large is the parse-vs-correct gap, and does “checker passed” overstate correctness? SANY+TLC per spec [8, 37] [c] 
+
+RQ11 Can TLC counterexample traces seed a semantic-error detection benchmark? Traces + failure taxonomy [23] [c] /[r] 
+
+RQ12 Does exact correctness diverge from surface similarity (BLEU/em-bedding)? Exact labels + text [3, 29] [c] 
+
+RQ13 Does SANY parse rate predict TLC correctness (cheap predictor)? Parse+correct outcomes [3] [c] 
+
+Metric Design and Pass Quality 
+
+RQ14 † How prevalent are tautological/degenerate specs that pass but assert nothing? Pass-quality axis [4, 17] [c] 
+
+RQ15 Does reference-perturbing mutation scoring separate meaningful specs from trivial passes? Gold specs + oracle [4, 37] [r] 
+
+RQ16 How does pass@k scale under an exact formal oracle? Oracle + multi-sample [7] [r] 
+
+Difficulty and Scaling 
+
+RQ17 † Is there a correctness cliff by difficulty, and does difficulty (not date) drive it? Difficulty labels [16, 24] [c] 
+
+RQ18 Does accuracy scale log-linearly with model size, or is size non-predictive? Oracle across sizes [2, 5] [r] 
+
+RQ19 Do code-specialized models underperform via negative transfer? Oracle across families [5] [r] 
+
+Failure Analysis 
+
+RQ20 † Do models show distinct failure fingerprints on the same specifica-tions? 8-class taxonomy [5] [c] 
+
+RQ21 Are models weaker at temporal/liveness than safety properties? Safety/liveness classes [8] [c] 
+
+RQ22 Does correctness degrade as the number of constants, variables, and operators grows? Spec text + oracle outcomes [7] [c] 
+
+Cross-Provider and Description Quality 
+
+RQ23 Does the description provider (GPT-5 vs. Claude) change down-stream correctness? Two providers per spec [31, 32] [r] 
+
+RQ24 Is the dominant failure a missing load-bearing assumption (intent-to-formal misalignment)? Intent + traces [33] [r] 
+
+Repair and Documentation 
+
+RQ25 Can models repair a failing spec from the TLC counterexample trace? Traces as feedback [24] [r] 
+
+RQ26 Can others recreate an equivalent contamination-free benchmark from our pipeline? Documented pipeline [11] [c]
