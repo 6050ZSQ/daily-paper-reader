@@ -1,0 +1,963 @@
+Title: How Context Attribution Handles What the Model Already Knows
+
+URL Source: https://arxiv.org/pdf/2607.23804v1
+
+Published Time: Tue, 28 Jul 2026 01:38:24 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# How Context Attribution Handles What the Model Already Knows 
+
+## Quoc-Huy Trinh 1∗, Lin Zhu 1∗, Sebastian Szyller 1†
+
+> 1
+
+Aalto University 
+
+Abstract 
+
+Context attribution methods for large language models (LLMs) identify which input context contributes to the model response. Recent works show the initial success in attributing the con-tributive score of the contexts. However, we observe that when the context overlaps with the training data, these methods can-not disentangle in-context from in-weight (IW) contributions, producing unreliable scores. Based on this observation, in this work, we introduce: 1) an evaluation protocol that relies on four new metrics (base-model context attribution score (BCS), cross-model context attribution consistency (CAC), attribution preservation score (APS), source separation pre-cision (SSP)) and 2) a benchmark dataset (WMDP-Cyber++) with ground-truth provenance labels to systematically assess attribution under IW overlap. In our experiments across four well-known context attribution methods, we demonstrate that they provide unfaithful attribution when the knowledge from the context also exists in the weights. Finally, we adapt these methods for source separation (IW vs. in-context learning (ICL)) and show that they cannot do the disentanglement based on the contributive score. 
+
+## Introduction 
+
+Context attribution in large language models (LLMs) is the task of identifying which part of the context contributes to the model’s response (Cohen-Wang et al. 2024). It enables users to refine the context for better responses based on the attribution scores and identify unexpected prompt-response dependencies (e.g. prompt injection) (Wang et al. 2025). The underlying question – what it means for a segment to 
+
+contribute – can be read at two levels: 1) whether the text 
+
+of a segment contributes to the response. 2) whether the 
+
+knowledge it carries contributes to the response. Recent context attribution methods rely on different mech-anisms (e.g., leave-one-out and Shapley-based methods) to estimate which segments of the input context contribute the most to the model output. In this work, we consider Con-textCite (Cohen-Wang et al. 2024), AttriBot (Liu, Kandpal, and Raffel 2024), TracLLM (Wang et al. 2025) and Token-Shapley (Xiao et al. 2025; Khandelwal et al. 2019). These methods primarily measure importance through the sensitivity of the model’s response to perturbations of the input context, and operate exclusively at the first level. Such scores are easy to interpret when the context segment is the sole carrier of the suprooting knowledge, and there is no knowledge in the 
+
+> ∗
+
+These authors contributed equally. 
+
+> †
+
+Corresponding author. 0.3 
+
+> related
+> Context
+> Pandas is a Python library for working
+> with tabular data.
+> In pandas 1.x, df.append() is the
+> standard way to add rows to a
+> DataFrame.
+> In pandas 2.0, df.append() was
+> removed, and pd.concat() should
+> be used instead.
+
+Prompt 
+
+Prompt: 
+
+Which art movement was Claude Monet a founder of?  
+
+> What will happen if the context has already been
+> trained into weights ?
+> Not in weight In weight
+
+Answer:  Claude Monet is the founder of Impressionism.  
+
+> Score
+> Prompt:
+> How do I add rows to a DataFrame in pandas 1.x?
+> Answer: You should use df.append() to add rows.
+> GT
+> supporting
+> irrelevant
+> 0.5
+> 0.1
+
+Figure 1: Current context attribution methods cannot distin-guish IW overlap from true irrelevance. The yellow context supports the LLM’s response but its attribution score is lower because the same information is also drawn from the weights. weights, where two levels are equivalent. However, once in-context learning (ICL) and in-weight (IW) knowledge overlap, the levels diverge: a supporting segment, that also exists in the weights, may receive a near-zero score because removing it does not impact the output. A related symptom has been observed in prior work (Cohen-Wang et al. 2024), where a source supporting the answer may receive a low score. In real-world applications, this misalignment can make a genuinely supporting document span appear unimportant, leading systems to discard evidence that is critical for verifying the response. Figure 1 illustrates this issue with a version-sensitive documentation example. The supporting segment correctly states that df.append() can be used in pandas 1.x, but the model may already know this from its weights. Thus, existing context attribution methods may assign the segment a low score even though it provides task-relevant support. This exposes two limitations: 1) the attribution score is difficult to interpret. A low score means the segment is irrelevant or that its knowledge is already in the weights; 2) current evaluation metrics cannot expose this failure, e.g., top-k log-probability drop and LDS (Cohen-Wang et al. 2024) are themselves removal-based. Thus, a method can distort arXiv:2607.23804v1 [cs.CL] 26 Jul 2026 under IW overlap while still ranking well. Motivated by these gaps, we ask: How do context attribution methods handle what the LLM already knows? In this work, we answer this by controlling the IW knowl-edge directly. We make the following contributions: 
+
+• We introduce an evaluation protocol based on four new metrics (BCS, CAC, APS, SSP). The protocol captures how the attribution scores change when the same knowledge is available in both the context and the weights. 
+
+• We release WMDP-Cyber++ , a new dataset that provides ground-truth source attribution (IW vs. ICL) for each context segment, addressing the absence of benchmarks for IW/ICL source attribution. 
+
+• We demonstrate that evaluated attribution methods assign varying scores depending on whether the information is provided only in the context or also in the weights. Additionally, we establish that these methods cannot be simply adapted for source separation. 
+
+## Background 
+
+Large language models. LLMs are commonly formulated as autoregressive conditional probability models. A prompt 
+
+X which corresponds to the questions or instructions is concatenated with a set of context units C = {c1, c 2, . . . , c k}.The model pθ then generates a response sequence Y =(y1, y 2, . . . , y t) as 
+
+pθ (Y | C ⊕ X) = 
+
+> T
+
+Y
+
+> t=1
+
+pθ (yt | C ⊕ X, Y <t ), (1) where Y<t = ( y1, . . . , y t−1) and ⊕ denotes sequence con-catenation. The context C may include retrieved documents, in-context examples, dialogue history, or other external infor-mation. 
+
+Context attribution. Context attribution aims to attribute a generated response back to specific parts of the context. Given a prompt X, a context set C = {c1, . . . , c k}, and a response 
+
+Y generated by pθ conditioned on C ⊕ X, an attribution method Attr( ·) quantifies how each unit ci contributes to Y
+
+and assigns an importance score si ∈ R to each context unit 
+
+ci, yielding the attribution score set 
+
+si = Attr( ci, Y, C, X ), (2) a larger value of si indicates that ci makes a stronger contri-bution to Y .While numerous attribution methods have been proposed, their quality must also be evaluated. Existing evaluation met-rics assess whether attribution scores faithfully reflect context contributions to the original response. Top-k log-probability drop evaluates whether the highest-ranked context units are the most contributive, as removing them should maximally reduce the likelihood. Furthermore, LDS evaluates whether attribution scores predict the relative effects of different con-text ablations. However, they remain likelihood-based and do not directly evaluate task-level correctness. 
+
+## Problem statement 
+
+Given an input prompt X, a set of context examples C =
+
+{c1, c 2, . . . , c k}, and a generated response Y produced by an LLM under the ICL paradigm, the goal of any Attr is to attribute the contributive score of the individual context elements in C that lead to the generation of Y . In this work, we evaluate attribution at the knowledge level rather than only at the text level. Therefore, we define attribution quality using task-level correctness: a context segment or subset is important if it supports the model in answering the correct answer, not merely if it changes the surface form or likelihood of Y . Under this view, the context unit c is necessary when removing it from the full context C leads to the incorrect response Y . It is sufficient when presenting ci within a small top-k subset is enough to recover Y without the remaining context. A common question in context attribution is whether ci
+
+that shapes the model’s output originates from ICL or instead reflects knowledge from the weights (IW knowledge). There-fore, in this work, we aim to disentangle ci ∈ Dtrain from ci /∈
+
+Dtrain , for some training set Dtrain . We identify two criteria that a successful attribution method should satisfy: C1 (attri-bution fidelity) Attr assigns a high si to ci if it contributes to a correct response, whether it is explicitly included ICL or implicitly IW; C2 (data-source disentanglement evaluation) any Attr must be able to distinguish whether the influence of 
+
+{c1, c 2, . . . , c k} ∈ C originates from IW or ICL. These criteria require a more comprehensive evaluation protocol for context attribution. Rather than relying only on likelihood-based changes, such a protocol should also use task-level correctness to evaluate whether attributed segments are sufficient and necessary for answering correctly. It should also include a way to test whether attribution methods can disentangle support from ICL and IW knowledge. 
+
+## Proposed evaluation protocol 
+
+To address criteria C1 , C2 , we introduce an evaluation pro-tocol built around four new metrics. Unlike prior evaluation that relies on likelihood-based metrics, our protocol grounds attribution in task-level correctness. We argue that task-level correctness provides a more direct measure of knowledge pres-ence, as it captures the model’s ability to apply knowledge to solve a task, whereas likelihood-based metrics merely assess the model’s confidence in token prediction over a corpus. 
+
+Base-model context attribution score 
+
+We first introduce BCS that measures the sufficiency and necessity of the top-k subset. BCS is computed on the base model which has not been exposed to Dtrain , thus, the attri-bution directly reflects the model’s reliance on the provided context rather than on IW knowledge. For each X, we evaluate four conditions that differ ex-clusively in the provided context: 1) no-ctx (no context), 2) full-ctx (full context), 3) rm-topk (full context with top-k removed), 4) topk-only (only top-k retained). Let 
+
+z ∈ Z = {no-ctx , full-ctx , rm-topk , topk-only } index the condition, Acc pθ 
+
+> z
+
+denote the task accuracy of pθ under condition z, and define the full-context gain as: 
+
+∆pθ = Acc pθ 
+
+> full-ctx
+
+− Acc pθ
+
+> no-ctx
+
+. (3) BCS establishes the attribution quality of the base model. Two complementary properties are required for a top-k selection to faithfully capture the evidence the model relies on. 
+
+Top-k utility (Util ) measures sufficiency – how much perfor-mance the base model recovers using only top-k:
+
+Util = Acc pθbase  
+
+> topk-only
+
+− Acc pθbase 
+
+> no-ctx
+
+∆pθ−base . (4) 
+
+Top-k removal impact (RmI ) measures necessity —how much the base model loses when top-k is removed: 
+
+RmI = Acc pθbase  
+
+> full-ctx
+
+− Acc pθbase 
+
+> rm-topk
+
+∆pθ−base . (5) We combine the two via a geometric mean: 
+
+BCS = √Util · RmI . (6) Either property alone is insufficient. High Util with low RmI 
+
+indicates that the top-k segments are sufficient on their own, yet removing them does not hurt performance, because the remaining context segments can supply the same information. High RmI with low Util indicates the opposite: the top-k
+
+segments are necessary, since removing them degrades perfor-mance, yet they are not sufficient on their own, as answering correctly also requires other segments in the context. 
+
+Cross-model context attribution consistency 
+
+While BCS evaluates whether the selected top-k context units are sufficient and necessary for task-level correctness on the base model, it does not assess whether the attribution ranking remains consistent after fine-tuning. We therefore introduce CAC to compare the attribution rankings produced on the base model and the fine-tuned model. For each X, we sort context units by attribution score on pθbase and pθft , yielding ranked lists πpθbase and πpθft . We measure their agreement using rank-biased overlap (RBO), which gives higher weight to agreement at the top ranks: 
+
+CAC = RBO( πpθbase , π pθft ; ρ) , (7) where ρ ∈ (0 , 1) controls the top-weight decay. A faithful method should remain consistent: a segment that contributes to the answer still contributes whether or not the same knowledge is present as IW knowledge, so its attribution should not change. A low CAC therefore indicates that a method’s scores are driven by the model’s knowledge state rather than by each segment’s contribution. 
+
+Attribution preservation score 
+
+While a high CAC shows that a method’s ranking is stable across the two models, stability alone is insufficient: a method could obtain a high CAC by producing consistently incorrect rankings on both models. We therefore combine BCS and CAC into a single metric, APS, as their harmonic mean: 
+
+APS = 2 · BCS · CAC BCS + CAC . (8) Achieving a high APS requires strong performance across both BCS and CAC. 
+
+In-context/in-weight source separation precision 
+
+BCS, CAC, and APS assess whether the attributed context is necessary, sufficient and the attribution scores are consistent across models. None of them test whether Attr assigns each segment to the correct evidence source. Since our evaluation requires source-specific predictions, we introduce source separation precision ( SSP ), which measures whether Attr 
+
+correctly identifies the source as IW/ICL. Measuring this requires retaining only the samples that the fine-tuned model answers correctly without the context, while the base model fails. This indicates that the model learned the information. 
+
+Rbench = {i : pθft (Xi) = Ai ∧ pθbase (Xi)̸ = Ai}, (9) where Xi is the question-only prompt and Ai is the gold answer, both drawn from Dtrain .For each sample in Rbench , let ki be the number of con-text segments for the sample Xi; Attr is applied to pθft to produce a contributive score si for each context segment cj .Since existing attribution methods output scalar contribution scores rather than explicit source labels, we introduce the disentanglement interface I that adapts them to also output a source label IW/ICL. Specifically, for sample i and segment 
+
+j, the interface outputs Ipred ij ∈ { IW , ICL } (we describe the detailed process in Section ). 
+
+SSP measures the proportion of context segments whose predicted source matches their controlled source label: SSP =
+
+P
+
+> i∈Rbench
+
+Pki 
+
+> j=1
+
+1
+
+h
+
+Ipred ij = Igt ij 
+
+iP 
+
+> i∈Rbench
+
+ki
+
+(10) A high SSP indicates that Attr can correctly distinguish whether each context segment contributes through ICL ev-idence or through IW knowledge. Since WMDP-Cyber++ contains a balanced number of IW and ICL segments, ran-dom source assignment achieves an expected SSP of 0.5. It is a controlled diagnostic for methods that explicitly emit in-context and IW attribution labels. 
+
+WMDP-Cyber++ dataset 
+
+Based on the cyber subset of the WMDP benchmark (Doshi and Stickland 2025), we construct WMDP-Cyber++, an aug-mented benchmark with source-labeled context segments. Each data point is a multiple-choice cybersecurity question with a mixed-source context comprising segments whose provenance (IW or ICL) is known by construction 1.
+
+Benchmark construction. Let Dtrain denote the 
+
+cyber-retain-corpus used to finetune the target model, and let Dforget denote the held-out cyber-forget-corpus 
+
+that is never seen during training. For each WMDP-Cyber question Xi with ground-truth answer Ai, we construct a context Ci = [ ci, 1, c i, 2, . . . , c i,k ] consisting of k segments, where k = kiw + kicl : kiw is number of IW segments retrieved from Dtrain , and kicl is number of in-context segments syn-thesized from Dforget . The segments are shuffled so that their ordering carries no provenance signal. 
+
+> 1Prompts for each step are provided in the appendix.
+
+Algorithm 1: IW/ICL segment retrieval 
+
+Require: Source indicator z ∈ { iw , icl }; source corpora 
+
+Diw = Dtrain , Dicl = Dforget ; WMDP-Cyber questions with gold answers Q = {(Xi, A i)}; number of retrieved candidates kcand ; number of selected segments kz
+
+Ensure: Segments {Szi } for each question Xi 
+
+> 1:
+
+Offline indexing:  
+
+> 2:
+
+for all document d ∈ D z do  
+
+> 3:
+
+Split d into 500-token passages with 50-token overlap 
+
+→ { p1, , . . . , p m} 
+
+> 4:
+
+Embed each pj , j ∈ [1 , m ] using Qwen Embedding and add to vector index Vz 
+
+> 5:
+
+end for  
+
+> 6: 7:
+
+Per-question retrieval:  
+
+> 8:
+
+for all (Xi, A i) ∈ Q do  
+
+> 9:
+
+qi ← concat (Xi, A i) ▷ Search query  
+
+> 10:
+
+P zi ← Retrieve (Vz , q i, k cand ) ▷ Top-kcand 
+
+candidates  
+
+> 11:
+
+for all candidate passage p ∈ P zi do  
+
+> 12:
+
+rzi (p) ← GPT-4o (Xi, A i, p ) ▷ Score ∈ [0 , 10]  
+
+> 13:
+
+end for  
+
+> 14:
+
+Szi ← Top-kz (P zi ; rzi ) ▷ Select top-kz passages  
+
+> 15:
+
+end for Step 1: IW segment retrieval. We chunk documents in 
+
+Dtrain into 500-token passages with 50-token overlap at the boundaries. For retrieval, we index them using the Qwen Embedding model (Zhang et al. 2025). For each question, we form a query by concatenating the full question Xi with the gold answer Ai, retrieve the top-kcand candidate passages, and re-rank them with GPT-4o (OpenAI et al. 2024). To re-rank, the model is instructed to score each passage on a 10-point scale based on its relevance to the concepts and knowledge required to answer the question. We retain the top-
+
+kiw passages as Siw  
+
+> i
+
+and label them as IW. This corresponds to Algorithm 1 with z = iw, kcand = 10 , and kiw = 3 .
+
+Step 2: In-context segment retrieval. For ICL segments, we retrieve candidate passages from Dforget using the same embedding-based retrieval pipeline. Since Dforget is never seen during finetuning, these passages provide in-context evidence rather than IW knowledge. For each question, we retrieve the top-kcand candidate passages and re-rank them with GPT-4o using the same 10-point scoring prompt. To keep the number of ICL and IW segments balanced, we set 
+
+kicl = kiw = 3 . We retain the top-kicl passages as Sicl  
+
+> i
+
+and label them as ICL. This is the ICL instantiation of Algorithm 1, with kcand = 10 and kicl = 3 .
+
+Step 3: Context construction. The selected segments Siw 
+
+> i
+
+and Sicl  
+
+> i
+
+are combined and shuffled to form the final con-text Ci = [ ci, 1, . . . , c i,k ]. We use GPT-4o to smooth the concatenated passages into a coherent reference document. The smoothing prompt enforces five constraints: (i) preserve all factual content, (ii) add transitional phrases, (iii) no new information added, and (iv) maintain original technical ter-minology. The resulting context is a single coherent passage; we ensure that the ground-truth provenance labels for each segment are preserved. 
+
+Dataset statistics. The final WMDP-Cyber++ dataset con-tains 1,987 samples, with an equal number IW and ICL segments. Random source classification achieves AUC of 0.5.
+
+## Evaluation 
+
+Experimental setup 
+
+Implementation details. All experiments are conducted on two NVIDIA H100 GPUs. We evaluate attribution methods using three open weight LLMs: LLaMA3-8B (Grattafiori et al. 2024), Qwen3-8B (Yang et al. 2025), and Qwen3-32B (Yang et al. 2025). We use greedy decoding throughout to ensure reproducible results. 
+
+Attribution methods. We evaluate four representative meth-ods: ContextCite (Cohen-Wang et al. 2024) fits a sparse linear surrogate model over perturbed context masks to esti-mate segment contributions. TokenShapley (Xiao et al. 2025) achieves fine-grained, token-level attribution by combining Shapley-style values with KNN-based retrieval. AttriBoT (Liu, Kandpal, and Raffel 2024) focuses on efficiency by directly approximating leave-one-out (LOO) context attribution. Tra-cLLM (Wang et al. 2025) scales perturbation-based traceback to long contexts by combining informed search with LOO-style scores. 
+
+Metrics. We rely on the evaluation metrics introduced in this work: BCS, CAC, APS, and SSP. For CAC, we compute ranking consistency using RBO with persistence ρ = 0 .5,which is a strongly top-heavy setting. Thus, CAC primarily measures whether the base and finetuned models agree on the most highly attributed context segments. For comparison with prior likelihood-based evaluations, we also report top-k
+
+log-probability drop and LDS, following ContextCite. 
+
+Adapting methods for source separation. Since existing attribution methods output a scalar contributive score per context segment, we adapt them with a disentanglement interface I that uses the contributive score to predict IW/ICL source labels, For ContextCite and TracLLM, we contrast each segment’s normalized positive score against a no-context baseline, which captures how much of the response is recoverable from IW alone, segments whose contributive score dominates this baseline are labeled IW and ICL. For AttriBoT and TokenShapley, we normalize the scores into mass fractions and label a segment ICL when it carries an above uniform share of the attribution mass, and IW otherwise. Both rules follow the same intuition: a relevant segment whose removal barely affects the response is presumed covered by IW knowledge. Each adaptation requires at most one additional forward pass. Further details are provided followed by each method in the appendix. 
+
+Datasets. To measure IW/ICL disentanglement, we use our WMDP-Cyber++ dataset. To evaluate attributive contribution we use: the TyDiQA (Clark et al. 2020) validation set (5,077), the HotpotQA (Yang et al. 2018) validation set (7,410), and the validation set (13,368) of CNN/Daily Mail dataset (See, BCS ( k=1 ) BCS ( k=2 ) BCS ( k=3 )
+
+Method CAC Util RmI BCS ↑ APS ↑ Util RmI BCS ↑ APS ↑ Util RmI BCS ↑ APS ↑
+
+LLaMA 3 8B 
+
+ContextCite 0.42 0.38 0.38 0.38 0.40 0.38 0.38 0.38 0.40 0.63 0.50 0.56 0.48 
+
+TokenShapley 0.43 0.46 0.06 0.16 0.23 0.59 0.19 0.33 0.37 0.30 0.06 0.13 0.20 AttriBot 0.36 0.25 0.38 0.31 0.33 0.50 0.50 0.50 0.42 0.50 0.38 0.43 0.39 TracLLM 0.36 0.50 0.75 0.61 0.45 0.50 0.38 0.43 0.40 0.75 0.38 0.53 0.43 
+
+Qwen 3 8B 
+
+ContextCite 0.39 0.53 0.21 0.33 0.36 0.63 0.30 0.44 0.41 0.67 0.35 0.49 0.43 TokenShapley 0.42 0.49 0.19 0.30 0.35 0.63 0.21 0.36 0.39 0.72 0.40 0.53 0.47 
+
+AttriBot 0.34 0.51 0.33 0.41 0.37 0.49 0.33 0.40 0.37 0.53 0.33 0.42 0.38 TracLLM 0.34 0.86 0.44 0.62 0.44 0.79 0.63 0.70 0.46 0.86 0.49 0.65 0.45 
+
+Qwen 3 32B 
+
+ContextCite 0.56 0.57 0.07 0.20 0.29 0.68 0.13 0.29 0.38 0.78 0.19 0.38 0.45 TokenShapley 0.46 0.62 0.05 0.17 0.25 0.76 0.14 0.33 0.38 0.84 0.24 0.45 0.45 AttriBot 0.47 0.56 0.07 0.20 0.28 0.76 0.07 0.23 0.31 0.78 0.24 0.43 0.45 TracLLM 0.37 0.86 0.25 0.46 0.41 0.94 0.32 0.55 0.44 1.00 0.44 0.66 0.47 
+
+Table 1: Attribution methods evaluated using our metrics. CAC is computed with RBO persistence ρ = 0 .5. Higher is better. 
+
+Bold denote the best. Methods cannot disentangle IW from ICL (low APS); segment ranking shifts after finetuning (low CAC). Liu, and Manning 2017). We also use validation subset (1,000) of MS-marco dataset (Bajaj et al. 2016), and subset of training set (1,000) of NQ dataset (Kwiatkowski et al. 2019), which are reported as additional results in the appendix. 
+
+Experimental results 
+
+Controlled knowledge exposure affects attribution. Ta-ble 1 reports the results on WMDP-Cyber++, including BCS across k ∈ { 1, 2, 3}, CAC at RBO persistence ρ = 0 .5, and their harmonic mean APS. Across all settings, CAC remains low ( 0.34 –0.56 ), showing that attribution rankings change after controlled knowledge exposure. TracLLM attains the highest BCS in seven out of nine model– k settings but has among the lowest CAC. In contrast, TokenShapley achieves higher CAC on the 8B models, yet low BCS in some settings (e.g., 0.16 at k=1 on LLaMA3-8B). APS makes this trade-off explicit: on Qwen3-8B at k=3 , TokenShapley exceeds TracLLM in APS ( 0.47 vs. 
+
+0.45 ) despite lower BCS ( 0.53 vs. 0.65 ), owing to its higher CAC. Nevertheless, averaged across settings, TracLLM per-forms best under our task-level BCS evaluation and achieves the strongest average APS, although its lower CAC indicates less stable rankings after controlled knowledge exposure. We conclude that attribution rankings depend both on the provided context and the model’s knowledge. 
+
+Attribution does not reflect disentanglement. Figure 2 shows SSP on WMDP-Cyber++, where each segment’s prove-nance (IW vs. ICL) is known by construction. In all evaluated settings, SSP stays close to chance. The best method, To-kenShapley, reaches only 0.52 for LLaMA3-8B and lower for Qwen models. No method approaches a usable level. Hence, attribution scores do not reflect whether the segments contribute based on ICL or IW. Context-Cite TokenShapley AttriBoT TracLLM 
+
+> 0.400
+> 0.425
+> 0.450
+> 0.475
+> 0.500
+> 0.525
+> 0.550
+> SSP
+> LLaMA3-8B
+> Qwen3-8B
+> Qwen3-32B
+
+Figure 2: SSP on WMDP-Cyber++ dataset across different attribution methods on LLaMA3-8B, Qwen3-8B, and Qwen3-32B. All of the attribution methods with the disentanglement adaptation achieve near-random results at about 0.5. 
+
+Likelihood-based metrics are insufficient. Table 2 reports Drop@ k and LDS. The two metrics produce similar rank-ings across datasets, suggesting that they capture a shared likelihood-sensitivity signal. This is expected because several evaluated methods are closely aligned with these metrics by construction. For example, Drop@1 is closely aligned with LOO-based attribution, since both measure the effect of removing individual context segments on the model’s likeli-hood. Similarly, LDS is closely aligned with ContextCite-style perturbation objectives, as both evaluate whether attribution scores explain likelihood changes under context perturbations. As a result, likelihood-based evaluations tend to favor methods whose scoring mechanisms match their own perturbation-based assumptions. In contrast, APS yields different rankings, especially on TyDiQA HotpotQA CNN/DM Method Drop@1 Drop@3 Drop@5 LDS Drop@1 Drop@3 Drop@5 LDS Drop@1 Drop@3 Drop@5 LDS                                                                                                                                                 
+
+> LLaMA 3 8B
+> ContextCite 64.23 113.75 126.62 0.97 41.66 76.65 86.78 0.87 52.79 118.14 155.77 0.94
+> TokenShapley 11.24 35.21 47.29 0.39 0.88 2.45 4.13 0.12 6.80 21.64 37.63 0.26 Attribot 38.94 48.50 51.57 0.88 23.29 30.25 31.75 0.76 52.48 109.36 141.15 0.85 TracLLM 17.26 40.08 51.80 0.64 22.32 30.23 32.56 0.71 42.76 98.09 136.30 0.82
+> Qwen 3 8B
+> ContextCite 61.66 107.86 120.02 0.96 45.20 81.74 92.24 0.87 51.86 114.49 150.49 0.94
+> TokenShapley 49.81 113.93 140.27 0.56 3.47 9.88 16.72 0.12 12.98 42.09 64.17 0.31 Attribot 99.75 138.81 146.37 0.94 92.24 121.87 126.38 0.85 104.86 214.41 278.33 0.87 TracLLM 50.23 119.22 147.34 0.76 88.65 119.75 125.51 0.81 87.21 190.28 256.14 0.74
+> Qwen 3 32B
+> ContextCite 40.89 54.89 55.79 0.90 26.51 37.58 40.06 0.77 55.90 121.75 163.64 0.85
+> TokenShapley 6.46 30.74 46.17 0.46 1.24 3.32 5.45 0.11 14.48 42.19 69.56 0.33 Attribot 41.05 52.97 54.60 0.88 27.02 36.25 38.16 0.75 64.02 130.94 168.55 0.84 TracLLM 19.62 45.09 55.16 0.67 25.79 35.80 38.50 0.73 49.12 111.31 151.46 0.71
+
+Table 2: Attribution performance measured using Drop@ k and LDS. Higher is better. Bold denotes the best result. Both metrics are mostly stable and agree between the settings. No method is consistently the best. However, Drop@ k and LDS tend to favor LOO-based methods, highlighting the need for complementary metrics such as APS. the two Qwen models, indicating that task-level attribution quality is not fully captured by likelihood-based metrics. This does not make APS a universal metric. Instead, APS serves as a complementary metric by jointly capturing task-level at-tribution quality and consistency under controlled knowledge exposure. APS yields substantially different method rankings from Drop@ k and LDS, including different best-performing methods on the two Qwen models. These ranking differences are further visualized in the appendix. Rather, the divergence highlights the need for complementary evaluation: likelihood-based metrics alone cannot assess attribution behavior under IW overlap. 
+
+Score changes based on the Attr mechanism. Figure 3 illustrates that the distribution of the attribution scores shifts from the base model to the fine-tuned model. This pattern reveals that the attribution methods assign different attribution scores based on the Attr mechanism. With ContextCite, AttriBoT, and TracLLM, which assign the score to each segment through the response’s log-probability, the attribution scores shift toward lower values after fine-tuning. On the other hand, TokenShapley computes attribution scores for each segment from the hidden-state representations of the LLM rather than the output likelihood, and its distribution changes only slightly. These results suggest that neither attribution mechanism produces attribution scores that remain consistent and robust across knowledge-source conditions. 
+
+## Related work 
+
+It was shown that LLMs generate responses based on the information from the training data (IW), provided in the context (ICL), or the mixture of the two (Chan et al. 2022; Tao et al. 2024a; Zhao et al. 2025). Identifying which of these sources drives the response is crucial to interpreting hallucinations (Du et al. 2024; Tao et al. 2024b; Chuang et al. 2024; Kim et al. 2026). ContextCite (Cohen-Wang et al. 2024) hints that ablation-based methods can assign low scores to relevant context when the model relies on IW knowledge. However, a systematic analysis of this phenomenon is not acknowledged in other work (Horovicz and Goldshmidt 2024; Xiao et al. 2025; Liu, Kandpal, and Raffel 2024; Wang et al. 2025). To address this gap, AttriWiki (Brink, Boer, and Ulmer 2026) uses a lightweight classifier to estimate contributive scores. Despite promising initial results for context attribution, they fail when handling the context that is in the training data (Cohen-Wang et al. 2024). Furthermore, they cannot disentangle data-source usage within the input context, leading to ambiguous attribution outcomes. To study this challenge, we introduce an evaluation protocol to assess the accuracy of context attribution when disentangling in-weight and in-context contributions. 
+
+## Discussion 
+
+Weight access. Our evaluation requires white-box access to the model. It relies on comparing measurements from the base and finetuned models. This is justified because our goal is to evaluate the attribution methods, not to compete with them in a post-hoc setting. In a deployment setting, the end-user will use an attribution method that was, by design, evaluated using our protocol. 
+
+Contributive vs. corroborative attribution. Prior work has defined contributive and corroborative attribution (Worledge et al. 2023). Contributive attribution quantifies how important a source, such as a training data sample, is to 
+
+pθ , and is usually measured by its counterfactual contribution to the loss or output. Corroborative attribution has also been referred to as citation in prior work (Nakano et al. 2022; Base FT 
+
+> 2.5
+> 0.0
+> 2.5
+> 5.0
+> 7.5
+> LLaMA3-8B
+
+Context-Cite  
+
+> Base FT
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+
+TokenShapley  
+
+> Base FT
+> 5.0
+> 2.5
+> 0.0
+> 2.5
+> 5.0
+
+AttriBoT   
+
+> Base FT
+> 0
+> 5
+> 10
+> 15
+
+TracLLM         
+
+> Base FT
+> 4
+> 2
+> 0
+> 2
+> Qwen3-8B
+> 1e9
+> Base FT
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> Base FT
+> 4
+> 2
+> 0
+> 2
+> Base FT
+> 0
+> 5
+> 10
+> 15
+> 20
+> Base FT
+> 1
+> 0
+> 1
+> 2
+> Qwen3-32B
+> Base FT
+> 0.000
+> 0.002
+> 0.004
+> Base FT
+> 2
+> 0
+> 2
+> 4
+> Base FT
+> 0
+> 5
+> 10
+
+Figure 3: Contributive score distribution shift of different attribution methods on two LLaMA3-8B, Qwen3-8B, and Qwen3-32B. TracLLM and ContextCite show the most significant contributive score distribution shift. Menick et al. 2022), and can be measured by exact match, valid paraphrase, or textual entailment. ContextCite formalizes context attribution as contributive context attribution (Cohen-Wang et al. 2024), which quantifies the contribution of each context segment to the model’s response. We adopt this definition throughout the paper and further interpret context attribution at two levels: the text-level effect of a context segment, and the knowledge-level role of the segment. This distinction is important because IW knowledge can mask the observable effect of a context segment, which helps us interpret the contributive score in a comprehensive way. 
+
+Disentanglement is necessary for usable attribution. At-tribution score is a property of the context–model pair. Ex-isting methods compute counterfactual effects conditioned on a fixed model; resulting scores are silently affected by the IW knowledge. Low score does not guarantee low contribu-tion when the segment knowledge is present in the weights. This approach is potentially misleading, particularly when attribution scores are treated as direct evidence, as seen in the citation rewards mechanism utilized in SelfCite (Chuang et al. 2025). Our analysis shows that this limitation is not from one method, but arises broadly from existing context attribution methods under the overlap between ICL and IW knowledge. 
+
+Removal primitive. Our findings reflect that all evalu-ated methods rely on text removal as the primitive: leave-one-out (AttriBot, TracLLM) random-ablation surrogates (ContextCite), or Shapley-style marginal contributions (To-kenShapley). The primitive ignores IW knowledge by design, since removing a context segment does not remove the learned information. Future attribution methods should quantify both the contribution of a segment in the context and from the weights. Our protocol and WMDP-Cyber++ aid the design of such methods. 
+
+Finetuning as a proxy for in-weight knowledge. Our protocol instantiates IW knowledge to the LLMs through LoRA finetuning on Dtrain . The reason for this choice due to the uncontrollable and no public training data information of the public LLMs. Therefore the fine-tuning allow us to control that the knowledge is actually acquired to LLMs. For the further works, we suggest the ablation for the behaviour of attribution methods across different finetuning approaches and different hyperparameters of the LoRA. 
+
+## Conclusion 
+
+In this work, we show that existing attribution methods fail when the context overlaps with the IW knowledge. We introduce an evaluation protocol relying on new metrics (BCS, CAC, APS, SSP), and a benchmark with controlled IW/ICL provenance labels (WMDP-Cyber++). We demonstrate that 1) high ranking consistency does not imply faithful attribution; 2) all methods perform near chance at source separation under a source-labeling interface. Our findings call for attribution methods that can disentangle ICL/IWcontributions. References 
+
+Bajaj, P.; Campos, D.; Craswell, N.; Deng, L.; Gao, J.; Liu, X.; Majumder, R.; McNamara, A.; Mitra, B.; Nguyen, T.; Rosenberg, M.; Song, X.; Stoica, A.; Tiwary, S.; and Wang, T. 2016. MS MARCO: A Human Generated MAchine Reading COmprehension Dataset. Version Number: 3. Brink, I.; Boer, A.; and Ulmer, D. 2026. Probing for Knowledge Attribution in Large Language Models. ArXiv:2602.22787 [cs]. Chan, S. C. Y.; Dasgupta, I.; Kim, J.; Kumaran, D.; Lampinen, A. K.; and Hill, F. 2022. Transformers generalize dif-ferently from information stored in context vs in weights. ArXiv:2210.05675 [cs]. Chuang, Y.-S.; Cohen-Wang, B.; Shen, S. Z.; Wu, Z.; Xu, H.; Lin, X. V.; Glass, J.; Li, S.-W.; and Yih, W.-t. 2025. SelfCite: Self-Supervised Alignment for Context Attribution in Large Language Models. ArXiv:2502.09604 [cs]. Chuang, Y.-S.; Qiu, L.; Hsieh, C.-Y.; Krishna, R.; Kim, Y.; and Glass, J. R. 2024. Lookback Lens: Detecting and Mitigating Contextual Hallucinations in Large Language Models Using Only Attention Maps. In Al-Onaizan, Y.; Bansal, M.; and Chen, Y.-N., eds., Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , 1419– 1436. Miami, Florida, USA: Association for Computational Linguistics. Clark, J. H.; Choi, E.; Collins, M.; Garrette, D.; Kwiatkowski, T.; Nikolaev, V.; and Palomaki, J. 2020. TyDi QA: A Bench-mark for Information-Seeking Question Answering in Typo-logically Diverse Languages. Transactions of the Association for Computational Linguistics , 8: 454–470. Cohen-Wang, B.; Shah, H.; Georgiev, K.; and Mądry, A. 2024. ContextCite: Attributing Model Generation to Context. 
+
+Advances in Neural Information Processing Systems , 37: 95764–95807. Doshi, J.; and Stickland, A. C. 2025. Does Unlearning Truly Unlearn? A Black Box Evaluation of LLM Unlearning Methods. ArXiv:2411.12103 [cs]. Du, K.; Snæbjarnarson, V.; Stoehr, N.; White, J.; Schein, A.; and Cotterell, R. 2024. Context versus Prior Knowledge in Language Models. In Ku, L.-W.; Martins, A.; and Srikumar, V., eds., Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 13211–13235. Bangkok, Thailand: Association for Computational Linguistics. Grattafiori, A.; Dubey, A.; Jauhri, A.; Goyal, A.; et al. 2024. The Llama 3 Herd of Models. ArXiv:2407.21783 [cs]. Horovicz, M.; and Goldshmidt, R. 2024. TokenSHAP: Inter-preting Large Language Models with Monte Carlo Shapley Value Estimation. In Peled-Cohen, L.; Calderon, N.; Lissak, S.; and Reichart, R., eds., Proceedings of the 1st Workshop on NLP for Science (NLP4Science) , 1–8. Miami, FL, USA: Association for Computational Linguistics. Khandelwal, U.; Levy, O.; Jurafsky, D.; Zettlemoyer, L.; and Lewis, M. 2019. Generalization through Memorization: Nearest Neighbor Language Models. Kim, M.; Kim, D.-K.; Kwon, J.; Yang, N.; Jung, K.; and Cha, M. 2026. How Training Data Shapes the Use of Parametric and In-Context Knowledge in Language Models. In Liakata, M.; Moreira, V. P.; Zhang, J.; and Jurgens, D., eds., Pro-ceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 23242– 23257. San Diego, California, United States: Association for Computational Linguistics. ISBN 979-8-89176-390-6. Kwiatkowski, T.; Palomaki, J.; Redfield, O.; Collins, M.; Parikh, A.; Alberti, C.; Epstein, D.; Polosukhin, I.; Devlin, J.; Lee, K.; Toutanova, K.; Jones, L.; Kelcey, M.; Chang, M.-W.; Dai, A. M.; Uszkoreit, J.; Le, Q.; and Petrov, S. 2019. Natural Questions: A Benchmark for Question Answering Research. Transactions of the Association for Computational Linguistics , 7: 453–466. Liu, F.; Kandpal, N.; and Raffel, C. 2024. AttriBoT: A Bag of Tricks for Efficiently Approximating Leave-One-Out Context Attribution. Menick, J.; Trebacz, M.; Mikulik, V.; Aslanides, J.; Song, F.; Chadwick, M.; Glaese, M.; Young, S.; Campbell-Gillingham, L.; Irving, G.; and McAleese, N. 2022. Teaching lan-guage models to support answers with verified quotes. ArXiv:2203.11147 [cs.CL]. Nakano, R.; Hilton, J.; Balaji, S.; Wu, J.; Ouyang, L.; Kim, C.; Hesse, C.; Jain, S.; Kosaraju, V.; Saunders, W.; Jiang, X.; Cobbe, K.; Eloundou, T.; Krueger, G.; Button, K.; Knight, M.; Chess, B.; and Schulman, J. 2022. WebGPT: Browser-assisted question-answering with human feedback. ArXiv:2112.09332 [cs.CL]. OpenAI; Hurst, A.; Lerer, A.; Goucher, A. P.; and others. 2024. GPT-4o System Card. ArXiv:2410.21276 [cs.CL]. See, A.; Liu, P. J.; and Manning, C. D. 2017. Get To The Point: Summarization with Pointer-Generator Networks. ArXiv:1704.04368 [cs.CL]. Tao, Y.; Hiatt, A.; Haake, E.; Jetter, A. J.; and Agrawal, A. 2024a. When Context Leads but Parametric Memory Follows in Large Language Models. In Al-Onaizan, Y.; Bansal, M.; and Chen, Y.-N., eds., Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , 4034– 4058. Miami, Florida, USA: Association for Computational Linguistics. Tao, Y.; Hiatt, A.; Haake, E.; Jetter, A. J.; and Agrawal, A. 2024b. When Context Leads but Parametric Memory Follows in Large Language Models. In Al-Onaizan, Y.; Bansal, M.; and Chen, Y.-N., eds., Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , 4034– 4058. Miami, Florida, USA: Association for Computational Linguistics. Wang, Y.; Zou, W.; Geng, R.; and Jia, J. 2025. TracLLM: A Generic Framework for Attributing Long Context LLMs. Worledge, T.; Shen, J. H.; Meister, N.; Winston, C.; and Guestrin, C. 2023. Unifying Corroborative and Contributive Attributions in Large Language Models. ArXiv:2311.12233 [cs.CL]. Xiao, Y.; Zhu, Y.; Samyoun, S.; Zhang, W.; Wang, J. T.; and Du, J. 2025. TokenShapley: Token Level Context Attribution with Shapley Value. In Che, W.; Nabende, J.; Shutova, E.; and Pilehvar, M. T., eds., Findings of the Association for Computational Linguistics: ACL 2025 , 3882–3894. Vienna, Austria: Association for Computational Linguistics. ISBN 979-8-89176-256-5. Yang, A.; Li, A.; Yang, B.; Zhang, B.; Hui, B.; and others. 2025. Qwen3 Technical Report. ArXiv:2505.09388 [cs.CL]. Yang, Z.; Qi, P.; Zhang, S.; Bengio, Y.; Cohen, W.; Salakhut-dinov, R.; and Manning, C. D. 2018. HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering. In Riloff, E.; Chiang, D.; Hockenmaier, J.; and Tsujii, J., eds., 
+
+Proceedings of the 2018 Conference on Empirical Meth-ods in Natural Language Processing , 2369–2380. Brussels, Belgium: Association for Computational Linguistics. Zhang, Y.; Li, M.; Long, D.; Zhang, X.; Lin, H.; Yang, B.; and others. 2025. Qwen3 Embedding: Advancing Text Embedding and Reranking Through Foundation Models. ArXiv:2506.05176 [cs.CL]. Zhao, J.; Yang, Y.; Hu, X.; Tong, J.; Lu, Y.; Wu, W.; Gui, T.; Zhang, Q.; and Huang, X. 2025. Understanding Paramet-ric and Contextual Knowledge Reconciliation within Large Language Models. Additional results 
+
+Additional results on MS-Marco and NQ dataset 
+
+we extend the attribution experiments from table 2 to two additional datasets: MS-MARCO and Natural Questions (NQ). Table 3 reports the results. The trends for the benchmark are consistent with the main evaluation: ContextCite achieves the highest LDS across both datasets and models, confirming its strong linear faithfulness, while AttriBot leads on Drop@1 due to its LOO-based formulation. TokenShapley remains the weakest performer overall, particularly on LLaMA3-8B where its Drop@1 falls to 3.22 (MS-MARCO) and 12.39 (NQ). These additional results reinforce our finding that method rankings are model-dependent. AttriBot and ContextCite perform comparably on LLaMA3-8B but diverge on Qwen3-8B, and that high removal impact does not necessarily entail high linear faithfulness. 
+
+ROC curves for the disentanglement of the IW and ICL sources 
+
+Figure 4 presents ROC curves for classifying context seg-ments as ICL or IW using each method’s attribution scores. All methods yield AUC values nearly the random baseline (0.5) on both models and both detection tasks, with curves closely tracking the diagonal. This result suggests that recent attribution methods, with the interface, have challenge in disentangling the ICL and IW. Therefore, a better attribution method should be proposed to both return the contribution score and do the disentanglement. 0.0 0.2 0.4 0.6 0.8 1.0           
+
+> False Positive Rate
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> True Positive Rate
+> LLaMA3-8B ICL/IW ROC
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> False Positive Rate
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> True Positive Rate
+> Qwen3-8B ICL/IW ROC
+> ContextCite TokenShapley TracLLM AttriBot
+
+Figure 4: ROC curves for classifying context segments as ICL (top) or IW (bottom) using attribution scores on LLaMA3-8B (left) and Qwen3-8B (right). All methods achieve AUC ≈
+
+0.5, confirming that attribution scores carry no discriminative signal for knowledge provenance at any threshold. 
+
+CAC and BCS Results under different RBO persistence parameters 
+
+This part provides supplementary results on CAC and BCS under different choices of the RBO persistence parameter ρ.In the main text, CAC is computed with ρ=0 .5, which places greater emphasis on agreement among the highest-ranked context segments. Since ρ controls how strongly RBO down-weights deeper ranks, we additionally report results for ρ=0 .8,corresponding to expected evaluation depths of approximately 
+
+2 and 5, respectively. Figure 5 shows the resulting CAC–BCS patterns across all three target models. 0.0            
+
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> CAC
+> LLaMA3-8B
+> RBO p = 0.5 RBO p = 0.8
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> CAC
+> Qwen3-8B
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> BCS
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> CAC
+> Qwen3-32B
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> BCS
+> ContextCite
+> TokenShapley
+> AttriBot
+> TracLLM
+
+Figure 5: CAC vs. BCS for four attribution methods across three target models. BCS measures task-level attribution quality at k=1 , while CAC measures ranking consistency between the base and finetuned models using RBO with 
+
+ρ=0 .5 and ρ=0 .8. The dashed line denotes y=x.The relative comparison between attribution methods re-mains largely stable across the two values of ρ. Although the absolute CAC values change as deeper ranks receive greater weight, the overall CAC–BCS patterns are preserved. Notably, methods with stronger BCS do not necessarily achieve higher CAC, and vice versa, showing that neither metric alone pro-vides a complete comparison of attribution methods. This observation motivates APS, which provides a joint summary of performance across both criteria. The persistence of these patterns across different values of ρ further suggests that our main findings do not depend critically on the specific choice of ρ = 0 .5.
+
+Ranking differences across evaluation metrics 
+
+Figure 6 compares attribution-method rankings under Drop@ k, LDS, and APS. Drop@ k and LDS produce largely similar rankings, whereas APS changes the relative ordering of methods, particularly on the two Qwen models. This further MS-MARCO NQ Method Drop@1 ↑ Drop@3 ↑ Drop@5 ↑ LDS ↑ Drop@1 ↑ Drop@3 ↑ Drop@5 ↑ LDS ↑
+
+LLaMA 3 8B 
+
+ContextCite 47.51 88.02 102.99 0.83 34.07 49.43 54.02 0.89 
+
+TokenShapley 3.22 9.97 17.23 0.16 12.39 37.40 49.82 0.43 Attribot 49.91 84.26 96.30 0.82 34.21 47.10 52.98 0.86 TracLLM 46.04 84.32 100.51 0.80 14.31 39.77 54.02 0.62 
+
+Qwen 3 8B 
+
+ContextCite 64.43 113.14 130.18 0.84 92.12 135.78 144.48 0.94 
+
+TokenShapley 4.80 12.52 22.12 0.14 48.35 111.84 136.42 0.58 Attribot 67.73 108.94 123.42 0.83 92.67 133.16 143.04 0.93 TracLLM 60.98 106.13 123.80 0.81 44.16 113.24 144.29 0.75 
+
+Qwen 3 32B 
+
+ContextCite 18.31 34.01 40.13 0.77 34.24 49.18 51.50 0.91 
+
+TokenShapley 1.74 4.27 7.34 0.15 15.70 38.99 47.76 0.52 Attribot 19.12 31.19 36.27 0.72 34.42 47.90 50.64 0.89 TracLLM 16.11 30.09 36.69 0.68 14.54 39.04 51.31 0.68 
+
+Table 3: Attribution performance measured using Drop@ k and LDS. Higher is better. Bold denotes the best result. Both metrics are mostly stable and agree between the settings. No method is consistently the best. However, Drop@ k and LDS tend to favor LOO-based methods, highlighting the need for complementary metrics such as APS. 1 1 1                               
+
+> 223
+> 332
+> 444
+> ours
+> Drop LDS APS
+> LLaMA3-8B
+> 313
+> 124
+> 231
+> 442
+> ours
+> Drop LDS APS
+> Qwen3-8B
+> 113
+> 224
+> 331
+> 442
+> ours
+> Drop LDS APS
+> Qwen3-32B
+> ContextCite
+> AttriBot
+> TracLLM
+> TokenShapley
+> rank (1 = best)
+> 1234
+
+Figure 6: Ranking of attribution methods under Drop@ k,LDS, and APS across the evaluated models. Numbers denote ranks, with 1 indicating the best-performing method. APS additionally captures task-level attribution quality and consis-tency under controlled knowledge exposure. shows that these metrics capture complementary aspects of attribution quality. 
+
+## Additional implementation details for the fine-tuning large language model 
+
+For LLM fine-tuning, we fine-tune the models on the WMDP dataset, using the cyber retain subset. We employ LoRA with rank r = 16 and scaling factor α = 64 . The adapted modules differ by architecture: for LLaMA3-8B, we target the query, key, value, and output projections, whereas for Qwen3 models, we additionally include the gate and down projections. Both models are trained with a batch size of 4, gradient accumulation is 8, and using the AdamW optimizer with a learning rate of 0.0001 . The best checkpoints are selected after three epochs of full supervised finetuning. Furthermore, to verify that the training data is non-trivial with respect to the base model’s pre-training corpus—and that the finetuned model has genuinely acquired knowledge from the training set, we evaluate both the base and finetuned mod-els in a no-context setting with the multiple-choice accuracy metric. Without any retrieved context, the base models achieve 
+
+42 .2% (LLaMA3-8B) and 53 .8% (Qwen3-8B), whereas the fine-tuned model reach 76 .6% and 96 .8% , respectively. The substantial performance gap confirms that the fine-tuned mod-els have effectively learned the target knowledge, validating their suitability for our evaluation protocol. 
+
+## Extending attribution methods for source disentanglement 
+
+Existing context attribution methods produce a single im-portance score per segment, without distinguishing whether a segment’s influence arises from ICL or from knowledge already encoded in the model’s parameters (IW). We extend four representative methods— ContextCite, TokenShapley, AttriBoT, and TracLLM— with a unified disentanglement interface. Each extension uses only a single model (the fine-tuned model pθft ) at inference time, requiring no access to the base model pθbase , making them deployable in practice. 
+
+ContextCite 
+
+Original attribution method. ContextCite estimates the contribution of each context unit by fitting a sparse linear surrogate over randomly ablated contexts. Given the context 
+
+C = {c1, . . . , c k}, we sample M binary masks m(j) ∈{0, 1}k, where each context unit is retained independently with probability 0.5. For each mask, the method computes the log-probability of the response under the corresponding ablated context. The attribution coefficients are then obtained by solving the LASSO objective: 
+
+ˆβ = arg min 
+
+> β
+
+( MX
+
+> j=1
+
+
+
+log pθft 
+
+ Y | (C ⊙ m(j)) ⊕ X
+
+− β⊤m(j)2
+
++ λ∥β∥1
+
+)
+
+.
+
+(11) where C ⊙ m(j) denotes the context obtained by retaining the units whose corresponding mask entries are one. The attribution score assigned to context unit ci is 
+
+si = ˆβi ∈ R. (12) 
+
+Disentanglement extension. We adapt the contributive scores to predict whether each context unit is associated with ICL or IW knowledge. Let s+ 
+
+> i
+
+= max( si, 0) denote the positive contribution of ci, and let p∅ ∈ [0 , 1] denote the no-context recovery score of pθft . This score captures the model’s ability to produce the response using parametric knowledge alone. We define the ICL proxy score as 
+
+sICL  
+
+> i
+
+=
+
+
+
+s+
+
+> i
+
+max j s+
+
+> j
+
+, if max j s+ 
+
+> j
+
+> 0,
+
+0, otherwise ,
+
+(13) and compute the corresponding IW proxy score as 
+
+sIW  
+
+> i
+
+= p∅
+
+ 1 − sICL 
+
+> i
+
+. (14) Here, sICL  
+
+> i
+
+represents the relative positive contribution of 
+
+ci, while sIW  
+
+> i
+
+increases when the model can recover the response without context and the segment has limited positive contribution. The predicted source label is obtained by comparing the two proxy scores: 
+
+Ii =
+
+(ICL , if sICL  
+
+> i
+
+> 0 and sICL  
+
+> i
+
+≥ sIW  
+
+> i
+
+,
+
+IW , otherwise . (15) Equivalently, when sICL  
+
+> i
+
++ sIW  
+
+> i
+
+> 0, a segment is labeled ICL if sICL 
+
+> i
+
+sICL  
+
+> i
+
++ sIW 
+
+> i
+
+≥ 0.5. (16) If sj ≤ 0 for every context unit cj , no unit provides positive in-context support, and all units are labeled IW. 
+
+AttriBoT (Leave-One-Out) 
+
+Original attribution method. AttriBoT approximates LOO context attribution. For each context unit ci, it measures the reduction in the response log-probability when ci is removed from the full context: 
+
+si = log pθft 
+
+ Y | C ⊕ X
+
+− log pθft 
+
+ Y | (C \ { ci}) ⊕ X. (17) A larger positive value of si indicates that removing ci causes a larger reduction in the likelihood of the response. 
+
+Disentanglement extension. We first retain only the posi-tive removal effects by defining 
+
+s+ 
+
+> i
+
+= max( si, 0) . (18) The positive scores are then normalized into attribution-mass fractions: 
+
+ρi =
+
+
+
+s+
+
+> i
+
+Pkj=1 s+
+
+> j
+
+, if Pkj=1 s+ 
+
+> j
+
+> 0,
+
+0, otherwise ,i ∈ { 1, . . . , k }.
+
+(19) We compare each fraction with the uniform attribution share  
+
+> 1
+> k
+
+. A segment that receives an above-uniform share is treated as providing explicit in-context support, whereas a segment with a smaller share is treated as being covered primarily by IW knowledge. The predicted source label is therefore 
+
+Ii =
+
+
+
+ICL , if 
+
+> k
+
+X
+
+> j=1
+
+s+ 
+
+> j
+
+> 0 and ρi ≥ 1
+
+k ,
+
+IW , otherwise .
+
+(20) If all context units have non-positive LOO scores, then ρi = 0 
+
+for every i, and all context units are labeled IW. 
+
+TokenShapley 
+
+Original attribution method. TokenShapley computes KNN-Shapley values over hidden-state representations. For each generated response token yt, we extract the hidden state 
+
+ht from the final transformer layer and compute its cosine distance to every context token position in the same layer. A weighted k-nearest-neighbor Shapley value is then computed at the token level, measuring each context token’s contribution. Segment-level scores are obtained by aggregating token-level values: 
+
+si = X 
+
+> t∈T (ci)
+
+max( st, 0) (21) where T (ci) is the set of token positions corresponding to unit ci.
+
+Disentanglement extension. Source labels follow the same above-uniform rule as AttriBoT. The positive-clipped, aggre-gated Shapley scores are normalized: 
+
+Ii =
+
+
+
+ICL , if si
+
+Pkj=1 sj
+
+≥ 1
+
+k ,
+
+IW , otherwise ,i ∈ { 1, . . . , k }.
+
+(22) Units receiving disproportionate Shapley mass in hidden-state space are identified as ICL sources that actively shape the model’s generation, while units with negligible representation influence are classified as IW. 
+
+TracLLM 
+
+Original attribution method. TracLLM uses hierarchical binary-tree perturbation with top-K pruning. Starting from a single root node containing all context units, the algorithm recursively bisects each node and scores children using one or more scoring functions. At each level, only the top-Khighest-scoring nodes are retained, and recursion continues until all nodes are singletons. The final segment score is inherited from its containing node. Two scoring functions are combined via a weighted maxi-mum ensemble: 
+
+• STC (Single Text Contribution): STC (S) = log pθft (Y |
+
+S ⊕ X) − log pθft (Y | X), measuring a node S ⊆ C’s standalone contribution relative to the no-context baseline. 
+
+• LOO : LOO (S) = log pθft (Y | C ⊕ X) − log pθft (Y |
+
+(C \ S) ⊕ X), measuring the effect of removing a node from the full context. The final score for each unit is si = max( wloo ·LOO i, STC i),where wloo = 2 .0 is a weight hyperparameter. 
+
+Disentanglement extension. TracLLM uses the same con-trastive interface as ContextCite. After computing the base TracLLM scores s1, . . . , s k, the segment-level allocations 
+
+sICL  
+
+> i
+
+and sIW  
+
+> i
+
+and the predicted source labels Ii follow Equa-tions (13)–(15). 
+
+## Additional details for the WMDP-Cyber++ dataset creation 
+
+We provide the prompt for each step to use WMDP dataset for creating WMDP-Cyber++ with the GPT-4o model. 
+
+Stage 1: In-weight segment re-ranking (GPT-4o) 
+
+You are an expert at evaluating text relevance for cybersecu-rity questions. Given the question below, score each candidate passage on how relevant it is to the question (0–10). A passage scores high if it contains information directly related to concepts, techniques, or knowledge needed to answer the question. Return ONLY a JSON array of numeric scores, one per passage, in order. 
+
+Question: 
+
+{WMDP-cyber question with choices} 
+
+Passages: 
+
+[1] {Retrieved chunk from cyber-retain-corpus }
+
+[2] {...} 
+
+. . . 
+
+Scores (JSON array): 
+
+Stage 2: In-context segment filtering (GPT-4o) 
+
+You are an expert at evaluating whether text passages provide supporting evidence for answering a question. Given the question and correct answer below, score each passage on how well it provides supporting evidence or background knowledge that helps reach the correct answer (0–10). A passage scores high if it contains relevant facts, context, or technical details that support answering the question correctly. A passage scores 0 if it is completely irrelevant. Return ONLY a JSON array of numeric scores, one per passage, in order. 
+
+Question: 
+
+{WMDP-cyber question with choices} 
+
+Correct answer: {letter}. {answer text} 
+
+Passages: 
+
+[1] {Retrieved chunk from cyber-forget-corpus }
+
+[2] {...} 
+
+. . . 
+
+Scores (JSON array): 
+
+Stage 3: Context smoothing (GPT-4o) 
+
+You are a technical writer who creates coherent reference documents from multiple source passages. Rewrite the following passages into a single coherent refer-ence document that could serve as context for answering a technical question. 
+
+Rules: 
+
+1. Preserve ALL factual content from every passage — do not drop information. 2. Keep the [S1], [S2], etc. markers at the beginning of each passage’s content so we know which source each part came from. 3. Add brief transitional phrases between sections so the document reads naturally and coherently. 4. Do NOT add new facts, opinions, or information not in the originals. 5. Keep the technical level and terminology of the originals. 6. Do NOT mention or reference the question in the docu-ment. 
+
+Question (for context only, do NOT include in output): 
+
+{WMDP-cyber question} 
+
+Passages: 
+
+[S1] {ICL or IW segment} 
+
+[S2] {...} 
+
+. . . 
+
+Rewritten document:

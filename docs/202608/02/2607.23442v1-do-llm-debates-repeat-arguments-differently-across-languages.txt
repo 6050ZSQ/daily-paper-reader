@@ -1,0 +1,971 @@
+Title: Do LLM Debates Repeat Arguments Differently Across Languages?
+
+URL Source: https://arxiv.org/pdf/2607.23442v1
+
+Published Time: Tue, 28 Jul 2026 01:05:56 GMT
+
+Number of Pages: 33
+
+Markdown Content:
+# Do LLM Debates Repeat Arguments Differently Across Languages? 
+
+Huiqian Lai 
+
+Syracuse University 
+
+hlai12@syr.edu 
+
+Abstract 
+
+LLM debate is usually evaluated by final an-swers, but transcripts also reveal whether later turns develop new argumentative content or re-turn to earlier claims in new wording. We study this process with prior-argument simi-larity , an aggregate diagnostic comparing ex-tracted argument units with earlier units in the same debate. In controlled eight-turn de-bates over 71 motions, six languages, and four model agents, Chinese is the only tested lan-guage with a consistently positive gap relative to English across three multilingual embed-ding models. The gap persists across agents, turn positions, regression adjustment, metric variants, extraction-length controls, a second-extractor subset, and cross-encoder tail rescor-ing. Manual calibration shows weak item-level alignment but a high-similarity tail en-riched for substantive repetition. A diversity-aware prompt lowers prior-argument similar-ity across languages, yet does not significantly narrow the Chinese–English gap. These find-ings suggest that multilingual debate evalua-tion should measure argumentative develop-ment over time and report mitigation effects in both average and gap terms. 
+
+1 Introduction 
+
+Multi-agent debate is often motivated by the promise that interaction can surface alternative perspectives, expose errors, and improve reason-ing (Du et al., 2024; Chan et al., 2024; Yin et al., 2023; Zhang et al., 2024). Yet this promise de-pends on what happens inside the debate, not only on the final answer. Extended LLM interac-tion can also converge to shared misconceptions, stall, drift, or fail to produce genuinely useful ex-change (Liang et al., 2024b; Estornell and Liu, 2024; Wynn et al., 2025; Wu et al., 2025; Becker et al., 2026). This tension raises a process-level question that final-answer evaluation cannot an-swer: do later turns develop new argumentative content, or do they semantically return to prior content in new wording? 
+
+Existing work does not directly answer this question. LLM debate is usually evaluated as an inference-time strategy for improving final an-swers, reasoning, or judgments (Irving et al., 2018; Du et al., 2024; Liang et al., 2024b; Chan et al., 2024), while work that treats debate as an argumen-tative object focuses on judging, premise recov-ery, or counter-argument generation (Liang et al., 2024a; Ku et al., 2025; Ozaki et al., 2025). Multi-lingual and cross-cultural LLM studies show that model behavior is not language- or culture-neutral, but they largely evaluate final outputs or aggregate responses rather than turn-by-turn interaction dy-namics (Shi et al., 2022; Arora et al., 2023; Naous et al., 2024; Gao et al., 2025). Repetition research, in turn, studies degeneration in generated text at the lexical, phrase, or sentence level (Holtzman et al., 2020; Welleck et al., 2020; Xu et al., 2022). Debate requires a different unit of analysis: a later turn can avoid copying earlier wording while still returning to the same claim, mechanism, stakeholder impact, or tradeoff. We study argument development in multilin-gual, multi-agent LLM debate by extracting argu-ment units from each turn and measuring prior-argument similarity . For each extracted argument unit, we ask how close it is to the most similar argu-ment unit that appeared earlier in the same debate. Higher values mean that later speakers are return-ing to earlier argumentative ground, even when they use different wording. The score is a pro-cess diagnostic: it can reveal where debates exhibit greater semantic overlap with prior arguments, but it does not determine whether that overlap is quo-tation, rebuttal, refinement, or redundant restate-ment. Our evaluation uses controlled eight-turn de-bates over 71 motions in the six official UN languages, which form a policy-relevant multi-arXiv:2607.23442v1 [cs.CL] 26 Jul 2026 lingual benchmark spanning distinct scripts and language families while remaining high-resource and supported by every debate agent and em-bedding model in the study; this reduces, with-out eliminating, the risk that observed differ-ences merely reflect low-resource capability fail-ure. Each session includes four provider-hosted model agents: OpenAI GPT-5.5 (OpenAI, 2026), Anthropic Claude Opus 4.7 (Anthropic, 2026), DeepSeek-V3.2 (DeepSeek, 2025), and Mistral Large 3 (Mistral AI, 2025). For each motion, the topic, role-to-agent assignment, debate posi-tions, and turn structure are paired across lan-guages, allowing language-conditioned compar-isons while reducing avoidable variation from topic, role, model identity, and interaction struc-ture. This paper makes three contributions. First, we introduce prior-argument similarity , a scalable di-agnostic for measuring whether later debate turns return to earlier argumentative content rather than developing new ground. Second, using a yoked six-language design over 71 motions and four model agents, we show that Chinese debates exhibit con-sistently higher prior-argument similarity than En-glish debates across embedding models, agents, turn positions, regression adjustments, metric vari-ants, and artifact checks. Third, we triangulate this process diagnostic with human labels, a cross-encoder, a blinded LLM pair judge, a translate-and-rescore probe, prompt-strategy ablations, and an independent outcome-quality judge. The com-bined evidence supports prior-argument similarity as an aggregate process monitor rather than an item-level repetition classifier or standalone qual-ity score: higher similarity is moderately asso-ciated with lower judged quality, while prompt-based reductions in similarity do not necessarily yield equal downstream gains across languages. 
+
+2 Related Work 
+
+2.1 LLM Debate as Outcome Evaluation 
+
+Most LLM debate work treats interaction as an inference-time route to a better final answer, score, or verdict. Agents propose, critique, and revise re-sponses, and success is usually measured by down-stream answer quality or judging accuracy (Irv-ing et al., 2018; Du et al., 2024; Liang et al., 2024b; Chan et al., 2024). Recent work broad-ens the setting to structured judging, code genera-tion, cultural alignment, self-signal-driven debate, role-playing debate benchmarks, and applied de-bate protocols (Harrasse et al., 2026; Chen et al., 2025a; Ki et al., 2025; Chen et al., 2025b; Chuang et al., 2026; Oriol et al., 2025). Stress tests of debate architectures further show that debate can converge to shared misconceptions, underperform single-agent reasoning, or become vulnerable to social and persuasive influence (Estornell and Liu, 2024; Wynn et al., 2025; Wu et al., 2025; Kraidia et al., 2026). Across these lines, the central evalua-tion object is still usually the outcome of the inter-action. A smaller body of work treats debate as an argu-mentative object. Debate judging requires track-ing how claims are introduced, supported, and refuted across turns (Liang et al., 2024a; Stern-licht et al., 2025); multi-agent debate can sur-face implicit premises (Ku et al., 2025); counter-argument generation depends on identifying criti-cal premises (Ozaki et al., 2025); and parliamen-tary debate summarization emphasizes preserva-tion of reasoning structure (Cunningham et al., 2026). Debate-style latent-role methods such as MoLaCE similarly aim to increase reasoning diver-sity (Kim and Torr, 2025). These studies motivate argument-level analysis, but they do not directly measure whether later LLM turns keep expanding the argumentative state or return to earlier ground. 
+
+2.2 Multilingual LLM Evaluation Beyond Final Outputs 
+
+Multilingual evaluation has consistently shown that LLM behavior is not language-neutral (Shi et al., 2022; Arora et al., 2023; Naous et al., 2024; Gao et al., 2025). Parallel and translated benchmarks reveal cross-lingual variation in rea-soning, instruction following, safety, and cultural alignment (Zhang et al., 2023; Gao et al., 2025). Prompting can reduce some of these gaps, as in cross-lingual-thought prompting for multilingual reasoning and generation (Huang et al., 2023). This work establishes language-conditioned vari-ation, but it mostly measures final task scores or aggregate responses. Recent work also cautions that multilingual and cultural evaluations are sensitive to format. Multiple-choice evaluations can be order-sensitive and can diverge from long-form generation in out-put, logit, and embedding spaces (Li et al., 2024); closed-style cultural-alignment surveys can ob-scure behavior that appears under less constrained generation (Kabir et al., 2025). These findings are directly relevant to multilingual debate: if format changes measured behavior in single-turn settings, then interactive systems should not be reduced to final-answer accuracy alone. What remains miss-ing is a yoked, turn-level account of multilingual in-teraction: whether the same motions, roles, agents, and turn positions produce comparable argumenta-tive development across languages. 
+
+2.3 From Surface Repetition to Argument-Level Repetition 
+
+Repetition is a well-studied problem in neural text generation. Prior work analyzes degenerate continuations and mitigates repeated output with sampling, diverse decoding, unlikelihood train-ing, repetition penalties, and preference-based fine-tuning (Holtzman et al., 2020; Welleck et al., 2020; Vijayakumar et al., 2017; Xu et al., 2022; Wang et al., 2025). Evaluation work also shows that repeated generations can be unstable across runs, motivating repeated sampling or aggregation (Var-dasbi et al., 2026; Alvarado Gonzalez et al., 2025). These lines target surface or generation-level rep-etition; debate requires a different object, because a turn may avoid lexical repetition while returning to the same claim, mechanism, stakeholder impact, or tradeoff. Argument mining and semantic similarity work provide the needed unit of analysis. The same substantive argument can appear in different word-ing, motivating argument similarity, prominent-argument identification, argument facets, and con-textualized argument clustering (Boltužić and Šna-jder, 2015; Misra et al., 2016; Reimers et al., 2019). Sentence-pair modeling and Sentence-BERT further distinguish accurate cross-encoder comparison from efficient bi-encoder retrieval and clustering (Reimers and Gurevych, 2019). Di-versity and redundancy metrics in dialogue, re-trieval, and summarization are also relevant, from diversity-promoting dialogue objectives to maxi-mal marginal relevance (Li et al., 2016; Carbonell and Goldstein, 1998). Our setting differs because the units are extracted arguments, the comparison is within a structured debate transcript, and the tar-get is a process-level diagnostic of semantic return, calibrated against human judgments and tested un-der matched multilingual intervention conditions. 
+
+3 Methodology 
+
+3.1 Experimental Design 
+
+We study semantic return to prior argumentative content in multilingual LLM debate, operational-ized as prior-argument similarity to arguments al-ready present in the same debate. Each debate session is defined by a motion, a language, and a prompt condition. The baseline experiment con-tains 426 sessions: 71 motions × six languages (English, Arabic, Spanish, French, Russian, and Chinese). These six official UN languages span multiple scripts and language families while re-maining high-resource and supported by every tested API and embedding system, which reduces a low-resource capability confound. A matched diversity-aware condition repeats the same grid with an additional novelty instruction. The motions are drawn from the World Uni-versities Debating Championship (WUDC) motion archive for the 2023–2026 tournaments (UTDS Resources, 2016). Each English motion was translated into the five non-English target lan-guages, yielding 355 non-English cells: we trans-late with Google Translate defaults, back-translate with deepseek-chat , and judge meaning preser-vation with Llama-4-Scout before manual triage. Flagged cases were retained in the primary anal-ysis and evaluated through exclusion-based sensi-tivity checks; Appendix B.2 reports all parameters, schemas, flag rules, and corrected counts. Each session is an eight-turn structured debate with two sides, four debate roles, and four provider-hosted model agents: OpenAI GPT-5.5 (OpenAI, 2026), Anthropic Claude Opus 4.7 (Anthropic, 2026), DeepSeek-V3.2 (DeepSeek, 2025), and Mistral Large 3 (Mistral AI, 2025). For each mo-tion, the role-to-model assignment is fixed across all six language versions. This yoked design pre-vents paired language contrasts from confound-ing language with topic, role, turn structure, or model identity. Appendix Figure 5 schematizes the debate-generation protocol; detailed model identifiers, the debate template, execution counts, and operational notes are in Appendix B. At each turn, the active agent receives the mo-tion, its side and role, the current turn label, the immediately preceding speech, and the debate his-tory so far. The agent is instructed to write only in the target language. To reduce length-driven variation, opening, rebuttal, and cross-examination turns contain exactly five sentences, while closing turns contain exactly four sentences; each sentence is constrained to be under 50 words. Appendix C.1 gives the full generation prompt. 
+
+Diversity-aware prompt. The diversity-aware condition uses the same motions, languages, agents, role assignments, and turn order as the baseline condition. It appends one translated in-struction asking the active agent to introduce at least one new argument, example, causal mecha-nism, stakeholder impact, or tradeoff, and to extend rather than merely restate any earlier point. The ex-act wording is in Appendix C.2. 
+
+3.2 Argument Extraction 
+
+We analyze debates at the argument-unit level rather than the full-turn level. After generation, each turn is decomposed into one to four argument units. An argument unit is a distinct substantive claim or reason made by the speaker; such units may express causal mechanisms, examples, stake-holder impacts, tradeoffs, or evaluative points. Argument extraction is performed with Llama-4-Scout-17B-16E-Instruct at temperature 0. The extractor returns strict JSON fields for claim ,
+
+warrant , evidence_or_example , and argu-ment_type . The argument_type label is used only for argument-category diagnostics, not for prior-argument similarity. The extraction prompt, schema, deployment details, parse-failure rate, and diagnostics are in Appendix D. 
+
+3.3 Prior-Argument Similarity 
+
+Our main dependent variable is 
+
+mean_arg_max_prev , a turn-level prior-argument similarity score. Higher values indicate that the current turn’s extracted claims are more semantically similar to claims from earlier turns in the same debate. We use this score as an aggregate diagnostic of semantic return to prior argumen-tative content, not as a direct human judgment of repetitiveness or debate quality. Because the score takes a maximum over prior arguments, it identifies the closest earlier overlap; it does not itself distinguish quotation, rebuttal, refinement, or productive reuse from redundant restatement. For the primary specification, we embed the 
+
+claim field of each extracted argument unit. For an argument produced at turn t, we compare its em-bedding to the embeddings of all argument units produced in strictly earlier turns of the same ses-sion, take the maximum cosine similarity, and then average these maxima across the current turn’s ar-gument units. Formally, fix a debate session s. Let as,t,i denote the i-th extracted argument unit in turn t, and let 
+
+cs,t,i denote its claim . For embedding model e, let 
+
+ze(cs,t,i ) ∈ Rde be the L2-normalized embedding of that claim. The prior pool for turn t is 
+
+Ps,t = {as,t ′,j : 1 ≤ t′ < t, 1 ≤ j ≤ ns,t ′ },
+
+where ns,t ′ is the number of extracted arguments in turn t′. The per-argument prior-similarity score is 
+
+re(as,t,i ) = max  
+
+> as,t ′,j ∈Ps,t
+
+ze(cs,t,i )⊤ze(cs,t ′,j ).
+
+Because embeddings are L2-normalized, the dot product is cosine similarity. The turn-level score is 
+
+mean_arg_max_prev (e) 
+
+> s,t
+
+= 1
+
+ns,t ns,t 
+
+∑
+
+> i=1
+
+re(as,t,i ).
+
+The score is defined only for turns with a non-empty prior pool, excluding turn 1. We compute the metric with three multilin-gual sentence embedding models: BGE-M3 (Chen et al., 2024), multilingual-E5-large (Wang et al., 2024), and LaBSE (Feng et al., 2022). BGE-M3 is the primary specification for narrative discus-sion; multilingual-E5-large and LaBSE are used as independent representation checks. Similarity is always computed within a single language ses-sion. The analysis therefore does not directly com-pare Chinese claims to English claims; it compares within-session prior-similarity levels after aggre-gating by language. 
+
+3.4 Metric Calibration, Diagnostic Variants, and Manual Audit 
+
+We include diagnostics for possible extraction and similarity artifacts. These include language-specific null calibration, z-scoring, fixed-size prior pools, input-field ablations, extraction diagnostics, and sentence-count compliance checks. Together, they test whether measured language gaps are plausibly driven by embedding calibration, pool size, input-field choice, extraction granularity, or sentence-template compliance. We additionally conduct a bilingual English– Chinese manual audit. Annotators evaluate ex-traction quality and label sampled current–prior argument pairs as new, topically related, partial repetition or extension, or substantive repetition. The same 200 adjudicated pairs are then scored by a multilingual cross-encoder and by a blinded 
+
+deepseek-chat pair judge, which serve as comple-mentary ranking instruments. Together these anal-yses calibrate the diagnostic rather than converting it into a direct perceptual repetition label; proto-cols, agreement, and results are in Appendix F. 
+
+3.5 Outcome-Quality Evaluation 
+
+Calibration tells us what the score measures, but not whether it tracks debate quality. We therefore add an independent outcome measure: a blinded Gemini-3.5-Flash judge, which is not one of the four debate agents, scores all 284 English and Chinese baseline and diversity sessions on argu-mentative development, engagement, final argu-ment quality, and overall quality, with 20 sessions rescored for stability. Appendix G gives the proto-col and analyses. 
+
+3.6 Statistical Inference 
+
+All language contrasts are paired by motion. For each non-English language ℓ, motion m, embed-ding model e, and metric M , let M (e)(ℓ, m ) de-note the session-level metric for language ℓ and mo-tion m, averaged across model agents when analy-ses are pooled. We compute 
+
+d(e) 
+
+> ℓ,m
+
+= M (e)(ℓ, m ) − M (e)(en , m ).
+
+Pairing on motion controls for topic-level variation in how naturally a motion invites repetition. Agent-level analyses use the analogous paired contrast within each model agent. Uncertainty is estimated with a cluster bootstrap that resamples motions with replacement. Un-less otherwise stated, reported confidence inter-vals use percentile intervals from fixed-seed boot-strap replicates, and a contrast is treated as statis-tically distinguishable from zero when the 95% in-terval excludes zero. As an additional robustness check for the focal Chinese–English contrast, we fit turn-level OLS models with motion fixed effects and motion-clustered standard errors, adjusting for turn label, model agent, role, and side. Addi-tional bootstrap and regression diagnostics, includ-ing motion-random-intercept mixed models, are in Appendices E.1 and E.2. 
+
+3.7 Robustness and Intervention Analyses 
+
+The main analysis first estimates the six-language landscape relative to English, then applies ro-bustness and intervention analyses to the non-English language whose gap is sign-consistent across all three embedding models. Detailed procedures for agent, turn, metric, artifact, de-coding, translation-QA, intervention, and repeat-generation analyses are in Appendix E. Two fur-ther checks reuse the same locked pipeline: asix-condition, three-repeat prompt ablation on 10 English–Chinese motions, which asks whether the contrast is an artifact of one prompt wording, and a 30-motion Chinese →English translate-and-rescore with an English round-trip control, which separates a surface-language component from a content-level one. Both test consistency and partial mechanism decomposition, not complete causal identification. 
+
+4 Results 
+
+We first scan six languages, then test the stable con-trast against design, metric, and artifact explana-tions; calibrate the score with human and model-based instruments; evaluate prompt interventions and outcome quality; and check repeat-generation stability. Unless otherwise stated, language contrasts are paired by motion and use a 5,000-sample motion-cluster bootstrap with percentile confidence inter-vals. The outcome is mean_arg_max_prev : the turn-level average of each argument unit’s maxi-mum cosine similarity to earlier argument units in the same debate. Higher values indicate stronger semantic return to prior argumentative content, so we interpret the score as an aggregate diagnostic rather than an item-level repetition label. 
+
+4.1 A six-language scan isolates Chinese as the sign-consistent gap 
+
+The full six-language comparison does not show a uniform non-English effect. In Figure 1, Ara-bic, Spanish, French, and Russian change direc-tion across embedding models: they are below English under BGE-M3, but above English under multilingual-E5-large and LaBSE. Chinese is the exception. Its gap relative to English is positive under all three embedding models: +0 .047 with BGE-M3, +0 .053 with multilingual-E5-large, and 
+
++0 .047 with LaBSE, with all 95% motion-cluster bootstrap confidence intervals excluding zero. We therefore use Chinese–English as the focal con-trast; exact six-language estimates are reported in Appendix Table 3. −0.04 −0.02 0 0.02 0.04 0.06 0.08 0.1   
+
+> Arabic
+> Spanish
+> French
+> Russian
+> Chinese
+> ∆prior-argument similarity (language – English)
+> BGE-M3
+> multilingual-E5-large
+> LaBSE
+> Figure 1: Cross-lingual prior-argument-similarity gaps relative to English.
+> Note. Points show differences in mean_arg_max_prev ; horizontal bars show 95% motion-cluster bootstrap confidence intervals. Chinese is the only non-English language with a positive gap across all three embedding models.
+
+4.2 Robustness checks narrow the plausible explanations 
+
+The following checks do not identify a mechanism, but they make the most direct confound explana-tions less plausible. 
+
+Design checks. The contrast is not concentrated in a single model agent or debate phase. Across four model agents and three embeddings, all 12 
+
+model–embedding cells have a positive Chinese– English gap. Under BGE-M3, the model-agent gaps range from +0 .034 for GPT-5.5 to +0 .061 for Mistral Large 3, so agent identity modulates mag-nitude but not sign; Mistral’s gap exceeds GPT-5.5’s under all three embeddings. With one closed model per provider, size and family effects are not identifiable (Appendix Tables 5 and 6). The turn-level trajectory also stays positive throughout the debate: prior-argument similarity rises as the prior pool grows, but Chinese remains above En-glish from early constructive turns through clos-ing. Regression adjustment gives the same conclu-sion. On baseline English–Chinese turns with non-empty prior pools ( N = 994 ), OLS models with motion fixed effects, motion-clustered standard er-rors, and controls for turn label, model agent, role, and side estimate positive Chinese coefficients un-der all three embeddings ( +0 .0464 , +0 .0529 , and 
+
++0 .0469 for BGE-M3, multilingual-E5-large, and LaBSE), consistent with the bootstrap estimates. Supporting agent, turn, and regression diagnostics are in Appendix Figures 3–4 and Appendix Ta-ble 17. 
+
+Metric checks. Metric variants preserve the main contrast while clarifying its limits. In Table 1, the gap remains positive under fixed-size prior pools ( K = 5 and K = 10 )and when embedding claim+warrant or 
+
+claim+warrant+evidence_or_example , so it is unlikely to be only an artifact of a growing prior pool or a claim-only representation. Null calibration is more sensitive: the null-adjusted gap stays positive under BGE-M3 and LaBSE, but reverses under multilingual-E5-large. The corresponding z-scored variants are positive under all three embeddings, and z calibration leaves Chinese as the only positive language. This is consistent with the embeddings differ-ing in absolute offsets rather than in what they rank high or low: within-language turn-level rank agreement is high ( ρ = 0.70 –0.83 ; Ap-pendix F.2). We therefore read calibrated variants as representation-geometry sensitivity checks, not as evidence that every normalization gives the same absolute estimate. As an orthogonal tail check, rescoring all English–Chinese BGE-M3 max-prior pairs with a multilingual cross-encoder reranker preserves Chinese overrepresentation in the top-decile tail (ZH–EN +0 .048 ), although with smaller effects than BGE-M3 (Appendix Table 22). 
+
+Artifact checks. The contrast does not disap-pear under immediate artifact checks. Baseline argument counts are nearly flat across languages (3.82 –3.92 arguments per turn), and Chinese does not concentrate disproportionately in the largest Table 1: Metric diagnostics for the Chinese–English gap.                              
+
+> Variant BGE-M3 mE5-large LaBSE Original +0 .0469 ∗+0 .0525 ∗+0 .0466 ∗
+> Null-adjusted +0 .0147 ∗−0.0075 ∗+0 .0343 ∗
+> z-scored +0 .5171 ∗+1 .4964 ∗+0 .3933 ∗
+> Fixed K= 5 +0 .0494 ∗+0 .0588 ∗+0 .0452 ∗
+> Fixed K= 10 +0 .0432 ∗+0 .0522 ∗+0 .0418 ∗
+> Claim+W +0 .0594 ∗+0 .0487 ∗+0 .0437 ∗
+> Claim+W+evidence +0 .0592 ∗+0 .0474 ∗+0 .0438 ∗
+> Note. Positive values indicate higher prior-argument similarity in Chinese than English. Asterisks mark 95% motion-cluster bootstrap intervals excluding zero. The multilingual-E5-large null-adjusted variant is the only sign reversal.
+
+argument categories. Sentence-template compli-ance does not single out Chinese, decoding diag-nostics do not remove the contrast, and conserva-tive translation-QA exclusions move the point es-timates by at most 0.0023 . The gap is also not removed by controls for claim length, empty war-rant and evidence rates, argument count, prior-pool size, sentence count, turn label, model agent, role, side, and motion fixed effects (BGE-M3 ad-justed coefficient +0 .0431 ). Finally, a targeted 30-motion English–Chinese subset check with DeepSeek-Chat as a second extractor preserves the BGE-M3 gap ( +0 .0506 vs. +0 .0472 under the original extractor), even though the second extrac-tor nearly eliminates the empty-warrant imbalance. Detailed extraction, sentence-compliance, decod-ing, translation, extraction-control, and second-extractor diagnostics are reported in Appendix Ta-bles 23, 19, 7, 24, and 25, and in Appendix E.3. 
+
+Surface language versus content. We then ask how much of the remaining gap travels with the sur-face language. Translating Chinese sessions into English and rescoring them in English embedding space removes most of the native BGE-M3 gap (+0 .047 to +0 .009 ), implicating surface form or representation geometry, but a smaller component survives an English round-trip control under all three embeddings ( +0 .014 under BGE-M3). This is a partial decomposition, not a causal account: it does not identify where that residual originates (Appendix E.4). 
+
+4.3 Human calibration localizes the signal to a repetition-enriched tail 
+
+The manual audit narrows what the automatic score can support. Table 2 summarizes the main calibration statistics; Appendix Tables 28 and 29 and Appendix F.8 give the weighted labeled rates, 
+
+Table 2: Manual calibration on the English–Chinese au-dit subset.                             
+
+> Measure Estimate 95% CI Extraction quality (ZH–EN) −0.06 [−0.17 ,+0 .04]
+> Exact agreement 0.83 –Binary κ0.733 –Weighted κ0.857 –Spearman ρ0.195 –AUC 0.591 –Top-quintile rate (ZH–EN) +0 .176 [+0 .148 ,+0 .204]
+> Top-decile rate (ZH–EN) +0 .074 [+0 .051 ,+0 .096]
+> Calibrated strict-rep. gap +0 .053 [+0 .015 ,+0 .089]
+> Note. ZH–EN denotes Chinese minus English.
+
+the full tail breakdown, and a qualitative example. 
+
+Item-level calibration. Extraction quality is comparable in the English–Chinese audit (ZH–EN 
+
+−0.06 , 95% CI [−0.17 , +0 .04] ). At the level of individual pairs, however, the automatic score aligns only weakly with human repetition labels: BGE-M3 reaches ρ = 0 .195 , a cross-encoder im-proves modestly to 0.255 , and a blinded LLM pair judge improves ranking alignment to 0.553 but not label calibration. No instrument closes the gap, which points to a construct difference as well as scorer limits: a pair can be near-duplicate in con-tent while functioning as a rebuttal (Appendix Ta-bles 27 and 31). 
+
+Tail calibration. The aggregate distribution is clearer. Under global BGE-M3 thresholds, Chi-nese argument units are more likely than En-glish argument units to fall in the top quintile (0.288 vs. 0.112 ; ZH–EN +0 .176 , 95% CI 
+
+[+0 .148 , +0 .204] ) and top decile ( 0.137 vs. 0.063 ;ZH–EN +0 .074 , 95% CI [+0 .051 , +0 .096] ). Combining these population tail rates with the pooled human calibration curve yields a cali-brated strict-repetition gap of +0 .053 (95% CI 
+
+[+0 .015 , +0 .089] ; Appendix Table 29). Because the direct labeled subset is too small and stratified to estimate the language gap on its own, this is tail-sensitive evidence about high-overlap argumenta-tive content. An exploratory functional decompo-sition of sampled top-decile pairs confirms that the tail is mixed, containing redundant restatement as well as rebuttal and refinement, so we keep the in-terpretation at the level of an aggregate semantic-return diagnostic (Appendix Table 32). 4.4 Asking for new arguments lowers similarity but does not close the gap 
+
+We test a simple mitigation: an extra instruction asking each speaker to introduce a new argument, example, mechanism, stakeholder impact, or trade-off. The prompt works in the narrow sense that it lowers prior-argument similarity within languages. In Figure 2A, the prompt-minus-baseline effect is negative in all 18 language–embedding cells. The reductions range from −0.015 to −0.025 under BGE-M3, −0.002 to −0.006 under multilingual-E5-large, and −0.016 to −0.027 under LaBSE. Output volume is preserved, so the reduction is not achieved by producing fewer extracted arguments. The same prompt does not close the Chinese– English gap. In Figure 2B, the gap remains posi-tive under the prompt for all three embeddings. It changes from +0 .047 to +0 .049 under BGE-M3, from +0 .053 to +0 .054 under multilingual-E5-large, and from +0 .047 to +0 .037 under LaBSE. None of the gap-reduction confidence intervals ex-cludes zero: the prompt improves the overall level, but not the difference between Chinese and En-glish. Exact estimates are in Appendix Tables 8 and 9. This is not specific to the wording we chose. Under a six-condition ablation that also varies paraphrase, minimal, strong-novelty, and targeted-clash instructions, all 18 Chinese–English gaps stay positive with intervals excluding zero, and none of the 15 gap interactions is distinguishable from zero. Running on 10 motions, it is a lower-powered consistency check rather than a precise in-teraction estimate (Appendix A.7). 
+
+4.5 Process similarity tracks judged outcomes but is not a stopping rule 
+
+Across the 284 judged sessions, higher similarity is associated with lower judged quality: with mo-tion fixed effects, a +0 .01 increase predicts −0.16 
+
+points of argumentative development and −0.10 
+
+points of final argument quality, and all eight base-line language–dimension correlations are negative. The association does not transfer cleanly to inter-ventions, however. The diversity prompt lowers similarity by an indistinguishable amount in En-glish and Chinese ( −0.023 vs. −0.020 ), yet its engagement and final-quality gains reach signifi-cance only in English. Equal movement in the process score therefore does not guarantee equal downstream benefit, and the score should be read                
+
+> BGE-M3 E5-large LaBSE
+> −0.04 −0.03 −0.02 −0.01 0
+> English
+> Arabic
+> Spanish
+> French
+> Russian
+> Chinese
+> Prompt −baseline
+> (A) Prompt effect within each language
+> 00.02 0.04 0.06 0.08
+> BGE-M3
+> E5-large
+> LaBSE
+> Chinese −English gap
+> (B) Chinese–English gap
+> Figure 2: Effect of the diversity-aware prompt.
+> Note. Negative values in Panel A indicate lower prior-argument similarity under the diversity prompt. In Panel B, filled markers show baseline estimates and open markers show diversity-prompt estimates; the Chinese–English gap remains positive.
+
+as a process monitor rather than a standalone qual-ity measure or a stopping rule (Appendix G). 
+
+4.6 Repeat generations support aggregate claims, not motion rankings 
+
+To check whether the findings depend on a single stochastic generation, we rerun a 10-motion subset with three independent generations per cell. The aggregate Chinese–English gap reappears in ev-ery baseline run under BGE-M3 ( +0 .060 , +0 .043 ,
+
++0 .054 ), and prior-argument similarity decreases for both English and Chinese in all three runs. Nei-ther the contrast nor the prompt effect is a one-off generation artifact. The same repeats show why we do not inter-pret individual motion rankings: motion-level gaps move substantially across generations. We there-fore treat per-motion rankings as exploratory and base inference on aggregate language-level con-trasts (Appendix E.8). 
+
+5 Discussion 
+
+In our matched pipeline, Chinese debates show higher prior-argument similarity than English, with manual calibration localizing the signal to a high-similarity tail enriched for substantive repeti-tion. This brings an argumentation-theoretic view into LLM debate evaluation: if argumentation re-sponds to a difference of opinion (van Eemeren et al., 2014, p. 2), evaluation should ask not only what verdict a system reaches, but how argumenta-tive ground changes. 
+
+From debate outcomes to argumentative state. 
+
+Prior work usually treats LLM debate as a pro-cedure for improving an answer, score, or ver-dict (Du et al., 2024; Chan et al., 2024; Liang et al., 2024b). We extend this outcome-centered line of work by making the debate transcript itself mea-surable. Prior-argument similarity asks whether a later turn adds to the set of claims, mechanisms, ex-amples, stakeholder impacts, and tradeoffs already present, or instead returns to earlier ground in new wording. This metric does not replace answer ac-curacy or debate judging, and low similarity is not automatically better; rather, it provides an aggre-gate diagnostic of whether the interaction contin-ues to expand the available argumentative mate-rial. The outcome judge supports this division of labor: higher similarity is moderately associated with lower judged development and final quality, so the diagnostic is not orthogonal to quality, yet comparable similarity reductions produce unequal downstream gains across languages, so it does not stand in for quality either. 
+
+From multilingual outputs to multilingual interaction. Multilingual LLM evaluation has shown that language and culture affect model re-sponses (Shi et al., 2022; Arora et al., 2023; Naous et al., 2024; Gao et al., 2025). We extend this line of work from final outputs to interaction dynam-ics: even when the motion, model agents, roles, prompts, and turn positions are paired across lan-guages, the debate process can still differ. The Chinese–English contrast should therefore be read as a model-language process effect under the tested pipeline, not as a claim about Chinese or En-glish human argumentation. Methodologically, this means that translated prompts or parallel tasks are not enough by themselves for multilingual eval-uation of interactive systems. If the object is a de-bate, the evaluation should also pair role assign-ments, turn order, prior context, and model iden-tity, then inspect how content develops over time. 
+
+Candidate mechanisms. Our checks narrow the space of explanations without closing it. Artifact diagnostics make the most proximate accounts un-likely, and a gap present for all four providers ar-gues against a single-provider quirk. Translate-and-rescore then splits what remains: most of the raw gap travels with the surface language, while a smaller component survives translation into a com-mon English embedding space. Which upstream factor produces that residual—pretraining compo-sition, post-training, generation-side tokenization, provider settings, discourse conventions, or their interaction—is not identifiable in our design. This is a first decomposition, not a causal account. 
+
+Implications for AI-mediated deliberation. 
+
+Debate helps decision-makers compare reasons before reaching a conclusion (Glazer and Ru-binstein, 2000). Debate-style systems may help journalists test competing explanations, editors surface missing stakeholder perspectives, or policy analysts compare objections to regulatory propos-als. In such settings, a fluent final summary can still be inadequate if interaction returns to earlier ground in polished wording rather than surfacing new considerations. Our findings suggest two checks: whether users in different languages re-ceive comparable argumentative development, and whether mitigation improves the average process metric or also narrows language-conditioned gaps. The diversity-aware prompt lowered similarity overall but did not close the Chinese–English gap; a system-level improvement can therefore leave process differences intact. Its engagement and final-quality gains also appeared only in English. Multilingual mitigation needs both process-parity and outcome checks. 
+
+6 Conclusion 
+
+We studied multilingual LLM debate as a process of argumentative development, not only as a final-answer procedure. Using prior-argument similar-ity over extracted argument units, we find that Chinese is the only tested language with a sign-consistent positive gap relative to English across three multilingual embedding models. The gap persists under design, metric, artifact, extractor-control, second-extractor, and cross-encoder tail checks, while manual calibration narrows the in-terpretation: the metric is not an item-level rep-etition classifier, but its high-similarity tail is en-riched for substantive repetition. Translate-and-rescore further indicates that the measured con-trast combines a substantial surface-language or representation component with a smaller surviving content-level component, and an independent out-come judge links higher similarity to moderately lower argumentative development and final qual-ity. The intervention result adds a second caution. A diversity-aware prompt lowers prior-argument similarity on average, but does not significantly narrow the Chinese–English gap, and the same contrast survives five alternative prompting strate-gies. Comparable process-score reductions can also yield unequal engagement and final-quality gains across languages. Multilingual debate sys-tems should therefore be evaluated jointly for pro-cess development, downstream quality, and cross-language parity. 
+
+Limitations 
+
+This study has several scope and measurement limitations. The debate agents are API-served frontier systems: GPT-5.5, Claude Opus 4.7, DeepSeek-V3.2, and Mistral Large 3. These sys-tems are relevant to user-facing multilingual gen-eration, but they do not expose tokenizers, train-ing corpora, post-training procedures, alignment data, or provider-side decoding implementations. The results therefore establish a pattern across the providers tested, not a claim about all open-weight models, smaller models, or future model genera-tions. Prior-argument similarity is a diagnostic rather than a direct human repetition label. The English– Chinese manual audit supports comparable extrac-tion quality and shows that the high-similarity tail is enriched for substantive repetition, but item-level alignment with human repetition judgments is weak, and neither a cross-encoder nor a blinded LLM pair judge closes that gap. Manual calibra-tion is also limited to English and Chinese, so the diagnostic meaning of the score in Arabic, Span-ish, French, and Russian remains less directly vali-dated. The outcome-quality evidence is similarly scoped. Debate quality is scored by a single blinded LLM judge on English and Chinese sessions only. The judge is reliable on re-scoring and blinded to language condition and agent identity, but it uses a narrow range of integer values in some cells, may carry language-specific scale tendencies, and is not a substitute for human evaluation. We therefore report process–outcome associations as convergent validity rather than as a ranking of debate quality across languages. The primary pipeline uses a single extractor, Llama-4-Scout-17B-16E-Instruct. Holding the ex-tractor fixed makes cross-language processing con-sistent, but it may introduce language-specific boundary, omission, or field-quality biases. We report automatic diagnostics for all six languages, manually audit English and Chinese, and include a targeted English–Chinese second-extractor sub-set check. Stronger evidence would still require full multi-extractor robustness, extractor-prompt ablations, or manual extraction audits in more lan-guages. The setting is intentionally controlled: eight-turn parliamentary-style policy debates on WUDC motions, with fixed role assignments, turn sched-ules, and sentence-count constraints. Sentence-compliance diagnostics make a Chinese-specific template artifact unlikely, but the template may still shape generation and extraction. The language sample is also limited to six UN languages; Chi-nese is the only sign-consistent positive gap in this sample, not necessarily among world languages. The study is descriptive rather than mechanis-tic. The translate-and-rescore probe separates a surface-language or representation component from a smaller content-level component, but it re-lies on machine translation and cannot attribute the residual to tokenization, pretraining data, post-training behavior, provider settings, discourse con-ventions, or their interaction. The intervention ev-idence is similarly scoped: one lightweight diver-sity prompt lowers the average metric without clos-ing the Chinese–English gap, and the six-condition prompt ablation that reproduces this pattern covers only 10 motions, so it is a consistency check rather than a precise interaction estimate. Stronger nov-elty mechanisms or open-weight replications may behave differently. 
+
+References 
+
+Miguel Angel Alvarado Gonzalez, Michelle Bruno Hernandez, Miguel Angel Peñaloza Perez, Bruno Lopez Orozco, Je-sus Tadeo Cruz Soto, and Sandra Malagon. 2025. Do repetitions matter? strengthening reliability in LLM evaluations. Preprint ,arXiv:2509.24086. Anthropic. 2026. Models overview: Claude Opus 4.7. Accessed 2026-05-18. Arnav Arora, Lucie-aimée Kaffee, and Isabelle Augenstein. 2023. Probing pre-trained lan-guage models for cross-cultural differences in values. In Proceedings of the First Work-shop on Cross-Cultural Considerations in NLP (C3NLP) , pages 114–130, Dubrovnik, Croatia. Association for Computational Linguistics. Jonas Becker, Lars Benedikt Kaesberg, Andreas Stephan, Jan Philip Wahle, Terry Ruas, and Bela Gipp. 2026. Stay focused: Problem drift in multi-agent debate. In Findings of the Associa-tion for Computational Linguistics: EACL 2026 ,pages 5068–5102, Rabat, Morocco. Association for Computational Linguistics. Beijing Academy of Artificial Intelligence. 2026. BGE-reranker-v2-m3 model card. Accessed 2026-05-22. Filip Boltužić and Jan Šnajder. 2015. Identifying prominent arguments in online debates using se-mantic textual similarity. In Proceedings of the 2nd Workshop on Argumentation Mining , pages 110–115, Denver, CO. Association for Compu-tational Linguistics. Jaime Carbonell and Jade Goldstein. 1998. The use of MMR, diversity-based reranking for re-ordering documents and producing summaries. In Proceedings of the 21st Annual International ACM SIGIR Conference on Research and De-velopment in Information Retrieval , pages 335– 336, Melbourne, Australia. ACM. Chi-Min Chan, Weize Chen, Yusheng Su, Jianx-uan Yu, Wei Xue, Shanghang Zhang, Jie Fu, and Zhiyuan Liu. 2024. ChatEval: Towards better LLM-based evaluators through multi-agent de-bate. In International Conference on Learning Representations .Jianlyu Chen, Shitao Xiao, Peitian Zhang, Kun Luo, Defu Lian, and Zheng Liu. 2024. M3-embedding: Multi-linguality, multi-functionality, multi-granularity text embeddings through self-knowledge distillation. In Findings of the Association for Computational Linguis-tics: ACL 2024 , pages 2318–2335, Bangkok, Thailand. Association for Computational Linguistics. Jizheng Chen, Kounianhua Du, Xinyi Dai, Weim-ing Zhang, Xihuai Wang, Yasheng Wang, Ruim-ing Tang, Weinan Zhang, and Yong Yu. 2025a. DebateCoder: Towards collective intelligence of LLMs via test case driven LLM debate for code generation. In Proceedings of the 63rd Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) ,pages 12055–12065, Vienna, Austria. Associa-tion for Computational Linguistics. Xuhang Chen, Zhifan Song, Deyi Ji, Shuo Gao, and Lanyun Zhu. 2025b. SID: Multi-LLM debate driven by self signals. Preprint ,arXiv:2510.06843. Yun-Shiuan Chuang, Ruixuan Tu, Chengtao Dai, Smit Vasani, Binwei Yao, Michael Henry Tessler, Sijia Yang, Dhavan V. Shah, Robert D. Hawkins, Junjie Hu, and Timothy T. Rogers. 2026. DEBATE: A large-scale benchmark for evaluating opinion dynamics in role-playing LLM agents. Eoghan Cunningham, Derek Greene, James Cross, and Antonio Rago. 2026. Evaluating LLM-driven summarisation of parliamentary debates with computational argumentation. Preprint ,arXiv:2604.19331. DeepSeek. 2025. DeepSeek-V3.2 release. Ac-cessed 2026-05-18. Yilun Du, Shuang Li, Antonio Torralba, Joshua B. Tenenbaum, and Igor Mordatch. 2024. Improv-ing factuality and reasoning in language mod-els through multiagent debate. In Proceed-ings of the 41st International Conference on Machine Learning , ICML’24, Vienna, Austria. JMLR.org. Andrew Estornell and Yang Liu. 2024. Multi-LLM debate: Framework, principals, and inter-ventions. In Advances in Neural Information Processing Systems , volume 37, pages 28938– 28964. Curran Associates, Inc. Fangxiaoyu Feng, Yinfei Yang, Daniel Cer, Naveen Arivazhagan, and Wei Wang. 2022. Language-agnostic BERT sentence embedding. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguis-tics (Volume 1: Long Papers) , pages 878–891, Dublin, Ireland. Association for Computational Linguistics. Changjiang Gao, Xu Huang, Wenhao Zhu, Shu-jian Huang, Lei Li, and Fei Yuan. 2025. Could thinking multilingually empower LLM reason-ing? Preprint , arXiv:2504.11833. Jacob Glazer and Ariel Rubinstein. 2000. Debates and decisions: On a rationale of argumentation rules. Technical Report Cahier 21-2000, Centre de recherche et développement en économique, Université de Montréal. Abir Harrasse, Chaithanya Bandi, and Hari Bandi. 2026. Debate, deliberate, decide (D3): A cost-aware adversarial framework for reliable and in-terpretable LLM evaluation. In Proceedings of the 19th Conference of the European Chapter of the Association for Computational Linguis-tics (Volume 1: Long Papers) , pages 8376–8392, Rabat, Morocco. Association for Computational Linguistics. Ari Holtzman, Jan Buys, Li Du, Maxwell Forbes, and Yejin Choi. 2020. The curious case of neural text degeneration. Preprint , arXiv:1904.09751. Haoyang Huang, Tianyi Tang, Dongdong Zhang, Xin Zhao, Ting Song, Yan Xia, and Furu Wei. 2023. Not all languages are created equal in LLMs: Improving multilingual capability by cross-lingual-thought prompting. In Findings of the Association for Computational Linguistics: EMNLP 2023 , pages 12365–12394, Singapore. Association for Computational Linguistics. Geoffrey Irving, Paul Christiano, and Dario Amodei. 2018. AI safety via debate. Preprint ,arXiv:1805.00899. Mohsinul Kabir, Ajwad Abrar, and Sophia Anani-adou. 2025. Break the checkbox: Challenging closed-style evaluations of cultural alignment in LLMs. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Pro-cessing , pages 24–51, Suzhou, China. Associa-tion for Computational Linguistics. Dayeon Ki, Rachel Rudinger, Tianyi Zhou, and Marine Carpuat. 2025. Multiple LLM agents debate for equitable cultural alignment. In Pro-ceedings of the 63rd Annual Meeting of the Asso-ciation for Computational Linguistics (Volume 1: Long Papers) , pages 24841–24877, Vienna, Austria. Association for Computational Linguis-tics. Hazel Kim and Philip Torr. 2025. Single LLM debate, MoLaCE: Mixture of latent concept experts against confirmation bias. Preprint ,arXiv:2512.23518. Insaf Kraidia, Iyas Qaddara, Alhanof Almutairi, Nada Alzaben, and Samir Brahim Belhouari. 2026. When collaboration fails: Persuasion driven adversarial influence in multi-agent large language model debate. Scientific Reports ,16(1):11640. Harvey Bonmu Ku, Jeongyeol Shin, Hyoun Jun Lee, Seonok Na, and Insu Jeon. 2025. Multi-agent LLM debate unveils the premise left un-said. In Proceedings of the 12th Argument Min-ing Workshop , pages 58–73, Vienna, Austria. Association for Computational Linguistics. Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph E. Gonzalez, Hao Zhang, and Ion Stoica. 2023. Ef-ficient memory management for large language model serving with PagedAttention. Preprint ,arXiv:2309.06180. Jiwei Li, Michel Galley, Chris Brockett, Jian-feng Gao, and Bill Dolan. 2016. A diversity-promoting objective function for neural conver-sation models. In Proceedings of the 2016 Con-ference of the North American Chapter of the Association for Computational Linguistics: Hu-man Language Technologies , pages 110–119, San Diego, California. Association for Compu-tational Linguistics. Wangyue Li, Liangzhi Li, Tong Xiang, Xiao Liu, Wei Deng, and Noa Garcia. 2024. Can multiple-choice questions really be useful in de-tecting the abilities of LLMs? In Proceed-ings of the 2024 Joint International Conference on Computational Linguistics, Language Re-sources and Evaluation (LREC-COLING 2024) ,pages 2819–2834, Torino, Italia. ELRA and ICCL. Jingcong Liang, Rong Ye, Meng Han, Ruofei Lai, Xinyu Zhang, Xuanjing Huang, and Zhongyu Wei. 2024a. Debatrix: Multi-dimensional de-bate judge with iterative chronological analysis based on LLM. In Findings of the Associa-tion for Computational Linguistics: ACL 2024 ,pages 14575–14595, Bangkok, Thailand. Asso-ciation for Computational Linguistics. Tian Liang, Zhiwei He, Wenxiang Jiao, Xing Wang, Yan Wang, Rui Wang, Yujiu Yang, Shum-ing Shi, and Zhaopeng Tu. 2024b. Encourag-ing divergent thinking in large language mod-els through multi-agent debate. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , pages 17889– 17904, Miami, Florida, USA. Association for Computational Linguistics. Meta. 2025. Llama-4-Scout-17B-16E-Instruct model card. Accessed 2026-05-22. Amita Misra, Brian Ecker, and Marilyn Walker. 2016. Measuring the similarity of sentential ar-guments in dialogue. In Proceedings of the 17th Annual Meeting of the Special Interest Group on Discourse and Dialogue , pages 276–287, Los Angeles. Association for Computational Lin-guistics. Mistral AI. 2025. Mistral Large 3 model card. Ac-cessed 2026-05-18. Tarek Naous, Michael J. Ryan, Alan Ritter, and Wei Xu. 2024. Having beer after prayer? mea-suring cultural bias in large language models. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 16366–16393, Bangkok, Thailand. Association for Computa-tional Linguistics. OpenAI. 2026. GPT-5.5 system card. Accessed 2026-05-18. Marc Oriol, Quim Motger, Jordi Marco, and Xavier Franch. 2025. Multi-agent debate strate-gies to enhance requirements engineering with large language models. In 2025 IEEE 33rd Inter-national Requirements Engineering Conference (RE) , pages 527–534. Taisei Ozaki, Chihiro Nakagawa, Naoya In-oue, Shoichi Naito, and Kenshi Yamaguchi. 2025. LLM DEBATE OPPONENT: Counter-argument generation focusing on implicit and critical premises. In Proceedings of the 2025 Conference of the Nations of the Americas Chap-ter of the Association for Computational Lin-guistics: Human Language Technologies (Vol-ume 4: Student Research Workshop) , pages 456– 465, Albuquerque, USA. Association for Com-putational Linguistics. Nils Reimers and Iryna Gurevych. 2019. Sentence-BERT: Sentence embeddings using Siamese BERT-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Process-ing (EMNLP-IJCNLP) , pages 3982–3992, Hong Kong, China. Association for Computational Linguistics. Nils Reimers, Benjamin Schiller, Tilman Beck, Jo-hannes Daxenberger, Christian Stab, and Iryna Gurevych. 2019. Classification and clustering of arguments with contextualized word embed-dings. In Proceedings of the 57th Annual Meet-ing of the Association for Computational Lin-guistics , pages 567–578, Florence, Italy. Asso-ciation for Computational Linguistics. Freda Shi, Mirac Suzgun, Markus Freitag, Xuezhi Wang, Suraj Srivats, Soroush Vosoughi, Hyung Won Chung, Yi Tay, Sebastian Ruder, Denny Zhou, Dipanjan Das, and Jason Wei. 2022. Language models are multilin-gual chain-of-thought reasoners. Preprint ,arXiv:2210.03057. Noy Sternlicht, Ariel Gera, Roy Bar-Haim, Tom Hope, and Noam Slonim. 2025. Debatable in-telligence: Benchmarking LLM judges via de-bate speech evaluation. In Proceedings of the 2025 Conference on Empirical Methods in Nat-ural Language Processing , pages 18850–18869, Suzhou, China. Association for Computational Linguistics. UTDS Resources. 2016. World universities debat-ing championship motions. Motion archive. Ac-cessed 2026-04-26. Frans H. van Eemeren, Bart Garssen, Erik C. W. Krabbe, A. Francisca Snoeck Henkemans, Bart Verheij, and Jean H. M. Wagemans. 2014. Hand-book of Argumentation Theory . Springer, Dor-drecht. Ali Vardasbi, Gustavo Penha, Claudia Hauff, and Hugues Bouchard. 2026. Adaptive repetition for mitigating position bias in LLM-based ranking. In Advances in Bias, Fairness, and Understud-ied Users in Information Retrieval , pages 3–15, Cham. Springer Nature Switzerland. Ashwin K. Vijayakumar, Michael Cogswell, Ram-prasaath R. Selvaraju, Qing Sun, Stefan Lee, David Crandall, and Dhruv Batra. 2017. Diverse beam search: Decoding diverse solutions from neural sequence models. Liang Wang, Nan Yang, Xiaolong Huang, Linjun Yang, Rangan Majumder, and Furu Wei. 2024. Multilingual E5 text embeddings: A technical report. Preprint , arXiv:2402.05672. Weiwei Wang, Weijie Zou, and Jiyong Min. 2025. Solving LLM repetition problem in production: A comprehensive study of multiple solutions. 
+
+Preprint , arXiv:2512.04419. Sean Welleck, Ilia Kulikov, Stephen Roller, Emily Dinan, Kyunghyun Cho, and Jason Weston. 2020. Neural text generation with unlikelihood training. In International Conference on Learn-ing Representations .Haolun Wu, Zhenkun Li, and Lingyao Li. 2025. Can LLM agents really debate? a controlled study of multi-agent debate in logical reasoning. 
+
+Preprint , arXiv:2511.07784. Andrea Wynn, Harsh Satija, and Gillian Hadfield. 2025. Talk isn’t always cheap: Understanding failure modes in multi-agent debate. Preprint ,arXiv:2509.05396. Jin Xu, Xiaojiang Liu, Jianhao Yan, Deng Cai, Huayang Li, and Jian Li. 2022. Learning to break the loop: Analyzing and mitigating repeti-tions for neural text generation. In Proceedings of the 36th International Conference on Neural Information Processing Systems , NIPS ’22, Red Hook, NY, USA. Curran Associates Inc. Zhangyue Yin, Qiushi Sun, Cheng Chang, Qipeng Guo, Junqi Dai, Xuanjing Huang, and Xipeng Qiu. 2023. Exchange-of-thought: Enhancing large language model capabilities through cross-model communication. In Proceedings of the 2023 Conference on Empirical Methods in Nat-ural Language Processing , pages 15135–15153, Singapore. Association for Computational Lin-guistics. Jintian Zhang, Xin Xu, Ningyu Zhang, Ruibo Liu, Bryan Hooi, and Shumin Deng. 2024. Explor-ing collaboration mechanisms for LLM agents: A social psychology view. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Pa-pers) , pages 14544–14607, Bangkok, Thailand. Association for Computational Linguistics. Wenxuan Zhang, Mahani Aljunied, Chang Gao, Yew Ken Chia, and Lidong Bing. 2023. M3Exam: A multilingual, multimodal, multi-level benchmark for examining large language models. In Advances in Neural Information Pro-cessing Systems , volume 36, pages 5484–5505. Curran Associates, Inc. 
+
+A Additional Result Tables 
+
+This appendix reports exact estimates and auxil-iary diagnostics summarized in Section 4. Positive language gaps indicate higher prior-argument sim-ilarity than English. Asterisks mark 95% motion-cluster bootstrap confidence intervals that exclude zero. The core supporting results are in Tables 3– 9 and Figures 3–4. The remaining appendices re-port full agent-stratified estimates, prompt-strategy ablations, translation parameters and schemas, em-bedding calibration, translate-and-rescore, item-level instrument comparisons, multilingual exam-ples, and the process–outcome evaluation. 
+
+A.1 Full Six-Language Landscape 
+
+Exact language gaps relative to English for all five non-English languages and all three embedding models are in Table 3. 
+
+A.2 Pooled Chinese–English Gap 
+
+The pooled Chinese–English gap and paired motion-cluster bootstrap confidence intervals for each embedding model are in Table 4. 
+
+A.3 Model-Agent and Turn-Position Diagnostics 
+
+The pooled Chinese–English gap across embed-ding models and the corresponding model-agent gaps are plotted in Figure 3. The BGE-M3 turn-level trajectory is plotted in Figure 4. These figures support the main-text claim that the focal contrast is not driven by a single provider, model agent, or late debate phase. 
+
+A.4 Full Agent-Stratified Language Gaps 
+
+Table 5 reports every language–English contrast separately for the four debate agents and three em-beddings. The focal Chinese–English gap is posi-tive and statistically distinguishable from zero in Table 3: Language gaps relative to English. 
+
+Embedding Arabic Spanish French Russian Chinese BGE-M3 −0.025 ∗ −0.022 ∗ −0.018 ∗ −0.010 ∗ +0.047 ∗
+
+multilingual-E5-large +0 .039 ∗ +0 .026 ∗ +0 .027 ∗ +0 .021 ∗ +0.053 ∗
+
+LaBSE +0 .029 ∗ +0 .058 ∗ +0 .065 ∗ +0 .083 ∗ +0.047 ∗
+
+Note. Gaps are in mean_arg_max_prev ; positive values indicate higher prior-argument similarity than English. Estimates are paired by motion and pooled across model agents. Asterisks mark 95% motion-cluster bootstrap confidence intervals excluding zero. 
+
+Table 4: Pooled Chinese–English gap. 
+
+Embedding zh − en 95% CI BGE-M3 +0.047 ∗ [+0 .041 , +0 .053] 
+
+multilingual-E5-large +0.053 ∗ [+0 .050 , +0 .055] 
+
+LaBSE +0.047 ∗ [+0 .038 , +0 .056] 
+
+Note. Positive values indicate higher prior-argument similarity in Chinese than in English. Confidence intervals are paired motion-cluster bootstrap intervals; asterisks mark intervals excluding zero. BGE-M3 multilingual-E5 LaBSE 
+
+0 0.02 0.04 0.06 0.08 
+
+BGE-M3 E5-large LaBSE 
+
+∆ prior-argument similarity (A) Pooled zh–en gap 
+
+0 0.02 0.04 0.06 0.08 
+
+GPT-5.5 Claude DeepSeek Mistral 
+
+∆ prior-argument similarity (B) Model-agent gaps 
+
+Figure 3: Chinese–English gap across embeddings and model agents. 
+
+Note. Panel A shows pooled gaps; Panel B shows model-agent gaps. Error bars denote 95% motion-cluster bootstrap confidence intervals. All model–embedding cells are positive, indicating that the focal contrast is not driven by a single model agent or embedding space. 
+
+2 3 4 5 6 7 8
+
+0.58 
+
+0.6
+
+0.62 
+
+0.64 
+
+0.66 
+
+0.68 
+
+0.7
+
+0.72 
+
+0.74 
+
+Turn position Mean prior-argument similarity  Other non-English English Chinese 
+
+Figure 4: Turn-level prior-argument-similarity trajecto-ries under BGE-M3. 
+
+Note. Prior-argument similarity increases as more prior arguments accumulate, but Chinese remains above English at every measured turn position. Gray lines show the other non-English languages for context. 
+
+all 12 agent–embedding cells, but its magnitude varies by agent. Four of the 60 total cells are not distinguishable from zero, all outside the focal con-trast. Table 6 gives all 18 pairwise contrasts be-tween agents with their bootstrap intervals: every point estimate is positive, but only six of the 18 intervals exclude zero, so the between-agent order-ing is much less firmly established than the focal contrast itself. 
+
+A.5 Translation-QA Sensitivity 
+
+The Chinese–English gap after excluding increas-ingly conservative sets of translation-flagged mo-tions is in Table 7. The estimates remain stable under all exclusions. 
+
+A.6 Diversity-Prompt Effects 
+
+Within-language changes from the diversity prompt are in Table 8. Gap-reduction estimates for the same intervention are in Table 9. 
+
+A.7 Six-Condition Prompt-Strategy Ablation 
+
+This ablation asks whether the focal contrast de-pends on the particular baseline and diversity word-ings. It uses the pre-defined 10-motion English– Chinese repeat-stability subset, three independent Table 5: Agent-stratified language–English gaps in prior-argument similarity. Asterisks indicate that the 95% paired motion-cluster bootstrap CI excludes zero. 
+
+Embedding Language − English GPT-5.5 Claude DeepSeek Mistral BGE-M3 Arabic −0.037 ∗ −0.029 ∗ −0.029 ∗ −0.003 
+
+Spanish −0.029 ∗ −0.020 ∗ −0.025 ∗ −0.013 ∗
+
+French −0.021 ∗ −0.019 ∗ −0.020 ∗ −0.010 
+
+Russian −0.018 ∗ −0.013 ∗ −0.012 ∗ +0 .006 
+
+Chinese +0 .034 ∗ +0 .045 ∗ +0 .048 ∗ +0 .061 ∗
+
+multilingual-E5-large Arabic +0 .036 ∗ +0 .038 ∗ +0 .037 ∗ +0 .043 ∗
+
+Spanish +0 .023 ∗ +0 .026 ∗ +0 .025 ∗ +0 .029 ∗
+
+French +0 .024 ∗ +0 .028 ∗ +0 .027 ∗ +0 .030 ∗
+
+Russian +0 .018 ∗ +0 .018 ∗ +0 .021 ∗ +0 .025 ∗
+
+Chinese +0 .049 ∗ +0 .052 ∗ +0 .053 ∗ +0 .056 ∗
+
+LaBSE Arabic +0 .014 +0 .024 ∗ +0 .027 ∗ +0 .050 ∗
+
+Spanish +0 .055 ∗ +0 .059 ∗ +0 .055 ∗ +0 .062 ∗
+
+French +0 .061 ∗ +0 .065 ∗ +0 .061 ∗ +0 .074 ∗
+
+Russian +0 .086 ∗ +0 .080 ∗ +0 .075 ∗ +0 .092 ∗
+
+Chinese +0 .028 ∗ +0 .047 ∗ +0 .051 ∗ +0 .060 ∗
+
+Note. Each cell averages within motion and agent before differencing the target language from English; uncertainty uses 5,000 motion-cluster bootstrap resamples (seed 42). All cells contain 71 paired motions except Russian–Mistral ( n = 70 ). In M024-ru, Mistral occupied turns 1 and 5; turn 1 is excluded by construction and turn 5 was one of the two documented extraction parse failures, leaving no scoreable Mistral turn in that session. 
+
+Table 6: Complete pairwise contrasts in the focal Chinese–English gap, with paired motion-cluster bootstrap confi-dence intervals. Positive values mean that the first agent has the larger gap. 
+
+Agent contrast BGE-M3 multilingual-E5-large LaBSE Claude − GPT-5.5 +0 .0110 [ −0.0026 , +0 .0248] +0 .0025 [ −0.0024 , +0 .0072] +0 .0191 [ −0.0020 , +0 .0401] 
+
+DeepSeek − GPT-5.5 +0 .0149 [+0 .0003 , +0 .0294] ∗ +0 .0038 [ −0.0014 , +0 .0092] +0 .0223 [+0 .0005 , +0 .0447] ∗
+
+Mistral − GPT-5.5 +0 .0275 [+0 .0157 , +0 .0396] ∗ +0 .0070 [+0 .0032 , +0 .0108] ∗ +0 .0316 [+0 .0141 , +0 .0483] ∗
+
+DeepSeek − Claude +0 .0039 [ −0.0101 , +0 .0183] +0 .0012 [ −0.0034 , +0 .0063] +0 .0032 [ −0.0163 , +0 .0234] 
+
+Mistral − Claude +0 .0165 [+0 .0022 , +0 .0310] ∗ +0 .0044 [ −0.0006 , +0 .0095] +0 .0125 [ −0.0100 , +0 .0346] 
+
+Mistral − DeepSeek +0 .0126 [ −0.0002 , +0 .0259] +0 .0032 [ −0.0012 , +0 .0075] +0 .0094 [ −0.0116 , +0 .0303] 
+
+Note. Each contrast differences the agent-specific Chinese–English gaps of Table 5 within motion, then resamples the 71 motions 5,000 times with seed 42; intervals are percentile intervals. Asterisks mark the six of 18 intervals that exclude zero. Every point estimate is positive, so no agent reverses the focal sign; the individually distinguishable contrasts are those separating Mistral or DeepSeek from GPT-5.5, and Mistral from Claude. The design cannot identify a causal model-family or size effect because each closed provider contributes one model and comparable parameter counts are unavailable. 
+
+Table 7: Translation-QA sensitivity. 
+
+Subset n motions BGE-M3 mE5-large LaBSE Full set 71 +0 .0469 [+0 .0406 , +0 .0530] +0 .0525 [+0 .0504 , +0 .0546] +0 .0466 [+0 .0376 , +0 .0555] 
+
+Excl. M056 70 +0 .0477 [+0 .0414 , +0 .0542] +0 .0525 [+0 .0504 , +0 .0545] +0 .0468 [+0 .0377 , +0 .0560] 
+
+Excl. zh-flagged 64 +0 .0466 [+0 .0396 , +0 .0531] +0 .0522 [+0 .0499 , +0 .0543] +0 .0457 [+0 .0364 , +0 .0550] 
+
+Excl. all flagged 51 +0 .0454 [+0 .0377 , +0 .0527] +0 .0520 [+0 .0497 , +0 .0544] +0 .0472 [+0 .0378 , +0 .0570] 
+
+Note. Rows re-bootstrap the baseline Chinese–English gap after excluding increasingly conservative sets of flagged motions. The gap remains stable under all exclusions. 
+
+Table 8: Within-language effect of the diversity prompt. 
+
+Embedding English Arabic Spanish French Russian Chinese BGE-M3 −0.022 ∗ −0.015 ∗ −0.018 ∗ −0.025 ∗ −0.021 ∗ −0.020 ∗
+
+multilingual-E5-large −0.006 ∗ −0.003 ∗ −0.004 ∗ −0.003 ∗ −0.002 ∗ −0.005 ∗
+
+LaBSE −0.017 ∗ −0.016 ∗ −0.018 ∗ −0.024 ∗ −0.022 ∗ −0.027 ∗
+
+Note. Values are diversity minus baseline; negative values indicate lower prior-argument similarity under the diversity prompt. Asterisks mark 95% motion-cluster bootstrap confidence intervals excluding zero. Table 9: Effect of the diversity prompt on the Chinese–English gap.                         
+
+> Embedding Baseline zh −en Diversity zh −en Gap reduction 95% CI BGE-M3 +0 .047 +0 .049 −0.002 [−0.010 ,+0 .007]
+> multilingual-E5-large +0 .053 +0 .054 −0.001 [−0.004 ,+0 .002]
+> LaBSE +0 .047 +0 .037 +0 .010 [−0.003 ,+0 .023]
+> Note. Positive gap-reduction values indicate narrowing of the zh −en gap. No gap-reduction confidence interval excludes zero.
+
+generations per motion–language–condition cell, the locked role-to-model mappings, the same eight-turn structure, provider-default decoding, and the original extraction and scoring pipeline. Base-line and diversity-aware cells reuse the locked main generation and two repeat generations. Four new conditions—P1 paraphrase, P2 minimal, P3 strong-novelty, and P4 targeted-clash—add 240 sessions. Inference averages the four agents within motion–language–generation, then averages the three generations and bootstraps motions 5,000 times with seed 42. Table 10 reports the gap under each condition and Table 11 the condition-minus-baseline change. Prompt strategy does change absolute similarity, even though it does not move the gap. P3 strong-novelty lowers BGE-M3 similarity by −0.029 in English and −0.027 in Chinese, and lowers LaBSE similarity by −0.023 and −0.035 , respectively; all four CIs exclude zero. P4 targeted-clash lowers similarity in both languages under BGE-M3, while the diversity-aware rule has its clearest effects in Chinese. Format behavior remains within the nor-mal range across conditions: 3.7–4.0 extracted ar-guments per turn and 90.0–96.7% sentence-count compliance. Prompting therefore moves the level of recycling, but no tested strategy eliminates or reverses the focal gap. 
+
+B Experimental Materials and Data Audit 
+
+B.1 Debate Template and Yoked Role Mapping 
+
+Each debate session contains eight turns in a fixed order: two opening statements, two rebuttals, two cross-examination-style turns, and two closing turns. Four model agents participate in each ses-sion by occupying the four debate roles: Pro First Speaker, Con First Speaker, Pro Second Speaker, and Con Second Speaker. The four provider-hosted model agents are OpenAI GPT-5.5 (OpenAI, 2026), Anthropic Claude Opus 4.7 (Anthropic, 2026), DeepSeek-V3.2 (DeepSeek, 2025), and Mistral Large 3 (Mis-tral AI, 2025). The DeepSeek agent was accessed as DeepSeek-Chat via the deepseek-chat endpoint, and the Mistral agent was accessed as Mistral Large via the mistral-large-latest endpoint. Both endpoint mappings were recorded on 2026-04-30, when they corresponded to DeepSeek-V3.2 and Mistral Large 3, respectively. We refer to these agents by shortened labels in some figures and ta-bles. For each motion, the assignment of model agents to debate roles is fixed deterministically across all six language conditions. This yokes model identity and role position to motion, so paired language contrasts do not re-sample which model acts as which speaker. For sessions shar-ing the same underlying motion, the main between-session variable across language conditions is therefore the language of the debate. Figure 5 summarizes the session-level genera-tion protocol. The corresponding eight-turn tem-plate is listed in Table 12. 
+
+B.2 Translation Quality Review 
+
+The 71 English debate motions were translated into Chinese, Spanish, French, Russian, and Arabic us-ing Google Translate with default settings, yield-ing 355 non-English motion–language cells (and 426 cells including the English originals). The translated set was locked on 2026-04-29. Each non-English cell then passed through two auto-mated QA stages followed by manual triage; Ta-ble 13 lists every setting. No locked translation received an adequacy score of 3 or below; flags arose from the preser-vation fields or structured issue type. Manual review corrected meaning-changing cases and re-tained documented nuance or back-translation ar-tifacts, including the reviewed borderline M056 Chinese motion. We do not remove residual flags from the primary analysis because post-outcome deletion could add researcher degrees of freedom. Instead, the sensitivity analysis excludes, in turn, M056, all seven motions with Chinese-specific flags, and all 20 motions with any residual flag. Table 10: Chinese–English gap under six prompt conditions. Every 95% motion-cluster bootstrap CI excludes zero. 
+
+Condition BGE-M3 multilingual-E5-large LaBSE Baseline +0 .0522 [+0 .0422 , +0 .0617] +0 .0563 [+0 .0526 , +0 .0601] +0 .0537 [+0 .0364 , +0 .0726] 
+
+Diversity-aware +0 .0374 [+0 .0235 , +0 .0520] +0 .0526 [+0 .0451 , +0 .0593] +0 .0350 [+0 .0088 , +0 .0626] 
+
+P1 paraphrase +0 .0499 [+0 .0388 , +0 .0612] +0 .0539 [+0 .0501 , +0 .0579] +0 .0485 [+0 .0268 , +0 .0708] 
+
+P2 minimal +0 .0447 [+0 .0329 , +0 .0557] +0 .0539 [+0 .0515 , +0 .0561] +0 .0460 [+0 .0367 , +0 .0562] 
+
+P3 strong-novelty +0 .0537 [+0 .0432 , +0 .0639] +0 .0562 [+0 .0498 , +0 .0614] +0 .0420 [+0 .0167 , +0 .0653] 
+
+P4 targeted-clash +0 .0538 [+0 .0426 , +0 .0652] +0 .0548 [+0 .0500 , +0 .0595] +0 .0365 [+0 .0169 , +0 .0566] 
+
+Table 11: Change in the Chinese–English gap relative to baseline. None of the 15 interaction CIs excludes zero. 
+
+Condition − baseline BGE-M3 multilingual-E5-large LaBSE Diversity-aware −0.0148 −0.0037 −0.0187 
+
+P1 paraphrase −0.0023 −0.0024 −0.0052 
+
+P2 minimal −0.0075 −0.0024 −0.0077 
+
+P3 strong-novelty +0 .0015 −0.0001 −0.0117 
+
+P4 targeted-clash +0 .0016 −0.0015 −0.0172 
+
+Note. Values are paired condition-minus-baseline changes in the language gap. All 15 percentile CIs contain zero. The largest absolute movement is the diversity-aware condition under LaBSE, −0.0187 [ −0.0505 , +0 .0123] ; under the primary BGE-M3 embedding it is −0.0147 [ −0.0335 , +0 .0028] . With only 10 motions, these are consistency checks rather than precise interaction estimates. Motion m         
+
+> Target language ℓ
+> Yoked model–role map Agent A–D →four roles Turn prompt template role, side, phase, context
+> T1
+> Opening Pro First
+> T2
+> Opening Con First
+> T3
+> Rebuttal Pro First
+> T4
+> Rebuttal Con First
+> T5
+> Cross-exam. Pro Second
+> T6
+> Cross-exam. Con Second
+> T7
+> Closing Pro Second
+> T8
+> Closing Con Second For turn t > 1:previous_speech =Tt−1and debate_history = ( T1, . . . , T t−1)
+> Complete debate transcript eight constrained turns Argument extraction 1–4 units per turn Prior-argument pool compare later units to earlier units
+
+Figure 5: Debate generation protocol. 
+
+Note. Each motion is debated in each target language using the same role order and a deterministic model-to-role assignment. At every turn after the first, the current speaker receives the immediately preceding speech and the accumulated debate history before generating the next response. The completed transcript is then passed to argument extraction and prior-argument-similarity scoring. 
+
+Table 12: Eight-turn debate template. 
+
+Turn Phase Role 1 Opening Pro First Speaker 2 Opening Con First Speaker 3 Rebuttal Pro First Speaker 4 Rebuttal Con First Speaker 5 Cross-exam. Pro Second Speaker 6 Cross-exam. Con Second Speaker 7 Closing Pro Second Speaker 8 Closing Con Second Speaker 
+
+Back-translation output schema. The back-translator saw only the target-language motion and returned one JSON object. For reproducibility, the operational content and normalized schema were: 
+
+Translate the following debate motion into English as literally and completely as possible. Do not evaluate or explain it. Return JSON only. Target-language motion: {target_motion} {”back_translation_en”: ”...”} 
+
+Adequacy-judge output schema. The adequacy judge compared the English original, target-language translation, and English back-translation and returned the following structured fields: 
+
+Compare the original motion, target-language translation, and back-translation. Judge whether the target preserves the original debate burden and meaning. Return JSON only. {”adequacy_score”: 1-5, ”preserves_actor”: true|false, ”preserves_policy_action”: true|false, ”preserves_stance_or_burden”: true|false, ”preserves_scope”: true|false, ”preserves_key_terms”: true|false, ”issue_type”: ”none|actor|policy_action|stance_ ⌋
+
+burden|scope|key_terms|other”, ”brief_reason”: ”...”} Table 13: Translation and QA settings.                     
+
+> Component Setting Initial translation Google Translate, default settings; English to zh/es/fr/ru/ar; set locked 2026-04-29 Coverage 71 motions ×five target languages = 355 non-English cells Back-translation deepseek-chat ; target text only; JSON-only; max_tokens=400 ; provider-default tem-perature and top-p
+> Adequacy judge Llama-4-Scout-17B-16E-Instruct served through vLLM Judge decoding temperature = 0 ;max_tokens=700
+> Judge fields 1–5 adequacy; preservation of actor, policy action, stance/burden, scope, and key terms; structured issue type Flag rule score ≤3, any preservation field false, or issue type other than none
+> Manual triage A: meaning-level/must-fix; B: nuance; C: safe or back-translation artifact Final audit 43 cells initially flagged; 36/355 residual flags across 20 motions after correction and review; seven motions had Chinese-specific flags
+
+The displayed wording normalizes wrapper text for readability while preserving the operational in-puts, decision fields, and flagging logic used in the pipeline. 
+
+B.3 Session Counts and Execution Completeness 
+
+The baseline experiment contains 426 complete sessions, 3,408 turns, and 13,118 extracted ar-gument units. The diversity-prompt experiment contains another 426 complete sessions, 3,408 turns, and 13,223 extracted argument units. The repeat-stability experiment adds 80 sessions, 640 turns, and 2,497 extracted argument units. Across all phases, the experiment contains 932 sessions, 7,456 turns, and 28,838 extracted argument units. 
+
+B.4 Dataset Structure and Representative Record 
+
+The primary baseline data form a complete 71-motion × six-language grid. Every session con-tains the same eight role-labeled turn positions, and each motion carries one fixed role-to-model mapping across its six language versions. The ses-sion table stores motion identifier and text, lan-guage, condition, role mapping, and execution sta-tus; the turn table stores session identifier, turn index and label, side, role, model, raw text, and prompt metadata; the argument table stores the ex-tracted claim, warrant, evidence or example, type, and links to its turn and nearest prior argument. API completion was effectively complete in the final locked outputs. The baseline and diversity phases each completed 3,408 of 3,408 expected turns, and the repeat phase completed 640 of 640 expected turns. Transient retry cases were retained only after successful completion and normal ex-traction. 
+
+B.5 Operational Deviations 
+
+The diversity-prompt experiment was expanded from the originally planned English–Chinese sub-set to all six languages. The locked role mappings and language orders from the earlier session grid were reused unchanged; only the language cover-age of the diversity prompt changed. A mid-run provider credit-balance failure oc-curred during the first diversity-prompt launch. Partial sessions from that failed launch were ex-cluded, and the run was resumed by session iden-tifier after service restoration. The final diversity-prompt dataset contains the full expected 426 ses-sions. 
+
+B.6 Data Artifacts 
+
+The primary processed data consist of per-session, per-turn, and per-argument metrics for the base-line, diversity-prompt, and repeat-stability phases. The raw debate sessions, turns, prompts, API-error logs, translation flags, and repeat-stability tables are retained in the experiment archive. The main analysis relies on locked processed outputs. The post-experiment diagnostics added for measure-ment validation are separately scoped: they re-extract a 30-motion English–Chinese subset with a second extractor and rescore existing English– Chinese max-prior pairs with a cross-encoder reranker; they do not regenerate debate transcripts. The archive additionally retains the 240 newly generated prompt-ablation sessions, translated and round-trip transcript manifests for translate-and-rescore, per-pair cross-encoder and LLM-judge scores, and blinded outcome-judge scores. Apart from the four new prompt conditions, all of these analyses read the locked debate archive without regenerating the original baseline or diversity ses-sions. Table 14: Representative processed high-similarity record from an English baseline session. 
+
+Field Example value Motion/session M037, English, baseline Unit current argument and its nearest prior argument Prior claim “art can be assessed objectively” Current claim “art can be evaluated objectively” BGE-M3 max-prior similarity 0.997 
+
+Interpretation near-duplicate substantive claim with different surface wording 
+
+C Prompt Templates 
+
+This appendix reports the prompt templates used to generate debate sessions. Appendix C.1 gives the baseline turn-level prompt, and Appendix C.2 gives the additional diversity-aware rule used in the intervention condition. 
+
+Provenance. The baseline prompt was authored by the authors and held fixed across all sessions, except for turn-specific placeholders such as the motion, target language, role, turn label, previ-ous speech, and debate history. The diversity-aware rule was first written in English and then ren-dered in the other five target languages. The trans-lated versions were checked as part of the multilin-gual material review described in Appendix B.2. Across languages, the rule preserves the same five novelty targets: argument, example, causal mecha-nism, stakeholder impact, and tradeoff. 
+
+C.1 Baseline Prompt Template 
+
+The template below is rendered once per turn. Placeholders in {...} are filled at inference time: 
+
+{motion_text} is the motion in the target lan-guage; {language_name} is the natural-language name of the target language; {role} , {side} , and 
+
+{turn_label} identify the current speaker and turn; 
+
+{previous_speech} is the immediately preceding speech, or (none — this is the first turn) for the first turn; and {debate_history} concatenates all prior turns, or (empty — this is the first turn) 
+
+when no prior turn exists. 
+
+You are participating in a structured debate about: ”{motion_text}” You must write only in {language_name}. Your role is: {role}. Your side is: {side}. Current turn: {turn_label}. Rules: - Defend your assigned side. - Respond to the previous speaker when previous context exists. - Use clear reasoning. - Do not announce your role. - Do not greet the audience. - Do not use bullet points, numbered lists, headings, or markdown. - Do not fabricate statistics. - Keep the response concise. Length: - Opening, rebuttal, and cross-examination turns: exactly 5 sentences. - Closing turns: exactly 4 sentences. - Each sentence should be under 50 words. Previous speaker: {previous_speech} Debate history: {debate_history} Now produce your turn. 
+
+C.2 Diversity-Aware Intervention Rule 
+
+Under the diversity-aware condition, the following rule is inserted into the baseline template imme-diately after the rules block and before the length block. The inserted rule is written in the target lan-guage of the session. 
+
+English 
+
+Additional diversity rule: In this turn, introduce at least one argument, ex-ample, causal mechanism, stakeholder impact, or tradeoff that has not appeared earlier in the debate. Do not merely restate your teammate’s framing or the previous speaker’s framing. If you refer to an earlier point, extend it with a clearly new reason, example, mechanism, or implication. 
+
+Chinese 
+
+额外的论点多样性规则： 在本轮发言中，请提出至少一个此前辩论中 没有出现过的论点、例子、因果机制、 利益相关方影响或权衡。 不要只是重复队友或上一位发言者的表述。 如果你引用此前观点，必须用一个清楚的 新理由、新例子、新机制或新影响 来扩展它。 
+
+Spanish 
+
+Regla adicional de diversidad de argumentos: En este turno, introduzca al menos un argumento, ejemplo, mecanismo causal, impacto sobre las partes interesadas o compensación que no haya aparecido antes en el debate. No se limite a repe-tir el planteamiento de su compañero ni el del orador anterior. Si hace referencia a un punto anterior, amplíelo con una razón, un ejemplo, un mecanismo o una implicación claramente nuevos. 
+
+French 
+
+Règle supplémentaire de diversité des arguments :Dans ce tour, introduisez au moins un argument, un exemple, un mécanisme causal, un impact sur les parties prenantes ou un compromis qui ne soit pas déjà apparu plus tôt dans le débat. Ne vous contentez pas de reformuler la formu-lation de votre coéquipier ou de l’orateur précé-dent. Si vous faites référence à un point antérieur, prolongez-le avec une raison, un exemple, un mé-canisme ou une implication clairement nouvelle. 
+
+Russian 
+
+Дополнительное правило разнообра-зия аргументов: В этом ходе введите хотя бы один аргу-мент, пример, причинный механизм, влияние на заинтересованные сторо-ны или компромисс, которые ранее не появлялись в дебатах. Не ограни-чивайтесь повторением формулиров-ки вашего партнёра или предыдущего выступающего. Если вы ссылаетесь на ранее высказанный пункт, расширьте его явно новой причиной, новым при-мером, новым механизмом или но-вым следствием. 
+
+Arabic 
+
+ڢ؇༟ڎﺓ ﺇݪ؇ڣ٭۰ ܳٺٷިﻉ ﺍ፳፞༕ھ: ሒᇭ ۱ڍﺍ ﺍᄴᄟﻭﺭ، ﺍޗݠﺡ আॻ༟ ﺍ৙৑ڢܭ ۰࿭੗ ﺃﻭ ݁ټ؇৖৑ ًﺃﻭ ﺁܳ٭۰ ݿྟٴ٭۰ ﺃﻭ আॻ༟ً ﺃොේ؇ﺏ ﺍৎ৊ݱܹ۰༲ ﺃﻭ ݁ڰ؇ݪቕረ ᄭᄥ ّޙ۳ݠ ݿ؇ًگ؇ ሒᇭً ﺍܳٷگ؇ﺵ. ﺍଫଃٔ؊ّ ৖৑ࣖ ّܝٺژ ༟؆࿓ِ؇ﺩﺓ ݬ٭؇۰༚ ޗݠﺡ ﺯ݁٭ጥ጑ ﺃﻭ ޗݠﺡ ﺍৎ৊ٺ༲ڎﺙ ﺍܳފ؇ًݑ. ﻭᎂﺫﺍ ﺃ๤ཇﺕ ﺇሌᇿ َگޚ۰ ݿ؇ًگ۰، ڣިݿّأ۳؇ ྟ૭૖ص༥ ڎࢴ ࣖﺃﻭ ݁ټ؇ﻝ ༥ڎࢴ ﺃﻭ ﺁܳ٭۰ ༥ڎࣖࢴﺓ ﺃﻭ ّ؊༥ ଫଃٔڎࢴ ًࣖިݪިﺡ. 
+
+C.3 Prompt-Ablation Condition Definitions 
+
+All conditions use the same motion, target-language, role, side, turn label, prior speech, de-bate history, and sentence-format placeholders as Appendix C.1. Table 15 gives the condition-specific instruction content. We give the full text of each condition below. As in the main runs, the prompt scaffold is writ-ten in English for every session and the target language is set by the {language_name} place-holder; only the P3 and P4 inserted rules are ren-dered in the session’s language, and because the ab-lation covers only English and Chinese, those two rules have English and Chinese versions. The gen-eration script rebuilds the baseline template from the same blocks used by the main run and asserts at startup that the reconstruction is byte-identical to it, so each new condition differs from baseline only by the text shown here. 
+
+P1 paraphrase. Replaces the baseline opening and Rules: block. Everything from Length: on-ward is unchanged. 
+
+You are taking part in a formal debate on the following motion: ”{motion_text}” Write exclusively in {language_name}. You have been assigned the role of {role}, arguing for the {side} side. The current stage of the debate is: {turn_label}. Guidelines: - Argue in favour of the position you have been assigned. - Engage with the previous speaker 's points whenever earlier speeches exist. - Build your case with clear, well-structured reasoning. - Never state or describe your assigned role. - Do not open with greetings or address the audience directly. - Write in continuous prose only, avoiding bullet points, numbered lists, headings, and markdown of any kind. - Never invent statistics or figures. - Stay brief and focused. 
+
+P2 minimal. Keeps the baseline opening and re-places the eight-item Rules: block with exactly the following three rules. Everything from Length: 
+
+onward is unchanged. 
+
+Rules: - Defend your assigned side. - Respond to the previous speaker when previous context exists. - Do not use bullet points, numbered lists, headings, or markdown. 
+
+P3 strong-novelty. Inserted after the baseline 
+
+Rules: block and before Length: , which is the same insertion point used by the diversity-aware rule in the main runs. 
+
+Additional novelty rule: Before writing, silently review the entire debate history and identify every distinct argument, example, causal mechanism, stakeholder impact, and tradeoff that any speaker has already made. Do not restate any of them, even in different wording. Your turn must introduce at least one argument, example, causal mechanism, stakeholder impact, or tradeoff that has not appeared earlier in the debate. If you engage an earlier point, extend it with a clearly new reason, example, mechanism, or implication. Do not list or summarize the earlier arguments in your speech. Table 15: Condition-specific prompt content in the six-strategy ablation. Verbatim text for every condition is in Appendix C.3. 
+
+Condition Operational instruction Baseline Full baseline rules in Appendix C.1; no added novelty rule. Diversity-aware Full baseline plus the language-matched diversity rule in Appendix C.2. P1 paraphrase Rewords the baseline opening and all eight rules, keeping the same role, response-to-context, reasoning, formatting, fabrication, concision, and length requirements; no new substantive re-quirement. P2 minimal Keeps the baseline opening and reduces the eight rules to three (defend the assigned side, respond to prior context, no markdown), leaving the sentence and length format untouched. P3 strong-novelty Baseline format plus an explicit requirement to advance at least one argument not yet raised any-where in the debate and not merely reframe an earlier point. P4 targeted-clash Baseline format plus a requirement to identify the most important unresolved disagreement be-tween the two sides, address that specific clash, and add at least one previously unraised argument. 
+
+额外的论点新颖性规则： 在写作之前，请先在心中回顾整场辩论的 历史，识别任何发言者已经提出过的 每一个论点、例子、因果机制、 利益相关方影响和权衡。 不要重述其中任何一项， 即使换用不同的措辞也不行。 你的本轮发言必须提出至少一个 此前辩论中没有出现过的论点、 例子、因果机制、利益相关方影响 或权衡。如果你回应此前的某个观点， 必须用一个明显新的理由、例子、 机制或影响来扩展它。 不要在发言中罗列或总结已有论点。 
+
+P4 targeted-clash. Inserted at the same point as P3. 
+
+Additional engagement rule: Identify the most important point of disagreement between the two sides that remains unresolved in the debate so far. Advance the debate on that specific point of clash by offering at least one reason, example, causal mechanism, stakeholder impact, or tradeoff that no speaker has raised before. 
+
+额外的交锋规则： 请找出到目前为止双方之间最重要 且尚未解决的分歧点。 围绕这一具体交锋点推进辩论， 提出至少一个此前任何发言者 都没有提出过的理由、例子、 因果机制、利益相关方影响或权衡。 
+
+D Argument Extraction Details 
+
+This appendix documents the argument-unit ex-traction procedure used in Section 3.2. It includes the full extraction prompt (Appendix D.1), the argument-type label definitions (Appendix D.2), and the provenance and label-collapsing rule used for downstream analyses (Appendix D.3). 
+
+D.1 Extraction Prompt 
+
+The extractor is invoked once per debate turn with the template below. The placeholders {motion} 
+
+and {turn_text} are filled with the motion in the target language and the agent’s raw response for that turn; {side} is either Pro or Con . The sys-tem prompt instructs the model to emit exactly one JSON object and nothing else. Decoding uses tem-perature 0 and a 1024-token limit. 
+
+You are extracting argument units from a debate turn. Return JSON only. Motion: {motion} Speaker side: {side} Turn text: {turn_text} Extract 1 to 4 argument units. Each argument unit should contain a distinct claim or reason. Schema: {”arguments”: [ {”claim”: ”...”, ”warrant”: ”...”, ”evidence_or_example”: ”...”, ”argument_type”: ”causal|moral|institutional|practical|stakeholder|hi ⌋
+
+storical|economic|legal|safety|other|unclear”} ]} Rules: - Preserve the original language where possible. - Do not invent arguments not present in the text. - Split repeated or overlapping points only when they are genuinely distinct. - If the turn contains only one argument, return one argument. 
+
+D.2 Argument-Type Labels 
+
+Table 16 lists the label set. The schema contains nine substantive labels, plus OTHER and UNCLEAR. These labels are intended as broad categories of justification structure, not topical domains. A sin-gle argument may plausibly fit more than one label; the extractor is instructed to choose the single best fit. Table 16: Argument-type schema.             
+
+> Type Intended content causal A mechanism, chain of consequences, or claim about how one condition produces another. moral A claim grounded in fairness, rights, duties, harm, legitimacy, or ethical evaluation. institutional A claim about governments, courts, schools, firms, platforms, procedures, or organizational capacity. practical A feasibility, implementation, cost, administrative, or operational argument. stakeholder A claim centered on effects for a group, constituency, user population, or affected party. historical An analogy, precedent, historical trajectory, or past case used as evidence. economic A claim about incentives, markets, prices, productivity, fiscal effects, or resource distribution. legal A claim about law, regulation, legal rights, liability, enforceability, or constitutional constraints. safety A claim about risk, security, harm prevention, reliability, or protection from adverse outcomes. other Residual bucket for arguments outside the nine substantive categories, unclear arguments, off-schema labels, and compound outputs.
+> Note. The schema is used by the extraction prompt.
+
+D.3 Provenance and Label-Collapsing Rule Provenance. The schema was hand-designed by the authors to cover recurring types of justification observed in competitive policy debate. Each label corresponds to a distinct mode of warrant rather than to a topical domain. For example, the same motion can attract CAUSAL, MORAL, and ECONOMIC arguments simultaneously. The schema is not de-rived from a published argumentation taxonomy; we use it only as a coarse stratification for the diag-nostic analyses in Section 3.2, not as a contribution of this paper. 
+
+Label collapsing. Although the extraction prompt restricts argument_type to the eleven values above, the extractor occasionally produces off-schema labels such as logical , comparative ,
+
+philosophical , or empirical , as well as compound forms such as historical|economic . For all downstream analyses, we collapse the label space to ten buckets: the nine substantive labels listed in Appendix D.2, plus a single OTHER bucket. This bucket absorbs the prompt’s OTHER and UNCLEAR values, together with all off-schema and compound outputs. The same collapsing rule is applied uniformly across all languages, so cross-lingual comparisons of argument-type distributions use the same ten-way partition. 
+
+Extraction reliability. Argument extraction is performed by Llama-4-Scout-17B, served as a 4-bit quantized model through vLLM 0.16. The ex-tractor is prompted in a strict-JSON format and re-turns 1–4 argument units per turn. Across 7,456 turns, the extractor produced two unparseable responses (0.027%). These cases are retained in the raw archive and excluded from the flat-tened argument-unit table used for similarity scor-ing. The extractor’s argument-type labels are used only for taxonomy-balance analyses; the prior-argument-similarity score itself is computed from semantic similarity between extracted argument units and does not depend on the assigned type la-bel. 
+
+E Robustness Diagnostics 
+
+E.1 Bootstrap Procedure 
+
+All reported paired language contrasts use motion as the resampling cluster. For each bootstrap repli-cate, we sample motions with replacement and re-compute the target contrast on the resampled set. Reported 95% confidence intervals are percentile intervals, defined by the 2.5th and 97.5th quantiles of the bootstrap distribution. A confidence interval is treated as statistically distinguishable from zero when the 95% percentile interval excludes zero. 
+
+E.2 Regression Robustness 
+
+To complement the motion-cluster bootstrap, we fit turn-level regression models on the baseline English–Chinese subset. The dependent variable is per-turn prior-argument similarity, and turn 1 is excluded because it has no prior argument pool. The primary regression robustness specification is OLS with motion fixed effects and standard er-rors clustered by motion, controlling for turn la-bel, model agent, role, and side. We also fit mixed-effects models with a motion random intercept and the same fixed effects. The regression estimates in Table 17 keep the Chinese coefficient positive under all three em-beddings and numerically identical to the cluster-bootstrap estimate to four decimals. The mixed-effects models estimate singular random-effect covariance, indicating that the motion random-intercept variance is on the boundary after con-ditioning on the fixed effects. We therefore use the OLS fixed-effect specification as the primary regression robustness result and treat the mixed-effects rows as an agreement diagnostic. 
+
+E.3 Decoding Diagnostics 
+
+The main experiment uses provider-default decod-ing because not all model providers expose compa-rable decoding controls. To test whether the ob-served language gap could be explained by sam-pling settings, we conduct fixed-context diagnos-tics on the two model agents that expose decoding controls: DeepSeek-V3.2 and Mistral Large 3. For temperature, we generate single-turn con-tinuations at T ∈ {0.2, 0.7, 1.0}. For nu-cleus sampling, we generate continuations at p ∈{0.70 , 0.85 , 0.95 , 1.00 }. These diagnostics are not treated as replacements for the full debate experiment. They are used to assess whether plausible decoding choices systematically remove or reverse the Chinese–English prior-argument-similarity gap. Across all model–language–embedding cells in these diagnostics, the within-model decoding ef-fect is |∆| ≤ 0.02 absolute. This is smaller than the cross-lingual gap of roughly +0 .04 to +0 .08 
+
+observed in the corresponding language contrasts. Most decoding-contrast bootstrap confidence inter-vals overlap zero, while the language-contrast con-fidence intervals exclude zero. We therefore in-terpret the decoding diagnostics as evidence that the tested sampling settings do not systematically account for the observed Chinese–English prior-argument-similarity gap. 
+
+E.4 Translate-and-Rescore Decomposition 
+
+This probe asks how much of the Chinese–English gap travels with the surface language. We use the same stratified 30-motion English–Chinese sub-set as the second-extractor check. Chinese base-line turns are machine-translated into English with Google Translate (accessed 2026-07-09), then re-extracted with the locked Llama-4-Scout prompt and schema and rescored entirely in English em-bedding space; the extractor receives the En-glish original motion. To control for translation-induced paraphrase noise, native English sessions undergo an English →Chinese →English round trip before the same re-extraction and rescoring pro-cedure. Turn 1 is excluded, and inference uses 5,000 motion-cluster bootstrap resamples with seed 20260709. Translation into English removes most of the na-tive BGE-M3 gap, which implicates surface lan-guage or representation geometry. The treatment-minus-round-trip contrast nevertheless remains positive under all three embeddings, which is con-sistent with a smaller content-level component. This analysis does not identify whether that com-ponent originates in pretraining, post-training, to-kenization during generation, discourse conven-tions, or their interaction. 
+
+E.5 Sentence-Count Compliance Audit 
+
+We audit sentence-count compliance for all 6,816 turns in the baseline and diversity-prompt experi-ments. Opening, rebuttal, and cross-examination turns are expected to contain five sentences, while closing turns are expected to contain four sen-tences. Sentence segmentation uses language-specific sentence terminators; sentence length is measured in whitespace tokens for English, Ara-bic, Spanish, French, and Russian, and in non-whitespace characters for Chinese. The compliance audit in Table 19 indicates that baseline compliance is high across languages and does not single out Chinese. English and Chinese have similar exact-compliance rates (95.6% vs. 94.4%) and nearly identical mean sentence counts (4.84 vs. 4.83). The largest baseline over-count rates occur in Spanish and French rather than Chi-nese. In the diversity-prompt condition, compli-ance decreases modestly for several languages and sentence lengths increase, consistent with more elaborated turns under the intervention. We also test whether sentence-count deviations are associated with the similarity metric or with extraction volume. In the baseline condition, the absolute sentence-count deviation has weak Spear-man correlations with BGE-M3 prior-argument similarity in English ( ρ = 0.129 ) and Chinese (ρ = 0 .087 ), and with extracted-argument counts in English ( ρ = 0 .049 ) and Chinese ( ρ = 0 .071 ). Observed sentence count is negatively correlated with prior-argument similarity in both languages (English ρ = −0.315 , Chinese ρ = −0.270 ), so this pattern is not a Chinese-specific advantage. Because Chinese length is measured in characters while the other languages use whitespace tokens, we do not interpret pooled cross-language length correlations. Table 17: Regression robustness for the Chinese–English gap. 
+
+Embedding Estimator Coef. (ZH −EN) SE 95% CI BGE-M3 Bootstrap +0 .0464 – [+0 .0399 , +0 .0525] 
+
+BGE-M3 OLS-FE +0 .0464 0.0033 [+0 .0399 , +0 .0530] 
+
+BGE-M3 LMM (singular RE) +0 .0464 0.0027 [+0 .0412 , +0 .0516] 
+
+mE5-large Bootstrap +0 .0529 – [+0 .0509 , +0 .0549] 
+
+mE5-large OLS-FE +0 .0529 0.0011 [+0 .0508 , +0 .0550] 
+
+mE5-large LMM (singular RE) +0 .0529 0.0009 [+0 .0511 , +0 .0547] 
+
+LaBSE Bootstrap +0 .0469 – [+0 .0376 , +0 .0558] 
+
+LaBSE OLS-FE +0 .0469 0.0048 [+0 .0374 , +0 .0563] 
+
+LaBSE LMM (singular RE) +0 .0469 0.0040 [+0 .0390 , +0 .0548] 
+
+Note. OLS-FE uses motion fixed effects and motion-clustered standard errors, controlling for turn label, model agent, role, and side. LMM uses the same fixed effects with a motion random intercept; all LMM fits estimate singular random-effect covariance, so these rows are reported as agreement diagnostics. Bootstrap rows repeat the motion-cluster bootstrap estimate for comparison. 
+
+Table 18: Translate-and-rescore decomposition on the 30-motion subset. 
+
+Comparison Gap 95% CI Native Chinese − native English, BGE-M3 +0 .0472 [+0 .0382 , +0 .0563] 
+
+MT(Chinese →English) − native English, BGE-M3 +0 .0085 [+0 .0017 , +0 .0152] 
+
+MT(Chinese →English) − round-trip English, BGE-M3 +0 .0140 [+0 .0057 , +0 .0223] 
+
+Round-trip English − native English, BGE-M3 −0.0055 [−0.0109 , −0.0002] 
+
+MT Chinese − round-trip English, multilingual-E5-large +0 .0033 [+0 .0001 , +0 .0065] 
+
+MT Chinese − round-trip English, LaBSE +0 .0151 [+0 .0040 , +0 .0257] 
+
+Table 19: Sentence-count compliance by language and prompt condition. 
+
+Cond. Lang. Turns Exact Under Over Mean sents. Mean len. Mean args Mean sim. Base ar 568 0.979 0.002 0.019 4.78 19.98 3.86 0.637 Base en 568 0.956 0.000 0.044 4.84 21.07 3.83 0.662 Base es 568 0.884 0.002 0.114 5.18 22.78 3.83 0.641 Base fr 568 0.917 0.004 0.079 4.99 23.36 3.82 0.644 Base ru 568 0.963 0.000 0.037 4.81 19.91 3.84 0.652 Base zh 568 0.944 0.000 0.056 4.83 42.08 3.92 0.708 Div. ar 568 0.949 0.016 0.035 4.82 25.14 3.90 0.621 Div. en 568 0.933 0.000 0.067 4.89 25.39 3.85 0.638 Div. es 568 0.894 0.000 0.106 5.17 27.75 3.92 0.620 Div. fr 568 0.887 0.005 0.107 5.16 29.28 3.85 0.619 Div. ru 568 0.968 0.002 0.030 4.86 24.86 3.86 0.630 Div. zh 568 0.900 0.000 0.100 4.89 54.50 3.91 0.688 
+
+Note. Exact compliance is measured against the prompt template: five sentences for opening, rebuttal, and cross-examination turns, and four sentences for closing turns. Sentence length is in whitespace tokens for English, Arabic, Spanish, French, and Russian, and in non-whitespace characters for Chinese. Mean sim. is BGE-M3 prior-argument similarity. 
+
+E.6 Diversity-Prompt Intervention Design 
+
+The diversity-aware prompt appends one para-graph to the baseline debate prompt. It instructs agents to avoid merely restating earlier arguments and to add new considerations, examples, causal mechanisms, stakeholder impacts, or tradeoffs where possible. The intervention was originally planned for English and Chinese, then expanded to all six languages. The English and Chinese diver-sity prompts follow the planned wording; the Ara-bic, Spanish, French, and Russian versions were authored to mirror the same structure and targets. This intervention is interpreted narrowly. It tests whether this particular surface-level diversity instruction reduces prior-argument similarity and whether it narrows the Chinese–English gap. It does not test all possible anti-repetition prompts, debate formats, or instruction-tuning interventions. 
+
+E.7 Prompt-Ablation Design and Diagnostics 
+
+The broader prompt ablation compares the six conditions in Table 15 on the same 10 motions used for repeat stability. Each motion–language– condition cell has three independent generations. Baseline and diversity-aware generations reuse the original and two repeat runs; P1–P4 are newly generated. The same role-to-model mapping is held fixed within motion across conditions and languages. Extraction uses the original Llama-4-Scout pipeline at temperature 0, and the outcome remains session-level mean maximum similarity to earlier arguments. For absolute-level effects, each condition is com-pared with baseline within language and motion. For gap interactions, we first compute the Chinese– English gap within each condition and motion, then difference that gap from baseline before boot-strapping motions. This preserves the paired de-sign and avoids treating turns or arguments as in-dependent. Format diagnostics include extracted arguments per turn and exact sentence-count com-pliance. 
+
+E.8 Repeat-Stability Subset 
+
+To evaluate generation-level stability, we select a 10-motion subset and generate two additional re-peats for English and Chinese under both base-line and diversity-prompt conditions. Combined with the original run, this yields three independent generations per cell. The subset includes motions that initially showed strong, medium, and weak or counterexample Chinese–English gaps, allowing us to distinguish stable aggregate effects from un-stable motion-level rankings. We use this analysis only for stability assess-ment. Main claims remain based on the full 71-motion baseline and diversity experiments. The aggregate language-level patterns are stable across repeats, but individual motion rankings fluctuate. In particular, M053 and M061 appear weak or counterexample-like in the first run but become positive when averaged over three repeats. In the opposite direction, M013 shows the strongest first-run motion-level Chinese–English effect un-der BGE-M3 ( +0 .102 ) but attenuates to +0 .020 
+
+and +0 .024 in the second and third runs. These movements support treating per-motion rankings as exploratory appendix material rather than as part of the main inferential claims. 
+
+E.9 Embedding Representations and Repeat Noise 
+
+The main analysis reports prior-argument-similarity estimates separately under BGE-M3, multilingual-E5-large, and LaBSE rather than collapsing them into a single representation space. BGE-M3 was selected before the main experiment because of its broad multilingual coverage; multilingual-E5-large and LaBSE are used as independent robustness checks. The repeat-stability analysis also provides a scale for interpreting effect sizes. The within-cell standard deviation over three independent generations is 0.009 for BGE-M3, 0.028 for multilingual-E5-large, and 0.043 for LaBSE. Thus, the pooled Chinese–English language gap is larger than the repeat-generation noise for BGE-M3 and multilingual-E5-large, while LaBSE has the high-est within-cell noise among the three embeddings. This is relevant when interpreting the diversity-prompt gap-reduction estimate under LaBSE: its directional reduction is comparable in magnitude to the repeat noise of that embedding and its confi-dence interval includes zero. 
+
+F Metric Diagnostics and Manual Calibration 
+
+This appendix reports the additional metric diag-nostics and manual calibration analyses summa-rized in Section 4.2 and Section 4.3. These anal-yses qualify the interpretation of prior-argument similarity as an aggregate diagnostic rather than as a direct item-level human label. 
+
+F.1 Metric Diagnostic Variants 
+
+The main-text diagnostics in Table 1 include the Chinese–English gap under null adjustment, z-scoring, fixed-size prior pools, and input-field ab-lations. The fixed-K and input-field variants pre-serve the positive direction across all three em-bedding models. Null adjustment is more sensi-tive to embedding geometry: BGE-M3 and LaBSE remain positive, while multilingual-E5-large flips sign after subtracting its language-specific null baseline. We therefore use these diagnostics to characterize metric sensitivity rather than to claim that every calibrated variant gives the same result. 
+
+F.2 Within-Language Embedding Agreement and Language-Specific Calibration 
+
+Raw language means differ across embedding ge-ometries, but the embeddings agree strongly on which turns are relatively high or low within each language. Table 20 reports the range of the three pairwise turn-level Spearman correlations for each language. The lowest single correlation occurs in Chinese, so cross-embedding agreement is not uniquely high for the focal language. Figure 1 mainly re-flects embedding-specific absolute offsets across Table 20: Turn-level within-language Spearman range across BGE-M3, multilingual-E5-large, and LaBSE.        
+
+> Language Pairwise Spearman range English 0.766 –0.789
+> Arabic 0.769 –0.830
+> Spanish 0.741 –0.797
+> French 0.702 –0.766
+> Russian 0.749 –0.802
+> Chinese 0.696 –0.812
+
+languages. To test sensitivity to those offsets, we standardize each observed argument-level score against a same-language, different-motion, same-turn-position null distribution of maximum simi-larities. Table 21 shows that Chinese is the only language with a positive and significant z-scored gap from English under all three embeddings. 
+
+F.3 Cross-Encoder Tail Rescoring 
+
+To test whether the high-similarity tail is specific to BGE-M3 bi-encoder cosine geometry, we rescore all English–Chinese BGE-M3 max-prior argument pairs with the multilingual cross-encoder reranker 
+
+BAAI/bge-reranker-v2-m3 . This check does not rerun all pairwise nearest-neighbor search; it asks whether the same current–nearest-prior pairs re-main disproportionately Chinese in a high-score tail under an orthogonal pair scorer. Table 22 shows that Chinese remains overrepresented in the top 20%, top 10%, and top 5% tails, with smaller effects than under BGE-M3. 
+
+F.4 Automatic Extraction Diagnostics 
+
+Automatic extraction diagnostics by language, in-cluding extracted arguments per turn, claim length, empty warrant and evidence rates, and off-schema type rates, are summarized in Table 23. These checks characterize extraction artifacts that could affect prior-argument similarity and motivate the manual extraction audit below. 
+
+F.5 Extraction-Length and Field-Completeness Controls 
+
+Chinese extracted claims are shorter on average than English claims, and the original extractor leaves the Chinese warrant field empty more of-ten. To test whether these extraction features me-chanically account for the Chinese–English gap, we fit turn-level OLS models on baseline English– Chinese turns with non-empty prior pools. The full specification controls for mean claim length, argument count, empty warrant and evidence rates, prior-pool size, sentence count, turn label, model agent, role, side, and motion fixed effects, with standard errors clustered by motion. Table 24 shows that the adjusted Chinese coefficient re-mains positive under all three embedding models. 
+
+F.6 Second-Extractor Robustness 
+
+To test dependence on the single original extrac-tor, we re-extract a 30-motion English–Chinese subset with DeepSeek-Chat at temperature 0, us-ing the same argument-unit schema. The subset is stratified by the original BGE-M3 motion-level Chinese–English gap, with 10 motions from each tertile. This is a targeted extractor-dependence check rather than a full re-run. Table 25 shows that the BGE-M3 Chinese–English gap remains posi-tive and similar in magnitude under the second ex-tractor, even though the second extractor fills war-rant and evidence fields much more aggressively. 
+
+F.7 Manual Extraction Audit 
+
+Annotators audited English and Chinese turns for extraction quality, including whether the extracted units captured all major arguments, whether the boundaries were over- or under-split, whether hal-lucinated arguments were present, and the overall extraction quality on a 1–5 scale. Exact agreement was high for most labels; some kappa values are lower because the base rates are extreme, with most extractions judged good or usable. 
+
+F.8 Manual Repetition Calibration 
+
+For perceived repetition, annotators labeled current–prior argument pairs as new, topically related, partial repetition or extension, or substan-tive repetition. The main binary collapse treats partial repetition and substantive repetition as repeated; the strict collapse uses only substantive repetition. Agreement is high (exact agreement 
+
+0.83 , binary κ = 0 .733 , weighted κ = 0 .857 ), but the automatic score is only weakly aligned with item-level human labels. To separate a weakness of the bi-encoder from a weakness of automatic scoring in general, we score the same 200 adjudicated pairs with two further in-struments: the multilingual cross-encoder reranker and a blinded deepseek-chat pair judge. Table 27 compares all three against the human labels. The pair judge uses the original codebook, tem-perature 0, and only the two claims; it is blinded to embedding scores and model identity. Its higher ρ
+
+and strict-repetition AUC support a ranking inter-pretation, not label interchangeability. It assigns Table 21: Language-minus-English gaps after language-specific z calibration. 
+
+Language − English BGE-M3 multilingual-E5-large LaBSE Arabic −0.59 ∗ −0.34 ∗ −0.18 
+
+Spanish −0.14 −0.06 −0.06 
+
+French −0.33 ∗ −0.56 ∗ +0 .06 
+
+Russian −0.11 −0.02 +0 .23 ∗
+
+Chinese +0 .52 ∗ +1 .50 ∗ +0 .39 ∗
+
+Note. Asterisks indicate a 95% motion-cluster bootstrap CI excluding zero. Null calibration can absorb corpus-level signal as well as representation offsets, so these values are sensitivity checks rather than replacements for the raw primary estimates. In particular, the paper makes no substantive raw-score English-versus-Arabic, Spanish, French, or Russian claim. 
+
+Table 22: High-overlap tail rates under BGE-M3 and cross-encoder reranker scores. 
+
+Scorer Tail EN rate ZH rate ZH–EN 95% motion-cluster CI BGE-M3 bi-encoder top 20% 0.111 0.287 +0 .176 [+0 .150 , +0 .203] 
+
+BGE reranker top 20% 0.154 0.246 +0 .092 [+0 .067 , +0 .119] 
+
+BGE-M3 bi-encoder top 10% 0.063 0.137 +0 .074 [+0 .052 , +0 .096] 
+
+BGE reranker top 10% 0.076 0.124 +0 .048 [+0 .030 , +0 .066] 
+
+BGE-M3 bi-encoder top 5% 0.029 0.070 +0 .041 [+0 .026 , +0 .056] 
+
+BGE reranker top 5% 0.040 0.059 +0 .019 [+0 .007 , +0 .033] 
+
+Note. We rescore the 3,856 English–Chinese baseline BGE-M3 max-prior pairs with BAAI/bge-reranker-v2-m3 .Thresholds are pooled English–Chinese percentiles of each scorer. The reranker is an orthogonal scoring check, not a human repetition label. 
+
+Table 23: Automatic extraction diagnostics by language. 
+
+Diagnostic en ar es fr ru zh Arguments/turn 3.83 3.86 3.83 3.82 3.84 3.92 Claim characters 88 66 96 96 86 27 Empty warrant 31.7% 28.9% 25.5% 27.8% 29.4% 45.0% Empty evidence 69.3% 76.3% 69.2% 72.8% 70.9% 77.9% Off-schema type 2.3% 2.1% 2.1% 2.4% 2.2% 3.9% 
+
+Table 24: Chinese–English prior-argument-similarity gap under extraction-length and field-completeness controls. 
+
+Embedding Spec. Controls Coef. SE 95% CI N
+
+BGE-M3 A none +0 .0464 0.0032 [+0 .0401 , +0 .0527] 994 BGE-M3 B turn, agent, role, side, motion FE +0 .0464 0.0033 [+0 .0399 , +0 .0530] 994 BGE-M3 C B + claim length, argument count, empty warrant/evidence rates, prior-pool size, sentence count 
+
++0 .0431 0.0064 [+0 .0304 , +0 .0557] 994 BGE-M3 C boot. same as C, motion-cluster bootstrap +0 .0430 0.0061 [+0 .0313 , +0 .0551] 994 mE5-large C full controls as in C +0 .0470 0.0026 [+0 .0418 , +0 .0521] 994 LaBSE C full controls as in C +0 .0240 0.0098 [+0 .0047 , +0 .0433] 994 
+
+Note. The outcome is turn-level prior-argument similarity on baseline English–Chinese turns with non-empty prior pools. Coefficients are Chinese minus English. Specifications A–C use OLS with motion-clustered standard errors; C boot. resamples motions with replacement. All rows use 71 motions. 
+
+Table 25: Second-extractor robustness on a 30-motion English–Chinese subset. 
+
+Extractor Motions Args/turn EN Args/turn ZH Empty W EN Empty W ZH Claim chars EN Claim chars ZH Llama-4-Scout 30 3.84 3.92 0.326 0.464 89.5 27.1 DeepSeek-Chat 30 3.59 3.82 0.013 0.011 120.2 35.1 Extractor BGE-M3 ZH–EN gap 95% motion-cluster CI Llama-4-Scout +0 .0472 [+0 .0379 , +0 .0568] 
+
+DeepSeek-Chat +0 .0506 [+0 .0419 , +0 .0593] 
+
+Note. The subset includes 10 motions from each tertile of the original BGE-M3 Chinese–English motion-level gap. Each extractor uses the same JSON schema and all eight turns for English and Chinese. Empty W is the fraction of extracted arguments with an empty warrant field. Table 26: Manual extraction audit for English and Chinese.                            
+
+> Measure English Chinese Difference (95% CI) Overall quality (1–5) 3.98 3.92 −0.06 [ −0.17 ,+0 .04]
+> All major arguments captured 0.988 0.959 −0.03 [ −0.09 ,+0 .02]
+> Over-split rate 0.000 0.020 +0 .02 [0 .00 ,+0 .07]
+> Under-split rate 0.000 0.000 +0 .00
+> Hallucination 0.020 0.000 −0.02 [ −0.07 ,0.00]
+> Missing major argument 0.000 0.056 +0 .056 [0 .00 ,+0 .143]
+> Note. Differences are Chinese minus English (ZH–EN).
+
+Table 27: Item-level alignment with the same 200 adjudicated argument pairs.                      
+
+> Instrument NSpearman ρAUC repeated ( ≥2)AUC strict ( = 3 )BGE-M3 cosine 200 0.195 0.591 0.638
+> BGE cross-encoder 200 0.255 0.634 0.645
+> DeepSeek-Chat pair judge 200 0.553 0.640 0.813
+> Note. All three instruments score the same adjudicated pairs. Higher ρand strict-repetition AUC support a ranking interpretation, not label interchangeability.
+
+“new” to 167/200 pairs where the adjudicated hu-man set contains no label-0 items, producing exact four-class agreement 0.045 and binary κ = 0 .251 .Its repeated rate is 0.16 versus 0.55 for humans, and its strict rate is 0.015 versus 0.195 . The LLM judge is therefore a substantially more conservative complementary instrument. The direct labeled subset is stratified and does not show a clear Chinese–English human-label gap. The global-tail analysis instead asks where English and Chinese items fall in the full BGE-M3 similarity distribution and then combines those population rates with the pooled human calibration curve. This analysis shows that Chinese items are substantially overrepresented in the high-similarity tail, and that the tail is enriched for strict substan-tive repetition. 
+
+Qualitative calibration example. One audited pair from a subscription-model debate illustrates the type of high-overlap content captured by the metric. The example comes from motion M015 in the manual repetition audit. The prior claim is from turn 1 by Claude Opus 4.7 as Pro First Speaker, and the current claim is from turn 7 by DeepSeek-V3.2 as Pro Second Speaker.   
+
+> Prior: 订阅制削弱了消费者的 财产权和选择权
+> Later: 订阅制的本质是从所有权 转向持续租赁，这一转变使 消费者对已付费内容的 控制权彻底丧失
+
+The pair has BGE-M3 similarity 0.778 and was la-beled substantive repetition by both annotators: the surface wording differs, but both claims make the same ownership-loss argument about subscription models. 
+
+Additional non-Chinese high-similarity exam-ples. High prior-argument similarity is not a Chinese-specific phenomenon; it is a property of the metric that appears in every language. Table 30 gives one pair with similarity above 0.90 for each of the five non-Chinese languages, glossed into En-glish for compact comparison. 
+
+F.9 Verbatim Multilingual High-Similarity Pairs 
+
+For each language we reproduce the source-language strings of the pair glossed in Table 30, to-gether with the turn positions and speaking agents. Similarity is BGE-M3 cosine between the two 
+
+claim fields. 
+
+English (M037, turn 4 GPT-5.5 → turn 6DeepSeek-V3.2, 0.997 ).   
+
+> Prior: The quality of art can be assessed objec-tively
+> Later: The quality of art can be evaluated objec-tively
+
+Spanish (M019, turn 6 Claude Opus 4.7 →
+
+turn 8 Mistral Large 3, 0.911 ).   
+
+> Prior: La especialización es efectiva sin necesi-dad de integración
+> Later: La especialización no necesita integración forzada para funcionar
+
+French (M003, turn 3 → turn 7, both GPT-5.5, 
+
+0.952 ).   
+
+> Prior: l’implication américaine a bénéficié au Panama
+> Later: l’implication des États-Unis au Panama a bénéficié au Panama
+
+Table 28: Population-weighted manual repetition rates.                      
+
+> Collapse English weighted Chinese weighted ZH–EN (95% CI) Repeated binary ( {2,3})0.557 [0 .463 ,0.647] 0.551 [0 .456 ,0.646] −0.006 [ −0.139 ,+0 .124]
+> Strict repeated ( 3)0.211 [0 .133 ,0.292] 0.174 [0 .113 ,0.243] −0.036 [ −0.138 ,+0 .068]
+> Note. Rates are from the stratified EN/ZH audit. Direct labeled rates do not show a clear ZH–EN gap.
+
+Table 29: Global-tail calibration for BGE-M3 prior-argument similarity.                                     
+
+> Analysis English Chinese ZH–EN (95% CI) Top quintile rate 0.112 [0 .093 ,0.130] 0.288 [0 .262 ,0.315] +0 .176 [+0 .148 ,+0 .204]
+> Top decile rate 0.063 [0 .050 ,0.078] 0.137 [0 .117 ,0.157] +0 .074 [+0 .051 ,+0 .096]
+> Calibrated repeated binary 0.544 [0 .473 ,0.616] 0.580 [0 .510 ,0.647] +0 .036 [ −0.004 ,+0 .075]
+> Calibrated strict repeated 0.184 [0 .132 ,0.237] 0.237 [0 .171 ,0.298] +0 .053 [+0 .015 ,+0 .089]
+> Note. Global thresholds are computed on the pooled English–Chinese baseline population.
+
+Russian (M009, turn 2 GPT-5.5 → turn 4 Mistral Large 3, 0.901 ).   
+
+> Prior: Быстрый рост создаёт рабочие места, налоговую базу и ресурсы для социальных программ
+> Later: Быстрый рост создаёт рабочие места
+
+Arabic (M035, turn 7 Claude Opus 4.7 → turn 8 DeepSeek-V3.2, 0.953 ).   
+
+> ﺍܳټگ۰ ﺍᄴᄟﻭܳ٭۰ ﻭ ﺍࠍଫଊ᛻੅ﺓ ﺍܳگ؇َި෠ຬ ৖৑ ۰ਃ಻ص ﺃﻥ ّܝިَ؇ ݿྟٴሒᇭً ؇ Prior:
+> ﺇڢݱ؇ﺀ ﺍܳڰگݠﺍﺀ ﺍࠍଫଊ᛻੅ﺓ ﺍܳگ؇َި۰ਃ಻ ﻭﺍܳټگ۰ ﺍᄴᄟﻭܳ٭۰ ܳ྘ފب ﺫﺭﺍف ৕৑ؕڢݱ؇ﺀ Later:
+> ﺍܳڰگݠﺍﺀ
+
+In the Arabic pair the prior claim is made by a Pro speaker and the later claim by a Con speaker, so the two sides converge on nearly the same assertion in different wording. This illustrates why we treat the score as a diagnostic of semantic return rather than of within-side redundancy. 
+
+High similarity without redundant restatement. 
+
+The converse also holds: a high-similarity pair need not be redundant. Table 31 shows audited pairs that both annotators scored as highly similar and that nevertheless function as rebuttal or exten-sion rather than restatement. The functional composition of the BGE-M3 top decile makes the same point at scale: 35.0% of sampled pairs are rebuttal/response, 36.5% are re-finement/extension, and 28.5% are redundant re-statement. Semantic return is therefore a process signal whose local argumentative function requires a second instrument or human reading. 
+
+F.10 Functional Decomposition of High-Similarity Pairs 
+
+Finally, we conduct an exploratory functional decomposition of 200 English–Chinese current– nearest-prior pairs sampled from the pooled BGE-M3 top decile. DeepSeek-Chat assigns each pair one primary function label using a fixed prompt and category set; 20 items were manually spot-checked. Table 32 shows that the top-decile tail is functionally mixed: redundant restatement ap-pears in a non-trivial share of pairs, but most sam-pled pairs are labeled as rebuttal/response or refine-ment/extension. We therefore do not interpret high prior-argument similarity as an item-level quality or redundancy label. 
+
+G Process Similarity and Judged Debate Quality 
+
+This appendix reports the outcome-quality evalua-tion introduced in Section 3.5 and summarized in Section 4.5. It asks whether prior-argument simi-larity carries information about the debate a reader receives, and whether reducing it improves that de-bate equally across languages. 
+
+G.1 Judge Protocol and Reliability 
+
+Gemini-3.5-Flash at temperature 0 independently scores all 284 English and Chinese sessions from the baseline and diversity-aware conditions. The judge is not one of the four debate agents. Each call contains only the motion and eight role-labeled turns. Build-time checks exclude agent iden-tities, prompt-condition labels, prior-argument-similarity values, and any reference to parallel language versions. The judge returns integer scores from 1 to 10 for argumentative develop-ment, engagement, final argument quality, and overall quality. Twenty randomly selected sessions are rescored; Pearson test–retest reliability ranges from 0.84 to 1.00 , and exact agreement ranges from 85% to 100% across dimensions. Table 30: Representative high-similarity pairs in all five non-Chinese languages, with English glosses. Verbatim source-language strings are in Appendix F.9. 
+
+Language Motion Similarity Prior claim Current claim English M037 0.997 art can be assessed objectively art can be evaluated objectively Spanish M019 0.911 specialization is effective without integra-tion specialization does not need forced inte-gration Russian M009 0.901 rapid growth creates jobs, a tax base, and resources for social programs rapid growth creates jobs Arabic M035 0.953 international trust and legal expertise must not be a reason to exclude the poor legal expertise and international trust are not pretexts for excluding the poor French M003 0.952 American involvement benefited Panama U.S. involvement in Panama benefited Panama 
+
+Note. Similarity is BGE-M3 cosine between each argument’s claim and its nearest earlier claim in the same session. English glosses are shown here for compact comparison. These pairs illustrate substantive semantic return rather than language-specific token overlap. Arabic and French additionally contain string-identical pairs at similarity 1.000 (Arabic M061, French M062 and M069), so exact restatement is not confined to any one language. 
+
+Table 31: Human-audited examples showing why cosine similarity is not an item-level redundancy label. 
+
+Example Similarity Human labels Function Explanation ZH M006 0.759 2/2 Rebuttal Reuses the frame of specialized funds and limited-partner risk but reverses its valence. EN M071 0.705 2/2 Rebuttal Reuses the prior flexibility frame in order to challenge it. ZH M026 0.695 2/2 Extension Retains the unified-market theme while adding a distinct mecha-nism. 
+
+Table 32: Functional labels for sampled BGE-M3 top-decile pairs. 
+
+Function label EN ZH Total Redundant restatement 40.0% 17.0% 28.5% Rebuttal or response 28.0% 42.0% 35.0% Refinement or extension 32.0% 41.0% 36.5% Quotation or reference 0.0% 0.0% 0.0% Unclear or other 0.0% 0.0% 0.0% 
+
+Note. Labels are assigned to 200 English–Chinese current/prior pairs sampled from the pooled BGE-M3 top decile, balanced by language. Labels use DeepSeek-Chat at temperature 0 with a fixed category set and a 20-item manual spot check. 
+
+Read the motion and the complete eight-turn debate. Score each dimension from 1 to 10. - argumentative_development: whether later turns add, refine, or productively contest reasons - engagement: whether speakers address the opposing side and the debate 's unresolved points - final_argument_quality: strength and completeness of the arguments available by the end - overall_quality: holistic quality of the debate as a deliberative exchange Return JSON only: {”argumentative_development”: 1-10, ”engagement”: 1-10, ”final_argument_quality”: 1-10, ”overall_quality”: 1-10, ”brief_rationale”: ”...”} 
+
+The displayed schema normalizes the English and Chinese wrapper text while preserving the scored dimensions and blinding constraints. 
+
+G.2 Association Between Process and Outcomes 
+
+We first ask whether the process score moves with judged quality at all. All eight baseline language– dimension Spearman correlations are negative. The strongest cell is English argumentative devel-opment, ρ = −0.29 with a 95% motion-cluster bootstrap CI of [−0.47 , −0.08] . The judge uses only three to six distinct integer values in some language–dimension cells, so tied ranks attenuate the observed associations. Table 33 reports the cor-responding regression estimates. The motion-fixed-effects regressions use all 284 sessions and motion-clustered standard errors. The estimates show convergent validity but not deter-minism: sessions with similar process scores can receive different outcome scores, and the process metric should not replace direct quality evaluation. 
+
+G.3 Intervention Payoff by Language 
+
+A negative association does not by itself imply that lowering the score improves the debate. We there-fore compare what the diversity prompt buys in each language, on the process score and on the judged outcomes jointly (Table 34). The process-score reduction is statistically indis-tinguishable across languages, and development improves in both. Engagement and final-quality gains are significant only in English, and the cross-language differences in those gains are themselves Table 33: Selected process–outcome associations.                                     
+
+> Analysis Estimate Uncertainty EN baseline Spearman: development −0.29 [−0.47 ,−0.08]
+> Motion-FE: development per +0 .01 similarity −0.16 p < 0.01
+> Motion-FE: final quality per +0 .01 similarity −0.10 p < 0.01
+> Table 34: Diversity-minus-baseline changes in the process score and judged outcomes. Asterisks mark paired 95% CIs excluding zero.
+> Measure English Chinese Difference-in-differences (EN −ZH) Process score, BGE-M3 −0.023 ∗−0.020 ∗−0.003 [ −0.012 ,+0 .005]
+> Argumentative development +0 .90 ∗+0 .96 ∗−0.06 [ −0.27 ,+0 .17]
+> Engagement +0 .70 ∗+0 .10 +0 .61 [+0 .37 ,+0 .86]
+> Final argument quality +0 .76 ∗+0 .27 +0 .49 [+0 .13 ,+0 .87]
+
+significant. English diversity sessions are near the development ceiling (mean 9.03 , SD 0.17 ), while diversity transcripts lengthen more in Chi-nese ( 1.30 ×) than English ( 1.24 ×); neither pattern explains an artificial English advantage through ad-ditional score range or text length. Baseline Chi-nese engagement is 0.25 points lower than English ([−0.48 , −0.07] ), but a single bilingual judge may have language-specific scale tendencies, so we do not treat these scores as a direct ranking of lan-guage quality. 
+
+G.4 Preliminary Early-Stopping Probe 
+
+For 20 motions, the same judge scores 4-, 6-, and 8-turn prefixes. Mean final-quality scores are al-ready approximately 8.2/10 at turn 4, but the 4-to-8-turn gains are indistinguishable from zero at this judge’s ceiling-limited resolution, and early prior-argument similarity does not reliably predict the later gain. The confidence intervals are wide. These results are compatible with diminishing re-turns but do not validate an early-stopping rule; a stopping policy would require more motions, mul-tiple judges, task-specific utility and error costs, and prospective evaluation. 
+
+H Responsible Research and Reproducibility Details 
+
+H.1 Risks, Scope, and Intended Use 
+
+This work studies generated debate transcripts as research artifacts; it does not deploy a debate sys-tem, make claims about human debaters, or rank human languages or cultures. A potential risk is that prior-argument similarity could be over-interpreted as an item-level quality score, a direct repetition label, or evidence of a property of human Chinese or English argumentation. We mitigate this risk by defining the metric as an aggregate di-agnostic, reporting manual calibration limits, and framing the Chinese–English result as a model– language process effect under the tested pipeline. The debate motions include political, social, and ethical topics. Generated turns may there-fore contain persuasive, unsupported, or cultur-ally sensitive claims even though the prompts pro-hibit fabricated statistics and the analysis treats out-puts only as model-generated text. The intended use of the released methods and derived statis-tics is research on multilingual LLM evaluation and debate-process diagnostics. They should not be used as a standalone moderation tool, debate judge, language ranking, or user-facing delibera-tion system without additional human evaluation and deployment-specific risk review. 
+
+H.2 Artifacts, Licenses, and Data Content 
+
+The study uses existing artifacts and creates de-rived research artifacts. Existing artifacts include the WUDC motion archive (UTDS Resources, 2016), provider-hosted debate agents (OpenAI, 2026; Anthropic, 2026; DeepSeek, 2025; Mistral AI, 2025), the Llama-4-Scout-17B-16E-Instruct extractor (Meta, 2025), multilingual embedding models (Chen et al., 2024; Wang et al., 2024; Feng et al., 2022), the BGE reranker used for tail rescoring (Beijing Academy of Artificial Intelli-gence, 2026), and vLLM for local extractor serv-ing (Kwon et al., 2023). The created artifacts are generated debate transcripts, translated motions, argument-unit extractions, similarity scores, diag-nostic tables, and analysis scripts. We use the above artifacts for research evalu-ation under their respective access terms and li-censes. The provider-hosted models are accessed through APIs rather than redistributed. The locally used Llama extractor is used under the Llama 4 Community License; BGE-M3 and multilingual-E5-large are distributed under MIT-style model licenses on Hugging Face; LaBSE and BGE-reranker-v2-m3 are distributed under Apache-2.0 licenses on Hugging Face. Any public release of derived transcripts, code, or processed tables should retain artifact citations, avoid redistributing model weights, and include the accompanying doc-umentation of languages, prompts, model identi-fiers, and intended research-only use. The source motions are public debate motions and do not contain private participant data. The generated transcripts are synthetic model outputs. We do not intentionally collect personally identify-ing information, and no user conversations or pri-vate documents are used. Because some motions concern sensitive public issues, generated outputs may mention public groups, countries, or institu-tions and may contain controversial claims; these outputs are retained only as research data for aggre-gate analysis.
