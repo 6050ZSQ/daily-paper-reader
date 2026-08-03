@@ -1,0 +1,854 @@
+Title: An empirical investigation into the properties of standard word embeddings
+
+URL Source: https://arxiv.org/pdf/2607.23675v1
+
+Published Time: Tue, 28 Jul 2026 01:27:24 GMT
+
+Number of Pages: 36
+
+Markdown Content:
+# An empirical investigation into the properties of standard word embeddings 
+
+Salomon Kabongo Kabenamualu (salomon@aims.ac.za) African Institute for Mathematical Sciences (AIMS) 
+
+Supervised by: Professor Etienne Barnard North-West University 23 May 2019 
+
+> Submitted in partial fulfillment of a structured masters degree at AIMS South Africa arXiv:2607.23675v1 [cs.CL] 26 Jul 2026
+
+# Abstract 
+
+The embedding of word sequences into continuous vector spaces has been one of the most important developments in Natural Language Processing in the recent past. Such embeddings have found appli-cation in areas such as Automatic Speech Recognition, Machine Translation, Sentiment Analysis and many more. This essay reviews the various mechanisms that have been proposed for the calculation of word embeddings, investigates popular toolkits and embedding matrices that are available in the public domain, and experiments with one or more selected implementations to better understand their characteristics. La representation vectoriel continue de mots a été l’un des développements les plus importants dans le domaine du traitement automatique du langage naturel au cours des dernières années. Ces repre-sentations ont trouvé application dans des domaines tels que la reconnaissance vocale, la traduction automatique, l’analyse des sentiments, etc. Ce travail passe en revue les différents mécanismes proposés pour le calcul des ces vecteurs de mots, étudie les kits d’outils populaires et les matrices disponibles publiquement en ligne, et expérimente avec une ou plusieurs implémentations sélectionnées pour mieux comprendre leurs caractéristiques. 
+
+Keywords : NLP, Embeddings, Neural Networks, Machine Learning .
+
+# Declaration 
+
+I, the undersigned, hereby declare that the work contained in this research project is my original work, and that any work done by others or by myself previously has been acknowledged and referenced accordingly. 
+
+Salomon KABONGO KABENAMUALU, 23 May 2019 iContents 
+
+Abstract i1 Introduction 12 Overview of NLP and its Applications 2
+
+2.1 Natural Language Processing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22.2 Artificial Neural Networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 42.3 Deep Neural Networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 82.4 NLP Application . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13 
+
+3 Neural Network Embeddings 15 
+
+3.1 Feature Representation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15 3.2 Embeddings . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16 3.3 Bag of Words . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19 3.4 Word2Vec . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20 3.5 GloVe . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23 3.6 fastText . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23 3.7 Our Model Architecture . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23 
+
+4 Results and Discussion 26 
+
+4.1 Data preprocessing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26 4.2 Experimentation and Results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27 4.3 Discussion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28 
+
+5 Conclusion and Further Work 30 
+
+5.1 Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30 5.2 Further Work . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30 
+
+References 33 
+
+ii 1. Introduction 
+
+Human being are equipped with amazing features to understand, analyze and interpret events—natural intelligence or ability. However, under some circumstances, natural ability can be limited. It is possible to construct artificial machines with tremendous processing resources. Mimicking such features with artificial intelligence is a great achievement human race can ever realize. This essay reviews machine learning, a subfield of artificial intelligence, in this regards. Machine learning covers different tasks for various applications. Here we are interested in Natural Language Processing. Humans learn how to read and write from an early age in a seemingly effortless manner. However making a computer to do the same is not obvious. The real challenge in artificial intelligence has proved to be solving tasks that are easy for people to perform but hard for people to describe formally, problems that we solve intuitively, that feel automatic, like recognizing spoken words or faces in an images Goodfellow (2016). In this project we will address one of those intuitive problems. How can a computer deal with text, and use it effectively ? .Early approaches in natural language processing (NLP) were based on human-curated rules, but this lead to several problems, as the number of rules required to effectively capture semantic and syntactic meaning on text quickly exploded. As a solution to the challenge caused by the rule-based approach, the statistical revolution (early 1990s) marked the moved from rule-based approach to statistical NLP approach—machine learning (Johnson, 2009). Over the last 20 years, this approach has proven very successful. Talking of statistics, means the use of numbers, this fact make it easy and natural as the mathematics involved in the construction of a neural networks (as we will see later in this essay) requires multiplication of the input with the weight added to the bias, but in NLP most input data is textual. So the question that arises is how to numerically represent non numerical value while capturing insight between words ? 
+
+This work will experiment several word representation, and give overviews of various mechanics that have been proposed for their calculations as well as experimentation on a sentiment analysis task. Several works Goldberg (2016), Bengio et al. (2003) suggest the use of more advance deep learning architecture(1D-CNN, RNN) to model sequential data, but we will demonstrate how the use of pre-trained word embeddings in combination with the weighted continuous bag of words can produce state-of-the-art or nearly state-of-the-art results. Throughout this report the word feature is used to refer to a linguistic input (word, part-of-speech, . . . )to our Neural Network. Bold upper case letters, will be used to represent matrices ( X, Y), and lower-case letters for vectors representation ( b), unless otherwise stated, vectors are assumed to be row vectors. We will use bold upper case letters with superscripts indices to refer to different layer Matrix in a network ( W1, W2). This project is organized as follows. In Chapter 2 we give an overview of Natural Language Processing and discuss some of its applications. Chapter 3 discusses the neural network embeddings, and present word embeddings matrix available in the public domain and their calculation. Chapter 4 gives experi-mental results on a sentiment analysis task and finally Chapter 5 concludes our empirical investigation and provides some possible directions for future research. 12. Overview of NLP and its Applications 
+
+This chapter will introduce Natural Language Processing (NLP), then Neural Network (NN) as a way to solve NLP and will end by discussing some of it applications. 
+
+# 2.1 Natural Language Processing 
+
+Natural Language Processing (NLP) is an ensemble of techniques to process and analyse natural languages—human languages—by means of computers. Current applications of natural language pro-cessing are include sentiment analysis, smart reply, machine translation, bots and expert assistant. In this section we will give an overview of natural language processing, and it link to machine learning. We cannot talk of NLP without mentioning artificial intelligence which is the big field where NLP can be seen as Sub field. Artificial Intelligence (AI) is a field in computer science that aims to make computers able to make appropriate decision where required without human implicit interaction. Natural Language processing is to Artificial Intelligence what languages (spoken and written) are to human. It is the chief master behind technology like Siri, Google Assistant, . . . .Natural Language processing is considered to be a difficult problem in computer science, this is due to the ambiguity and imprecise characteristics of the human languages. The early roots of the field date back to the well known intellectually fertile period just after the second world war (1940 ′s − 1950 ′s), since then most NLP system were based on a set of complex hand written rules. However in the 1980 s NLP was revolutionized by the introduction of machine learning algorithm ,and it was only in 2010 that deep Neural Network became widespread in natural language processing. IBM Research has been recognized by many as being responsible for several early successes in this field. Machine learning can be define as a sub-field of AI that aims to make computers learn from the data. The introduction of deep neural network in NLP caused a big shift in the growth for the field and is the reason of the current trend and amazing application of the output like speech recognition, automatic email reply, bot-expert-agent and much more. See Figure 2.1 for the relation between AI , ML and 
+
+Deep Learning . The next subsection, will introduce four major machine learning tasks. 
+
+2.1.1 Supervised Learning. Supervised learning is a machine learning task that consists of giving to a model several examples—feature(input) and label(output)—in a way that the model can generalize to unseen data. Lets {(x1, y 1) , . . . , (xn, y n)} be a set of n examples—training data. Supervised learning consist of feeding a model f , by feeding we mean roughly giving f examples of input (xi) and output (yi) such that :
+
+f (xi) ≊ yi for i ∈ { 1, 2, · · · , n }
+
+Let call ff id the function f after been fed. The objective is to make ff id able to predict the value of yj for j ∈ { a, b, · · · , m } given unseen data—testing data. Let {xa, x b, · · · , x m} be unseen data, we would like to know the unknown label {ya, y b, · · · , y m}.2Section 2.1. Natural Language Processing Page 3 
+
+Figure 2.1: Artificial Intelligence, Machine Learning and Deep Learning To be able to measure how well our model performs, as a rule of thumb, the training data is split in two parts 
+
+• Training data : usually 80% of the general training data 
+
+• Validation data : the remaining percentage, that will be viewed as unseen data. The motivation behind spitting the general training data in two part is to be able to have known 
+
+label (output ) that can be used to evaluate how well ff eed (xi) differ from yi for i ∈ Evaluation data. There exists several machine learning algorithms available for supervised learning approach including neural networks, which one to use is often an empirical question as this depend on the data at hand. 
+
+2.1.2 Unsupervised Learning. Unsupervised Learning is a machine learning task also known as self-organization that consist of making use of unlabeled data. Contrary to the supervised approach, this approach have a set of inputs without output and we build a model to learn internal representation of those inputs in order to make predictions. Unsupervised task is known to be more difficult—less accurate—than the supervised one but its attrac-tiveness is due to the fact that most available data is unlabeled. Some of the most used unsupervised learning include Clustering, Anomaly detection and Neural Net-works. 
+
+2.1.3 Semi-supervise Learning. Semi-supervised learning is a class of machine learning task that makes use of unlabeled data for training jointly with small amounts of labeled data. It falls between the two previous machine learning tasks ( supervised learning and unsupervised learning ). As a rule of thumb it has been found by machine learning researches that adding small amount of labeled data to unsupervised learning improves considerably its accuracy. Natural Language researchers have been mostly interested on unsupervised and semi-supervised learning as most available textual data are usually unlabeled. 
+
+2.1.4 Reinforcement Learning. Reinforcement Learning can be seen as a special case of supervised learning. This task aims to train an agent to learn to perform actions in an environment so as to maximize some notion of cumulative reward over penalties. Section 2.2. Artificial Neural Networks Page 4 
+
+# 2.2 Artificial Neural Networks 
+
+Artificial Neural Networks(ANN) or simply Neural Network(NN) are a set of models that are used in machine learning to process information and learn pattern the way a biological brain does. Artificial refers to the main field Artificial Intelligence, which work on making computers intelligent. contrary to explicitly coding action, the subfield of A.I called machine learning consists of giving data to a model and allow it to learn from it and act as expected. For example a machine learning model can learn how to detect a face in a picture by giving it several examples of facial images. The current progress of A.I is due to the contribution of ideas from several disciplines. Artificial Neural Network as a part of Artificial Intelligence comes to life by jointly contribution of two fields Biology and Mathematics. It has always been the dreams of A.I researchers to build a system that can learn and act independently of human interaction, to achieve this goal scientist started studying the brain, we are still far from the target but the idea of Artificial Neural Network can be considered as one of the results of those investigation. 
+
+Figure 2.2: Neuron and myelinated axon, with signal flow from inputs at dendrites to outputs at axon terminals ( Sources: Wikipedia, Neural Network )Briefly speaking neural networks are the organization of neurons (similar to the neurons in the brain) with connections to other neurons. These neurons pass a message or signal to other neurons based on the received input and form a complex network that learns with some feedback mechanism (Goldberg, 2016). So one may ask, how are the neurons connected? What kind of message do they pass to each other? What do we mean by feedback mechanism? Next few lines will give a more detail to answer those questions, but before lets introduce the simplest Neural Network. 
+
+2.2.1 Perceptron. The simplest Neural Network is the perceptron , which can be written mathematically as : 
+
+P erceptron (x) = xW + b, (2.2.1) where W : Weight matrix , b : bias term , x ∈ Rdin , W ∈ Rdout ×din , b ∈ Rdout .As you may have noticed Equation 2.2.1 is exactly like the linear regression equation, consequently this equation can only approximate linear function—a class of those model are known as linear models .Section 2.2. Artificial Neural Networks Page 5 
+
+Figure 2.3: Fully Connected Neural Network In real life we usually deal with complex problems that are mostly non linear. We will next introduce a more advance model that can deal with such complex problems. 
+
+2.2.2 Feed-forward Neural Network. First introduced by Frank Rosenblatt in his paper “The per-ceptron: a probabilistic model for information storage and organization in the brain”(Rosenblatt, 1958) 
+
+feed-forward neural network , also called multilayer perceptron (MLP) is a mathematical function f map-ping some set of input values x to output values y and learns the value of the parameters θ that result in the best function approximation. 
+
+y = f (x, θ ) (2.2.2) The network in Figure 2.3, is an example of a feed-forward Neural Network and the message and the connections between neuron can be written mathematically as follows : 
+
+M LP (x) = g
+
+> (
+
+g(xW 1 + b1)Wout + bout )
+
+were : x ∈ Rdin , W1 ∈ Rd1×din , b1 ∈ Rd1 Wout ∈ Rdout ×d1 , bout ∈ Rdout 
+
+The main difference with the previous model is the introduction of a function known as activation function (also called link/decision/transfer function ).The reason of having such a function g is to allow the neural network to learn non-linearity. We next introduce and present some common activation functions. 
+
+2.2.3 Sigmoid. (see Figure 2.4a) The sigmoid activation function (also called logistic function) is define as 
+
+σ(x) = 1 /(1 + e−x),
+
+The sigmoid activation function is an s-shaped function, transforming each x(input) value into the range 
+
+[0 , 1] .This activation function has a good propriety of being smooth and differentiable σ′(x) = σ(x)(1 −σ(x)) ,which are very useful for the feedback mechanism that we will explain later in this work Section 2.2. Artificial Neural Networks Page 6 − −     
+
+> x
+> 
+> 
+> 
+> 
+> 
+> 
+> sigmoid x
+>        
+
+(a) Activation function : Sigmoid (σ)− −        
+
+> x
+> −
+> − 
+> −
+> −
+> 
+> 
+> 
+>  
+> 
+> tanh x
+>        tanh
+
+(b) Activation function : tanh − −     
+
+> x
+> 
+> 
+> 
+> 
+> 
+> 
+> ReLU x
+>         ReLU
+
+(c) Activation function : ReLU − −      
+
+> x
+> 
+> 
+> 
+> 
+> 
+> 
+> LeakyReLU x
+>         Leaky ReLU
+
+(d) Activation function : Leaky ReLU 
+
+Figure 2.4: Common Activation functions, the choice of which one depend on the task at hand (range of outputs) 
+
+2.2.4 Hyperbolic tangent (tanh). (see Figure 2.4b) The hyperbolic tangent activation function defined as 
+
+tanh (x) = e2x − 1
+
+e2x + 1 ,
+
+is an s-shaped function, transforming the values x into the range [−1, 1] . NLP tasks mostly rely on the tanh activation function. 
+
+2.2.5 ReLU. (see Figure 2.4c) The Rectifier activation function Glorot et al. (2011) is a more recently popularized activation function, also known as the rectified linear unit or ramp function, is a very simple activation function that is easy to work with and was shown many times to produce excellent results. It has been proved the default recommendation for modern Neural Network calculations Glorot and Bengio (2010). In addition ReLu is a special activation function, as it can be seen as two joined linear functions, this makes it inherit some of the useful propriety of linear models that make it generalize well. The ReLU unit clips each value x < 0 at 0.
+
+ReLU (x) = max (0 , x ) = 
+
+{
+
+0 x < 0
+
+x otherwise As a rule of thumb, ReLU units work better than tanh , and tanh works better than sigmoid .Section 2.2. Artificial Neural Networks Page 7 
+
+Figure 2.5: Comparison of number of neurons (billions). Elephant, Marmoset, Rhesus monkey, Gorilla, Chimpanzee and Human. Sources: Suzana Herculano-Houzel 
+
+2.2.6 Leaky ReLU. (see Figure 2.4d) The horizontal line with 0 in ReLU as the output which is a constant with a derivative of 0 and therefore may become a bottleneck during training, as the weights will not easily get updated. To solve the problem, there was a new activation function proposed: Leaky ReLU, where the negative value outputs a slightly slanting line instead of a horizontal line, which helps in updating the weights through back-propagation effectively. Leaky ReLU is defined as 
+
+LeakyReLU =
+
+> {
+
+x if : x > 0
+
+αx if : x < 0
+
+- with α a parameter that is defined as a small constant, say 0.005 The network in Figure 2.3 has only one hidden layer with only three nodes, those nodes are called artificial neurons in comparison to neurons in a biological brain. This kind of simple neural network are limited as to the generalization power. In Figure 2.5 we can see how huge the size of neuron connection in biological creatures can be, in parallel modern Neural Network require much bigger (number of layers) and more deeper (number of neurons) Neural Network. Now one may ask, how big ? how deep ? this is basically an empirical question as there is no theory providing an answer to these question but at the theoretical point, the Universal Approximation Theorem ( UAT ) states that a Feed-forward Networks with a single hidden layer containing a finite number of neurons can approximate continuous functions on compact subsets of Rn, under mild assumptions on the activation function. Flat structures with only a small number of layers, may not be able to compute complex problems without using a very large and difficult to handle number of hidden nodes which lead to a whole field call Deep Learning Goodfellow (2016). As discussed in the previous section shallow neural networks have limited generalization power. In the next section we will talk about Deep Neural Networks and discuss finally the mechanism of training a neural network cited at the introduction of this chapter. Section 2.3. Deep Neural Networks Page 8 
+
+Figure 2.6: Deep Neural Network with four hidden layers, note that we have not included the bias neurons 
+
+# 2.3 Deep Neural Networks 
+
+Even tough it was only in 1986 that the term Deep learning was introduced to the machine learning community by Rina Dechter, it only came to artificial neural network in 2000 by Igor Aizenberg. A Deep Neural Network is simply an artificial neural network with several hidden layers. See Figure 2.6. In this section we will give details on training a deep neural network. Before reaching there, we will give a specific example. Figure 2.6 represents an example of a deep neural network with 5 hidden layers. Note that gi denotes the activation function used in layer i, this includes the identity activation function. The input data has the form x ∈ R4, parameters—weights and biases—in layer 2—layer 1 in the input layer— is represented by a weight matrix W2 ∈ R5×4 and a vector b2 ∈ R5, respectively. The output of this layer has the form 
+
+g2 (
+
+W2x + b2)
+
+∈ R5 (2.3.1) Layer three has 5 neurons as well, each receiving input from the output of 2.3.1. The weight matrix in layer 3 is W3 ∈ R5×5 and the bias is b3 ∈ R5, respectively. We obtain the following output that is transferred to layer four 
+
+g3 (
+
+W3g2 (
+
+W2x + b2)
+
++ b3)
+
+∈ R5 (2.3.2) Layer four has 5 neurons as well, each receiving input from the output of 2.3.2. The weight matrix in layer four is W4 ∈ R5×5 and the bias is b4 ∈ R5, respectively. We obtain the following output that is transferred to layer five 
+
+g4 (
+
+W4g3 (
+
+W3g2 (
+
+W2x + b2)
+
++ b3)
+
++ b4)
+
+∈ R5 (2.3.3) Layer five has 3 neurons, each receiving input from the output of 2.3.3. The weight matrix in layer five is W5 ∈ R3×5 and the bias is b5 ∈ R3, respectively. We obtain the following output that is transferred to layer six 
+
+g5 (
+
+W5g4 (
+
+W4g3 (
+
+W3g2 (
+
+W2x + b2)
+
++ b3)
+
++ b4)
+
++ b5)
+
+∈ R3 (2.3.4) Section 2.3. Deep Neural Networks Page 9 The sixth Layer has 2 neurons, each receiving input from the output of 2.3.4. The weight matrix in layer six is W6 ∈ R2×3 and the bias is b6 ∈ R2, respectively. We obtain the following output that is transferred to layer seven ( output )
+
+g6 (
+
+W6g5 (
+
+W5g4 (
+
+W4g3 (
+
+W3g2 (
+
+W2x + b2)
+
++ b3)
+
++ b4)
+
++ b5)
+
++ b6)
+
+∈ R2 (2.3.5) The Seventh Layer has 1 neurons, which is our last layer—output layer, note that the number of neurons on the output layer determine which kind of problem we are dealing with regression or classification .The weight matrix in layer seven is W7 ∈ R1×2 and the bias is b7 ∈ R1, respectively. We obtain the following output, which is the total output of our model M (x) (output )
+
+M (x) = g7 (
+
+W7g6 (
+
+W6g5 (
+
+W5g4 (
+
+W4g3 (
+
+W3g2 (
+
+W2x + b2)
+
++ b3)
+
++ b4)
+
++ b5)
+
++ b6)
+
++ b7)
+
+∈ R
+
+(2.3.6) View globally the network in Figure 2.6 is equivalent to the Equation 2.3.6, which is defined as M :
+
+R4 → R in terms of its 114 parameters—total number of weight and bias vectors. To generalize the concept let suppose the network has L layers, with layer 1 being the input layer and the layer L being the last layer—output layer. Let ni be the number of neurons in layer i. So n1 and 
+
+nL is the dimension of the input data and the output dimension, respectively. The matrix of weights at layer l will be Wl ∈ Rnl×nl−1 , the weight of neuron i at layer l that multiply the output from layer j from layer l − 1 will be written as wlij and the bias vectors as bl ∈ Rnl .The complete fending of our general model, from the input of dimension Rn1 to the output ˆyL ∈ RnL
+
+can be written as 
+
+ˆy1 = x ∈ Rn1 (2.3.7) 
+
+ˆyl = g
+
+> (
+
+Wl ˆyl−1 + bl)
+
+∈ Rnl , f or l = 2 , 3, 4, · · · , L. (2.3.8) With g been the any activation function, include the identity activation function. Suppose x of shape (N, n 1) be our input and y of shape (N, n L) our target outputs, with N the number of examples in our data. Training our model over such input x, can be viewed as an optimization problem. The quadratic cost function that we would like to minimize has the form 
+
+Cost = 1
+
+N
+
+> N∑
+> i=1
+
+12 || yi − ˆyL(xi)|| 22, (2.3.9) 
+
+2.3.1 Training a Neural Network. Training a NN, consist of adjusting parameters, in order to reduce the Cost function 2.3.9. The aims when training a neural network, is to increase his representation power—the ability to predict unseen data. Roughly speaking, all training methods work by repeatedly computing an estimate of the error over the dataset, computing the gradient with respect to the error, and then moving the parameters in the direction of the gradient Goldberg (2016). Sometimes training a neural network can be time consuming, specially if it is a deep neural network. The so called big bang of deep learning —the introduction of GPU— has revolutionized the training of a deep neural network as algorithms that needed weeks to be trained could now be done only in few hours. Section 2.3. Deep Neural Networks Page 10 
+
+Figure 2.7: Gradient Descent Mechanics (Google) The notion of error is at the center of the training of the neural network. You mostly encounter the term Evaluation function and Loss function when dealing with training neural networks. 
+
+2.3.2 Loss function vs Evaluation function. The loss function is applied to the output of the network during training to computer error between the predict value for a particular example and the true value(target). This error function is used in training. An example of it is the squared error for a regression problem or cross-entropy for classification. The square error is defined as : 
+
+SE = ( y, f (x, θ )) = ( y − ˆy)2, (2.3.10) where y : the true output also called and ˆy = f (x, θ ) the predicted value of y by our NN f with parameters θ
+
+The evaluation function on the other hand is applied to the entire network, it is the really error we want to improve, an example of could be accuracy for a classification problem. The cross-entropy loss used in classification problem is defined by : 
+
+CE = ( y, f (x, θ ) = ˆ y) = ((1 − y) log(1 − ˆy) + y log(ˆ y)) (2.3.11) with y : the true output also called target and ˆy = f (x, θ ) the predicted value of y by our NN f with parameters θ.There are many algorithms for training a NN, models differs in the way the error is computed, and how back-propagation is used. In this section, we describe the stochastic gradient descent (SGD), which is the basic algorithm as others can be seen as a modified version of it. 
+
+2.3.3 Gradient Descent and Back-Propagation. Let f (x, θ ) be our neural network. Training f (x, θ )
+
+consist of tuning the value of θ such that f (x) = y ≊ f (x, θ )( x, θ ) = ˆ y.The gradient descent is method that consist of computing the derivative of the loss function relative to the parameters θ, by parameters we mean weights and biases of the neural network. Back-propagation basically finds the gradients, and the gradient descent uses those gradients to update the network parameters θ (Bennamoun, 2019). See Figure 2.7 for a visual description. Gradient descent is an optimization algorithm for finding the minimum of a function. Section 2.3. Deep Neural Networks Page 11 
+
+Figure 2.8: Artificial neuron The back propagation algorithms is a family of methods that use gradient descent—find the minimum of a function approach— by calculating the gradient of the loss function. The algorithm below describe how the stochastic gradient descent works : 
+
+Algorithm 1 Online Stochastic Gradient Descent Training  
+
+> 1:
+
+Input : Function f (x; θ) parameterized with parameters θ. 
+
+> 2:
+
+Input : Training set of inputs x1, . . . , xn and outputs y1, . . . , yn 
+
+> 3:
+
+Input : Loss function L 
+
+> 4:
+
+while stop criteria not met do  
+
+> 5:
+
+Sample a training example xi, yi. 
+
+> 6:
+
+Compute the loss L(f (xi; θ), yi) 
+
+> 7:
+
+ˆg ← gradients of L(f (xiθ), yi) w.r.t θ 
+
+> 8:
+
+θ ← θ + ηk ˆg 
+
+> 9:
+
+return θ
+
+The back propagation algorithm basically as shown in the above algorithm, decides how the value of θ
+
+changes after comparing f (xi, θ ) (the predicted outputs) with yi (the real outputs). To accomplish this it computes the derivative of the error with respect to the parameters of the model ( θ) dE dw ij 
+
+and θ is updated accordingly. Let illustrate the above training algorithm by applying it to the single unit on Figure 2.8. The output to this unit can be written as : 
+
+y = σ(u),
+
+where u = WT x + b and σ(x) = 11+ e−x .We have decided to take the sigmoid function as the activation function to make derivation and expla-nation straightforward for our illustration. Section 2.3. Deep Neural Networks Page 12 We will use the mean square error(MSE) as our error function : 
+
+E = 12 (ˆ y − y)2
+
+As required by the stochastic gradient descent, the derivative of E with regard to wi,
+
+∂E ∂wi
+
+= ˆ g = ∂E ∂y t ∂y ∂u ∂u ∂w i
+
+= ( y − ˆy)y(1 − y)xi
+
+Finaly, θ which is equivalent to w will be updated in the following way : 
+
+θ = wnew = wold − η · ˆg (2.3.12) The same logic follows for bigger networks. One of the problems that usually occur when the model start adjusting itself, when there is noises in the data the model start adjusting itself on the noises. So what is noise ? Let understand it by this example : one may have been given data that shows when Salomon decides to go for supper and from the data it is clear that he always goes around 6:30. with this information the model can make a rule that say Salomon goes for supper every 6:30 , but lets say on a Saturday when Salomon went to play soccer, one of his friends got injured and as they went to the hospital, Salomon comes for supper at 9:00, the model will update its rule like Salomon go for supper every 6:30 except on Saturday this is wrong as this event was unexpected of Salomon’s behaviour and can be considered as noise .So now, how can our model, know whether a pattern is real or a noise ? This question lead to the notion of regularization. 
+
+2.3.4 Regularization. 2.3.5 Definition (Regularization) . Basically Regularization is a term that describes attempts to avoid overfitting, which happen when the our model accurately predict on the trained data that on the unseen, in other word the model started to memorizing instead of generalizing. There are several approach to this, but we will only present some of them. 
+
+• Early stop Early stop is usually refer in literature like regularization in time, the idea in this technique is to stop training when our model start over complicating itself. The idea of simple model goes as far as the first machine learning theoretician William of Ockham from 13th century, who developed the idea of Ockham’s Razor, basically saying that a model should be as simple as possible. 
+
+The less complex a Machine Learning model, the more likely that a good empirical result is not just due to the peculiarities of the sample. 
+
+The fundamental tension of machine learning is between fitting our data well, but also fitting the data as simply as possible. Early stop is motivated by this idea and practically, this technique tracks how well our model generalizes on unseen data usually a validation set and when there is no improvement anymore we stop the training process early. Section 2.4. NLP Application Page 13 
+
+Figure 2.9: Deep Neural Network in Figure 2.6 after applying dropout technique 
+
+• Dropout Regularization : a technique that consist of dropping some nodes(depending on the parameter) in the model at random, to reduce computation and usually help in decreasing over-fitting. See Figure 2.9 for visual illustration. To end this chapter, we will survey some popular application (task) of natural language processing and induce as well the main application task of this essay. 
+
+# 2.4 NLP Application 
+
+Applications to NLP are much more closer to our daily life, and familiar to us than we can imagine, from the moment you search for the best restaurant in town on google using Siri, using spell checking in Microsoft Word to correct your spelling, translating a sentence from English to french you are already using the power of NLP. Next sub-sections will review some common task in NLP. 
+
+2.4.1 Part-Of-Speech Tagging (POS). This task aims to give unique tag to each word as to know its syntactic role. A same word can have different syntactic role, for example, in the sentence the book in the library , the word book will be tagged as noun, but the same word can be tagged as verb in the sentence to book an interview .
+
+2.4.2 Question answering. This task consist of building a model that when given a question can provide an answer. current research work consist of trying to answer open-ended question such as “what is the meaning of life ?” 
+
+2.4.3 Named Entity Recognition (NER). This task aims to determine which token in a given text map to proper names. Although capitalization can be used in recognizing named Entity, but this convention can be misleading as the first word of sentence is also capitalized and some other languages like Arabic don’t have any capitalization. 
+
+2.4.4 Speech recognition. This task consist of obtaining text representation from a human speech. This task is considered as one of the most difficult task in natural language processing as people speaking the same language can speak a word that sounds completely different depending on their accent. Section 2.4. NLP Application Page 14 
+
+2.4.5 Machine Translation. This task aims to translate automatically a text from a language a to a language b. This task is among the category of NLP task called AI-Complete as it require to give a machine the general knowledge that human have which enable them to effectively translate a text from a language to an other. 
+
+2.4.6 Semantically Related Words. This task aims to predict if two words are semantically related which use the WordNet 1 data base as ground truth. 
+
+2.4.7 Sentimental Analysis. Sentiment analysis also known as opinion mining or multimodal sentiment analysis is a concept that uses natural language processing, in combination with other techniques to systematically identify, extract, quantify, and study effective states of text with goal to predict, extract the subjective attitude—sentiment—on it. This kind of sentiment can be in form of a binary rating— like/dislike—or images emoji expressing someone’s sentiment. Sentiment analysis can be used by a company for example to analyze tweets to determine if people like or dislike their recently released product, it’s often used to conduct online reviews. Products of sentiment analysis have become hugely commercially important. there are a lots of company that scan the internet every hour to make buying and selling decisions. Today social media and online market has grown in a remarkable way and sentiment analysis can be used for example to identify trends of public opinion about a product and use it to increase productivity. In the context of this work, we will use the well known Internet movie database(IMdb) that contains 
+
+50 .000 reviews with custumers sentiment regarding those movies (Maas et al., 2011). 
+
+> 1http://wordnet.princeton.edu
+
+# 3. Neural Network Embeddings 
+
+Since the popularity of neural networks, people have been working on taking advantage of this powerful tool to solve specific problems in their field. Word embeddings are the core innovation that has brought neural networks to the forefront of Natural Language Processing. 
+
+3.0.1 Definition. Neural word embeddings are distributed representations that use continuous values to represent words in a learned vector space of meaning Gouws (2016). In this chapter we will explain what embeddings are, why are they useful and review various mechanisms that have been proposed for their calculations, but before let discuss feature representation to motivate the importance of word embeddings. 
+
+# 3.1 Feature Representation 
+
+Text is the most widespread form of data in Natural Language Processing—we write and read them everyday. In this section we will have a look into approaches on how to transform this kind of data into a form that can be processed by a Neural Networks. Like most Machine Learning model, Neural Networks doesn’t take raw text as input, so come the notion of Vectorizing witch consist of transforming texts into numerical vectors, there exists many ways of doing this, the subsection will survey the most popular ones. 
+
+3.1.1 Sparse Word representations (One Hot). Generally, people use this techniques, consisting of having a vector which assign one on our target element and zero elsewhere. In this concept each feature have its own dimension, the more unique words you have, the bigger the dimensionality of your vector. An example, on how to construct a “one-hot” vector can be seen in Figure 3.1a. Text 
+
+> Tokens (word level)
+> One-hot encoding
+
+(a) Tokenization, one-hot encoding of the sentence : 
+
+“Neural Network are amazing” Text  
+
+> Tokens (word level)
+> Embedding encoding
+
+(b) Embedding 
+
+As you can see form Figure 3.1a the length of the vector is equal to the size of the total unique words in the corpora. This lead quickly to a big problem as in Natural Language Processing input features can be paragraphs, books, and will definitely have very large number of unique element and this lead to big, sparse vector full of zeros and with only one on the target word that bring no information about the similitude or dissimilitude of features. 15 Section 3.2. Embeddings Page 16 Additionally, words, that are rarely seen during training will be represented poorly. Words that are not seen once during training cannot be classified later and this lead to poor generalization power. 
+
+3.1.2 Dense Word representations (Token Embedding). This concept consists of representing data into a fixed dimensional vector space. One of the advantage of using Dense representation is computational, but the main benefit of having a dense representation is the generalization power as feature that are semantically the same will share statistical strength. For example a word like man and women will be more similar than man and study. this property will help our model to infer women when trained in data that contains only the word man. Token Embedding, also known as word embeddings can be used for a dense representation. Word embeddings are a mapping from discrete objects, such as words, to a dense vectors of real numbers. To illustrate this approach we are going to used the same example that was use for the one-hot vector representation and see how that differs from the token embedding representation. As you can see from the Figure 3.1b, instead of a sparse vector, we have a dense vector with a much lower representation dimensionality. It common to have embedding dimension between 50 and 500 .Figure 3.2 illustrates an example of a 300-dimension fastText embeddings trained over Wikipedia 2017, reduced in 2-dimension using T-SNE algorithm, you can see that word that usually appears in the same context are plotted nearby. One may ask, how can we get such embeddings ? while a step by step explanation on how to get such embeddings is beyond the scope of this essay, I will only present the available pre-trained word embedding and skip over the detail on how they were obtained. 
+
+# 3.2 Embeddings 
+
+Word embeddings have become an essential part of any Deep-Learning-based natural language processing systems. In this work we will review some mechanisms that have been proposed for the calculation of those embedding as we investigate popular toolkit and embeddings matrices that are available online. 
+
+3.2.1 Definition. An embedding is a mapping from a categorical variable to a vector of continuous numbers. People have been using sparse representation (bag-of-word) to encode textural data and as discussed in the previous section, this lead to a dimensionality problem. In the need for reducing the size of such representation and capturing the core features , Bengio et al. (2003) first introduced the token embedding well known as word embeddings .To illustrate the idea behind those embeddings, lets look at this example : Let us say we are given the following list of courses 
+
+{“C++”, “Functional Analysis”, “Java”, “Swift”, “Differential Equation”, “Physics”, “Python”, “Soliton”} 
+
+Firstly lets try to separate these course, using a line in a way that most similar courses are near each other. Section 3.2. Embeddings Page 17 
+
+Figure 3.2: Example of 300 -dimension word embeddings cast in 2-dimension, for visualization purpose. (similar words are plotted near each other) Section 3.2. Embeddings Page 18 Programming Languages Mathematics 
+
+Figure 3.3: 1-D items classification As you can see from Figure 3.3, we can kind of put our course in two classes : 
+
+• Mathematics 
+
+• Programming Languages Let look closely at our classification problem, one may like to separate pure math courses and pure Physics courses. It’s impossible to do such a classification in one line (1-D), the easiest way will be to increase the dimension (2-D). See Figure 3.4 for a possible classification. General Relativity General Relativity  
+
+> Soliton Soliton
+> Differential Equation Differential Equation
+> Functional Analysis Functional Analysis Python Python
+> C++ C++
+> Java Java Kotlin Kotlin
+> Mathematics?
+> Pure Mathematics
+> Physics
+> Programming Languages
+
+Figure 3.4: 2-D items classification From the previous analyses and exploration, generally speaking the more we increase a dimension the more we capture a specific feature of our dataset, see Figure 3.1b for a 300-dimension embeddings. This is the general idea in the construction of embeddings. Section 3.3. Bag of Words Page 19 Next section will presen different type of words representation. 
+
+# 3.3 Bag of Words 
+
+Bag of words(BOW) is a type of representation used in NLP, that represent a text—paragraph, sentence— as the bag of its words, disregarding grammar and even word order but keeping multiplicity. BOW model is mostly used as a tool for feature generation. After putting every word in it’s bag, we calculate various measures to characterize the text. The next subsection will present the popular ones : 
+
+3.3.1 Term Frequency (tf). this type of BOW aims to calculate the number of times a term appears in the text, this technique is based on the hypothesis that term with high frequency are the most important. The term frequency formula is : 
+
+tf (word ) = term instances total terms , (3.3.1) For example let consider the two simple text document : 1. Salomon likes to learn new things. Djeff likes that too. 
+
+2. Salomon also likes to learn Karateka. 
+
+word likes salomon to learn new things djeff that too also Karateka 
+
+word index 1 2 3 4 5 6 7 8 9 10 11 
+
+BOW_tf 1 0.2 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.1 0 0
+
+BOW_tf 2 0.17 0.17 0.17 0.17 0 0 0 0 0 0.17 0.17 
+
+Table 3.1: Bag of words (tf) representation of sentences “ Salomon likes to learn new things. Djeff likes that too ”, “ Salomon also likes to learn Karate ”The following array, represent the bag of word representation of our example, as usually used in pratics 
+
+array ([[0 ., 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0., 0.],
+
+[0 ., 0.17 , 0.17 , 0.17 , 0.17 , 0., 0., 0., 0., 0., 0.17 , 0.17]]) 
+
+The 0-th index, is always reserved for unknown or rare words. This kind of representation produces several hard-to-beat performance on task like email filtering , but one of the disadvantage of this representation is that we lose any indication of word order, which can be very important for several NLP tasks. This representation technique lead quickly to a problem, as common words like “the” , “a” , . . . are almost always with highest frequency in texts and thus bias the importance of these words. To address this problem, Term Frequency - Inverse Document Frequency was proposed. Section 3.4. Word2Vec Page 20 
+
+3.3.2 Term Frequency - Inverse Document Frequency (tf-idf). This word representation technique is basically the product of the tf(see Equation 3.3.1) and Inverse document frequency of each word. The Inverse document frequency of each word is define as : 
+
+idf (word ) = log( N/ (occurence of word in corpus )) , (3.3.2) where N is the count of corpus. As introduced in the previous representation words like “the” and “end” will usually appear very fre-quently in every document, the idea with tf-idf is to down weight the importance of these words, by multiplying the term frequency by the inverse of the whole document frequency. But since a corpus may be very large, we usually take the logarithm of the inverse document frequency. So, the tf-idf is basically 
+
+tf − idf (word ) = tf (word ) · idf (word ) (3.3.3) Where tf (word ) and idf (word ) define as in 3.3.1 and 3.3.2, respectively . The tt-idf is often used as a weighting factor is several NLP task, including “sentiment analysis”, as will be used in the last Chapter. Tf-idf requires to load all the text in the document into the memory, to be able to be used effectively and this is sometimes views as a disadvantage of this text representation. The following array, represent the tf-idf representation of our previous example, 
+
+array ([[0 ., 0., 0., 0., 0., 0.03 , 0.03 , 0.03 , 0.03 , 0.03 , 0., 0.],
+
+[0 ., 0., 0., 0., 0., 0.03 , 0., 0., 0., 0., 0.05 , 0.05] ,
+
+again the 0-th index, is reserved for unknown or rare words. So far, we have not consider order of words to be relevant in creating words embedding, next section will introduce the approach that brought neural networks in the world of words representation. 
+
+# 3.4 Word2Vec 
+
+Word2vec is a model that produces word embeddings. Created by researchers at google (Mikolov et al., 2013) in 2013, it is made of two-layer neural networks that are trained to reconstruct linguistic contexts of words. The key behind this unsupervised approach is to produce embeddings in such a way that similar words have similar vectors, this similarity is measure by the idea of words are similar if they appear in similar contexts , this is inspired by the well known citation of a British linguist that says “ You shall know a word by the company it keeps ”The basic idea, is to create embeddings that capture relational aspect of words. For example we will like to have embeddings such that the following qualities hold. 
+
+• ”king ” − ”man ” + ” woman ” = ” queen ”
+
+• ”nature ” + ” science ” = ” biology ”
+
+There are two architectural models, Skip-gram and CBOW that are used in the construction of word2vec. The next lines will give a description of the two models. Section 3.4. Word2Vec Page 21 
+
+3.4.1 Continuous bag-of-word model (CBOW). Continuous bag-of-word model (CBOW), aims to predict a word known as the target word given the context of that word , with context defined as words that appear usually together with our target word. Figure 3.5 shows the network under the continuous bag-of-word model. In our sitting, the vocabulary size is V , and the hidden layer size is N , all nodes are fully connected to each others. The input is a one-hot encoded vector i.e for a given input context word, only one out of V units is 1.
+
+Figure 3.5: CBOW predict the context given the word The weights between the input layer and the hidden layer is a V × N matrix W. Each row of W is the 
+
+N -dimension vector representation vw of the associated word of the input layer. 
+
+h = 1
+
+C WT (x1 + x2 + · · · + xC )= 1
+
+C (VW1 + VW2 + · · · + VWc )T
+
+where C is the number of words in the context, w1, · · · , w C are the words in the context, and vw is the input vector of a word w.From the hidden layer to the output layer, we have an other weights matrix denoted W′1, which is an 
+
+N × V matrix. Using these weights, we obtain a score uj for each word in the vocabulary, 
+
+uj = v′ Twj h, (3.4.1) with v′ 
+
+> wj
+
+the j-th column of the matrix W′.  
+
+> 1W′here mean an other matrix, not the derivative or the the transpose of W
+
+Section 3.4. Word2Vec Page 22 Using softmax, a log-linear classification model, 
+
+yj = p (wj |wI ) = exp ( uj ) 
+
+> ∑Vj′=1
+
+exp (uj′ 
+
+> )
+
+, (3.4.2) with yj the output of the j-th unit in the output layer. 
+
+3.4.2 skip-gram. The skip-gram architecture, is basically the inverse of the CBOW as can be seen in Figure 3.6, here the input is a word— target word — w and output the words that often surround that target word. For example let us consider the sentence :“ I like the machine learning ”, lets assume the input to be “ the ” and consider a widow size of 2, the output is “ I”, “ like ”, “ machine ” and “ learning ”. The input vector on the input layer will still be denoted by vwI , because the input vector is one-hot encoded, h is simply copying the row of W, associated with wI .
+
+h = WT 
+
+> (k, ·)
+
+:= vTwI (3.4.3) On the output side, the output layer panels share the same weights v′
+
+> w
+
+,
+
+uc,j = uj = v′ Twj h, for c = 1 , 2, . . . , C 
+
+where v′ 
+
+> wj
+
+is the output vector of the j-th word in the vocabulary wj and uc,j is the network input of the j-th unit on the c-th panel of the output layer. Finally, 
+
+yc,j = p (wc,j = wO,c |wI ) = exp ( uc,j ) 
+
+> ∑Vj′=1
+
+exp (uj′ 
+
+> )
+
+(3.4.4) where wc,j is the j-th word on the c−th panel of the output layer, wO,c is the output of the j-th neuron on the c-th panel of the output layer. 
+
+Figure 3.6: Skipgram , predict a word given the context Section 3.5. GloVe Page 23 
+
+# 3.5 GloVe 
+
+Global Vectors (GloVe) is an unsupervised learning algorithm as word2vec but was proposed by Stanford as an improved version of word2vec. Training is performed on aggregated global word-word co-occurrence statistics from a corpus (Pennington et al., 2014). GloVe learn word representations via matrix factorization, it minimizes the difference between the dot product of the embeddings of a word wi and its context word ct and the logarithm of their number of co-occurences within a certain window size : 
+
+L Glove = 
+
+> |V|
+> ∑
+> i,j =1
+
+f (Cij )
+
+> (
+
+x⊤ 
+
+> i
+
+x′ 
+
+> j
+
++ bi + b′ 
+
+> j
+
+− log cij 
+
+> )2
+
+(3.5.1) where f (·) is a weighting function that assigns relatively lower weight to rare ans frequent co-occurrences, 
+
+cij represent the number of times word wi appears with context word wj , and bi and b′ are biases corresponding to word wi and its context word wj
+
+# 3.6 fastText 
+
+Created by Facebook (Bojanowski et al., 2017) to overcame the limitation of word2vec and glove. word2vec and glove consider each word as single unit and ignore the morphological structure of the word the are unable to generate word embedding for the unseen or out of vocabulary word during the training, this ability of fastText is due to the fact that it considers n-gram of characters and the global representation of a token can be seen as the sum of n-gram characters. For example, with n = 3 the word “ where ” would be represented by the character n-grams: < wh, whe, her, ere, re >fastText have been demonstrated to produce better results than the previous two, we will in the next Chapter report an experimentation using this technique 
+
+# 3.7 Our Model Architecture 
+
+Training an embedding only makes sense when there is a lot of training data available, in this work we will use pre-trained embeddings that are trained on a huge amount of data will be used. The input x in NLP task is usually words, part of speech tags or other linguistic information. In our case the input is a paragraph of words, that represent someone’s review on a specific movie. Figure 3.7 describes the general structure for an NLP classification system based on feed-forward neural network Goldberg (2016), at step 2, we will use the pre-trained word embeddings to get the vector representation of features. Let c(·) be a function from the core features to the input vector x in our neural network. Let x be of shape (N, n ), with N the number of examples and n the vocabulary size. Lets consider as well fij be the feature (token) i in the example j, with i : {0, 1, · · · , n } and j :Section 3.7. Our Model Architecture Page 24 
+
+Figure 3.7: General structure for an NLP classification system based on a feed-forward neural network 
+
+{0, 1, · · · , N − 1}.
+
+xj = c(f0j , f 1j , f nj )= W CBOW (f0j , f 1j , f nj )= 1 
+
+> ∑ni=1
+
+aij n∑
+
+> i=1
+
+aij v (fij )
+
+With W CBOW the weighted continuous bar of words (CBOW ), is a very similar to the traditional bag of words representation in which different vectors receive different weights, in our case the weight is the word’s TF_IDF (See Equation 3.3.3). Given fi the value of v(fi) depend to the type of pre-trained word embeddings one may choose to use. In this essay we will do our exploration using fasttext word embeddings. 
+
+3.7.1 Evaluation metric. NlP systems are evaluated with usually with regard to their performance on the test set of the specific task. 
+
+Accuracy Accuracy is one metric for evaluating classification models. 
+
+Acc = T P + T N T P + T N + F P + F N (3.7.1) where T P = True Positives, T N = True Negatives, F P = False Positives, and F N = False Negatives. We can summarize the above measure in a 2 × 2 matrix called confusion matrix , that can hep in getting insight in how our model performs. 
+
+Receiver Operating Curve (ROC) Curve and Area Under the Curve (AUC) A ROC is a graph that shows the performance of a classification model at all classification thresholds. For efficiency reason, AUC measures the entire two-dimensional area under the ROC curve instead of evaluating the model many times with different classification thresholds. One easy way of interpreting the AUC is the probability that the model rank a random positive example more highly than a random negative example. Section 3.7. Our Model Architecture Page 25 We will use these evaluation accuracy in the next chapter, to measure the performance of our classifier. The next chapter will now review and do some sentiment analysis experiment using the well known 
+
+Internet Movie Database (IMDb) data set. 4. Results and Discussion 
+
+In this chapter we present the results, analyze and discuss an investigation on a sentiment analysis task using a simple neural networks model. 
+
+# 4.1 Data preprocessing 
+
+Data preprocessing is a crucial step when building a machine learning model. In the traditional program-ming debugging a program mean analyzing the code in order to find what went wrong, but contrary a machine learning debugging consist of analyzing the data presented to the model. As good as a model can be, bad preprocessing can produce unexpected output. 
+
+4.1.1 Gather Data. We will investigate on IMDb(Internet Movie Database) data set. We will use a specific version of this dataset 1 as made available by Maas et al. (2011), this dataset consists of customer reviews about a movie, those reviews are manually labeled by positivity from 1 to 10 and polarity as positive or negative , for this work we are interested only in the question : How can we get the polarity—sentiment—of a customer given only is review ? 4.1.2 Explore Data. We observed that reviews contains noises due to the presence of incomplete sentences or words, misspell words and out of dictionary words. Thus we will clean all the reviews by removing all the html tags and punctuation—normalization. We have a set of 25 , 000 highly polar movie reviews for training, and 25,000 for testing, Figure 4.1 and 4.2 gives a sample of how our data looks like in the training set and in the testing set, respectively. 
+
+Figure 4.1: First 10 items in the training set 
+
+Figure 4.2: Last 10 items in the testing set Additional, our data is well balanced, in both the training and testing set, 12500 are positive and the remaining one are negative. 
+
+> 1http://ai.stanford.edu/ãmaas/data/sentiment/
+
+26 Section 4.2. Experimentation and Results Page 27 0 20 40 60 80 100 epochs                
+
+> 0.825
+> 0.850
+> 0.875
+> 0.900
+> 0.925
+> 0.950
+> 0.975
+> 1.000 accuracy
+> accuracy (tf-df)
+> Training acc
+> Validation acc 020 40 60 80 100
+> 0.00
+> 0.25
+> 0.50
+> 0.75
+> 1.00
+> 1.25
+> 1.50
+> 1.75
+> loss (tf-df)
+> Training loss
+> Validation loss 0.0 0.2 0.4 0.6 0.8 1.0
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> ROC curve (tf_idf)
+> area = 0.85
+> random classifier negative positive Predicted
+> negative positive True
+> 0.87 0.13 0.29 0.71
+> Confusion Matrix (tf_idf)
+> 0.15
+> 0.30
+> 0.45
+> 0.60
+> 0.75
+
+Figure 4.3: accuracy vs epochs, loss vs epochs, ROC curve, and Confusion Matrix plots obtains using BOW(tf-idf) representation 
+
+# 4.2 Experimentation and Results 
+
+The result obtain in this section are obtains based on a neural network with 3 hidden layer that use relu 
+
+activation function. Every layer have 512 units , we are using binary_crossentropy as our loss function and adamax as our optimizer with a learning rate of 0.003 .After pre-processing, our data contains 88582 unique tokens, but due to storage and computational limitation we first did our investigation using only 20000 top words, of course more increasing this value, will eventually affect the accuracy of the model as we will experiment later in this Chapter. Firstly, we started, by using tf-idf—a modified version as implemented in keras pre-processing package— representation as define in Equation 3.3.3 and run our neural network as described above and obtained the accuracy of 79 .9% on unseen data, and Figure 4.4 reports the learning curve tendency and the confusion matrix plots. Secondly, we used our architecture described in the Chapter 3, to transform the word embeddings of individual word to sentence embeddings of the entire review. Out of the 20000 top words considered, 1883 were out-of-vocabulary(OVV)—no embeddings found in the fastText pre-trained word embeddings—we at first ignore those OVV words and obtain an accuracy of 66 .35% and Figure 4.3 report the learning curve tendency and the confusion matrix plots. Lastly, we used a pre-trained word embeddings module 2, create by Google that is freely available on TensorFlow Hub website.TensorFlow hub is a library for the publication, discovery, and consumption 
+
+> 2
+
+https://tfhub.dev/google/Wiki-words-250-with-normalization/1 Section 4.3. Discussion Page 28 0 20 40 60 80 100 epochs 
+
+> 0.52
+> 0.54
+> 0.56
+> 0.58
+> 0.60
+> 0.62
+> 0.64 accuracy
+
+accuracy (Bow+Fast_text)      
+
+> Training acc
+> Validation acc 020 40 60 80 100
+> 0.63
+> 0.64
+> 0.65
+> 0.66
+> 0.67
+> 0.68
+> 0.69
+
+loss (Bow+Fast_text)      
+
+> Training loss
+> Validation loss 0.0 0.2 0.4 0.6 0.8 1.0
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+
+ROC curve    
+
+> area = 0.72
+> random classifier negative positive Predicted
+> negative positive True
+> 0.75 0.25 0.43 0.57
+
+Confusion Matrix (Bow+Fast_text) 
+
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+
+Figure 4.4: accuracy vs epochs, accuracy vs epochs, Roc Curve, and Confusion Matrix of IMDb using WCBOW+fastText embeddings representation of reusable parts of machine learning models, which will do the pre-processing and map all the out-of-vocabulary tokens into one bucket that is initialized with zeros. This TensorFlow module in based on skipgram version of word2vec trained on English Wilipedia corpus. This module has allowed us to include more consider more words and we have obtain an accuracy of 
+
+86 .5% on the testing set and the confusion matrix can be seen in Figure 4.5 negative positive Predicted   
+
+> negative positive True
+> 0.87 0.13 0.14 0.86
+
+Confusion Matrix 250-d trainable      
+
+> 0.15
+> 0.30
+> 0.45
+> 0.60
+> 0.75 0.0 0.2 0.4 0.6 0.8 1.0
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+
+ROC Curve (250-d, trainable) 
+
+> area = 0.94
+> random classifier
+
+Figure 4.5: Confusion Matrix and Roc Curve, obtains using the TensorFlow hub module 
+
+# 4.3 Discussion 
+
+In the previous section we have seen the influence of using word embeddings . Section 4.3. Discussion Page 29 The BOW representation, are known to be simple and efficient in topic-based text classification. But as noticed in the result section it is not suitable for sentiment classification because it breaks the syntactic structures, and ignore word order, as well as semantic information. Our results based on BOW representation shows that even though at first the accuracy obtained using tf-idf representation look high but the Figure 4.4 reveal that there is a problem in our model, the model tend to do very well on the training but not on the validation data—overfitting. Due to the limitation of BOW, we proposed also to use fastText embeddings and we noticed that even though the accuracy is more lower than the simple BOW, it is more precise, in classifying reviews. (See Figure 4.5). We can see that encoding sequence of words into weighted sum of the corresponding word embeddings has helped us to capture composition and dependencies of our model features. By using the TensorFlow hub module, we could consider more words and handle properly the out-of-vocabulary words. We observed that pre-trained word embeddings gives amazing result and the miss classified example are much more lower than in previous experimentation. (See Figure 4.5) The reason of the high accuracy observed in the last implementation is also due to the fact that the embeddings layer is jointly trained with the other layer of our model, this has improved considerably the generalization power of our model. We are going in the last part to conclude our work and introduce further works. 5. Conclusion and Further Work 
+
+# 5.1 Conclusion 
+
+The aim of this essay was to investigate proprieties and the use of word embeddings in Natural Language Processing. We presented various techniques of word representations and gave a brief overview on methods and techniques used in their construction. Representation learned using neural networks has proved to outperform classical embedding methods such as approaches based on bag-of-words. One aspect of distinction is that in word2vec for instance, similar word may have similar vector representation, and this ability allows the model to gain more insight of input features. Our experimentation has demonstrated that pre-trained word embeddings are able to supplement training data and it increases the generalization power of a simple neural networks composed of simple dense layers. The python code used for our investigation can freely be found here (this code suppose the use of the google colaboratory notebook). Throughout our investigation we have noticed that many big companies only provide ready to use mod-ules for natural language processing tasks, this has been a great challenge in NLP for young researchers, I would like to add my voice to many others, to ask for promotion of the open science initiative. In conclusion, we experimentally demonstrate that the representation learned using neural networks are able to significantly improve results on the sentiment analysis task. 
+
+# 5.2 Further Work 
+
+For future work, we would like to : 
+
+• use cross-lingual word embedding models, study its propriety for application in machine translation. 
+
+• use more advanced neural network layer as 1-dimension convolution neural network or recurrent neural networks jointly with generalization power that embeddings brings to experiment on several NLP tasks. 
+
+• investigate on the possibility of using doc2vec in the creation of embeddings 
+
+• propose a module on the TensorFlow hub website that can support Congolese official languages. 30 Acknowledgements 
+
+First, I would like to thank the lord El-Shaddaï the one I serve for giving me this opportunity to complete this degree. Secondly, I would like to thanks my supervisor Professor Etienne Barnard for been there for me at every step throughout the completion of this project. Thanks to my tutor Jordan Masakuna for reading and commenting on the improvement of my work. Thanks to all AIMS staff and administration for everything. I would also like to thank my fellow AIMS students for their support. Thanks to Irene Kyomugisha for taking to read and give comment on this work. Thirdly, I would like to give a big thank to Professor Neil Turok, for everything, your vision for Africa has impacted me. I would like to thank also my academic director J.W. Sanders for his support, through talks and presentations. I’ve really learn a lot from your sir. Lastly, special thanks to my biological parents, Kabenamualu Kabongo Frederic and Ngalula wa Lukusa Beatrice, and all my family, your patience and love helped me to get this far. To Abigail thank you for your presence in my life, I love you. 31 References 
+
+Ando, R. K. and Zhang, T. A Framework for Learning Predictive Structures from Multiple Tasks and Unlabeled Data. Journal of Machine Learning Research , 6(Nov):1817–1853, 2005. Bengio, Y., Simard, P., and Frasconi, P. Learning Long-Term Dependencies with Gradient Descent is Difficult. IEEE Transactions on Neural Networks , 5(2):157–166, 1994. URL http://www.iro. umontreal.ca/~lisa/pointeurs/ieeetrnn94.pdf. Bengio, Y., Ducharme, R., Vincent, P., and Jauvin, C. A Neural Probabilistic Language Model. Journal of Machine Learning Research , 3:1137–1155, 2003. Bennamoun, L. W. R. T. W. L. M. Neural Representations of Natural Language . Studies in Computa-tional Intelligence 783. Springer Singapore, 1st ed. edition, 2019. ISBN 978-981-13-0061-5;978-981-13-0062-2. Bojanowski, P., Grave, E., Joulin, A., and Mikolov, T. Enriching Word Vectors with Subword Informa-tion. Transactions of the Association for Computational Linguistics , 5:135–146, 2017. Chollet, F. Deep Learning with Python . Manning Publications Co., Greenwich, CT, USA, 1st edition, 2017. ISBN 1617294438, 9781617294433. Elman, J. L. Finding structure in time. Cognitive Science , 14(2):179–211, 1990. Glorot, X. and Bengio, Y. Understanding the Difficulty of Training Deep Feedforward Neural Networks. In Teh, Y. W. and Titterington, M., editors, In Proceedings of the Thirteenth International Conference on Artificial Intelligence and Statistics , volume 9 of Proceedings of Machine Learning Research , pages 249–256, Chia Laguna Resort, Sardinia, Italy, 13–15 May 2010. PMLR. URL http://proceedings.mlr. press/v9/glorot10a.html. Glorot, X., Bordes, A., and Bengio, Y. Deep Sparse Rectifier Neural Networks. In AISTATS , 2011. Goldberg, Y. A Primer on Neural Network Models for Natural Language Processing. J. Artif. Int. Res. , 57(1):345–420, Sept. 2016. ISSN 1076-9757. URL http://dl.acm.org/citation.cfm?id=3176748. 3176757. Goodfellow, I. Deep learning . Adaptive computation and machine learning. 2016. ISBN 9780262035613. Google. Google crash course. URL https://developers.google.com/machine-learning/crash-course/ ml-intro. [Accessed 23-May-2019]. Gouws, S. Training Neural Word Embeddings for Transfer Learning and Translation . PhD thesis, Stellenbosch: Stellenbosch University, 2016. Johnson, M. How the Statistical Revolution Changes (Computational) Linguistics. In Proceedings of the EACL 2009 Workshop on the Interaction Between Linguistics and Computational Linguistics: Virtuous, Vicious or Vacuous? , ILCL ’09, pages 3–11, Stroudsburg, PA, USA, 2009. Association for Computational Linguistics. URL http://dl.acm.org/citation.cfm?id=1642038.1642041. Jurafsky, D. and Martin, J. H. Speech and Language Processing (2Nd Edition). 32 REFERENCES Page 33 Krizhevsky, A., Sutskever, I., and Hinton, G. E. ImageNet Classification with Deep Convolutional Neural Networks. In Pereira, F., Burges, C. J. C., Bottou, L., and Weinberger, K. Q., editors, Advances in Neural Information Processing Systems 25 , pages 1097–1105. Curran Associates, Inc., 2012. URL http: //papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf. LeCun, Y., Boser, B., Denker, J. S., Henderson, D., Howard, R. E., Hubbard, W., and Jackel, L. D. Backpropagation Applied to Handwritten Zip Code Recognition. Neural Comput. , 1(4):541–551, Dec. 1989. ISSN 0899-7667. doi: 10.1162/neco.1989.1.4.541 . URL http://dx.doi.org/10.1162/neco.1989. 1.4.541. Lecun, Y., Bottou, L., Bengio, Y., and Haffner, P. Gradient-based learning applied to document recognition. In Proceedings of the IEEE , pages 2278–2324, 1998. Maas, A. L., Daly, R. E., Pham, P. T., Huang, D., Ng, A. Y., and Potts, C. Learning Word Vectors for Sentiment Analysis. In Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies , pages 142–150, Portland, Oregon, USA, June 2011. Association for Computational Linguistics. URL http://www.aclweb.org/anthology/P11-1015. McCulloch, W. S. and Pitts, W. A logical calculus of the ideas immanent in nervous activity. Bulletin of Mathematical Biophysics , 5:115–133, 1943. Mikolov, T., Sutskever, I., Chen, K., Corrado, G., and Dean, J. Distributed Representations of Words and Phrases and Their Compositionality. In Proceedings of the 26th International Conference on Neural Information Processing Systems - Volume 2 , NIPS’13, pages 3111–3119, USA, 2013. Curran Associates Inc. URL http://dl.acm.org/citation.cfm?id=2999792.2999959. Mikolov, T., Grave, E., Bojanowski, P., Puhrsch, C., and Joulin, A. Advances in Pre-Training Distributed Word Representations. In Proceedings of the International Conference on Language Resources and Evaluation (LREC 2018) , 2018. Pennington, J., Socher, R., and Manning, C. D. Glove: Global Vectors for Word Representation. In 
+
+EMNLP , volume 14, pages 1532–1543, 2014. Rosenblatt, F. The Perceptron: A Probabilistic Model for Information Storage and Organization in The Brain. Psychological Review , pages 65–386, 1958. Ruder, S. Neural Transfer Learning for Natural Language Processing . PhD thesis, National University of Ireland, Galway, 2019. Ruder, S., Vulic, I., and Sogaard, A. A Survey Of Cross-lingual Word Embedding Models, 2017. URL http://arxiv.org/abs/1706.04902. cite arxiv:1706.04902. TURING, A. M. Intelligent Machinery, A Heretical Theory*. Philosophia Mathematica , 4(3):256–260, 09 1996. ISSN 1744-6406. doi: 10.1093/philmat/4.3.256 . URL https://doi.org/10.1093/philmat/4. 3.256.
