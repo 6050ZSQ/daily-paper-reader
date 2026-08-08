@@ -1,0 +1,445 @@
+Title: Every Wrong Answer Counts: Option-Level Psychometrics for LLM Multiple-Choice Benchmarks
+
+URL Source: https://arxiv.org/pdf/2608.02966v1
+
+Published Time: Wed, 05 Aug 2026 00:19:39 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Every Wrong Answer Counts: Option-Level Psychometrics for LLM Multiple-Choice Benchmarks 
+
+## Xiao Fei 1, Yang Zhang 1, Sarah Almeida Carneiro 1, Michalis Vazirgiannis 1,2 ∗
+
+> 1
+
+École Polytechnique, Institut Polytechnique de Paris, France 
+
+> 2
+
+Mohamed bin Zayed University of Artificial Intelligence, United Arab Emirates xiao.fei@polytechnique.edu mvazirg@lix.polytechnique.fr 
+
+Abstract 
+
+Most multiple-choice question (MCQ) benchmarks evaluate Large Language Models (LLMs) only by whether they select the correct answers. This binary scoring treats all incorrect responses alike, even though an LLM’s preferences among incorrect options may contain systematic and useful infor-mation about its behavior and ability. We introduce the LLM Nominal Response Model (LLM-NRM), an option-aware psy-chometric framework that models the full distribution over an-swer choices to jointly estimate LLM ability and option-level item characteristics, while separating model-specific response calibration sharpness, positional preference, and difficulty-dependent fallback behavior. Across 189 LLMs and 31,554 items from 14 benchmarks, LLM-NRM predicts held-out LLM-item interactions more accurately than binary Item Re-sponse models and conventional nominal-response baselines, and its ability estimates achieve the strongest Spearman corre-lation of 0.920 with the external human-preference Arena.ai Elo leaderboard. Distractor identity contributes +101% ad-ditional Fisher Information per item beyond correctness, and incorrect responses alone recover full-information ability esti-mates with Spearman 0.943. The learned item parameters also enable efficient benchmarking, where 41 selected items pre-serve the full-bank ranking with Kendall’s correlation 0.85, corresponding to a 770 times reduction. In conclusion, we show that incorrect answers carry distinct and useful mea-surement information rather than representing equivalent mis-takes. 
+
+## Introduction 
+
+Large Language Model (LLM) benchmarking commonly evaluates performance on standard multiple-choice question (MCQ) benchmarks with accuracy scores (Wang et al. 2024; Rein et al. 2024). However, accuracy is a limited measure of model capability, because it is tied to a particular benchmark: raw scores depend on its item composition, while empirical item difficulty depends on the evaluated model population. As a result, model rankings can shift with changes in the benchmark, scoring protocol, or comparison set (Lalor, Wu, and Yu 2016; Perlitz et al. 2024; Alzahrani et al. 2024). A single accuracy value also collapses every response to a binary outcome, hiding model confidence and systematic error patterns (Zhu et al. 2023). It does not by itself quan-tify measurement uncertainty (Perlitz et al. 2024), and it loses discriminative power as the strongest models approach benchmark saturation (Wang et al. 2024). 
+
+> ∗
+
+Corresponding author. Q: "Which object in the solar system is orbited by a belt of asteroids?" ARC-Challenge                  
+
+> A. Pluto x weak distractor
+> B. Saturn x strong distractor: partial knowledge
+> C. the Sun ✔correct: the main belt orbits the Sun
+> D. the Moon x weak distractor
+> -2 -1 01
+> LLM ability θ
+> 01P(response)  Correct Incorrect
+> indifferent
+> Existing View (Binary)
+> -2 -1 01
+> LLM ability θ
+> "Pluto" "Saturn" (Distractor) "Sun" (Correct) "Moon"
+> Our View (Option-Level)
+> -2 -1 01
+> LLM ability θ
+> 06
+> Fisher Information  I(θ)Option-level Information Information recovered from wrong answers Binary-level Information
+> Wrong Answers Provide Substantial Information!
+> (a) (b) (c)
+
+Figure 1: A real example of an ARC-Challenge MCQ item with item characteristic curves from our LLM-NRM fitting. (a) In this item, "Saturn" is a plausible distractor that reflects partial knowledge of LLM examinees, whereas "the Sun" is the correct answer. (b) Binary scoring collapses all three choices into the same "incorrect" outcome, but option-level modeling estimates a separate response curve instead for each option across LLM ability spectrum θ. (c) Because these distractor preferences vary with ability, their identities provide Fisher information that correctness does not retain. Item Response Theory (IRT) provides a principled frame-work for addressing some of these limitations by model-ing interactions between latent ability and item characteris-tics (Rasch 1960; Lord and Novick 1968; Birnbaum 1968). Recent studies apply psychometric models to LLM evalua-arXiv:2608.02966v1 [cs.CL] 3 Aug 2026 tion for benchmark analysis, adaptive testing, difficulty esti-mation, and multilingual evaluation (Zhou et al. 2026; Land and Bikel 2026; Zhuang et al. 2025; Li et al. 2025; Zhu et al. 2025; Lior et al. 2026; Zhang et al. 2026). These approaches reveal benchmark saturation, item quality issues, and differ-ences between models with similar accuracy scores (Vania et al. 2021; Zhou et al. 2026; Land and Bikel 2026). How-ever, they generally reduce responses to binary correctness alone, discarding the option-level information contained in multiple-choice predictions. In the meantime, LLM responses contain richer behav-ioral signals beyond correctness, including option-selection biases, positional preferences, self-evaluation, and response consistency patterns (Zheng et al. 2024; Yang, Jian, and Li 2025; Kadavath et al. 2022; Wu et al. 2025; Chaudhury et al. 2026). Yet, these signals are typically analyzed separately from latent ability and item characteristics, leaving the full response structure underutilized. In this paper, we demonstrate that the probability distri-bution over multiple-choice options produced by an LLM is itself a psychometric response. This naturally connects to the human-testing Nominal Response Model (NRM), a cat-egorical extension of IRT that models relationships between latent ability and response option preferences (Bock 1972). Unlike binary IRT, which scores each response only by cor-rectness, the NRM gives every option its own discrimination and attractiveness, capturing how each distractor’s appeal varies with ability and thereby extracting more measurement information per item than correctness alone. We propose the LLM Nominal Response Model (LLM-NRM), which adapts NRM for LLM evaluation by modeling latent ability, item characteristics, and LLM-specific behav-ioral factors. Our contributions are as follows: 
+
+• To our knowledge, this work presents the first application of the Nominal Response Model (NRM) to LLMs, reveal-ing latent response preferences across benchmark MCQ answer options and providing a richer view of model be-havior beyond answer correctness; 
+
+• We propose an LLM-adapted NRM formulation that in-corporates behavioral factors such as calibration sharp-ness, ability-gated guessing, and positional bias, mov-ing beyond traditional item-response modeling toward a richer representation of LLM decision processes; 
+
+• Through large-scale experiments on 189 LLMs and 31,554 MCQ items across 14 benchmarks, we show that LLM-NRM improves held-out response predic-tion, yields ability estimates that best match external human-preference rankings, and establishes that distrac-tor choices are informative enough to recover ability and compress benchmarks by orders of magnitude. 
+
+## LLM Nominal Response Model 
+
+We introduce the LLM Nominal Response Model (LLM-NRM), an option-aware extension of Bock’s NRM for ana-lyzing LLM responses to multiple-choice questions. Unlike conventional evaluation, which retains only the correctness of the most probable option, LLM-NRM models the com-plete response distribution over all valid options. This pre-serves richer information about distractor preferences and how option attractiveness varies across models of different abilities. LLM-NRM retains the original NRM parameterization for MCQ items (Penfield 2014) and instead augments the respondent model with additional latent response processes motivated by empirical characteristics commonly observed in LLMs: (i) response calibration sharpness, (ii) positional preference, and (iii) difficulty-dependent fallback behavior. These LLM-specific extensions separately capture system-atic response variation that would otherwise be absorbed into examinee ability and item modeling. Unlike human testing that typically records one categorical response per item (Thissen and Steinberg 1984; Suh and Bolt 2010), LLM evaluation provides full option distributions across large item banks, enabling these respondent-specific processes to be es-timated. 
+
+Problem Formulation 
+
+Let J denote a collection of LLMs as examinees and I
+
+denote a collection of MCQ items. Each MCQ item i ∈ I 
+
+presents Ki answer options indexed by Ki = {1, . . . , K i},corresponding to the displayed answer positions such as A, B, C and D in the prompt. Let gi ∈ K i denote the index of the keyed correct option, and define Kmax = max i∈I Ki as the largest number of options among all items. An LLM’s response to an MCQ item is inherently distri-butional, as each autoregressive step produces a probability over next tokens. So when an LLM j ∈ J answers an MCQ item i ∈ I , it expresses a degree of preference for every available option. We represent this observed preference pobs 
+
+> ji
+
+as: 
+
+pobs  
+
+> ji
+
+=  pobs  
+
+> ji 1
+
+, . . . , p obs 
+
+> jiK i
+
+ ∈ ∆Ki−1, (1) with pobs  
+
+> jik
+
+the normalized preference for option k and ∆Ki−1
+
+the probability simplex. LLM-NRM treats pobs  
+
+> ji
+
+as the observed response, rather than reducing it to a binary indicator of whether the most probable option equals gi.
+
+Bock’s NRM 
+
+Bock’s NRM (Bock 1972) models unordered response op-tions by assigning each examinee j ∈ J a latent ability 
+
+θj ∈ R, and each option k ∈ K i a discrimination parame-ter aik ∈ R plus an intercept cik ∈ R. The discrimination controls how the option’s relative attractiveness varies with ability, while the intercept captures its baseline attractive-ness. The resulting response distribution is 
+
+pNRM  
+
+> jik
+
+= exp ( aik θj + cik )
+
+P 
+
+> k′∈K i
+
+exp ( aik ′ θj + cik ′ ) . (2) Because the softmax is invariant to item-wise shifts in its utilities, the identification constraints are imposed 
+
+X
+
+> k∈K i
+
+aik = 0 , X
+
+> k∈K i
+
+cik = 0 , (3) and anchor the ability scale with the prior θj ∼ N (0 , 1) .The classical NRM is powerful for human testing, but LLMs violate its assumptions in three systematic ways: • differences in distribution sharpness that may reflect cali-bration rather than knowledge (Kadavath et al. 2022; Zhu et al. 2023), 
+
+• content-independent preferences for displayed posi-tions (Zheng et al. 2024; Pezeshkpour and Hruschka 2024; Attali and Bar-Hillel 2003), 
+
+• and fallback guessing patterns on items that are difficult relative to the model’s ability (Ivgi et al. 2024). Fitting NRM directly would absorb these non-ability effects into θj and the option parameters, potentially biasing both. 
+
+Response Sharpness and Positional Bias 
+
+We first augment the NRM ability-driven utilities with global response sharpness and content-independent positional pref-erence. 
+
+Response Sharpness. Two LLMs with identical prefer-ence orderings over options may nevertheless produce dis-tributions with substantially different concentrations because of differences in calibration rather than knowledge (Kadavath et al. 2022; Zhu et al. 2023). Classical NRM has no examinee-specific parameter that changes concentration while preserv-ing option ordering, so this variation may instead be absorbed into θj and the item discriminations. We capture the global component of this variation with a positive sharpness parameter for each LLM: 
+
+sj ∈ R+. (4) Mathematically, sj is a per-LLM inverse temperature that changes distribution concentration without altering option ordering: sj > 1 sharpens the distribution, whereas sj < 1
+
+flattens it. Thus, sj captures model-level calibration, or to what degree of confidence an LLM expresses its preferences, separately from item-specific knowledge. 
+
+Positional Bias. LLMs can exhibit systematic preferences for displayed answer positions or their labels independently of option content, and reordering the same options can sub-stantially change measured accuracy (Pezeshkpour and Hr-uschka 2024). Because the NRM intercepts cik are shared across LLMs, classical NRM cannot separate these model-specific positional effects from option attractiveness. Rather than controlling for positional bias through com-putationally expensive permutation protocols (Zheng et al. 2024), we estimate it jointly with ability: 
+
+δj = ( δj1, . . . , δ jK max ) ∈ RKmax , (5) where δjk represents LLM j’s content-independent prefer-ence for displayed position k.Incorporating both model-specific sharpness and posi-tional bias, we define the ability-driven response logit as 
+
+ujik = sj (aik θj + cik + δjk ) . (6) 
+
+Difficulty-Gated Guessing Fallback 
+
+Classical NRM represents all responses through the same ability-driven option utilities. When an item is difficult rela-tive to an LLM’s ability, however, its option preferences may increasingly reflect model-specific fallback strategies, such as label priors or option heuristics, rather than the item’s con-tent (Ivgi et al. 2024; Zheng et al. 2024; Balepur, Ravichan-der, and Rudinger 2024). Binary 3PL-IRT introduces a per-item lower asymptote (Birnbaum 1968), but it neither models a complete fallback distribution over options nor allows fall-back behavior to vary across LLMs, and its guessing param-eters are usually poorly identified (Barton and Lord 1981; Maris and Bechger 2009; San Martín, González, and Tuer-linckx 2015). We therefore define the guessing fallback gate instead: 
+
+Gji = σ
+
+h
+
+w0 − κ
+
+
+
+θj − ebi
+
+i 
+
+, (7) where w0 ∈ R is a global intercept, κ ≥ 0 is a global slope, and ebi is the item-difficulty index defined below. The logistic link σ maps the ability-difficulty gap to a fallback interpo-lation weight in (0 , 1) . The intercept w0 sets the transition location, while κ controls its sharpness. Consequently, fall-back becomes more prominent as item difficulty increases relative to LLM ability. 
+
+An Approximation of Difficulty Index. The fallback gate requires a scalar measure of item difficulty ˜bi derived from the NRM option parameters. In 2PL-IRT, item difficulty is defined as the ability at which the correct-response proba-bility equals 12 . NRM has no explicit scalar difficulty param-eter, but an analogous difficulty threshold can be expressed through the correct-versus-incorrect log-odds margin 
+
+fi(θ) = aig i θ + cig i − log X 
+
+> k̸=gi
+
+exp ( aik θ + cik ) . (8) Solving for this threshold numerically during optimization would be costly. We therefore construct a local and differen-tiable index by linearizing fi around θ = 0 , the center of the ability prior: 
+
+fi(θ) ≈ fi(0) + f ′ 
+
+> i
+
+(0) · θ (9) Thus, 
+
+ebi = − fi(0) 
+
+f ′ 
+
+> i
+
+(0) = log P  
+
+> k̸=gi
+
+exp( cik ) − cig i
+
+aig i − P  
+
+> k̸=gi
+
+wik aik 
+
+, (10) where 
+
+wik = exp( cik )
+
+P  
+
+> k′̸=gi
+
+exp( cik ′ ) . (11) Here, wik is the distractor softmax weight at θ = 0 . Equiv-alently, ebi is the local threshold estimate obtained by taking one Newton step from the center of the ability prior. This construction introduces no additional free item parameter and remains differentiable during optimization. 
+
+Fallback pattern. The scalar gate Gji determines how strongly fallback behavior contributes to a response. In-spired by respondent-specific bias vectors in human annota-tion models (Dawid and Skene 1979; Welinder et al. 2010), we assign each LLM a vector of fallback logits to specify the distribution over options within that regime 
+
+ρj = ( ρj1, . . . , ρ jK max ) ∈ RKmax , (12) where ρjk is LLM j’s fallback logit for displayed position k.Notably, the positional-bias vector δj and fallback vector 
+
+ρj play distinct roles. The former captures a persistent posi-tional effect in the ability-driven utilities, whereas the latter defines the response pattern that receives increasing weight as Gji grows. 
+
+Full LLM-NRM Response Distribution 
+
+Altogether, we define the response preference distribution under LLM-NRM as an interpolation combining the ability-driven and fallback processes: 
+
+pLLM -NRM  
+
+> jik
+
+= exp [(1 − Gji ) ujik + Gji ρjk ]
+
+P 
+
+> k′∈K i
+
+exp [(1 − Gji ) ujik ′ + Gji ρjk ′ ] .
+
+(13) Notably, with sj = 1 , δj = ρj = 0, and Gji = 0 , our modeling reduces exactly to the classical NRM. Because the softmax is invariant to adding the same con-stant to all logits, we impose the LLM-level identification constraints: X
+
+> k≤Kmax
+
+δjk = 0 , and X
+
+> k≤Kmax
+
+ρjk = 0 , (14) and positivity are enforced through unconstrained reparam-eterizations: sj = softplus(¯ sj ), κ = softplus(¯ κ), with 
+
+¯sj , ¯κ ∈ R.
+
+Fitting 
+
+In total, LLM-NRM estimates 2( Ki − 1) free parameters per MCQ item, plus 2Kmax free scalars per LLM along with two more global scalars (w0, κ ). Given a group of LLMs J and their observed preference pobs  
+
+> ji
+
+on a set of MCQ items I, we fit all parameters jointly by maximum a posteriori (MAP) estimation with Adam optimizer on the soft cross-entropy loss: 
+
+L = − X 
+
+> i∈I ,j ∈J ,k ∈K i
+
+pobs  
+
+> jik
+
+log pLLM -NRM  
+
+> jik
+
++ 12
+
+X
+
+> j∈J
+
+θ2 
+
+> j
+
+, (15) where 12 θ2 
+
+> j
+
+is the regularization term of the prior θ ∼N (0 , 1) .
+
+## Experimental Setup 
+
+MCQ item bank. We assemble a large and diverse evalua-tion set comprising 31,554 MCQ items from 14 benchmarks spanning factual knowledge, reasoning, and commonsense: MMLU-Pro (Wang et al. 2024), GPQA-Diamond (Rein et al. 2024), ARC-Challenge (Clark et al. 2018), AGIEval (Zhong et al. 2024), CommonsenseQA (Talmor et al. 2019), LogiQA 2.0 (Liu et al. 2023), OpenBookQA (Mihaylov et al. 2018), TruthfulQA (Lin, Hilton, and Evans 2022), MedQA-USMLE (Jin et al. 2021), RACE (Lai et al. 2017), So-cialIQA (Sap et al. 2019), QASC (Khot et al. 2020), Re-Clor (Yu et al. 2020), and MMLU (Hendrycks et al. 2021). Because MMLU and MMLU-Pro partially overlap, we re-move from MMLU every MCQ item that also appears in MMLU-Pro. The resulting collection contains between 2 and 10 answer options per MCQ item, with a mean of 5.82. This variation allows us to evaluate LLM-NRM across both con-ventional and large-option MCQ formats. 
+
+LLM fleet. Our examinee fleet contains 189 LLMs , ac-cessed through either publicly released weights or official APIs. We intentionally cover a broad range of LLM ability, parameter scale, training recipe, architecture, and develop-ment period. The collection includes 64 open-weight LLM families, including Qwen, Llama, Gemma, Phi, Mistral, Fal-con, and Pythia, with parameter counts ranging from 70 mil-lion to 235 billion and release dates from February 2019 to May 2026. Different model architectures are also covered, including dense Transformers, mixture-of-experts models, and state-space models. API-accessible systems including DeepSeek-V4 Pro, GLM-5.1, and Kimi-K2.6 extend the fleet to recent frontier-scale LLMs. 
+
+Answer-choice distributions. For each LLM–MCQ item pair, we extract the log-probability assigned to every valid an-swer option at the first token position immediately following the question and answer instruction. All experiments apply common settings in LLM MCQ benchmarking, using zero-shot prompting, temperature T = 1 , with chain-of-thought disabled. We compute option scores from the full-vocabulary log-softmax whenever complete logits are available. Some APIs expose only the top-20 next-token logits where we retain valid option tokens present in the returned set, and assign zero observed mass to unreported options. The global answer-instruction prompt is designed to concentrate next-token mass on option tokens, with only 0.56% letter-mass leakage reported across the entire fleet. 
+
+Baselines. We compare LLM-NRM with classical binary 1PL–4PL IRT (Barton and Lord 1981), Bock’s NRM (Bock 1972), as well as prior state-of-the-art approaches including Deep-IRT (Yeung 2019), β3-IRT (Chen et al. 2019), PSN-IRT (Zhou et al. 2026), and SD-IR (Wang et al. 2026). Binary models natively predict only correctness, and whenever they are evaluated on complete responses, their predicted incor-rect mass is distributed using an MCQ-item-specific wrong-option distribution estimated exclusively from training cells. All models are trained with Adam optimizer with learning rate 0.05 for 2,500 steps, under which a stable convergence is always reached. 
+
+## A Better Modeling of LLM Responses 
+
+We organize our evaluation around three questions: (i) whether LLM-NRM better models LLM responses, (ii) how much information incorrect-option identity contributes be-yond correctness, and (iii) whether this additional informa-tion enables more efficient benchmarking. 
+
+Held-out Response Prediction. We evaluate held-out pre-diction of the LLM–item response matrix using 5-fold cell-level cross-validation. Table 1 reports performance in two channels: binary correctness, where option-aware models predict the probability of the keyed answer; and answer-option prediction, where binary models distribute non-key probability mass across distractors using training-set fre-quencies. The binary channel favors binary IRT baselines, yet LLM-NRM achieves the highest correctness accuracy among com-peting models ( 0.8395 vs. 0.8232 ). In the answer-option binary correctness channel answer option channel model type Acc ↑ LL ↓ Brier ↓ Acc ↑ LL ↓
+
+1PL-IRT (Rasch 1960) binary 0.8091 ±.0001 0.4437 ±.0003 0.1404 ±.0001 0.6121 ±.0001 1.0480 ±.0012 
+
+2PL-IRT (Lord and Novick 1968) binary 0.8163 ±.0002 0.3908 ±.0002 0.1256 ±.0001 0.6373 ±.0002 0.9949 ±.0012 
+
+3PL-IRT (Birnbaum 1968) binary 0.8227 ±.0003 0.3839 ±.0003 0.1223 ±.0001 0.6417 ±.0002 0.9879 ±.0012 
+
+4PL-IRT (Barton and Lord 1981) binary 0.8232 ±.0003 0.3847 ±.0005 0.1221 ±.0001 0.6427 ±.0003 0.9889 ±.0015 
+
+Deep-IRT (Yeung 2019) binary 0.7980 ±.0003 0.4846 ±.0003 0.1555 ±.0001 0.5923 ±.0003 1.0890 ±.0011 
+
+β3-IRT (Chen et al. 2019) binary 0.8049 ±.0004 0.4154 ±.0003 0.1351 ±.0001 0.6184 ±.0001 1.0199 ±.0009 
+
+PSN-IRT (Zhou et al. 2026) binary 0.8207 ±.0008 0.3877 ±.0014 0.1239 ±.0002 0.6388 ±.0004 0.9921 ±.0025 
+
+SD-IR (Wang et al. 2026) option 0.7077 ±.0001 0.6782 ±.0004 0.2430 ±.0002 0.5887 ±.0003 1.3774 ±.0003 
+
+NRM, soft channel option 0.8161 ±.0003 0.3893 ±.0001 0.1258 ±.0001 0.6567 ±.0003 0.9393 ±.0007 
+
+NRM, hard channel (Bock 1972) option 0.8149 ±.0003 0.3931 ±.0001 0.1264 ±.0001 0.6698 ±.0001 0.9171 ±.0013 
+
+LLM-NRM (full) option 0.8395 ±.0002 0.3542 ±.0004 0.1127 ±.0001 0.7070 ±.0003 0.8181 ±.0011 
+
+w/o guessing fallback ( G, ρ) 0.8380 ±.0002 0.3570 ±.0003 0.1137 ±.0001 0.7054 ±.0001 0.8198 ±.0006 
+
+w/o calibration sharpness ( s) 0.8383 ±.0002 0.3538 ±.0004 0.1128 ±.0002 0.7042 ±.0003 0.8202 ±.0010 
+
+w/o positional bias ( δ) 0.8382 ±.0003 0.3568 ±.0003 0.1136 ±.0001 0.7056 ±.0003 0.8194 ±.0007 
+
+Table 1: Held-out response prediction under 5-fold cross-validation. Values report the mean and standard deviation across five disjoint test folds. We report top-1 accuracy (Acc) and log-loss (LL) for both response channels, together with the Brier score (Brier) for binary correctness. Arrows indicate the preferred direction. channel, which directly evaluates option-level modeling, LLM-NRM provides larger gains, achieving 0.7070 accu-racy and 0.8181 log-loss compared with 0.6427 and 0.9879 
+
+for the strongest binary baselines, and 0.6698 and 0.9171 
+
+for hard-channel NRM. Ablation results further show that all proposed components contribute in a complementary way, as removing all of them reduces LLM-NRM (full) to NRM (soft channel) with significant performance gap. measurement Spearman Raw Accuracy 0.866 ±.024 
+
+1PL-IRT-θ 0.866 ±.024 
+
+2PL-IRT-θ 0.857 ±.024 
+
+3PL-IRT-θ 0.874 ±.022 
+
+4PL-IRT-θ 0.885 ±.021 
+
+PSN-IRT-θ 0.877 ±.022 
+
+Deep-IRT-θ 0.865 ±.024 
+
+β3-IRT-θ 0.814 ±.032 
+
+SD-IR-θ 0.829 ±.029 
+
+NRM (soft channel)-θ 0.766 ±.037 
+
+NRM (hard channel)-θ 0.831 ±.029 
+
+LLM-NRM-θ 0.920 ±.015 
+
+Table 2: Rank agreement between each measurement and Arena.ai text Elo scores. Values report Spearman correlation with bootstrap standard deviation. LLM-NRM achieves the highest observed Spearman correlation. 
+
+External Validity of the Ability Scale. Predictive perfor-mance alone does not guarantee that estimated LLM abilities capture meaningful model differences. We therefore compare LLM-NRM ability rankings with independent Arena.ai Text Elo scores, derived from crowdsourced pairwise human pref-erences on open-ended prompts (Chiang et al. 2024). This evaluates whether the learned scale aligns with external hu-man judgments rather than benchmark accuracy alone. We match 48 LLMs with a July 2026 leaderboard snapshot 1 and compute Spearman rank correlation, with uncertainty esti-mated by bootstrap resampling of the matched LLMs. As shown in Table 2, LLM-NRM achieves the strongest agreement with Arena Elo ( ρ = 0 .920 ), outperforming raw accuracy ( 0.866 ) and the strongest competing latent ability estimate ( 0.885 ). Since Arena outcomes are not used dur-ing training, this result indicates that option-level response patterns capture model differences aligned with human pref-erences beyond aggregate MCQ correctness. The automati-cally estimated scale provides a reproducible and lower-cost proxy for Arena-style ranking. 
+
+## Information Beyond Binary Correctness 
+
+We next examine the source of this predictive advantage of LLM-NRM: binary scoring observes only whether an LLM is wrong, whereas option-level scoring also observes which 
+
+distractor it selects. We next demonstrate this additional in-formation both theoretically and empirically. 
+
+Fisher Information from Distractor Identity. For the nominal-response component, as commonly defined in prior works (Bock 1972; Suh and Bolt 2010; Garcia-Perez 2014), the Fisher Information in the full option identity decomposes into the information retained by binary correctness and an additional nonnegative term contributed by distractor iden-tity: 
+
+INRM  
+
+> i
+
+(θ) = Ibinary  
+
+> i
+
+(θ) + Iwrong  
+
+> i
+
+(θ), (16) where Iwrong  
+
+> i
+
+(θ) ≥ 0.
+
+> 1
+
+Arena.ai Text leaderboard: https://arena.ai/leaderboard/text. 0 1 2 3 4 5Fisher Information (per item) MMLU-Pro GPQA-Diamond ARC-Challenge AGIEval CommonsenseQA LogiQA 2.0 OpenBookQA TruthfulQA MedQA-USMLE RACE SocialIQA QASC ReClor MMLU (dedup) 
+
+> +211% +103% +52% +60% +108% +82% +57% +117% +61% +53% +46% +146% +60% +49%
+> INRM
+> IBinary
+
+(a) Information retained by the response channels '18 '20 '22 '24 '17 '19 '21 '23 '25 Benchmark Publication Date 0.5 1.0 1.5 2.0 2.5 Average Number of Informative Distractors  Pearson r = 0.87 Spearman ρ = 0.92  
+
+> RACE ARC-Challenge OpenBookQA CommonsenseQA SocialIQA QASC ReClor MMLU (dedup) MedQA-USMLE TruthfulQA LogiQA 2.0 AGIEval GPQA-Diamond MMLU-Pro
+
+(b) Informative distractors across benchmark dates Figure 2: Ability information beyond binary correctness. (a) Mean item-level Fisher information in binary correctness and the additional information contributed by distractor identity. The full stacked length represents the information in the complete option response; percentages denote its increase over binary scoring. (b) Average number of detected informative distractors per item versus benchmark publication date. More recent benchmarks tend to expose more distinguishable distractor structure. Figure 2(a) reports the item-level Fisher information re-tained by coarsened binary correctness and the additional contribution of distractor identity, averaged over the ability distribution and over items within each benchmark. The full option response provides +101% more Fisher information per item than binary scoring on average, and the gain is pos-itive for every benchmark, showing that ability-dependent distractor preferences are a systematic property of LLM re-sponses rather than an isolated feature of a few datasets. 
+
+Informativeness across benchmarks. Figure 2(b) char-acterizes how the available distractor signal varies across benchmark designs, as we define an incorrect option as in-formative distractor if it’s nevertheless the single most likely response at some ability level. More recently released bench-marks tend to contain more informative distractors per item, and many recent benchmarks have more than 1 informative distractor per item. It indicates that the response structure discarded by binary scoring remains substantial, and may become increasingly consequential as MCQ benchmarks in-corporate richer sets of distractors. 
+
+Ability Estimation from Incorrect Responses. We next isolate the contribution of distractor identity with another 5-fold cross-validation over the LLM fleet. In each fold, MCQ item parameters are fit using the training LLMs and then held fixed while estimating θ for the held-out LLMs under two conditions: (i) Binary-Only, where the estimator observes only correctness signals; and (ii) Incorrect-Only, where it observes only the categorical signals from incorrectly an-swered MCQ items. For each held-out LLM, we compare the estimated θ with the reference estimate obtained using the full response information. Table 3 reports the resulting correlations across all folds, quantifying the information con-tributed by each response signal. scenario Pearson ↑ Spearman ↑
+
+Binary-Only 0.8983 ±.0076 0.9785 ±.0075 
+
+Incorrect-Only 0.8693 ±.0615 0.9428 ±.0174 
+
+Table 3: Correlation between held-out θ estimates under each observation scenario and the full-fleet reference esti-mate (mean ±sd over 5-fold cross-validation). The results confirm that distractor identity is a meaningful source of information for ability estimation. Even without ob-serving whether an answer is correct, the pattern of selected distractors yields a strong estimate of θ, indicating that error structure alone is highly informative but not a random effect. Neither scenario leads to a perfect correlation, suggesting that the two signals provide complementary information. 
+
+## Data Efficient LLM Benchmarking 
+
+As a natural consequence, we examine how LLM-NRM’s richer response modeling enables more efficient LLM MCQ benchmarking. Prior compression methods are binary-correctness-based, typically need around 100 anchor items, and calibrate on thousands of models (Maia Polo et al. 2024; Kipnis et al. 2025). We therefore investigate two questions as two typical costs of benchmarking on our approach: (i) how many MCQ items are required to reliably rank new LLMs? and (ii) how many LLMs are needed to calibrate a reusable MCQ item bank? 
+
+Compression of MCQ Benchmarks. We first vary the number of MCQ items administered to each held-out LLM. 25 50 100 200 400 800 
+
+> Number of MCQ Items
+> 0.6 0.7 0.8 0.9
+> Kendall Correlation vs. Full-Bank Ranking ↑
+> LLM-NRM NRM (soft) 4PL-IRT PSN-IRT
+
+(a) Ranking new LLMs with fewer MCQ items 5 10 20 40 80  
+
+> Number of LLMs
+> 0.5 12
+> full-fleet asymptote (189 LLMs)
+> Held-Out Correctness Log-Loss ↓
+> LLM-NRM NRM (soft) 4PL-IRT PSN-IRT
+
+(b) Calibrating an MCQ item bank with fewer LLMs Figure 3: Data-efficient LLM evaluation and benchmark calibration. (a) Kendall correlation between rankings from information-selected subsets and the full item bank. LLM-NRM performs best, especially at small item budgets. (b) Held-out correctness log-loss after calibration with fewer LLMs. LLM-NRM produces useful item parameters with only 5 LLMs and approaches full-fleet performance near 40 MCQ items. Bands show variation across splits in (a) and calibration subsets in (b). Each model uses its calibrated MCQ item parameters to se-lect an information-rich subset of the specified size, then estimates LLM ability from only the selected responses. We evaluate the resulting leaderboard using Kendall’s τ with the ranking obtained from the complete MCQ item bank. Figure 3(a) shows that LLM-NRM remains effective even with a very small MCQ item budget. Using only the 41 most informative MCQ items, the reduced benchmark achieves a Kendall correlation of 0.85 , corresponding to a ×770 com-pression rate. Overall, LLM-NRM performs best in the low-budget regime, while PSN-IRT becomes competitive only when several hundred MCQ items are available. These re-sults indicate that a new LLM can be faithfully calibrated by evaluating it on only a small set of MCQ items. 
+
+Calibration with Fewer LLMs. We next consider the re-verse calibration problem. Unlike conventional psychometric IRT, which assumes a large population of examinees calibrat-ing a relatively small item bank, LLM benchmarking often enters the opposite regime: tens of thousands of MCQ items but only tens or hundreds of LLMs for calibration. Flexible binary IRT models must therefore estimate item parame-ters from limited responses. We test whether LLM-NRM alleviates this bottleneck by randomly sampling calibration subsets, estimating item parameters, and evaluating the re-sulting MCQ banks on held-out LLMs with binary log loss on correctness for fair comparison. Figure 3(b) shows that LLM-NRM consistently achieves the lowest held-out correctness loss across all calibration fleet sizes. Unlike binary IRT models, which become unsta-ble with small calibration fleets due to limited information in binary responses, LLM-NRM exploits option-level response distributions to obtain richer and more data-efficient cali-bration signals. Compared with soft-channel NRM, LLM-NRM’s modeling of LLM-specific response sharpness, po-sitional bias, and guessing behavior further improves gen-eralization to unseen LLMs. These results demonstrate that LLM-NRM reduces both the number of MCQ items required to evaluate new LLMs and the number of LLMs needed for benchmark calibration, lowering evaluation costs. 
+
+## Discussion and Conclusion 
+
+We introduced LLM-NRM, an option-aware psychomet-ric model that recovers information discarded by binary MCQ scoring. By modeling option distributions, LLM-NRM jointly estimates LLM ability, item characteristics, and be-havioral factors such as response calibration sharpness, posi-tional preference, and difficulty-dependent fallback behavior. Across 189 LLMs and 31,554 items from 14 benchmarks, it improves held-out response prediction, aligns ability esti-mates with human-preference rankings, and reveals that dis-tractor choices provide substantial information beyond cor-rectness. These signals also improve evaluation efficiency by preserving benchmark rankings with fewer items and reduc-ing the number of LLMs required for calibration. On the other hand, the current formulation assumes access to comparable option probabilities and models ability with a single latent dimension. Future work can explore partial probability observations, multidimensional abilities, and ex-tensions beyond fixed-option questions. After all, our results demonstrate that LLM errors are informative signals that re-veal their underlying capabilities and decision patterns, en-abling more reliable evaluation beyond accuracy-based rank-ings. References 
+
+Alzahrani, N.; Alyahya, H.; Alnumay, Y.; AlRashed, S.; Al-subaie, S.; Almushayqih, Y.; Mirza, F.; Alotaibi, N.; Al-Twairesh, N.; Alowisheq, A.; Bari, M. S.; and Khan, H. 2024. When Benchmarks are Targets: Revealing the Sensitivity of Large Language Model Leaderboards. In Proceedings of the 62nd Annual Meeting of the Association for Computa-tional Linguistics (Volume 1: Long Papers) , 13787–13805. Association for Computational Linguistics. Attali, Y.; and Bar-Hillel, M. 2003. Guess where: The posi-tion of correct answers in multiple-choice test items as a psy-chometric variable. Journal of Educational Measurement ,40(2): 109–128. Balepur, N.; Ravichander, A.; and Rudinger, R. 2024. Arti-facts or Abduction: How Do LLMs Answer Multiple-Choice Questions Without the Question? In Proceedings of the 62nd Annual Meeting of the Association for Computational Lin-guistics , 10308–10330. Barton, M. A.; and Lord, F. M. 1981. An Upper Asymp-tote for the Three-Parameter Logistic Item-Response Model. Technical Report RR-81-20, Educational Testing Service. Birnbaum, A. 1968. Some Latent Trait Models and Their Use in Inferring an Examinee’s Ability. In Lord, F. M.; and Novick, M. R., eds., Statistical Theories of Mental Test Scores , 397–479. Reading, MA: Addison-Wesley. Bock, R. D. 1972. Estimating Item Parameters and Latent Ability when Responses Are Scored in Two or More Nominal Categories. Psychometrika , 37(1): 29–51. Chaudhury, B.; Wang, M. F.; Park, H. H.; Ghosh, R.; Hong, S.; and Woo, J. O. 2026. Quantifying consistency in LLM logical reasoning via structural uncertainty. arXiv preprint arXiv:2606.17312 .Chen, Y.; Silva Filho, T.; Prudencio, R. B.; Diethe, T.; and Flach, P. 2019. β3-IRT: A New Item Response Model and its Applications. In The 22nd international conference on artificial intelligence and statistics , 1013–1021. PMLR. Chiang, W.-L.; Zheng, L.; Sheng, Y.; Angelopoulos, A. N.; Li, T.; Li, D.; Zhang, H.; Zhu, B.; Jordan, M.; Gonzalez, J. E.; et al. 2024. Chatbot arena: An open platform for evaluating llms by human preference. arXiv preprint arXiv:2403.04132 .Clark, P.; Cowhey, I.; Etzioni, O.; Khot, T.; Sabharwal, A.; Schoenick, C.; and Tafjord, O. 2018. Think You Have Solved Question Answering? Try ARC, the AI2 Reasoning Chal-lenge. arXiv preprint arXiv:1803.05457 .Dawid, A. P.; and Skene, A. M. 1979. Maximum Like-lihood Estimation of Observer Error-Rates Using the EM Algorithm. Journal of the Royal Statistical Society: Series C (Applied Statistics) , 28(1): 20–28. Garcia-Perez, M. A. 2014. Multiple-choice tests: Polytomous IRT models misestimate item information. The Spanish Jour-nal of Psychology , 17: E88. Hendrycks, D.; Burns, C.; Basart, S.; Zou, A.; Mazeika, M.; Song, D.; and Steinhardt, J. 2021. Measuring Massive Mul-titask Language Understanding. In International Conference on Learning Representations .Ivgi, M.; Yoran, O.; Berant, J.; and Geva, M. 2024. From Loops to Oops: Fallback Behaviors of Language Models Under Uncertainty. arXiv preprint arXiv:2407.06071 .Jin, D.; Pan, E.; Oufattole, N.; Weng, W.-H.; Fang, H.; and Szolovits, P. 2021. What Disease Does This Patient Have? A Large-Scale Open Domain Question Answering Dataset from Medical Exams. Applied Sciences , 11(14): 6421. Kadavath, S.; Conerly, T.; Askell, A.; Henighan, T.; Drain, D.; Perez, E.; Schiefer, N.; Hatfield-Dodds, Z.; DasSarma, N.; Tran-Johnson, E.; et al. 2022. Language models (mostly) know what they know. arXiv preprint arXiv:2207.05221 .Khot, T.; Clark, P.; Guerquin, M.; Jansen, P.; and Sabharwal, A. 2020. QASC: A Dataset for Question Answering via Sentence Composition. In Proceedings of the 34th AAAI Conference on Artificial Intelligence .Kipnis, A.; Voudouris, K.; Schulze Buschoff, L.; and Schulz, E. 2025. metabench-A sparse benchmark of reasoning and knowledge in large language models. In International Con-ference on Learning Representations , volume 2025, 31734– 31770. Lai, G.; Xie, Q.; Liu, H.; Yang, Y.; and Hovy, E. 2017. RACE: Large-Scale Reading Comprehension Dataset from Examinations. In Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing .Lalor, J. P.; Wu, H.; and Yu, H. 2016. Building an Evalua-tion Scale using Item Response Theory. In Proceedings of the 2016 Conference on Empirical Methods in Natural Lan-guage Processing , 648–657. Association for Computational Linguistics. Land, S.; and Bikel, D. M. 2026. Auditing LLM Benchmarks with Item Response Theory. arXiv preprint arXiv:2605.30504 .Li, P.; Tang, X.; Chen, S.; Cheng, Y.; Metoyer, R.; Hua, T.; and Chawla, N. V. 2025. Adaptive Testing for LLM Eval-uation: A Psychometric Alternative to Static Benchmarks. 
+
+arXiv preprint arXiv:2511.04689 .Lin, S.; Hilton, J.; and Evans, O. 2022. TruthfulQA: Measur-ing How Models Mimic Human Falsehoods. In Proceedings of the 60th Annual Meeting of the Association for Computa-tional Linguistics .Lior, G.; Frostig, T.; Stanovsky, G.; and Eyal, M. 2026. Ex-tending Item Response Theory for Efficient and Meaningful Multilingual Evaluation. arXiv preprint arXiv:2606.15643 .Liu, H.; Liu, J.; Cui, L.; Teng, Z.; Duan, N.; Zhou, M.; and Zhang, Y. 2023. Logiqa 2.0—an improved dataset for logical reasoning in natural language understanding. IEEE/ACM Transactions on Audio, Speech, and Language Processing ,31: 2947–2962. Lord, F. M.; and Novick, M. R. 1968. Statistical Theories of Mental Test Scores . Addison-Wesley. Maia Polo, F.; Weber, L.; Choshen, L.; Sun, Y.; Xu, G.; and Yurochkin, M. 2024. tinyBenchmarks: evaluating LLMs with fewer examples. arXiv preprint arXiv:2402.14992 .Maris, G.; and Bechger, T. 2009. On interpreting the model parameters for the three parameter logistic model. Mea-surement: Interdisciplinary Research and Perspectives , 7(2): 75–88. Mihaylov, T.; Clark, P.; Khot, T.; and Sabharwal, A. 2018. Can a Suit of Armor Conduct Electricity? A New Dataset for Open Book Question Answering. In Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing .Penfield, R. D. 2014. An NCME Instructional Module on Polytomous Item Response Theory Models. Educational Measurement: Issues and Practice , 33(1): 36–48. Perlitz, Y.; Bandel, E.; Gera, A.; Arviv, O.; Ein-Dor, L.; Shnarch, E.; Slonim, N.; Shmueli-Scheuer, M.; and Choshen, L. 2024. Efficient Benchmarking (of Language Models). In 
+
+Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) ,2519–2536. Association for Computational Linguistics. Pezeshkpour, P.; and Hruschka, E. 2024. Large language models sensitivity to the order of options in multiple-choice questions. In Findings of the Association for Computational Linguistics: NAACL 2024 , 2006–2017. Rasch, G. 1960. Studies in mathematical psychology: I. Prob-abilistic models for some intelligence and attainment tests. 
+
+Copenhagen: Danmarks Pædagogiske Institut. Rein, D.; Hou, B. L.; Stickland, A. C.; Petty, J.; Pang, R. Y.; Dirani, J.; Michael, J.; and Bowman, S. R. 2024. GPQA: A Graduate-Level Google-Proof Q&A Benchmark. In First Conference on Language Modeling .San Martín, E.; González, J.; and Tuerlinckx, F. 2015. On the Unidentifiability of the Fixed-Effects 3PL Model. Psy-chometrika , 80(2): 450–467. Sap, M.; Rashkin, H.; Chen, D.; Le Bras, R.; and Choi, Y. 2019. Social IQa: Commonsense reasoning about social interactions. In Proceedings of the 2019 conference on em-pirical methods in natural language processing and the 9th international joint conference on natural language process-ing (EMNLP-IJCNLP) , 4463–4473. Suh, Y.; and Bolt, D. M. 2010. Nested Logit Models for Multiple-Choice Item Response Data. Psychometrika , 75(3): 454–473. Talmor, A.; Herzig, J.; Lourie, N.; and Berant, J. 2019. Com-monsenseQA: A Question Answering Challenge Targeting Commonsense Knowledge. In Proceedings of the 2019 Con-ference of the North American Chapter of the Association for Computational Linguistics .Thissen, D.; and Steinberg, L. 1984. A Response Model for Multiple Choice Items. Psychometrika , 49(4): 501–519. Vania, C.; Htut, P. M.; Huang, W.; Mungra, D.; Yuanzhe Pang, R.; Phang, J.; Liu, H.; Cho, K.; and Bow-man, S. R. 2021. Comparing test sets with item response theory. In Annual Meeting of the Association for Computa-tional Linguistics .Wang, Y.; Ma, X.; Zhang, G.; Ni, Y.; Chandra, A.; Guo, S.; Ren, W.; Arulraj, A.; He, X.; Jiang, Z.; et al. 2024. MMLU-Pro: A More Robust and Challenging Multi-Task Language Understanding Benchmark. In Advances in Neural Informa-tion Processing Systems 37, Datasets and Benchmarks Track .Wang, Z.; Wu, W.; Wang, G.; Ye, G.; and Cheng, Z. 2026. MetaEval: Measuring the Discrimination of Benchmarks for Efficient LLM Evaluation. In Proceedings of the AAAI Con-ference on Artificial Intelligence , volume 40, 33773–33781. Welinder, P.; Branson, S.; Belongie, S.; and Perona, P. 2010. The Multidimensional Wisdom of Crowds. In Advances in Neural Information Processing Systems 23 .Wu, X.; Lin, W.; Akgul, O.; and Bauer, L. 2025. Estimating llm consistency: A user baseline vs surrogate metrics. In 
+
+Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , 30518–30532. Yang, Z.; Jian, P.; and Li, C. 2025. Option symbol matters: Investigating and mitigating multiple-choice option symbol bias of large language models. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the As-sociation for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , 1902–1917. Yeung, C.-K. 2019. Deep-IRT: Make Deep Learning Based Knowledge Tracing Explainable Using Item Response The-ory. In Proceedings of the 12th International Conference on Educational Data Mining . ArXiv:1904.11738. Yu, W.; Jiang, Z.; Dong, Y.; and Feng, J. 2020. ReClor: A Reading Comprehension Dataset Requiring Logical Reason-ing. In International Conference on Learning Representa-tions .Zhang, Y.; Fei, X.; Mohamed, A.; Carneiro, S. A.; Konomi, M.; Geng, M.; Asaad, A.; Shang, G.; and Vazirgiannis, M. 2026. The Masked Advantage: Uncovering Local-Language Access to Cultural Knowledge in LLMs. arXiv preprint arXiv:2606.07422 .Zheng, C.; Zhou, H.; Meng, F.; Zhou, J.; and Huang, M. 2024. Large language models are not robust multiple choice selectors. In International Conference on Learning Repre-sentations , volume 2024, 19426–19454. Zhong, W.; Cui, R.; Guo, Y.; Liang, Y.; Lu, S.; Wang, Y.; Saied, A.; Chen, W.; and Duan, N. 2024. AGIEval: A Human-Centric Benchmark for Evaluating Foundation Models. In 
+
+Findings of the Association for Computational Linguistics: NAACL 2024 .Zhou, H.; Huang, H.; Zhao, Z.; Han, L.; Wang, H.; Chen, K.; Yang, M.; Bao, W.; Dong, J.; Xu, B.; et al. 2026. Lost in benchmarks? rethinking large language model benchmarking with item response theory. In Proceedings of the AAAI Con-ference on Artificial Intelligence , volume 40, 35085–35093. Zhu, C.; Xu, B.; Wang, Q.; Zhang, Y.; and Mao, Z. 2023. On the Calibration of Large Language Models and Alignment. In 
+
+Findings of the Association for Computational Linguistics: EMNLP 2023 , 9778–9795. Zhu, Y.; Liu, D.; Lin, Z.; Tong, W.; Zhong, S.; and Shao, J. 2025. The llm already knows: Estimating llm-perceived question difficulty via hidden representations. In Proceed-ings of the 2025 Conference on Empirical Methods in Natural Language Processing , 1160–1176. Zhuang, Y.; Liu, Q.; Pardos, Z. A.; Kyllonen, P. C.; Zu, J.; Huang, Z.; Wang, S.; and Chen, E. 2025. Position: AI Evaluation Should Learn from How We Test Humans. arXiv:2306.10512.

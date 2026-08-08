@@ -1,0 +1,1193 @@
+Title: Scoring Rules! Statistical and Strategic Alignment for Text Evaluation Metrics
+
+URL Source: https://arxiv.org/pdf/2608.01423v1
+
+Published Time: Tue, 04 Aug 2026 01:53:20 GMT
+
+Number of Pages: 25
+
+Markdown Content:
+# Scoring Rules! Statistical and Strategic Alignment for Text Evaluation Metrics 
+
+Shengwei Xu ∗
+
+University of Michigan 
+
+shengwei@umich.edu 
+
+Yuxuan Lu ∗
+
+Peking University 
+
+yx_lu@pku.edu.cn 
+
+Yifan Wu 
+
+Microsoft Research 
+
+yifan.wu2357@gmail.com 
+
+Jason Hartline 
+
+Northwestern University 
+
+hartline@eecs.northwestern.edu 
+
+Grant Schoenebeck 
+
+University of Michigan 
+
+schoeneb@umich.edu 
+
+## Abstract 
+
+Reference-based text evaluation metrics, which are widely used to assess natural language generation systems, score a candidate response by comparing it with a reference response. The reliability of an evaluation metric is usually judged by the statistical correlation with human ratings. However, as these metrics are increasingly used as optimization objectives, this alignment by correlation is no longer sufficient: agents may strategize to game the evaluation metric. We study this issue through two complementary notions of alignment. A metric is 
+
+statistically aligned if it correlates with human ratings, and strategically aligned 
+
+if it resists strategic perturbations that do not add task-relevant information. We make two contributions. First, we propose test principles for reference-based metrics, consisting of human-rating correlation, degradation sensitivity, and manipulation robustness. These principles evaluate whether a metric agrees with human judgments, penalizes low-effort information loss, and resists strategic score inflation. Second, we develop a unified design framework for mutual-information-based metrics that are designed to resist strategic perturbations. The framework decomposes existing and new metrics into four design choices: information mea-sure, estimation method, text representation, and prediction mechanism. Across peer review, summarization, and question answering tasks, we find that strong human-rating correlation does not imply strategic alignment: LLM-as-a-Judge achieves high correlation but is susceptible to manipulations. In contrast, mutual-information-based metrics substantially improve manipulation robustness. Our framework also uncovers a new metric that achieves the strongest overall robustness in our experiments while remaining competitive on human-rating correlation. 
+
+## 1 Introduction 
+
+Reference-based evaluation metrics are essential for scalable assessment of natural language gener-ation (NLG) systems. Given a candidate response and one or more reference responses for the same task, such metrics assign a score intended to reflect the quality, informativeness, or correctness of the candidate. Human judgement of text quality remains the gold standard, but it is too slow and expensive at large scale. Automatic evaluation metrics therefore serve as scalable proxies for human judgment: they replace repeated human assessment with a computable comparison between the candidate and ref-erence responses. Examples include lexical-overlap metrics such as BLEU (Papineni et al., 2002) and ROUGE (Lin, 2004), embedding-based metrics such as BERTScore (Zhang et al., 2019), and LLM 
+
+> ∗Both authors contributed equally to this paper. Preprint. arXiv:2608.01423v1 [cs.AI] 2 Aug 2026
+
+judges that compare a candidate response against a reference. Throughout, an evaluation metric is a function that assigns a numerical score to a candidate using one or more references. We use evaluation workflow for the datasets, perturbations, and statistical tests used to assess metrics. Most standard reference-based metrics are designed to approximate human judgments. We call this requirement 
+
+statistical alignment : a useful metric should correlate with human assessments of text quality. However, reference-based metrics create incentives for language generation systems, which may not align with the intended target of improving genuine text quality. As their role expands from measurement to optimization, we need to understand the incentives these scores create. Prior work has documented related failure modes under the names of reward hacking (Amodei et al., 2016), specification gaming (Krakovna et al., 2020), or reward overoptimization (Gao et al., 2023), where optimizing a proxy objective can produce behavior that increases the measured score without improving the intended target. We call the complementary requirement strategic alignment : a metric should be robust to strategic perturbations of the text. In particular, a metric should assign lower expected scores to less informative reports, which omit or degrade task-relevant content, and to untruthful reports, which manipulate the evaluation procedure without genuinely improving the answer. Recent work proposes evaluation metrics robust to strategic manipulations (Lu et al., 2024; Xu et al., 2025; Robertson and Koyejo, 2025; Wu and Hartline, 2024). These works hint that evaluation metrics must be judged not only by the statistical correlation with human ratings, but also by whether they are robust to strategic perturbations of the text. 
+
+Contribution 1: Test Principles Existing metrics for manipulation robustness are often developed and evaluated in isolation, using different datasets, perturbations, and success criteria. As a result, direct comparison is difficult. It remains unclear how evaluation metrics should be systematically validated when the goal is not only statistical alignment with human ratings, but also strategic alignment under score-seeking behavior. In this paper, we address this validation gap by introducing unified test principles for reference-based evaluation metrics. Generalized from previous studies (Lu et al., 2024; Xu et al., 2025; Robertson and Koyejo, 2025; Wu and Hartline, 2024), we propose three complementary principles for comparing met-rics. The first principle is correlation with human preference: a metric should agree with human judg-ments under ordinary, non-adversarial conditions. This principle corresponds to statistical alignment and captures the standard desideratum in natural-language generation (NLG) evaluation. The second and third principles evaluate strategic alignment from two complementary perspectives. The second principle is degradation sensitivity : when a text is deliberately degraded by removing or corrupting task-relevant information, the metric score should strictly decrease. This tests whether the metric discourages less informative reports, which save effort by providing strictly less information while attempting to receive similar credit. The third principle is manipulation robustness : when a text is strategically modified to inflate the metric score without adding genuine content, the metric should not increase. This tests whether the metric discourages untruthful reports, which exploit superficial features of the evaluation procedure. Unlike degradation, manipulation need not strictly reduce the information content of the text. It may only weakly decrease it or preserve much of the original content while changing style, format, or wording to obtain a higher score. Together, these three principles provide a common standard for evaluating both prior and new metrics on equal footing. We instantiate these principles in a reusable evaluation workflow over seven datasets spanning peer review, summarization, and question answering. Four datasets include human quality ratings for correlation tests, and all seven support degradation and manipulation tests. 
+
+Contribution 2: Metric Design Framework Having introduced a unified test framework, we now turn to the complementary construction question: how should one design metrics that pass these tests? At a high level, mutual information (MI) measures how much information two variables share; we give the formal definition in Section 2. MI is a natural target because it is known to be information-monotone: transformations that do not add task-relevant information do not increase the information a candidate shares with an independent reference. MI-based metrics use this idea by scoring a candidate through an estimate of shared information with the reference. Existing methods such as GEM (Xu et al., 2025), GPPM (Lu et al., 2024), and TVD-MI (Robertson and Koyejo, 2025) can be read as 2different approximations to this common target. We defer the technical distinctions among them to the design framework; the point here is that they vary along a shared set of design choices. However, there is no unified framework for constructing strategically aligned metrics. Previous papers are developed as separate methods rather than as instances of a common design principle. For example, GEM (Xu et al., 2025) uses the token representation of the text, GPPM-Judgment (Lu et al., 2024) parses the text as a set of statements, while TVD-MI (Robertson and Koyejo, 2025) sends the whole piece of text into an LLM-oracle to estimate mutual information. Thus, they interpret the response as represented by different sized chunks—token, statement, response, respectively. Additionally, they differ in the choice of the MI measure, estimator, and prediction model. Because prior evaluations typically compare the full methods rather than controlled variations of these individual components, it is difficult to determine which design choices are responsible for the observed behavior. We propose a unified design framework for constructing MI-based evaluation metrics. Our framework decomposes every MI-based metric into four components: an information measure (MI), an MI estimation method, a representation of a text, and a prediction mechanism. This decomposition recovers existing methods such as GEM, GPPM, and TVD-MI as special cases, while also exposing a broader design space of new metrics. The framework therefore gives a principled recipe for constructing new metrics and for analyzing which design components lead to desirable properties. Our empirical results support a central takeaway: statistical alignment alone is not enough to certify an evaluation metric as strategically aligned. Across peer review, summarization, and question answering, we find that LLM-as-a-Judge achieves the strongest correlation with human ratings, yet is vulnerable to manipulations. In contrast, MI-based metrics provide stronger strategic alignment. In particular, the best-performing new metric from our design framework computes MI between candidate and reference texts at the statement level. It is more reliable than existing MI-based metrics such as GEM, GPPM, and TVD-MI. Therefore, our framework is constructive, not only descriptive: it uncovers a new MI metric that outperforms prior MI-based metrics in our evaluation workflow. Together, our two contributions provide a unified perspective on aligned text evaluation beyond statistical alignment with human judgements. The test principles explain how evaluation metrics should be validated, while the design framework explains how MI-based metrics can be constructed and varied. Combining the two allows us to compare existing methods fairly, explore new points in the design space, and identify which combinations of information measure, estimator, and distribution model lead to the most reliable evaluation behavior across domains. 
+
+## 2 Preliminaries 
+
+Let V be a vocabulary, and let X = Y = V∗ denote the spaces of candidate and reference texts. Let 
+
+W denote the task space. Throughout, uppercase letters denote random variables and lowercase letters denote their realizations. Thus, W is a task random variable with task distribution PW , while 
+
+w ∈ W denotes a realized task. Conditional on the realized task W = w, the candidate random variable X, supported on the candidate-text space X , and the reference random variable Y , supported on the reference-text space 
+
+Y, are drawn according to 
+
+X ∼ PX|W =w, Y ∼ PY |W =w.
+
+We assume that the candidate X and reference Y are conditionally independent given the task W .The distributions PX , PY , and PXY denote the candidate marginal distribution, reference marginal distribution, and joint candidate–reference distribution induced by this generative process. A reference-based evaluation metric is a function 
+
+S : X × Y ×  Y ∪ {∅}  −→ R.
+
+For a realized candidate text x ∈ X , matched reference text y ∈ Y , and optional negative reference 
+
+y− ∈ Y ∪ {∅} , the scalar s = S(x, y, y −) is the resulting metric score. We write S(x, y ) as shorthand for the noncontrastive score S(x, y, ∅).For contrastive metrics, the negative-reference random variable Y − ∼ PY is drawn from the marginal reference distribution PY , independently of the task, candidate, and matched-reference random variables (W, X, Y ). Thus, the realized negative reference y− represents a reference from an independently sampled task. For noncontrastive metrics, we set y− = ∅.3The negative reference allows S to reward agreement with the matched reference y relative to agree-ment with the unrelated reference y−. In particular, contrastive scoring discounts textual patterns that are common under the marginal reference distribution PY but are not specific to the realized task w.The metric-evaluation problem is to assess whether S satisfies statistical alignment and the two parts of strategic alignment. Statistical alignment asks whether scores on unperturbed candidate responses correlate with human quality judgments. Strategic alignment asks whether scores decrease under degradations that remove task-relevant information and do not increase under manipulations that seek higher scores without adding such information. The rest of the paper develops tests for these properties and a design framework for constructing metrics that target them. 
+
+2.1 Mutual Information and the Data-Processing Inequality 
+
+The guiding principle for our framework is information monotonicity: a metric should not assign a higher expected score after a perturbation that removes or fails to add task-relevant information. Degradations and manipulations are both perturbations of informativeness, which we formally introduce in Section 3. Degradations remove task-relevant content, while manipulations seek a higher score through transformations that do not add task-relevant content. Under the conditional-independence assumption, the candidate random variable X and reference random variable Y share dependence through the task random variable W . Mutual information quan-tifies this dependence. A candidate response that preserves task-relevant facts, reasoning, or semantic content should therefore share more information with the matched reference than a candidate response from which such information has been removed. We formalize this idea using f -mutual information. 
+
+Definition 2.1 (f -divergence and f -mutual information) . Let U and V be random variables taking values in a finite or countable sample space Ω, with respective distributions PU and PV
+
+and probability mass functions pU and pV . Assume that supp( PU ) ⊆ supp( PV ); equivalently, 
+
+pV (z) = 0 implies pU (z) = 0 . For a convex generator f : R+ → R satisfying f (1) = 0 , the 
+
+f -divergence from PV to PU is 
+
+Df (PU ∥PV ) := X  
+
+> z∈Ω: pV(z)>0
+
+pV (z) f
+
+ pU (z)
+
+pV (z)
+
+
+
+.
+
+Let PXY denote the joint distribution of the candidate and reference random variables (X, Y ), and let PX ⊗ PY denote the product of their marginal distributions. Their f -mutual information is 
+
+If (X; Y ) := Df
+
+ PXY ∥ PX ⊗ PY
+
+.
+
+The support condition above holds automatically for this pair of distributions: pXY (x, y ) > 0
+
+implies pX (x) > 0 and pY (y) > 0.
+
+Thus, the f -mutual information If (X; Y ) measures the divergence between the joint candidate– reference distribution PXY and the product-of-marginals distribution PX ⊗ PY . For the KL-divergence generator f (t) = t log t, f -mutual information recovers Shannon mutual information (Cover, 1999). 
+
+Proposition 2.2 (Data-processing inequality) . Let the transformed-candidate random variable X′
+
+be obtained from the candidate random variable X through a possibly randomized transformation that has no additional access to the reference random variable Y . Equivalently, suppose that 
+
+Y − X − X′ forms a Markov chain. Then 
+
+If (X′; Y ) ≤ If (X; Y ).
+
+In particular, for any deterministic candidate transformation σ : X → X ′,
+
+If (σ(X); Y ) ≤ If (X; Y ).
+
+The data-processing inequality states that post-processing the candidate random variable X cannot increase its f -mutual information with the reference random variable Y . Consequently, a candidate transformation σ that has no access to additional task information can at most preserve, and may reduce, the task-relevant information shared with the reference. 4Let pXY denote the joint probability mass function of the candidate and reference random variables, and let pX and pY denote their marginal probability mass functions. The joint-to-product density ratio is the function r : X × Y → R+ defined by 
+
+r(x, y ) := pXY (x, y )
+
+pX (x) pY (y) = pY |X (y | x)
+
+pY (y) = pX|Y (x | y)
+
+pX (x)
+
+for candidate–reference pairs (x, y ) in the support of the product-of-marginals distribution PX ⊗ PY .The population f -mutual information can be written in terms of the joint-to-product density ratio r as 
+
+If (X; Y ) = E(X,Y )∼PX ⊗PY
+
+f (r(X, Y )) . (1) 
+
+## 3 Test Principles 
+
+We compare evaluation metrics along statistical alignment and strategic alignment, under our test principles, generalized from previous work (Lu et al., 2024; Xu et al., 2025; Robertson and Koyejo, 2025; Wu and Hartline, 2024). Specifically, for statistical alignment, we test the statistical correlation with human quality ratings; for strategic alignment, we use degradation strategies to simulate low-effort reporting and manipulation strategies to simulate untruthful reporting. We test whether the metrics can penalize degradations and resist manipulations. 
+
+Statistical alignment test: Correlation with human ratings. For datasets providing absolute human scores, let hi denote the human rating on candidate response xi, and si denote the corresponding score assigned by an evaluation metric. We measure statistical alignment using Spearman’s rank correlation, 
+
+ρ = Spearman  {si}ni=1 , {hi}ni=1 
+
+.
+
+When multiple annotators are available, we average their scores at the item level before computing ρ.
+
+Strategic alignment test 1: Sensitivity to degradation A degradation is a perturbation that reduces the task-relevant information, coverage, or specificity of a candidate by deleting evidence, restricting context, or forcing low-effort responses; a well-behaved metric should assign strictly lower scores to degraded variants. For each candidate report xi, we apply a degradation strategy M to produce a perturbed report xMi ,and compute scores si and sMi for the original and perturbed report respectively. Table 1 lists six strategies used in our experiments in Section 5. For each strategy M , we use the paired t-test to test whether the mean score change is significantly negative: 
+
+¯∆(M ) := 1
+
+n
+
+> n
+
+X
+
+> i=1
+
+sMi − si < 0
+
+To quantify the magnitude of the sensitivity to degradation across rules that use different scales, we also report standardized mean difference (SMD) (Andrade, 2020) with the 95% confidence interval (which shares the same form of Cohen’s d): 
+
+dM = μM − μ
+
+p(σ2 
+
+> M
+
++ σ2)/2 ,
+
+where (μ, σ ) and (μM , σ M ) are the empirical mean and standard deviation of the original and perturbed scores respectively. 
+
+Strategic alignment test 2: Manipulation Resistance A manipulation is a perturbation designed to inflate the score by exploiting metric shortcuts, such as verbosity, stylistic regularity, or generic content likely under the reference distribution, without introducing new task-specific evidence; a robust metric should not assign higher scores to such variants. As with the degradation tests, for each candidate report xi, we apply a manipulation strategy M
+
+to produce a perturbed report xMi . Table 2 lists six strategies used in our experiments in Section 5. 5We compute the paired mean score change ¯∆(M ) and standardized mean difference dM using the same formulas established for degradations. For manipulations, we test whether the mean score change is significantly positive. A metric passes a manipulation test when the score does not significantly increase after the manipulation, i.e., when we do not find evidence that ¯∆(M ) > 0.Table 1: Degradation strategies. 
+
+Strategy Description Provenance 
+
+Random Replacement Replace the original candidate with a response sampled from a differ-ent task within the same task family. Lu et al. (2024) Sentence Deletion Delete every other sentence while preserving section headers, order-ing, and visible format. Xu et al. (2025) Deletion & Completion Delete every other sentence, mark each gap, then ask a helper LLM to fill the gaps using only the remaining text and the original format. Xu et al. (2025) Surface Report Regenerate the response using only weak context, such as the abstract for peer review or the headline plus lead paragraph for summarization. Robertson and Koyejo (2025), Xu et al. (2025) Ultra-Concise Compres-sion Summarize under a severe length cap (e.g., 10% of the original), so that specific evidence and caveats must be dropped. Robertson and Koyejo (2025) Opinion Flip Reverse the overall evaluative verdict (e.g., accept → reject, positive 
+
+→ negative) while preserving the surface structure and topical vocab-ulary of the original candidate. Robertson and Koyejo (2025) 
+
+Table 2: Manipulation strategies. 
+
+Strategy Description Provenance 
+
+Rephrase Ask an LLM to rewrite the candidate in a specific style while preserv-ing meaning and high-level structure. Xu et al. (2025) Meaningless Elongation Append the same fixed, semantically empty filler sentences to every candidate report without adding task-relevant information. Xu et al. (2025) Opinion Shift (Positive) Rewrite the candidate to preserve structure and coverage while sys-tematically shifting stance toward more favorable sentiment. Robertson and Koyejo (2025) Opinion Shift (Negative) Rewrite the candidate to preserve structure and coverage while sys-tematically shifting stance toward less favorable sentiment. Robertson and Koyejo (2025) Opinion Shift (Neutral) Rewrite claims as hedged, noncommittal statements (e.g., “the method is effective” → “the method may have some merit”), flattening the evaluative signal without changing topical content. This work Opinion Shift (Extreme) Amplify all claims to their strongest possible form (e.g., “a reasonable approach” → “a groundbreaking contribution”), testing whether a metric rewards confidence or extremity as a proxy for quality. This work 
+
+## 4 A Design Framework for MI-Based Metrics 
+
+The test principles of Section 3 specify what an aligned metric should do; this section addresses how to construct one. We introduce a framework for MI-Based Metrics that separates the design space into four components, divided into two conceptual parts. The first part consists of theoretical design choices : which information measure is being estimated, and which estimator is used. The second part consists of empirical design choices : how reports are represented, and how predictive quantities are obtained from those representations. 
+
+Definition 4.1 (Design tuple) . An f -MI evaluation metric is specified by a tuple 
+
+D := ( F, E, R, Π) ,
+
+where: (i) Information measure F : the choice of f -divergence defining the objective If (X; Y ).(ii) Estimation method E: the method used to estimate the chosen objective If (X; Y ).(iii) Representation R: a map from the text space to a representation space, R : V∗ → U .
+
+(iv) Prediction Π: a mechanism that maps represented candidate-reference pairs to predictive quantities used in the estimation method. 
+
+6How the components compose. The four components form a scoring pipeline with two dependen-cies. On the theoretical side, the information-measure component F fixes the population objective, and the estimation-method component E prescribes which predictive quantity suffices to estimate it: direct estimation requires the density-ratio function r(x, y ), whereas variational estimation requires only the critic function T ∗(x, y ) (Section 4.2). On the empirical side, the representation component 
+
+R fixes the units of text passed to the prediction mechanism Π, and the prediction mechanism Π
+
+supplies the quantity that the estimation method E requires. Concretely, to score a realized item 
+
+(xi, y i, y − 
+
+> i
+
+), the metric (i) applies the representation map R to the texts, (ii) queries the prediction mechanism Π on the represented pairs to obtain the predictive quantities, and (iii) plugs those quantities into the estimator E to produce the sample-level score SF,E,R, Π(xi, y i, y − 
+
+> i
+
+).
+
+Sample-level scores. Given a dataset of n tasks {wi}ni=1 , each task wi has an associated candidate report xi and a positive reference report yi. Designs that score contrastively additionally use a negative reference y− 
+
+> i
+
+sampled from the marginal distribution PY , whose agreement with the candidate is penalized; designs that do not use one take y− 
+
+> i
+
+= ∅. The sample-level score is obtained from the chosen estimator by replacing the population expectations with the sampled references: the expectation over the joint distribution PXY is evaluated at (xi, y i), and the expectation over the product distribution PX ⊗ PY at (xi, y − 
+
+> i
+
+). Averaging the per-item scores across the dataset then yields an estimate of the population objective determined by the tuple: 
+
+1
+
+n
+
+> n
+
+X
+
+> i=1
+
+SF,E,R, Π(xi, y i, y − 
+
+> i
+
+) ≈ If (X; Y ).
+
+Two running examples. Prior MI-based metrics correspond to specific choices of the tuple. To make the pipeline concrete, we trace the components and scoring pipelines of two prior metrics that sit at opposite corners of the design space, and we return to them throughout the section. 
+
+Example 4.2 (GEM: (KL , Token , Autoregression , Direct )). GEM (Xu et al., 2025) instantiates the four components as follows. F = KL selects KL mutual information as the population objective. 
+
+E = Direct forms the plug-in pointwise mutual information 
+
+S(xi, y i) = log pϕ(yi | xi) − log pϕ(yi).R = Token represents the candidate report xi and reference report yi as token sequences. 
+
+Π = Autoregression uses a language model with parameters ϕ to compute the conditional likelihood 
+
+pϕ(yi | xi) token by token with the candidate in the prompt, and the marginal likelihood pϕ(yi) with the candidate removed. Because direct KL estimation takes an expectation only under the joint candidate–reference distribution, no negative reference is needed; the negative-reference input is y− 
+
+> i
+
+= ∅.
+
+Example 4.3 (TVD-MI: (TV , Full-report , LLM-oracle , f -variational )). TVD-MI (Robertson and Koyejo, 2025) makes a different choice on every axis. F = TV selects total-variation mutual information as the population objective. E = f -variational contrasts the two judgments to produce the sample-level score 
+
+S(xi, y i, y − 
+
+> i
+
+) = T (xi, y i) − T (xi, y − 
+
+> i
+
+),R = Full-report keeps each report whole. Π = LLM-oracle prompts an LLM, e.g., “Do these two reports describe the same item?”, once on the matched candidate–reference pair (xi, y i) and once on the mismatched candidate–reference pair (xi, y − 
+
+> i
+
+); its yes/no answer implements a critic function T .For total variation, this critic only needs to decide whether the density-ratio value r(x, y ) exceeds 1.This metric rewards candidates that the oracle can link to their own task’s reference but not to an unrelated one. Because the variational form takes expectations under both the joint and the product distributions, the negative reference is essential here. 
+
+The contrast between the two examples previews the tradeoffs studied in this section: GEM demands the strongest model access (token-representation logits), whereas TVD-MI needs only a yes/no API call but relies on the reliability of the oracle’s judgment. The rest of this section formally instantiates the four design choices — the information measure 
+
+f -MI (Section 4.1), the MI estimation method (Section 4.2), the text representation (Section 4.3), and the prediction mechanism (Section 4.4). Section 4.5 then frames existing metrics as instances of the framework, and Section 4.6 shows that the resulting metrics inherit an approximate manipulation-robustness guarantee from information monotonicity, bounded by the estimation error. 74.1 f -Mutual Information 
+
+In this paper, we instantiate the information-measure component F with the following two mutual-information objectives. • KL mutual information . Taking fKL (t) = t log t gives the Shannon mutual information 
+
+IKL (X; Y ) = DKL (PXY ∥PX ⊗ PY ) = EPXY [log r(X, Y )] .
+
+where r(x, y ) = pXY (x,y )    
+
+> pX(x)pY(y)
+
+is the joint-to-product density ratio defined in Section 2. For a realized candidate–reference pair (xi, y i), the sample-level score log r(xi, y i) is the pointwise mutual information used by GEM and GPPM-style metrics. • Total-variation mutual information . Taking fTV (t) = 12 |t − 1| gives the total-variation mutual information (TVD-MI) 
+
+ITV (X; Y ) = 12 EPX ⊗PY [|r(X, Y ) − 1|] = 12
+
+X
+
+> x,y
+
+|pXY (x, y ) − pX (x)pY (y)|.
+
+Our empirical design sweep therefore varies the information-measure component F ∈ { KL , TV }
+
+and crosses these two information measures with the estimation methods described next. 
+
+4.2 MI Estimation 
+
+Since the vast combinatorial space of text prevents the explicit expression of the joint candidate– reference distribution, the population objective If (X; Y ) cannot be computed in closed form. To circumvent this, we explore two families of estimators. • Direct Density Ratio Estimation . By the density-ratio formulation of mutual information in Equation (1), if the density-ratio function r is known, the f -mutual information can be calculated via a Monte Carlo estimator by averaging the transformed ratio f (r(x, y )) 
+
+over candidate–reference samples (x, y ) drawn from the product-of-marginals distribution 
+
+PX ⊗ PY . Section A.1 provides examples of direct density-ratio estimation. • f -Variational Estimation . Another commonly used estimator in the literature is the 
+
+f -variational estimator, constructed via the Fenchel conjugate f ∗.
+
+If (X; Y ) = EPXY [T ∗(X, Y )] − EPX ⊗PY
+
+f ∗(T ∗(X, Y )) , (2) where the population-optimal critic T ∗(x, y ) ∈ ∂f  r(x, y ) is a subgradient of the convex generator f .The f -variational estimator takes a realized task wi, candidate report xi, positive reference yi, and negative reference y− 
+
+> i
+
+∼ PY drawn from the marginal reference distribution. The resulting sample-level score S(xi, y i, y − 
+
+> i
+
+) is an unbiased estimator of the population objective. Specifically, the score replaces the expectation over the joint candidate–reference distribution PXY with the matched pair (xi, y i) and the expectation over the product-of-marginals distribution PX ⊗ PY with the mismatched pair (xi, y − 
+
+> i
+
+).The two approaches differ in their estimation targets. Direct methods require estimating the density-ratio function r. Variational methods instead optimize a critic function T under the dual objective and therefore do not need to construct an explicitly calibrated density-ratio estimate. The extent to which this target is simpler depends on the convex generator f . For example, for total-variation divergence, a population-optimal critic can be chosen as T ∗(x, y ) = 12 sign  r(x, y ) − 1, so only whether the density ratio lies above or below 1 is required, rather than its magnitude. Thus, the requirement of the 
+
+f -variational estimators is sometimes weaker. We defer further mathematical details to Section A.2. 
+
+Examples. Table 3 summarizes the four cases and makes explicit the sample-level score 
+
+S(xi, y i, y − 
+
+> i
+
+) that the prediction mechanism Π needs to estimate. Averaging these sample-level scores over the n observed tasks estimates the corresponding population f -mutual information, as required by the design in Definition 4.1. 8Table 3: Sample-level score and quantity to estimate for each (F, E ) pair.                                                 
+
+> FESample-level score Quantity to estimate
+> KL Direct log r(xi, y i)log r(xi, y i)KL f-variational T∗(xi, y i)−eT∗(xi,y −
+> i)−1T∗(xi, y i) = 1 + log r(xi, y i)TV Direct 121−r(xi, y i)−1or 12r(xi, y −
+> i)−1r(xi, y i)or r(xi, y −
+> i)TV f-variational T∗(xi, y i)−T∗(xi, y −
+> i)T∗(xi, y i) = 12sign( r(xi, y i)−1)
+
+Note that KL-direct and TV-direct 2 both require estimating the density ratio r(x, y ), while the variational estimators require a critic T ∗(x, y ). In particular, TV-variational only needs a bounded classifier for whether r(x, y ) is above or below 1.Producing these estimators from text requires two further choices: a representation R that fixes the granularity at which the report is processed (Section 4.3), and a prediction mechanism Π that maps represented pairs to the required predictive quantities (Section 4.4). 
+
+4.3 Representation 
+
+The representation R : V∗ → U fixes the units at which a report is processed by the downstream predictor. We consider three natural granularities. • Token . At the finest granularity, a report y is represented by its token sequence (y1, . . . , y T ).This preserves all information in the text and exposes the autoregressive factorization of language models, p(y | x) = QTt=1 p(yt | y<t , x ), so that full-report-representation conditional probabilities can be assembled from per-token factors. Token representation is only meaningful in combination with a predictor that consumes token-representation signals, such as an autoregressive language model with logit access. In practice, prior work (Xu et al., 2025; Lu et al., 2024) reports that style-normalization pre-processing is important when using token representations, since autoregressive language models can be confounded by superficial features of the text such as writing style. • Statement . An intermediate granularity decomposes a report into its atomic claims. Let 
+
+Ψ( y) = ψ1(y), . . . , ψ K(y)(y)
+
+denote the statement decomposition of y, where each ψk(y) ∈ V ∗ is an atomic statement, typically obtained via a separate LLM call. Decomposing a report into statement-level representation naturally loses information by the data-processing inequality (Theorem 2.2). In practice, however, isolating individual claims often improves the predictor’s performance, especially for an LLM-oracle, which tends to reason more reliably about single facts than about long passages. With statement-level decomposition, the estimation quality may even improve. We compare these tradeoffs empirically in Section 5 and Section 5.1. • Full-Report . At the coarsest granularity, a report is treated as an atomic unit, R(y) = y.Predictive quantities are obtained holistically from the candidate-reference pair (x, y ): a single conditional likelihood p(y | x), or a single oracle judgment about the pair. (e.g., “do these two reports describe the same item?”). 
+
+4.4 Prediction Mechanism 
+
+The prediction mechanism Π maps a represented candidate-reference pair to the predictive quantities in the representation space, as required by the chosen estimator E. See Table 3 for examples of required predictive quantities. Below lists potential prediction mechanisms. • Autoregression . An autoregressive language model with parameters ϕ assigns a probability to any token sequence via the chain rule. For a candidate report x in the prompt, we obtain 
+
+pϕ(y | x) = 
+
+> T
+
+Y
+
+> t=1
+
+pϕ(yt | y<t , x )                
+
+> 2The two TV-direct forms have the same expectation: EPXY
+> 121−r(X, Y )−1=EPX⊗PY
+> 12|r(X, Y )−1|.
+
+9where each factor is read off the softmax over output logits. Autoregression interacts with the token level representation. It also requires logit access, which some commercial APIs do not expose, and inherits any miscalibration of the underlying language model. As an example, for KL-based MI estimation, substituting a null report for x yields a marginal estimate pϕ(y), and the following PMI is obtained for direct KL estimation: 
+
+dPMI( x; y) = log r(x, y ) = log pϕ(y | x) − log pϕ(y).
+
+Exponentiating gives a density-ratio estimate that feeds any of the four (F, E ) pairs in Table 3. • LLM-Oracle . When token-representation probabilities are unavailable, an LLM can be prompted for a prediction about a represented pair. The prediction is then used as inputs to the estimators as required. The following two regimes of an LLM oracle cover the cases in Table 3: 
+
+– Critic-style prediction fits naturally into the f -variational framework: a scalar or categorical LLM is prompted to directly output a critic used as T ∗(x, y ). For example, Robertson and Koyejo (2025) shows that the TVD-MI is especially convenient. The 
+
+T ∗ required in Equation (2) for TVD-MI can be implemented as a binary classifier distinguishing same-task from cross-task pairs. A simple prompt, e.g., “Do these two reports describe the same item?” implements this T ∗ for TVD-MI. 
+
+– Likelihood-style prediction supports direct estimation. The LLM is asked, for instance, how strongly the candidate x supports the reference y, using a small set of ordered probability or support bins (Lu et al., 2024). Mapping the selected bin to a numeric value yields a coarse surrogate for log ˆ p(y | x) − log ˆ p(y), and hence for the density ratio ˆr(x, y ). Such direct LLM-oracle estimators are typically biased. Their outputs are discretized and often poorly calibrated. But they provide a workable approximation when only API access is available. LLM-oracle prediction composes with the full-report and statement representations. At the full-report level, the prompt simply contains x and y and the oracle returns a single prediction. At the statement level, the candidate report x is paired with each ψk(y), and the resulting per-statement quantities are combined into a full-report-representation prediction by an aggregation rule A : S 
+
+> K≥1
+
+RK → R.
+
+4.5 Prior Work 
+
+Combining the preceding components, a complete design tuple (F, E, R, Π) specifies a concrete reference-based metric. Table 4 shows how three existing methods instantiate this framework. Table 4: Coverage of the design space. Each cell is labeled with the name of the corresponding evaluation metric, when one exists. NEW denotes combinations introduced or evaluated in this work;                             
+
+> Π=Autoregression Π=LLM-oracle
+> FER= Token R= Full Report R= Statement KL Direct GEM (Xu et al., 2025) NEW GPPM-J (Lu et al., 2024)
+> f-variational NEW NEW NEW
+> TV Direct NEW NEW NEW
+> f-variational NEW TVD-MI (Robertson and Koyejo, 2025) NEW
+
+A practical benefit of this decomposition is that it makes unexplored combinations easy to identify. Cells of the tuple (F, E, R, Π) that Table 4 with NEW correspond to metrics that are implementable in principle but have not been studied. In Section 5, we empirically study several such metrics, as shown in Table 4. The practical benefit of the framework is that it exposes new metrics. For example, TVD-MI (Robert-son and Koyejo, 2025) uses the tuple (TV , f -variational , Full-report , LLM-oracle ). Changing the representation gives the statement-level TV f -variational metric (formally defined in Appendix B): 
+
+(TV , f -variational , Statement , LLM-oracle ).
+
+10 This metric decomposes the positive and negative references into atomic statements, asks the LLM critic whether each statement is supported by the candidate, and compares support for the true refer-ence statement against support for the negative reference statement. As a result, candidate content that supports statements in the matched reference is rewarded, while support for statements drawn from an unrelated task is penalized. Generic content is discounted because it tends to support both the positive and negative references. Thanks to the finer-grained representation, in our experiment in Section 5, this metric achieves better strategic and statistical alignment than TVD-MI across multiple datasets. 
+
+4.6 Manipulation Robustness of the f -MI Metrics 
+
+The data-processing inequality in Proposition 2.2 guarantees that any candidate manipulation 
+
+σ : X → X can only reduce the true f -MI: 
+
+If (σ(X); Y ) ≤ If (X; Y ).
+
+However, the score is computed using a fixed estimator and distribution model, which in practice amounts to using a restricted or suboptimal critic rather than the population optimum. As a result, the estimated score need not satisfy DPI exactly, even when the underlying information measure does. This motivates the following approximate notion of robustness: for a manipulation class Σ, suppose 
+
+sup 
+
+> σ∈Σ
+
+|E [S(σ(X), Y )] − If (σ(X); Y )| ≤ ε. 
+
+Then for every candidate manipulation σ ∈ Σ,
+
+E [S(σ(X), Y )] ≤ E [S(X, Y )] + 2 ε. 
+
+Indeed, 
+
+E [S(σ(X), Y )] ≤ If (σ(X); Y ) + ε ≤ If (X; Y ) + ε ≤ E [S(X, Y )] + 2 ε, 
+
+where the middle inequality is exactly Proposition 2.2. Thus, any manipulation that decreases the true 
+
+f -mutual information by more than twice the uniform estimation-error bound, 2ε, is still penalized by the estimated score in expectation. The assumption requires the estimation error to be uniformly small over the entire manipulation class 
+
+Σ. This is a strong condition: it asks the critic to generalize not only to clean reports but also to all ma-nipulated variants. In practice, the uniform error bound ε may be large for manipulation strategies that produce out-of-distribution inputs for the critic. Empirical validation (Section 5) is therefore essential. 
+
+## 5 Experiment 
+
+We compare evaluation metrics in a controlled way under our test principles (Section 3), with detailed setup deferred to Section C.1. The code is provided in https://github.com/DavidXu999/ Statistical-and-Strategic-Alignment-for-Text-Evaluation-Metrics .
+
+Research Question. To keep the analysis focused, we frame the experiments around the decision a practitioner actually faces. The predictor Π and representation R are typically dictated by task and deployment constraints, e.g., whether logit access is available, and whether atomic statements can be reliably extracted, while the information measure F and estimator E are under the researcher’s direct control. We therefore ask: 
+
+Given a fixed predictor and representation pair (Π , R ), which information measure and estimator 
+
+(F, E ) yields the best-behaved evaluation metric? 
+
+Other reference-based baselines. We also compare against popular reference-based metrics as baselines, including ROUGE-L, BLEU, BERTScore (based on roberta-large), and LLM-as-a-Judge (based on various models). These baselines test whether accuracy and manipulation-resistance gains from the MI framework go beyond lexical overlap, embedding similarity, or direct LLM judging. 
+
+Datasets. We evaluate metrics across three domains that stress different aspects of reference-based text evaluation: peer review, summarization, and question answering. In peer review, the task input is a paper or essay and the candidate reports are full reviews; in summarization, the task input is 11 a source document and the reports are summaries; in question answering, the task input is a question and the reports are answers. Across these domains, reports differ substantially in length, structure, subjectivity, and semantic complexity. Our evaluation includes seven datasets: three peer-review datasets, two summarization datasets, and two question-answering datasets. Four datasets provide item-level human quality annotations and are used to measure human-rating correlation; all datasets are used for degradation and manipulation tests. When multiple independent reports are available for the same task, we treat them as positive references. Table 5 summarizes the datasets. 3
+
+Table 5: Overview of evaluation datasets. n is the number of candidate reports; #ref is the typical number of positive references per task. “Human rating” indicates whether item-level human quality annotations are available for candidate reports. 
+
+Domain Dataset n Ref Human rating Reference 
+
+Peer review ICLR 2026 300 ∗ peer No OpenReview Peer grading-WH 534 GT Numerical Wu and Hartline (2024) Peer grading-XLSK 165 peer Numerical Xu et al. (2025) Summarization SummEval 800 ∗ GT Numerical Fabbri et al. (2021) SPACE 50 GT No Angelidis et al. (2021) QA LFQA-E 320 ∗ GT Pairwise Fan et al. (2026) MedAESQA 400 ∗ GT Numerical Gupta et al. (2025)  
+
+> ∗Down-sampled from the whole dataset for a more tractable test scale.
+
+5.1 Results 
+
+Table 6 reports Spearman correlation with human ratings on the four datasets carrying item-level numerical annotations: Peer Grading-WH (Wu and Hartline, 2024), Peer Grading-XLSK (Xu et al., 2025), SummEval (Fabbri et al., 2021), and MedAESQA (Gupta et al., 2025). Rows are grouped by the representation and predictor pair (R, Π) ; within each block, the four rows sweep 
+
+(F, E ) ∈ { KL , TV } × { Direct , f -var. }. Bold marks the best method within each block; underlines mark the best f -MI metric and the best overall metric per dataset. For degradation and manipulation tests, a full sweep of all configurations across every perturbation strategy and dataset is computationally prohibitive. We therefore carry forward the best f -MI configu-rations from each representation-prediction block in Table 6: (KL , Direct ) with token-representation autoregression, corresponding to GEM; and (TV , f -var. ) with an LLM-oracle at both report and state-ment levels. This selection deliberately favors the correlation winners and asks whether they remain reliable under strategic perturbations. For large datasets, we down-sample to roughly 200 candidate reports per setting. We report result overviews in Tables 7 and 8, and detailed statistics in Section D. 
+
+Key takeaways. The results show a separation between statistical and strategic alignment. 
+
+LLM-as-a-Judge is strongest on human-rating correlation, but collapses under manipulation. 
+
+Among the non-MI baselines, LLM-as-a-Judge achieves the strongest correlations with human ratings. By the standard statistical alignment alone, it appears to be the best metric. However, across the four judge models, manipulations succeed in 18 to 26 of the 30 tests. 
+
+The best f -MI design depends on the representation and predictor. Under token-representation autoregression, (KL , Direct ) (GEM) leads its block on three of four datasets and is the best 
+
+f -MI metric overall on both peer-review datasets. Under an LLM-oracle, statement-level representation is substantially more effective: statement-level (TV , f -var. ) outperforms full-report-representation TVD-MI on three of four datasets and is the best f -MI metric overall on SummEval and MedAESQA. 
+
+> 3Peer grading-WH (Wu and Hartline, 2024) and Peer grading-XLSK (Xu et al., 2025) are not publicly accessible while the others are public datasets.
+
+12 Table 6: Human-rating correlation results. Rows are evaluation metrics, grouped by distribution model D and its granularity; within each group, rows sweep the information measure F ∈ { KL , TV }
+
+and estimator E ∈ { Direct , f -var. }. Columns are datasets; entries are Spearman rank correlations with human ratings. For SummEval we report the mean over all dimensions. Best result within each group is bolded ; best among f -MI metrics per column and best overall per column are underlined. 
+
+Evaluation Metric Peer review Summarization QA 
+
+(F, E ) PG-WH PG-XLSK SummEval MedAESQA 
+
+Autoregression, Token-representation 
+
+(KL , Direct ) (GEM) 0.460 0.475 0.138 0.113 
+
+(KL , f -var. ) -0.218 -0.355 0.059 0.051 
+
+(TV , Direct ) 0.312 0.380 0.095 -0.025 
+
+(TV , f -var. ) -0.053 -0.036 0.085 0.129 
+
+LLM-oracle, Report-representation 
+
+(KL , Direct ) 0.235 0.367 0.031 0.163 
+
+(KL , f -var. ) 0.252 0.419 0.031 0.162 
+
+(TV , Direct ) -0.231 -0.350 0.017 -0.238 
+
+(TV , f -var. ) (TVD-MI) 0.286 0.042 0.140 0.110 
+
+LLM-oracle, Statement-representation 
+
+(KL , Direct ) (GPPM-J) 0.254 0.307 0.073 0.041 
+
+(KL , f -var. ) 0.281 0.251 0.075 0.064 
+
+(TV , Direct ) -0.292 -0.396 -0.043 -0.129 
+
+(TV , f -var. ) 0.201 0.468 0.208 0.228 
+
+Non-MI baselines 
+
+ROUGE-L -0.244 0.167 0.111 0.151 BLEU -0.332 0.256 0.102 0.127 BERTScore -0.133 -0.063 0.252 0.166 LLM-as-Judge / Claude-Haiku-4.5 0.462 0.569 0.400 0.315 
+
+LLM-as-Judge / Claude-Sonnet-4.5 0.512 0.622 0.450 0.301 LLM-as-Judge / GPT-5-mini 0.539 0.631 0.477 0.256 LLM-as-Judge / GPT-4o-mini 0.492 0.528 0.452 0.208 Table 7: Sensitivity to degradation. For each (metric, dataset) pair, we apply m degradation strategies (header) and count those on which the metric fails to produce a significant score decrease at p < 0.05 ;lower is better. A ✓ marks zero failures; otherwise, letter codes mark the strategies the metric missed (legend below).                                                                                    
+
+> Evaluation Metric Peer review Summarization QA total
+> (F, E )PG-WH PG-XLSK ICLR26 SummEval SPACE LFQA-E MedAESQA fail
+> m= 5 m= 6 m= 6 m= 5 m= 5 m= 5 m= 5 m= 37
+> MI-based Mechanisms
+> KL-Direct-Autoreg. ✓✓P✓✓P U P U 5TVD-FVar-Report D S U OO P U P U ✓P U D S P U 15 TVD-FVar-Statement ✓✓✓P✓PP3
+> Non-MI baselines
+> LLM-as-Judge / Claude-Haiku-4.5 ✓✓PP✓PD P 5LLM-as-Judge / Claude-Sonnet-4.5 ✓✓PP✓PP4LLM-as-Judge / GPT-4o-mini DD O R O R P P✓PP10 LLM-as-Judge / GPT-5-mini ✓✓PP✓PD P 5
+
+Codes: D=deletion and completion; O=opinion flip; R=random replacement. Codes: S=sentence deletion; P=surface report; U=ultra concise compression. Red: significant score increase. Orange: non-significant change. 
+
+13 Table 8: Manipulation resistance. For each (metric, dataset) pair, we apply m manipulation strategies (header) and count those the metric fails to resist, i.e., that produce a significant score increase at 
+
+p < 0.05 ; lower is better. A ✓ marks zero failures; otherwise, letter codes flag the strategies the metric failed to resist (legend below).                                                                                         
+
+> Evaluation Metric Peer review Summarization QA total
+> (F, R, Π, E )PG-WH PG-XLSK ICLR26 SummEval SPACE LFQA-E MedAESQA fail
+> m= 6 m= 6 m= 6 m= 2 m= 2 m= 4 m= 4 m= 30
+> MI-based Mechanisms
+> (KL, Token, Autoregression, Direct) MSN H P S R ✓✓✓✓7(TV, Report, LLM-oracle, f-var) ✓✓✓✓✓✓✓0
+> (TV, Statement, LLM-oracle, f-var) ✓✓✓✓✓✓✓0
+> Non-MI baselines
+> LLM-as-Judge / Claude-Haiku-4.5 M N H S R H P S R H S R RRH S R H S R 20 LLM-as-Judge / Claude-Sonnet-4.5 M N H S R H P S R M H P S R R✓H S H18 LLM-as-Judge / GPT-4o-mini M N H P S R M N H P S R M N H P S R RRH S R H S R 26 LLM-as-Judge / GPT-5-mini N H S R M N H P S R H P S R ✓✓H S R H S 19
+> Codes: M=meaningless elongation; N=negative opinion shift; H=hedged opinion shift. Codes: P=positive opinion shift; S=strong opinion shift; R=rephrase. Red codes mark significant score increases after manipulation.
+
+The unified design framework identifies a dominating new metric. The statement-level 
+
+(TV , f -var. ) metric is not present in prior work, but is exposed by our design framework. Its strong performance suggests that decomposing references into atomic claims can make the oracle prediction task easier, enough to compensate for the information loss introduced by statement extraction. The (TV , f -var. ) metric is the most reliable on degradation sensitivity and manipulation robustness. It fails only 3 of 37 degradation tests, compared with 5 failures for GEM and 15 failures for full-report-representation (TV , f -var. ) / TVD-MI. It has 0 failures out of 30 manipulation tests, meaning that no tested manipulation produces a significant score increase. 
+
+Robustness of MI-based metrics comes from the design, not merely from the model. Since Claude-Haiku-4.5 is vulnerable as an absolute LLM judge but robust when used inside the TV f -variational metric, the improvement comes from the MI-based formulation. It is worth noticing that no single axis of (F, E, R, Π) dominates in isolation; rather, the design choices interact. token-representation autoregression favors KL-direct estimation, while LLM-oracle prediction benefits from the TV f -variational formulation, especially with statement-level representations. MI-based metrics also appear stronger on peer-review tasks than on summarization and QA, where the evaluation target can be more complex or subjective. ROUGE-L, BLEU, and BERTScore are generally weaker baselines, and each fails to obtain positive correlation on at least one dataset, especially in peer review. This suggests that lexical overlap and embedding similarity are insufficient for evaluating richer, more subjective reports. 
+
+Additional discussion. In ICLR2026, GEM fails the rephrase manipulation test, which appears to contrast with the original GEM results (Xu et al., 2025), where rephrasing did not produce a significant score increase in ICLR2023. A likely hypothesis is that our rephrase manipulation is stronger: Whereas Xu et al. (2025) primarily prompt the model to improve language quality, our prompt also allows the model to reorganize the review. Although it prohibits adding new facts or changing the reviewer’s stance, this reorganization can make the candidate review easier for the metric to match with the reference. The result therefore suggests that GEM retains some sensitivity to presentation quality. However, the standardized mean difference for GEM remains relatively small ( +0 .07 ± 0.05 , 95% CI), especially compared with direct LLM judging, even for the two most robust judge models: Claude-Sonnet-4.5 ( +0 .25 ± 0.09 , 95% CI) and GPT-5-mini ( +0 .17 ± 0.10 , 95% CI), as shown in Appendix D. This observation reinforces the value of the MI-based formulation, and further motivates the new statement-level (TV, f -var.) metric, which remains robust to this stronger rephrasing test. We also noticed that surface-report degradation is a strong test because the degraded reports are still fluent and task-specific, generated from weak but informative context such as a news lead, question, 14 or paper abstract, by Claude-Haiku-4.5. Thus, they can remain plausible even while sometimes omitting important task-relevant information. Under this test, MI-based metrics also compare favorably with the most robust LLM judges. MI-based metrics routinely pass more tests than LLM judges. Moreover, as shown in Appendix D, all MI-based metrics either significantly decrease on surface reports or remain close to insensitive, with no significant positive failures. By contrast, even the strongest LLM judges do not penalize but reward surface reports: Claude-Sonnet-4.5 gives d = +0 .28 ± 0.15 (95% CI) on SummEval, 
+
++0 .69 ± 0.15 on LFQA-E, and +1 .18 ± 0.26 on MedAESQA, while GPT-5-mini gives +0 .12 ± 0.17 ,
+
++0 .51 ± 0.14 , and +1 .01 ± 0.19 on the same datasets. Thus, surface reports expose a hard case for all metrics, but the failure mode differs: MI-based metrics can sometimes be under-sensitive, whereas LLM judges can directionally fail by rewarding plausible surface-level reports. 
+
+## 6 Related Work 
+
+NLG Evaluation Evaluation of AI systems spans many dimensions. Holistic frameworks consider accuracy, robustness, fairness, and toxicity (Liang et al., 2022); alignment research emphasizes helpfulness, honesty, and harmlessness (Askell et al., 2021); and a growing body of work targets truthfulness (Lin et al., 2022), the multi-faceted nature of fairness (Gallegos et al., 2024), and pluralism over legitimate human perspectives (Sorensen et al., 2024). Our framework instead targets a complementary and foundational property, semantic informativeness :whether an evaluation score faithfully reflects how much useful, truthful, task-relevant information a report conveys. A response cannot be genuinely helpful if it carries little task-relevant signal, and mechanisms that reward truthful, informative reporting can discourage guessing and some forms of hallucination (Wu and Hartline, 2024). 
+
+Mutual Information Estimation Machine learning has produced sample-based MI estimators built on the variational representation of f -divergences via Fenchel duality (Nguyen et al., 2010), and neural network estimators such as MINE (Belghazi et al., 2018), Deep InfoMax (Hjelm et al., 2018), and InfoNCE (Oord et al., 2018). In information elicitation without verification, MI plays a different role: Kong and Schoenebeck (2019) score each agent a measure of MI between her report and a peer’s reference, using the data-processing inequality to make truthful reporting an equilibrium. This echoes the same strategic-alignment principle behind our MI-based metrics (Proposition 2.2). Kong and Schoenebeck (2018) extends the same MI-maximization principle to co-training, where two Bayesian predictors over distinct views of the data play the role of the two agents. Closest to our setting are pre-trained language model approaches to MI estimation: Padmakumar and He (2021) compute pointwise MI between extractive summaries and source articles, while Xu et al. (2025); Lu et al. (2024); Robertson and Koyejo (2025) develop reference-based MI metrics for NLG evaluation, which can be recovered as specific instances by our design framework. Recent work also uses estimated MI for dataset evaluation (Chen et al., 2025; Zheng et al., 2024). 
+
+Information Elicitation. Our notion of strategic alignment is motivated by the information elicitation literature, which designs mechanisms that induce agents to truthfully reveal private information. Two central lines are proper scoring rules and peer prediction. Proper scoring rules elicit truthful probabilistic predictions when a ground-truth outcome is eventually observed (McCarthy, 1956; Savage, 1971; Gneiting and Raftery, 2007; Lambert et al., 2008). They are distinct from the evaluation metrics studied here, which score textual reports against references; the connection is that both shape the behavior of systems that optimize their scores. Peer prediction instead handles settings without direct verification, using the statistical relationship among peer reports as a substitute for ground truth (Miller et al., 2005; Dasgupta and Ghosh, 2013; Kong and Schoenebeck, 2019; Kong, 2020, 2024; Zhang et al., 2026). Our setting parallels peer prediction because both use statistical relationships among reports when direct verification is unavailable. As Burrell and Schoenebeck (2021); Xu et al. (2024) point out, however, peer prediction has emphasized proving strategic alignment while devoting little attention to the statistical alignment of the resulting scores, limiting their direct use as evaluation metrics. Our test principles target both requirements jointly. 15 We list the direct optimization of evaluation metrics for alignment as future work. This connects to prior work on optimal scoring rule design (Li et al., 2022; Neyman et al., 2021; Hartline et al., 2022; Chen et al., 2023; Papireddygari and Waggoner, 2022; Chen and Yu, 2024), where the designer optimizes over scoring rules, with objectives such as informativeness, effort incentives, risk, or downstream decision quality, and subject to the constraint of truthfulness. In text evaluation, alignment with human judgments becomes the design objective, subject to robustness against strategic perturbations. Lu et al. (2025) take a step in this direction by optimizing aligned textual scoring rules with access to ground-truth texts. We leave the corresponding problem without ground truth, jointly optimizing for statistical and strategic alignment, to future work. 
+
+## 7 Conclusion and Discussion 
+
+We study reference-based text evaluation metrics. This perspective separates statistical alignment, measured by correlation with human ratings, from strategic alignment, measured by robustness to degradations and manipulations. We introduced unified test principles for these two requirements and a design framework for MI-based metrics. Empirically, LLM-as-a-Judge achieves strong human-rating correlation but is vulnerable to manipulation, while MI-based metrics, especially the statement-level TV f -variational metric, newly derived from our design framework, offer stronger strategic robustness while remaining competitive on statistical alignment. Future work should optimize evaluation metrics directly for statistical and strategic alignment, as suggested in Section 6. Another direction is to reduce score variance. Our LLM-oracle metrics suffer randomness from oracle judgments, statement decomposition, and negative-reference sampling. This variance can obscure both human-rating correlation and robustness tests. Repeated oracle calls, multiple independent decompositions, larger negative-reference pools, and adaptive resampling near decision boundaries are simple ways to reduce estimation noise and make comparisons between mechanisms more reliable. The evaluation framework itself can also be strengthened. Our current degradation and manipulation tests use fixed perturbation families. In deployment, however, models optimized against a metric may discover new score-inflating strategies. Future evaluation workflows should therefore include adaptive or competitive tests in which an adversary searches for perturbations that increase the score without adding task-relevant information. Such tests would evaluate a metric as an optimization target, not only as a static measurement tool. Finally, reference-based alignment is limited by the reference signal. As language models exceed individual human references on some tasks, evaluation datasets may need richer reference sets, such as expert-panel references, debate- or critique-based references, or aggregated LLM outputs (Feng et al., 2026). Strategically validated evaluation metrics may also serve as training rewards with reduced susceptibility to reward hacking. For example, Feng et al. (2026) use peer-prediction-inspired self-training signals for language-model reasoning without relying on gold labels. This suggests a broader research program in which reference construction, evaluation-metric design, and training objectives are studied jointly. 
+
+## Acknowledgments and Disclosure of Funding 
+
+This work is supported by United States National Science Foundation Award #2313137. 
+
+## References 
+
+Dario Amodei, Chris Olah, Jacob Steinhardt, Paul Christiano, John Schulman, and Dan Mané. Concrete problems in ai safety. arXiv preprint arXiv:1606.06565 , 2016. Chittaranjan Andrade. Mean difference, standardized mean difference (smd), and their use in meta-analysis: as simple as it gets. The Journal of clinical psychiatry , 81(5):11349, 2020. Stefanos Angelidis, Reinald Kim Amplayo, Yoshihiko Suhara, Xiaolan Wang, and Mirella Lapata. Extractive opinion summarization in quantized transformer spaces. Transactions of the Association for Computational Linguistics , 9:277–293, 2021. 16 Amanda Askell, Yuntao Bai, Anna Chen, Dawn Drain, Deep Ganguli, Tom Henighan, Andy Jones, Nicholas Joseph, Ben Mann, Nova DasSarma, et al. A general language assistant as a laboratory for alignment. arXiv preprint arXiv:2112.00861 , 2021. Mohamed Ishmael Belghazi, Aristide Baratin, Sai Rajeswar, Sherjil Ozair, Yoshua Bengio, Aaron Courville, and R Devon Hjelm. Mine: mutual information neural estimation. arXiv preprint arXiv:1801.04062 , 2018. Noah Burrell and Grant Schoenebeck. Measurement integrity in peer prediction: A peer assessment case study. arXiv preprint arXiv:2108.05521 , 2021. Siyu Chen, Jibang Wu, Yifan Wu, and Zhuoran Yang. Learning to incentivize information acquisition: Proper scoring rules meet principal-agent model. In International Conference on Machine Learning , pages 5194–5218. PMLR, 2023. Yiling Chen and Fang-Yi Yu. Optimal scoring rule design under partial knowledge. In International Conference on Web and Internet Economics , pages 383–400. Springer, 2024. Yiling Chen, Shi Feng, Paul Kattuman, and Fang-Yi Yu. Data reliability scoring. arXiv preprint arXiv:2510.17085 , 2025. Thomas M Cover. Elements of information theory . John Wiley & Sons, 1999. Anirban Dasgupta and Arpita Ghosh. Crowdsourced judgement elicitation with endogenous proficiency. In Proceedings of the 22nd international conference on World Wide Web , pages 319–330, 2013. Alexander R Fabbri, Wojciech Kry´ sci´ nski, Bryan McCann, Caiming Xiong, Richard Socher, and Dragomir Radev. Summeval: Re-evaluating summarization evaluation. Transactions of the Association for Computational Linguistics , 9:391–409, 2021. Yuchen Fan, Chen Ling, Xin Zhong, Shuo Zhang, Heng Zhou, Yuchen Zhang, Mingyu Liang, Chengxing Xie, Ermo Hua, Zhizhou He, et al. Lfqa-e: Carefully benchmarking long-form qa evaluation. In The Fourteenth International Conference on Learning Representations , 2026. Shi Feng, Hanlin Zhang, Fan Nie, Sham Kakade, and Yiling Chen. Peer-predictive self-training for language model reasoning. arXiv preprint arXiv:2604.13356 , 2026. Isabel O Gallegos, Ryan A Rossi, Joe Barrow, Md Mehrab Tanjim, Sungchul Kim, Franck Dernoncourt, Tong Yu, Ruiyi Zhang, and Nesreen K Ahmed. Bias and fairness in large language models: A survey. Computational linguistics , 50(3):1097–1179, 2024. Leo Gao, John Schulman, and Jacob Hilton. Scaling laws for reward model overoptimization. In 
+
+International Conference on Machine Learning , pages 10835–10866. PMLR, 2023. Tilmann Gneiting and Adrian E Raftery. Strictly proper scoring rules, prediction, and estimation. 
+
+Journal of the American statistical Association , 102(477):359–378, 2007. Deepak Gupta, Davis Bartels, and Dina Demner-Fushman. a dataset of medical questions paired with automatically generated answers and evidence-supported references. Scientific Data , 12(1): 1035, 2025. Jason D Hartline, Liren Shan, Yingkai Li, and Yifan Wu. Optimal scoring rules for multi-dimensional effort. arXiv preprint arXiv:2211.03302 , 2022. R Devon Hjelm, Alex Fedorov, Samuel Lavoie-Marchildon, Karan Grewal, Phil Bachman, Adam Trischler, and Yoshua Bengio. Learning deep representations by mutual information estimation and maximization. arXiv preprint arXiv:1808.06670 , 2018. Yuqing Kong. Dominantly truthful multi-task peer prediction with a constant number of tasks. In Proceedings of the fourteenth annual acm-siam symposium on discrete algorithms , pages 2398–2411. SIAM, 2020. Yuqing Kong. Dominantly truthful peer prediction mechanisms with a finite number of tasks. Journal of the ACM , 71(2):1–49, 2024. 17 Yuqing Kong and Grant Schoenebeck. Water from two rocks: Maximizing the mutual information. In 
+
+Proceedings of the 2018 ACM Conference on Economics and Computation , pages 177–194, 2018. Yuqing Kong and Grant Schoenebeck. An information theoretic framework for designing information elicitation mechanisms that reward truth-telling. ACM Transactions on Economics and Computation (TEAC) , 7(1):1–33, 2019. Victoria Krakovna, Jonathan Uesato, Vladimir Mikulik, Matthew Rahtz, Tom Everitt, Ramana Kumar, Zac Kenton, Jan Leike, and Shane Legg. Specification gaming: the flip side of ai ingenuity. 
+
+DeepMind Blog , 3:40–53, 2020. Nicolas S Lambert, David M Pennock, and Yoav Shoham. Eliciting properties of probability distribu-tions. In Proceedings of the 9th ACM Conference on Electronic Commerce , pages 129–138, 2008. Yingkai Li, Jason D Hartline, Liren Shan, and Yifan Wu. Optimization of scoring rules. In 
+
+Proceedings of the 23rd ACM Conference on Economics and Computation , pages 988–989, 2022. Percy Liang, Rishi Bommasani, Tony Lee, Dimitris Tsipras, Dilara Soylu, Michihiro Yasunaga, Yian Zhang, Deepak Narayanan, Yuhuai Wu, Ananya Kumar, et al. Holistic evaluation of language models. Transactions on Machine Learning Research , 2022. Chin-Yew Lin. Rouge: A package for automatic evaluation of summaries. In Text summarization branches out , pages 74–81, 2004. Stephanie Lin, Jacob Hilton, and Owain Evans. Truthfulqa: Measuring how models mimic human falsehoods. In Proceedings of the 60th annual meeting of the association for computational linguistics (volume 1: long papers) , pages 3214–3252, 2022. Yuxuan Lu, Shengwei Xu, Yichi Zhang, Yuqing Kong, and Grant Schoenebeck. Eliciting informative text evaluations with large language models. arXiv preprint arXiv:2405.15077 , 2024. Yuxuan Lu, Yifan Wu, Jason Hartline, and Michael J Curry. Aligned textual scoring rules. arXiv preprint arXiv:2507.06221 , 2025. John McCarthy. Measures of the value of information. Proceedings of the National Academy of Sciences , 42(9):654–655, 1956. Nolan Miller, Paul Resnick, and Richard Zeckhauser. Eliciting informative feedback: The peer-prediction method. Management Science , 51(9):1359–1373, 2005. Eric Neyman, Georgy Noarov, and S Matthew Weinberg. Binary scoring rules that incentivize precision. In Proceedings of the 22nd ACM Conference on Economics and Computation , pages 718–733, 2021. XuanLong Nguyen, Martin J Wainwright, and Michael I Jordan. Estimating divergence functionals and the likelihood ratio by convex risk minimization. IEEE Transactions on Information Theory ,56(11):5847–5861, 2010. Aaron van den Oord, Yazhe Li, and Oriol Vinyals. Representation learning with contrastive predictive coding. arXiv preprint arXiv:1807.03748 , 2018. Vishakh Padmakumar and He He. Unsupervised extractive summarization using pointwise mutual information. In Proceedings of the 16th Conference of the European Chapter of the Association for Computational Linguistics: Main Volume , pages 2505–2512, 2021. Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. Bleu: a method for automatic evaluation of machine translation. In Proceedings of the 40th annual meeting of the Association for Computational Linguistics , pages 311–318, 2002. Maneesha Papireddygari and Bo Waggoner. Contracts with information acquisition, via scoring rules. In Proceedings of the 23rd ACM Conference on Economics and Computation , pages 703–704, 2022. Zachary Robertson and Sanmi Koyejo. Let’s measure information step-by-step: Llm-based evaluation beyond vibes. arXiv preprint arXiv:2508.05469 , 2025. 18 Leonard J Savage. Elicitation of personal probabilities and expectations. Journal of the American Statistical Association , 66(336):783–801, 1971. Taylor Sorensen, Jared Moore, Jillian Fisher, Mitchell Gordon, Niloofar Mireshghallah, Christo-pher Michael Rytting, Andre Ye, Liwei Jiang, Ximing Lu, Nouha Dziri, et al. A roadmap to pluralistic alignment. arXiv preprint arXiv:2402.05070 , 2024. Yifan Wu and Jason Hartline. Elicitationgpt: Text elicitation mechanisms via language models. 
+
+arXiv preprint arXiv:2406.09363 , 2024. Shengwei Xu, Yichi Zhang, Paul Resnick, and Grant Schoenebeck. Spot check equivalence: an in-terpretable metric for information elicitation mechanisms. arXiv preprint arXiv:2402.13567 , 2024. Shengwei Xu, Yuxuan Lu, Grant Schoenebeck, and Yuqing Kong. Benchmarking llms’ judgments with no gold standard. In The Thirteenth International Conference on Learning Representations ,2025. Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q Weinberger, and Yoav Artzi. Bertscore: Evaluating text generation with bert. arXiv preprint arXiv:1904.09675 , 2019. Yichi Zhang, Shengwei Xu, Grant Schoenebeck, and David Pennock. Stochastically dominant peer prediction. Advances in Neural Information Processing Systems , 38:151632–151664, 2026. Shuran Zheng, Xuan Qi, Rui Ray Chen, Yongchan Kwon, and James Zou. Proper dataset valuation by pointwise mutual information. arXiv preprint arXiv:2405.18253 , 2024. 19 A Design Framework Details 
+
+A.1 Direct Density Ratio Estimation 
+
+For KL, f (t) = t log t, so 
+
+I(X; Y ) = EPX ⊗PY
+
+r(X, Y ) log r(X, Y ) = EPXY 
+
+log r(X, Y ).
+
+The quantity PMI( x; y) := log r(x, y ) = log p(y | x) − log p(y) is the pointwise mutual information ;its expectation under the joint distribution recovers the Shannon mutual information. Direct estimation is also available for TVD-MI, where f (t) = 12 |t − 1|, so we have 
+
+ITV (X; Y ) = 12 EPX ⊗PY
+
+|r(X, Y ) − 1| = 12
+
+X
+
+> x,y ∈V ∗
+
+|P (x, y ) − P (x)P (y)|.
+
+This can also be written as ITV (X; Y ) = 12 EPXY 
+
+|1 − 1  
+
+> r(X,Y )
+
+|, providing two approaches of Monte Carlo estimation. 
+
+A.2 f -Variational Estimation 
+
+Every f -divergence admits a variational lower bound via the Fenchel conjugate f ∗.
+
+Definition A.1 (Variational representation) . Let f ∗ denote the Fenchel conjugate of f ,
+
+f ∗(v) := sup 
+
+> t> 0
+
+{vt − f (t)}.
+
+Then 
+
+Df (P ∥Q) = sup 
+
+> T
+
+EP [T (X)] − EQ
+
+f ∗(T (X))  ,
+
+where the supremum is over functions T such that f ∗(T (x)) < ∞ for all x with Q(x) > 0.
+
+Here T is a critic: a scalar scoring function that tries to assign higher values to samples from P than to samples from Q. We write T ∗ for the population-optimal critic. When f is differentiable, 
+
+T ∗(x) = f ′
+
+ p(x)
+
+q(x)
+
+
+
+,
+
+and in general 
+
+T ∗(x) ∈ ∂f 
+
+ p(x)
+
+q(x)
+
+
+
+,
+
+where ∂f denotes the subdifferential of f .The f -mutual information also admits the variational form 
+
+If (X; Y ) = sup 
+
+> T
+
+{EPXY [T (X, Y )] − EPX ⊗PY [f ∗(T (X, Y ))] } .
+
+At the population optimum, equality is attained when T (x, y ) = T ∗(x, y ).In our setting, we can write T (x, y ) for a critic on candidate–reference pairs and T ∗(x, y ) for the population-optimal critic. The optimal critic is determined by the chosen generator f through 
+
+T ∗(x, y ) ∈ ∂f  r(x, y ).
+
+As Table 9 shows, different choices of f induce different optimal critics and different conjugate penalty terms. We refer back to this table when instantiating KL-based and TV-based evaluation metrics. 
+
+Estimator Here joint samples PXY are candidate-reference pairs from the same task, while marginal samples PX ⊗ PY are pairs drawn across different tasks. Recall that, the optimum is attained by a critic satisfying T ∗(x, y ) ∈ ∂f  r(x, y ). For common choices of f , the corresponding forms of T ∗(x, y ) and f ∗(T ∗(x, y )) are listed in Table 9. 20 Table 9: Common f -divergences, along with a convenient population-optimal critic T ∗(x, y ) and the corresponding conjugate term f ∗(T ∗(x, y )) , written in terms of the density ratio r(x, y ).
+
+f -divergence f (t) T ∗(x, y ) f ∗(T ∗(x, y )) 
+
+Total variation 12 |t − 1| 12 sign  r(x, y ) − 1 12 sign  r(x, y ) − 1
+
+KL divergence t log t 1 + log r(x, y ) r(x, y )
+
+Reverse KL − log t − 1 
+
+> r(x,y )
+
+−1 + log r(x, y )
+
+Pearson χ2 (t − 1) 2 2 r(x, y ) − 1 r(x, y )2 − 1
+
+Squared Hellinger (√t − 1) 2 1 − 1√r(x,y )
+
+pr(x, y ) − 1
+
+For KL, the variational estimation yields the NWJ objective: 
+
+I(X; Y ) = sup 
+
+> T
+
+n
+
+EPXY [T (X, Y )] − e−1EPX ⊗PY
+
+eT (X,Y )o
+
+= 1 + EPXY 
+
+log r(X, Y ) − EPX ⊗PY
+
+r(X, Y )
+
+For total variation, the estimator reduces to 
+
+ITV (X; Y ) = sup  
+
+> ∥T∥∞≤1/2
+
+n
+
+EPXY [T (X, Y )] − EPX ⊗PY [T (X, Y )] 
+
+o
+
+(3) 
+
+= 12 EPXY 
+
+sign( r(X, Y ) − 1)  − 12 EPX ⊗PY
+
+sign( r(X, Y ) − 1) 
+
+where the optimal critic sign( r(X, Y ) − 1) is equivalent to a binary classifier that distinguishes same-task pairs from cross-task pairs. 
+
+## B TV, f-variational, Statement-level, LLM-oracle Metric 
+
+This method instantiates the scoring framework with 
+
+F = TV , E = f -variational , D = LLM-as-a-Judge (statement-level) denoted as DΨ,
+
+where DΨ is induced by a reference decomposition Ψ.We keep the candidate at the report level and decompose each reference into statements: 
+
+Ψ( y) =  ψ1(y), . . . , ψ K(y)(y). (4) We instantiate the local critic t and aggregation rule A from Section 4.4 as follows. For each candidate–statement pair, an LLM judge returns a centered binary local critic 
+
+t : V∗ × V ∗ →
+
+
+
+− 12 , 12
+
+
+
+, (5) where t(x, w ) = 12 if candidate x supports or aligns with statement w, and t(x, w ) = − 12 otherwise. We use mean aggregation, so the induced report-level critic is 
+
+TΨ(x, y ) = 1
+
+K(y)
+
+> K(y)
+
+X
+
+> k=1
+
+t x, ψ k(y). (6) Since each summand lies in [− 12 , 12 ], TΨ satisfies the constraint in the TV variational estimator. For task i, let R+ 
+
+> i
+
+be positive references paired with the same task, and let R− 
+
+> i
+
+be negative references sampled from the marginal reference distribution PY . We define the sampled contrastive score 
+
+ˆSCTV (xi; R+ 
+
+> i
+
+, R− 
+
+> i
+
+) = 1
+
+|R + 
+
+> i
+
+|
+
+X
+
+> y∈R +
+> i
+
+TΨ(xi, y ) − 1
+
+|R − 
+
+> i
+
+|
+
+X
+
+> y∈R −
+> i
+
+TΨ(xi, y ). (7) Assume that, conditional on task ψi, the references in R+ 
+
+> i
+
+are drawn i.i.d. from PY |ψi , and the references in R− 
+
+> i
+
+are drawn i.i.d. from PY , independently of (xi, ψ i). Then 
+
+E
+
+h ˆSCTV (xi; R+ 
+
+> i
+
+, R− 
+
+> i
+
+) | xi, ψ i
+
+i
+
+= EY ∼PY |ψi
+
+TΨ(xi, Y ) − EY ∼PY
+
+TΨ(xi, Y ). (8) 21 If (Xi, Y i) is generated by first sampling a task and then sampling the candidate and reference independently conditional on that task, averaging Eq. (8) over (Xi, ψ i) yields 
+
+E ˆSCTV (Xi; R+ 
+
+> i
+
+, R− 
+
+> i
+
+) = EPXY 
+
+TΨ(X, Y ) − EPX ⊗PY
+
+TΨ(X, Y ). (9) Because TΨ factors through Ψ( Y ) and satisfies ∥TΨ∥∞ ≤ 1/2, Eq. (3) applied to the transformed pair (X, Ψ( Y )) gives 
+
+E ˆSCTV (Xi; R+ 
+
+> i
+
+, R− 
+
+> i
+
+) ≤ ITV 
+
+ X; Ψ( Y ) ≤ ITV (X; Y ).
+
+## C Experiment Details 
+
+C.1 Experiment Design 
+
+To compare scoring methods in a controlled way, we organize our experiments around the design space induced by Definition 4.1. Each scoring method corresponds to a choice along four axes: (i) the information measure F ∈ { KL , TV };(ii) the estimator E ∈ { Direct , f -variational };(iii) the representation R ∈ { Token , Whole-report , Statement }.(iv) the predictor Π ∈ { Autoregression , LLM-oracle };The predictor and representation do not vary independently: autoregression composes only with token-level representation, while the LLM-oracle composes with whole-report or statement-level representation (Section 4.4). The joint (Π , R ) axis therefore has three valid settings, yielding a 
+
+2 × 2 × 3 = 12 -cell factorial design (Table 4). Of the 12 cells, three correspond to previously proposed methods (GEM, GPPM-Judgment, and TVD-MI). By holding three axes fixed and varying one, we can isolate the marginal effect of each design choice on alignment, degradation sensitivity, and manipulation resistance. 
+
+Implementation. We instantiate the token-autoregressive model with Llama-3.1-8B , and adopt the pre-processing process from Lu et al. (2024); Xu et al. (2025) with claude-haiku-4.5 .We instantiate the LLM-oracle with claude-haiku-4.5 , queried through OpenRouter API at temperature 0 with a single sample per prompt. In the f -variational settings, the oracle output is used directly as the critic T (x, y ). In the direct-estimation settings, the oracle returns a 7-point ordinal supporting judgment, which we map to {1/8, 1/4, 1/2, 1, 2, 4, 8} and treat as a discretized surrogate for the density ratio estimate ˆr(x, y ). For statement-level representation, we first decompose the reference y into atomic claims using a dataset-specific decomposition prompt, and then score the resulting (candidate, reference statement) pairs with the same claude-haiku-4.5 model. Unless otherwise noted, each candidate is scored against one positive reference, and, for f -variational metrics, four negative references sampled from other tasks in the same dataset group and takes average to reduce noise. A group consists of same-kind tasks within a dataset, such as the same class in Peer Grading-WH or the same topic category (e.g., math or technology) in LFQA-E. ICLR 2026, Peer Grading-XLSK, SummEval, and SPACE are treated as a single group. 
+
+C.2 Computational Resources 
+
+All experiments were conducted on a high-performance workstation with the following specifications: 
+
+Hardware. The machine is equipped with dual Intel Xeon Platinum 8470Q CPUs (totaling 104 physical cores and 208 threads), 1.0 TiB of system RAM, and one NVIDIA RTX PRO 6000 (Blackwell architecture) GPU with 96 GB of device memory. 
+
+Local Inference. For metrics using the Llama-3.1-8B model, local inference was performed with an average processing speed of approximately 0.5s/it. The total local compute time required for the entire study (excluding API latency) was approximately 6 GPU hours. 22 API Usage and Reliability. Evaluations involving Claude-Haiku-4.5 were conducted via the OpenRouter API. • Configuration: All API calls used a default max token limit of 4000 and a temperature setting of 0 to ensure deterministic and complete responses. • Retry Logic: To handle potential network instability or API timeouts, we implemented a robust retry mechanism with a maximum of 4 attempts per request; a call was marked as a failure only if all retries were exhausted. • Error Handling: In cases where specific perturbation methods (for degradation or manipulation tests) encountered API errors or generation failures, the system was designed to gracefully fall back to a no-op (no operation), ensuring the stability of the overall evaluation pipeline. 
+
+Execution Time. Due to varying dataset sizes, the total experimental duration per dataset ranged from 20 minutes to 1 hour. 
+
+## D Detailed Degradation and Manipulation Statistics 
+
+Table 10: Degradation perturbation method results. Each cell reports the standardized mean difference 
+
+d with 95% CI. Red marks significant score increases ( p > 0.05 ); orange marks non-significant changes. Both flag failed degradation criteria. 
+
+Metric PG-WH PG-XLSK ICLR26 SummEval SPACE LFQA-E MedAESQA 
+
+deletion_and_completion 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. −0.45 ±0.09 −0.32 ±0.08 −0.24 ±0.07 −0.41 ±0.09 −0.50 ±0.11 −0.10 ±0.09 −0.21 ±0.09 
+
+TVD-FVar-Report −0.04 ±0.16 −0.19 ±0.11 −0.20 ±0.12 −0.23 ±0.15 −0.41 ±0.13 −0.22 ±0.14 +0 .19 ±0.14 
+
+TVD-FVar-Statement −0.20 ±0.10 −0.23 ±0.11 −0.18 ±0.12 −0.48 ±0.10 −0.31 ±0.09 −0.19 ±0.09 −0.19 ±0.10 
+
+Non-MI baselines 
+
+ROUGE-L +0 .06 ±0.09 +0 .06 ±0.04 −0.55 ±0.08 −0.05 ±0.07 −0.27 ±0.07 −0.24 ±0.07 −0.14 ±0.06 
+
+BLEU +0 .24 ±0.07 +0 .05 ±0.06 −0.35 ±0.06 +0 .03 ±0.06 −0.24 ±0.09 −0.16 ±0.08 −0.10 ±0.05 
+
+BERTScore +0 .04 ±0.18 +0 .09 ±0.11 +0 .56 ±0.09 −0.05 ±0.10 −0.32 ±0.09 +0 .04 ±0.08 −0.04 ±0.06 
+
+LLM-J / Claude-Haiku-4.5 −0.35 ±0.11 −0.19 ±0.09 −0.27 ±0.11 −0.29 ±0.14 −0.44 ±0.13 −0.37 ±0.13 −0.01 ±0.09 
+
+LLM-J / Claude-Sonnet-4.5 −0.37 ±0.10 −0.16 ±0.09 −0.28 ±0.10 −0.42 ±0.11 −0.61 ±0.13 −0.39 ±0.11 −0.12 ±0.08 
+
+LLM-J / GPT-5-mini −0.24 ±0.10 −0.13 ±0.08 −0.32 ±0.12 −0.29 ±0.12 −0.52 ±0.12 −0.17 ±0.11 −0.09 ±0.09 
+
+LLM-J / GPT-4o-mini +0 .06 ±0.11 +0 .18 ±0.07 −0.13 ±0.12 −0.15 ±0.12 −0.12 ±0.12 −0.13 ±0.11 −0.10 ±0.06 
+
+opinion_flip 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. −0.39 ±0.12 −0.51 ±0.12 −0.44 ±0.09 – – – –TVD-FVar-Report −0.21 ±0.16 −0.01 ±0.11 −0.05 ±0.14 – – – –TVD-FVar-Statement −0.84 ±0.19 −0.27 ±0.17 −0.28 ±0.15 – – – –
+
+Non-MI baselines 
+
+ROUGE-L +0 .28 ±0.13 −0.85 ±0.10 +0 .13 ±0.09 – – – –BLEU +0 .63 ±0.11 −0.64 ±0.12 −0.16 ±0.12 – – – –BERTScore −0.06 ±0.19 −0.35 ±0.14 +0 .39 ±0.12 – – – –LLM-J / Claude-Haiku-4.5 −0.88 ±0.21 −0.67 ±0.20 −0.58 ±0.18 – – – –LLM-J / Claude-Sonnet-4.5 −0.99 ±0.21 −0.70 ±0.18 −0.68 ±0.17 – – – –LLM-J / GPT-5-mini −1.09 ±0.22 −0.32 ±0.15 −0.54 ±0.17 – – – –LLM-J / GPT-4o-mini −0.26 ±0.19 +0 .22 ±0.19 +0 .06 ±0.17 – – – –
+
+random_replacement 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. −0.32 ±0.18 −1.12 ±0.22 −1.82 ±0.18 −2.00 ±0.18 −1.05 ±0.18 −1.36 ±0.17 −0.67 ±0.17 
+
+TVD-FVar-Report −0.48 ±0.18 −1.88 ±0.23 −8.98 ±0.20 −2.60 ±0.21 −1.42 ±0.20 −2.93 ±0.19 −3.00 ±0.21 
+
+TVD-FVar-Statement −0.81 ±0.18 −0.92 ±0.19 −1.62 ±0.18 −2.10 ±0.20 −1.01 ±0.18 −1.96 ±0.18 −2.61 ±0.19 
+
+Non-MI baselines 
+
+ROUGE-L +0 .01 ±0.18 −0.34 ±0.21 −1.15 ±0.16 −2.06 ±0.18 −1.03 ±0.19 −1.18 ±0.17 −1.95 ±0.18 
+
+BLEU +0 .01 ±0.17 −0.23 ±0.22 −0.34 ±0.15 −1.07 ±0.19 −0.96 ±0.20 −0.92 ±0.19 −0.94 ±0.20 
+
+BERTScore +0 .06 ±0.19 −0.28 ±0.19 −0.57 ±0.15 −2.36 ±0.20 −0.86 ±0.15 −1.89 ±0.17 −1.98 ±0.20 
+
+LLM-J / Claude-Haiku-4.5 −0.61 ±0.19 −1.45 ±0.22 −1.25 ±0.20 −2.49 ±0.20 −1.13 ±0.18 −2.72 ±0.20 −2.95 ±0.19 
+
+LLM-J / Claude-Sonnet-4.5 −0.66 ±0.19 −1.67 ±0.22 −3.99 ±0.20 −3.18 ±0.20 −1.22 ±0.19 −2.81 ±0.20 −2.95 ±0.20 
+
+LLM-J / GPT-5-mini −0.56 ±0.20 −1.23 ±0.22 −3.47 ±0.20 −3.01 ±0.20 −1.03 ±0.19 −3.10 ±0.20 −3.17 ±0.20 
+
+LLM-J / GPT-4o-mini −0.34 ±0.20 −0.11 ±0.23 +0 .08 ±0.20 −3.74 ±0.20 −0.64 ±0.18 −3.10 ±0.19 −2.49 ±0.19 
+
+sentence_deletion 
+
+MI-based Mechanisms Continued on next page 
+
+23 Table 10: Degradation perturbation method results (continued). Each cell reports the standardized mean difference d with 95% CI. Red marks significant score increases ( p > 0.05 ); orange marks non-significant changes. Both flag failed degradation criteria. 
+
+Metric PG-WH PG-XLSK ICLR26 SummEval SPACE LFQA-E MedAESQA KL-Direct-Autoreg. −0.46 ±0.09 −0.64 ±0.08 −0.70 ±0.07 −0.34 ±0.10 −0.56 ±0.11 −0.25 ±0.09 −0.24 ±0.10 
+
+TVD-FVar-Report −0.05 ±0.16 −0.20 ±0.11 −0.21 ±0.15 −0.16 ±0.15 −0.31 ±0.12 −0.23 ±0.14 −0.03 ±0.15 
+
+TVD-FVar-Statement −0.25 ±0.11 −0.22 ±0.11 −0.38 ±0.10 −0.50 ±0.10 −0.27 ±0.08 −0.18 ±0.09 −0.45 ±0.11 
+
+Non-MI baselines 
+
+ROUGE-L −0.04 ±0.08 +0 .43 ±0.08 −0.25 ±0.10 −0.02 ±0.08 −0.10 ±0.08 −0.44 ±0.10 −0.10 ±0.08 
+
+BLEU −0.19 ±0.11 +0 .39 ±0.12 −0.67 ±0.13 +0 .01 ±0.07 −0.22 ±0.12 −0.56 ±0.12 −0.27 ±0.10 
+
+BERTScore +0 .05 ±0.19 −0.16 ±0.10 +0 .12 ±0.10 −0.17 ±0.10 −0.16 ±0.08 −0.04 ±0.08 −0.11 ±0.06 
+
+LLM-J / Claude-Haiku-4.5 −0.39 ±0.13 −0.71 ±0.11 −0.88 ±0.15 −0.37 ±0.14 −0.53 ±0.13 −0.86 ±0.14 −0.34 ±0.11 
+
+LLM-J / Claude-Sonnet-4.5 −0.43 ±0.11 −0.80 ±0.09 −1.40 ±0.14 −0.42 ±0.12 −0.61 ±0.14 −0.91 ±0.14 −0.37 ±0.10 
+
+LLM-J / GPT-5-mini −0.43 ±0.10 −0.73 ±0.08 −1.11 ±0.14 −0.44 ±0.12 −0.63 ±0.12 −0.70 ±0.13 −0.41 ±0.10 
+
+LLM-J / GPT-4o-mini −0.59 ±0.12 −0.73 ±0.09 −1.04 ±0.16 −0.54 ±0.13 −0.58 ±0.14 −1.01 ±0.15 −0.60 ±0.10 
+
+surface_report 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. – −0.74 ±0.20 −0.02 ±0.14 −0.28 ±0.15 −1.22 ±0.17 +0 .04 ±0.11 −0.08 ±0.13 
+
+TVD-FVar-Report – −1.36 ±0.22 −0.12 ±0.21 −0.09 ±0.16 −1.02 ±0.18 +0 .02 ±0.17 −0.02 ±0.19 
+
+TVD-FVar-Statement – −0.58 ±0.17 −0.31 ±0.18 +0 .04 ±0.15 −0.84 ±0.18 +0 .11 ±0.12 −0.01 ±0.18 
+
+Non-MI baselines 
+
+ROUGE-L – −3.32 ±0.21 −0.93 ±0.15 −0.11 ±0.12 −2.46 ±0.20 −0.14 ±0.11 −0.45 ±0.16 
+
+BLEU – −2.84 ±0.21 −1.28 ±0.15 +0 .68 ±0.16 −1.34 ±0.20 −0.03 ±0.13 −0.56 ±0.17 
+
+BERTScore – +0 .10 ±0.18 +0 .84 ±0.13 +0 .28 ±0.14 −2.81 ±0.17 −0.03 ±0.13 −0.11 ±0.16 
+
+LLM-J / Claude-Haiku-4.5 – −1.57 ±0.22 +0 .18 ±0.17 +0 .47 ±0.17 −1.81 ±0.19 +0 .81 ±0.16 +1 .21 ±0.19 
+
+LLM-J / Claude-Sonnet-4.5 – −1.65 ±0.22 +0 .05 ±0.18 +0 .28 ±0.15 −2.51 ±0.20 +0 .69 ±0.16 +1 .18 ±0.20 
+
+LLM-J / GPT-5-mini – −1.52 ±0.22 +0 .03 ±0.17 +0 .12 ±0.17 −1.28 ±0.19 +0 .51 ±0.14 +1 .01 ±0.19 
+
+LLM-J / GPT-4o-mini – −1.11 ±0.22 +1 .13 ±0.17 +1 .39 ±0.17 −0.74 ±0.18 +1 .04 ±0.17 +0 .98 ±0.19 
+
+ultra_concise_compression 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. −0.61 ±0.12 −1.16 ±0.12 −1.43 ±0.13 −0.89 ±0.15 −1.31 ±0.17 −0.10 ±0.11 +0 .01 ±0.13 
+
+TVD-FVar-Report −0.12 ±0.18 −0.59 ±0.15 +0 .01 ±0.19 +0 .19 ±0.15 −0.52 ±0.15 −0.03 ±0.16 +0 .34 ±0.17 
+
+TVD-FVar-Statement −0.24 ±0.13 −0.28 ±0.13 −0.29 ±0.14 −1.10 ±0.14 −0.59 ±0.13 −0.27 ±0.11 −0.20 ±0.14 
+
+Non-MI baselines 
+
+ROUGE-L −2.43 ±0.17 −4.80 ±0.25 −3.68 ±0.18 −0.90 ±0.15 −1.42 ±0.17 −3.06 ±0.16 −1.77 ±0.16 
+
+BLEU −2.18 ±0.20 −3.24 ±0.23 −3.78 ±0.20 −1.26 ±0.20 −1.25 ±0.20 −1.77 ±0.20 −1.47 ±0.20 
+
+BERTScore +0 .19 ±0.19 +0 .81 ±0.15 +1 .33 ±0.11 +0 .19 ±0.14 −0.33 ±0.14 +0 .03 ±0.11 −0.06 ±0.11 
+
+LLM-J / Claude-Haiku-4.5 −0.33 ±0.11 −0.96 ±0.13 −0.37 ±0.13 −0.40 ±0.16 −0.75 ±0.15 −0.90 ±0.16 −0.76 ±0.14 
+
+LLM-J / Claude-Sonnet-4.5 −0.39 ±0.11 −1.02 ±0.12 −0.96 ±0.14 −0.79 ±0.14 −0.88 ±0.14 −1.03 ±0.16 −0.63 ±0.13 
+
+LLM-J / GPT-5-mini −0.18 ±0.10 −0.88 ±0.11 −0.99 ±0.13 −0.54 ±0.13 −0.84 ±0.14 −0.79 ±0.13 −0.62 ±0.14 
+
+LLM-J / GPT-4o-mini −0.85 ±0.14 −1.03 ±0.11 −1.02 ±0.18 −1.42 ±0.18 −1.15 ±0.16 −1.70 ±0.16 −1.40 ±0.12 
+
+Table 11: Manipulation perturbation method results. Each cell reports the standardized mean difference d with 95% CI. Red marks significant score increases ( p > 0.05 ), which flags failed manipulation criteria. 
+
+Metric PG-WH PG-XLSK ICLR26 SummEval SPACE LFQA-E MedAESQA 
+
+meaningless_elongation 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. +0 .06 ±0.05 −0.01 ±0.05 +0 .00 ±0.02 −0.01 ±0.03 +0 .01 ±0.04 +0 .00 ±0.05 −0.05 ±0.04 
+
+TVD-FVar-Report +0 .05 ±0.14 −0.03 ±0.09 −0.02 ±0.13 +0 .12 ±0.13 −0.16 ±0.11 −0.04 ±0.13 +0 .05 ±0.12 
+
+TVD-FVar-Statement +0 .05 ±0.06 −0.03 ±0.08 −0.03 ±0.07 +0 .01 ±0.05 +0 .02 ±0.06 +0 .05 ±0.07 −0.03 ±0.05 
+
+Non-MI baselines 
+
+ROUGE-L +0 .48 ±0.14 −1.59 ±0.15 −0.33 ±0.02 −0.62 ±0.07 −0.84 ±0.09 −0.08 ±0.03 −0.13 ±0.03 
+
+BLEU +0 .41 ±0.16 −1.44 ±0.17 −0.01 ±0.04 −0.53 ±0.08 −0.39 ±0.08 +0 .03 ±0.02 +0 .03 ±0.03 
+
+BERTScore +0 .10 ±0.18 −0.12 ±0.08 +0 .00 ±0.04 −0.02 ±0.04 +0 .03 ±0.06 +0 .00 ±0.04 −0.01 ±0.03 
+
+LLM-J / Claude-Haiku-4.5 +0 .15 ±0.08 −0.28 ±0.08 −0.02 ±0.07 +0 .05 ±0.09 −0.37 ±0.10 −0.05 ±0.06 −0.11 ±0.05 
+
+LLM-J / Claude-Sonnet-4.5 +0 .10 ±0.06 −0.77 ±0.09 +0 .14 ±0.06 +0 .04 ±0.08 −0.52 ±0.11 −0.08 ±0.06 −0.09 ±0.04 
+
+LLM-J / GPT-5-mini +0 .04 ±0.07 +0 .10 ±0.06 +0 .05 ±0.10 −0.02 ±0.08 −0.05 ±0.09 +0 .06 ±0.09 −0.01 ±0.08 
+
+LLM-J / GPT-4o-mini +0 .30 ±0.11 +0 .43 ±0.09 +0 .24 ±0.09 −0.25 ±0.13 −0.37 ±0.13 +0 .00 ±0.07 −0.04 ±0.05 
+
+opinion_shift_negative 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. +0 .01 ±0.10 −0.03 ±0.10 +0 .29 ±0.08 – – – –TVD-FVar-Report +0 .03 ±0.15 −0.05 ±0.10 −0.03 ±0.13 – – – –TVD-FVar-Statement −0.19 ±0.14 −0.20 ±0.13 −0.20 ±0.10 – – – –
+
+Non-MI baselines 
+
+ROUGE-L −0.55 ±0.17 −3.34 ±0.22 −1.10 ±0.11 – – – –BLEU −0.12 ±0.19 −2.90 ±0.22 −1.00 ±0.15 – – – –BERTScore −0.06 ±0.02 −0.25 ±0.16 +0 .42 ±0.11 – – – –
+
+Continued on next page 
+
+24 Table 11: Manipulation perturbation method results (continued). Each cell reports the standardized mean difference d with 95% CI. Red marks significant score increases ( p > 0.05 ), which flags failed manipulation criteria. 
+
+Metric PG-WH PG-XLSK ICLR26 SummEval SPACE LFQA-E MedAESQA LLM-J / Claude-Haiku-4.5 +0 .27 ±0.13 −0.25 ±0.18 +0 .07 ±0.15 – – – –LLM-J / Claude-Sonnet-4.5 +0 .16 ±0.13 −0.35 ±0.18 +0 .12 ±0.15 – – – –LLM-J / GPT-5-mini +0 .34 ±0.14 +0 .34 ±0.15 +0 .10 ±0.14 – – – –LLM-J / GPT-4o-mini +0 .50 ±0.16 +0 .24 ±0.17 +0 .63 ±0.15 – – – –
+
+opinion_shift_neutral 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. −0.23 ±0.08 −0.03 ±0.07 +0 .13 ±0.06 – – −0.01 ±0.09 −0.09 ±0.08 
+
+TVD-FVar-Report +0 .05 ±0.15 +0 .01 ±0.10 −0.05 ±0.16 – – +0 .00 ±0.13 −0.04 ±0.15 
+
+TVD-FVar-Statement −0.04 ±0.08 −0.13 ±0.10 −0.19 ±0.08 – – +0 .00 ±0.09 −0.08 ±0.07 
+
+Non-MI baselines 
+
+ROUGE-L +0 .19 ±0.14 −1.42 ±0.18 −1.20 ±0.12 – – −0.20 ±0.09 −0.19 ±0.09 
+
+BLEU +0 .58 ±0.14 −1.83 ±0.20 −2.14 ±0.17 – – −0.10 ±0.10 −0.09 ±0.07 
+
+BERTScore −0.02 ±0.18 −0.60 ±0.13 +0 .18 ±0.10 – – −0.01 ±0.09 −0.11 ±0.05 
+
+LLM-J / Claude-Haiku-4.5 +0 .16 ±0.08 +0 .56 ±0.12 +0 .59 ±0.13 – – +0 .48 ±0.13 +0 .27 ±0.08 
+
+LLM-J / Claude-Sonnet-4.5 +0 .13 ±0.08 +0 .44 ±0.14 +0 .54 ±0.11 – – +0 .30 ±0.13 +0 .10 ±0.07 
+
+LLM-J / GPT-5-mini +0 .12 ±0.08 +0 .52 ±0.09 +0 .40 ±0.12 – – +0 .39 ±0.13 +0 .11 ±0.07 
+
+LLM-J / GPT-4o-mini +0 .74 ±0.12 +1 .35 ±0.15 +1 .09 ±0.17 – – +0 .79 ±0.15 +0 .17 ±0.07 
+
+opinion_shift_positive 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. −0.41 ±0.08 −0.15 ±0.07 +0 .13 ±0.07 – – – –TVD-FVar-Report −0.06 ±0.14 −0.01 ±0.10 −0.07 ±0.13 – – – –TVD-FVar-Statement −0.14 ±0.10 −0.13 ±0.10 +0 .02 ±0.09 – – – –
+
+Non-MI baselines 
+
+ROUGE-L −0.29 ±0.16 −2.04 ±0.20 −0.59 ±0.08 – – – –BLEU +0 .19 ±0.18 −2.00 ±0.21 −0.46 ±0.11 – – – –BERTScore −0.13 ±0.02 −0.56 ±0.13 +0 .03 ±0.09 – – – –LLM-J / Claude-Haiku-4.5 −0.15 ±0.10 +0 .38 ±0.12 +0 .01 ±0.15 – – – –LLM-J / Claude-Sonnet-4.5 −0.19 ±0.11 +0 .32 ±0.14 +0 .18 ±0.12 – – – –LLM-J / GPT-5-mini +0 .00 ±0.10 +0 .54 ±0.09 +0 .20 ±0.12 – – – –LLM-J / GPT-4o-mini +1 .09 ±0.13 +1 .74 ±0.15 +1 .23 ±0.18 – – – –
+
+opinion_shift_strong 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. +0 .01 ±0.07 +0 .12 ±0.08 +0 .14 ±0.05 – – +0 .04 ±0.09 −0.09 ±0.09 
+
+TVD-FVar-Report +0 .01 ±0.14 −0.04 ±0.11 −0.05 ±0.14 – – −0.15 ±0.14 +0 .02 ±0.13 
+
+TVD-FVar-Statement +0 .00 ±0.07 −0.04 ±0.10 −0.04 ±0.08 – – −0.01 ±0.09 +0 .01 ±0.07 
+
+Non-MI baselines 
+
+ROUGE-L +0 .45 ±0.12 −2.91 ±0.19 −1.18 ±0.10 – – −0.25 ±0.09 −0.07 ±0.09 
+
+BLEU +0 .64 ±0.13 −2.81 ±0.21 −2.21 ±0.16 – – −0.16 ±0.12 −0.13 ±0.07 
+
+BERTScore +0 .00 ±0.02 −0.39 ±0.14 +0 .25 ±0.10 – – +0 .01 ±0.09 −0.07 ±0.05 
+
+LLM-J / Claude-Haiku-4.5 +0 .14 ±0.09 +0 .30 ±0.13 +0 .49 ±0.13 – – +0 .40 ±0.12 +0 .24 ±0.08 
+
+LLM-J / Claude-Sonnet-4.5 +0 .13 ±0.09 +0 .30 ±0.18 +0 .47 ±0.11 – – +0 .18 ±0.13 +0 .05 ±0.07 
+
+LLM-J / GPT-5-mini +0 .11 ±0.08 +0 .56 ±0.11 +0 .32 ±0.11 – – +0 .24 ±0.11 +0 .09 ±0.09 
+
+LLM-J / GPT-4o-mini +0 .52 ±0.11 +1 .26 ±0.15 +1 .08 ±0.17 – – +0 .62 ±0.15 +0 .14 ±0.07 
+
+rephrase 
+
+MI-based Mechanisms 
+
+KL-Direct-Autoreg. −0.06 ±0.07 −0.01 ±0.06 +0 .07 ±0.05 −0.09 ±0.06 −0.35 ±0.08 +0 .01 ±0.08 −0.15 ±0.09 
+
+TVD-FVar-Report −0.01 ±0.16 −0.02 ±0.10 −0.11 ±0.13 −0.11 ±0.14 −0.07 ±0.11 −0.16 ±0.13 +0 .08 ±0.15 
+
+TVD-FVar-Statement +0 .00 ±0.07 −0.12 ±0.09 −0.14 ±0.08 −0.04 ±0.06 −0.02 ±0.07 −0.04 ±0.08 −0.08 ±0.06 
+
+Non-MI baselines 
+
+ROUGE-L +0 .47 ±0.13 −1.97 ±0.14 −0.98 ±0.09 −0.09 ±0.07 −0.62 ±0.12 −0.16 ±0.07 −0.21 ±0.09 
+
+BLEU +0 .68 ±0.13 −2.53 ±0.20 −2.09 ±0.15 +0 .54 ±0.14 −0.65 ±0.14 −0.11 ±0.09 −0.16 ±0.07 
+
+BERTScore −0.02 ±0.02 −0.18 ±0.10 +0 .09 ±0.09 +0 .13 ±0.09 −0.58 ±0.12 +0 .02 ±0.08 −0.16 ±0.06 
+
+LLM-J / Claude-Haiku-4.5 +0 .14 ±0.09 +0 .18 ±0.09 +0 .49 ±0.11 +0 .29 ±0.10 +0 .14 ±0.08 +0 .25 ±0.11 +0 .24 ±0.07 
+
+LLM-J / Claude-Sonnet-4.5 +0 .13 ±0.08 +0 .19 ±0.09 +0 .25 ±0.09 +0 .28 ±0.09 +0 .00 ±0.09 +0 .01 ±0.12 +0 .02 ±0.07 
+
+LLM-J / GPT-5-mini +0 .09 ±0.08 +0 .16 ±0.07 +0 .17 ±0.10 +0 .07 ±0.08 +0 .01 ±0.08 +0 .16 ±0.11 +0 .05 ±0.08 
+
+LLM-J / GPT-4o-mini +0 .52 ±0.11 +0 .82 ±0.10 +0 .81 ±0.15 +0 .65 ±0.12 +0 .36 ±0.11 +0 .40 ±0.13 +0 .21 ±0.07 
+
+25

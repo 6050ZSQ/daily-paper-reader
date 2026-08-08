@@ -1,0 +1,643 @@
+Title: Where did the ambiguity go? Examining how multimodal models interpret polysemous words
+
+URL Source: https://arxiv.org/pdf/2608.00410v1
+
+Published Time: Tue, 04 Aug 2026 00:23:12 GMT
+
+Number of Pages: 22
+
+Markdown Content:
+Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 
+
+# Where did the ambiguity go? Examining how multimodal models interpret polysemous words 
+
+Jasin Cekinmez ∗ Addison J. Wu ∗ Raja Marjieh Thomas L. Griffiths 
+
+Princeton University 
+
+{jasincekinmez, addisonwu }@princeton.edu 
+
+Abstract 
+
+Human language is highly polysemous. Many common words (e.g., “bank” or “palm”) carry several distinct meanings that shape what humans com-municate and imagine. Large language models (LLMs) have been shown to understand this multiplicity of meaning, but much less is known about how polysemy surfaces in other modalities such as images. We study this across 17 text-to-image and 15 text-generation models by giving each a polysemous word with no context to fix its meaning and measuring which senses are produced over many samples. We find a clear multimodal gap, where within every model family, generated images settle on far fewer senses than generated sentences (normalized entropy 0.10 vs. 0.25), and both are far less varied than what people imagine for the same words (nor-malized entropy 0.47). However, when we instead ask a model to list how often it would generate outputs corresponding to each possible meaning of a word, it predicts distributions that are more diverse than the actual space of outputs. These results reveal a multimodal gap in how foundation models express meaning, and how their understanding may not transfer faithfully nor equally across modalities. 
+
+1 Introduction 
+
+Large language models (Brown et al., 2020; Achiam et al., 2023; Touvron et al., 2023) and their multimodal successors (Team, 2023; Alayrac et al., 2022; Liu et al., 2023b; Team, 2024), have moved from being research artifacts to everyday tools. These systems can draft prose, answer questions, and synthesize photorealistic imagery on demand (Saharia et al., 2022), being used at a scale large enough to influence what people read, see, and imagine (Bommasani et al., 2021; Eloundou et al., 2024). Thus, it matters not just whether any single output is good, but whether the distribution of outputs a model produces looks like the behavior of the system in aggregate (Rahwan et al., 2019). The properties of this distribution are a growing concern. Generative models are often observed to homogenize, converging on a narrow, repetitive band of responses and flat-tening the variety present in their training data and in human expression (Bender et al., 2021; Weidinger et al., 2021; Anderson et al., 2024; Shumailov et al., 2024). Such collapse has implications beyond any one interaction, raising the prospect of a feedback loop in which machine-shaped culture narrows the space of ideas people are exposed to (Brinkmann et al., 2023; Messeri & Crockett, 2024; Glickman & Sharot, 2025). Yet this possibility has been studied almost entirely in open-ended text generation. Far less is known about whether the same narrowing occurs in the visual outputs of multimodal models, how it differs across modalities, and how either compares to the variability of human responses. 
+
+> ∗
+
+Equal contribution. 
+
+1arXiv:2608.00410v1 [cs.AI] 1 Aug 2026 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 Generate an image given the following word: “Bolt” 
+
+Figure 1: We give the same context-free polysemous word to text-to-image models (top) and to people (bottom), and compare which senses each produces. For “bolt”, every model depicts a single sense, a metal fastener, whereas people split across the word’s distinct meanings: lightning, a fastener, and sprinting. Text-to-image models collapse a polysemous word onto one dominant sense while humans preserve its ambiguity. 
+
+We argue that polysemy offers a clean probe for addressing these questions. 1 Human language is pervasively ambiguous (Miller, 1995), as many common words carry several distinct senses ( bank , palm , bolt ; Figure 1). This multiplicity is argued to be a functional feature of efficient communication rather than a defect (Piantadosi et al., 2012). Within a context, the intended sense is disambiguated. Without it, such a word is genuinely ambiguous, so any commitment to a subset of its meanings reveals a model’s prior. Presenting the same word to a model and a human and asking which sense surfaces turns a linguistic phenomenon into a measurable distribution over meanings, and asking it across modalities tests whether meaning transfers faithfully from language to vision. We measure this with 100 polysemous words, each with a finite set of senses, presented to many text-to-image and text-generation models across multiple families. For every word, we draw many independent samples and classify each output’s sense, yielding, for each model and word, a distribution over senses. The image and text conditions share the same words, sense inventories, and judges, so their distributions are directly comparable. Moreover, we anchor both against a human baseline collected under matched framings. Across all models we find a pronounced multimodal gap . Image models commit to a far narrower set of senses than text models within the same family, and both are markedly less diverse than humans. Notably, the models are not unaware of ambiguity. When asked to predict the distribution of senses, they estimate human-like diversity, far above what they themselves generate. Preference-tuning a generator can sharpen it further, though alignment alone does not explain the full gap. Together, these results expose a gap between what multimodal models know about meaning and what they reveal when they produce it, with direct consequences for how faithfully understanding transfers across modalities. 
+
+> 1
+
+Strictly, lexical semantics distinguishes polysemy , in which one word carries multiple related senses (the mouth of a person versus of a river), from homonymy , in which unrelated meanings happen to share a form (a river bank versus a financial one). By this criterion several of our examples, bank among them, are in fact homonyms. Because our concern is simply the distribution of meanings a model commits to for a word presented in isolation, this distinction does not bear on our analysis. We use 
+
+polysemy as an umbrella term for words with multiple meanings. 
+
+2Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 
+
+2 Related Work 
+
+2.1 Semantic Representation in Foundation Models 
+
+The representation of word meaning, or semantic representation, is a classic problem in machine learning and cognitive science (Miller, 1995; Griffiths et al., 2007; Landauer & Dumais, 1997; Rogers & McClelland, 2004; Mikolov et al., 2013), with polysemous words posing a particular challenge. Static word embeddings (Mikolov et al., 2013; Pennington et al., 2014) potentially force a single vector to carry every sense of a polysemous word. Arora et al. (2018) showed that such an embedding is a linear superposition of sense vectors weighted by corpus frequency. Contextual encoders (Devlin et al., 2019) move one step further by assigning words context-dependent vectors which recover rich semantic structure (Rogers et al., 2020), although their geometry is only partly sense-disentangled (Ethayarajh, 2019). Superposition also arises in mechanistic interpretability as neural networks represent more features than dimensions (Elhage et al., 2022; Templeton et al., 2026). Such representa-tional pressures carry into multimodal models: CLIP (Radford et al., 2021) conditions most text-to-image systems, and White & Cotterell (2022) showed how it encodes a homonym as a superposition of its senses. Thus, the downstream generator must resolve a representation that is ambiguous by construction. 
+
+2.2 Ambiguity in Generative Models 
+
+Lexical ambiguity is long-studied in natural language processing, from the existence of discrete senses (Kilgarriff, 1997) to word-sense disambiguation (Navigli, 2009). In context, models can resolve it readily; without context (as in our setting), ambiguity remains unre-solved and the model falls back on a prior. Recent work shows LLMs struggle to model ambiguity faithfully (Liu et al., 2023a; Tamkin et al., 2023), but almost exclusively in text .Images make ambiguity unavoidable, because a renderer must commit to a meaning even for equivocal sentences. Text-to-image generation moved from diffusion (Ho et al., 2020; Rombach et al., 2022), like with DALL-E 2 (Ramesh et al., 2022), to auto-regressive systems, like GPT Image (OpenAI, 2025b). A parallel literature documents failures on the compositional and referential struc-ture ambiguity stresses: spatial relations (Conwell & Ullman, 2022), attribute binding (Rassin et al., 2023), counting and negation (Marcus et al., 2022), and sensitivity to under-specified prompts (Hutchinson et al., 2022), now probed at scale (Huang et al., 2023). Most directly, Rassin et al. (2022) show DALL-E 2 violates the single-meaning-per-symbol principle, ren-dering a homonym like bat as two entities at once. Kaskov et al. (2025) formalize this as 
+
+homonym duplication , measuring it across diffusion models and identifying an Anglocentric amplification via translation. These works establish that image models can render multiple senses simultaneously . We ask the complementary distributional question, across many samples and matched text and human baselines, which sense a model selects. We find the dominant failure is not duplication but an implicit narrowing of the sense distribution. 
+
+2.3 Diversity and Homogenization in Foundation Models 
+
+Language models have recently been shown to exhibit mode collapse. Jiang et al. (2026) document an “Artificial Hivemind” of intra-model repetition and inter-model convergence, warning that ensembles sharing training priors do not recover diversity. Mode collapse is visible at decoding (Holtzman et al., 2020) and amplified by alignment which sharpens models toward high-reward modes at the cost of diversity (Ouyang et al., 2022; Kirk et al., 2024). At a collective level, shared foundation models predict correlated behavior (Bommasani et al., 2022), recursive training on generated data erodes distributional tails (Shumailov et al., 2024), and using the same AI assistant reduces the diversity of people’s 
+
+outputs (Padmakumar & He, 2024; Doshi & Hauser, 2024; Anderson et al., 2024). Homogenization is also tied to bias. Models encode and amplify stereotypes (Caliskan et al., 2017; Bolukbasi et al., 2016; Nadeem et al., 2021), and text-to-image systems sharpen demographic skew beyond their training data (Bianchi et al., 2023; Luccioni et al., 2023; Cho 3Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 et al., 2023). Wu et al. (2026) show LLMs can develop novel biases through insufficient explo-ration, with newer models exercising more segregative allocation over time. Multilingual systems stay English-centric in their knowledge (Cekinmez et al., 2025; Wendler et al., 2024; Veselovsky et al., 2025). Such stable preferences make models identifiable, with generated images carrying model-specific signatures (Yu et al., 2019), allowing Cekinmez et al. (2026) to recover a model’s identity from its images with near-perfect accuracy. 
+
+3 Methodology 
+
+3.1 Experimental Setup 
+
+Our stimuli are 100 polysemous words, each with a human-verified, closed inventory of candidate senses (the full list, for all three languages considered, is in Appendix C), presented in isolation. The prompt is the bare word with no disambiguating context. This forces each model to commit to a sense from its own priors, making the distribution of senses across repeated samples the unit of analysis. The same word set is presented in two modalities. In the image condition, a text-to-image model receives the bare word as its prompt and renders an image, and we ask which sense the image depicts. In the text condition, an autoregressive language model receives the instruction ”Use the following word in a single sentence,” and we ask which sense the resulting sentence uses. We evaluate a panel of 17 text-to-image and 15 text generation models spanning the major model families, each tagged with its architecture (diffusion vs. autoregressive) so that behavior can later be related to architectural class. For every word-model pair we draw 30 independent samples. Because the image and text conditions share the same words and the same closed sense inventories, their resulting sense distributions are directly comparable. A difference between the two modalities reflects how the models resolve the word, not a difference in what was asked or how it was scored. 
+
+3.2 Models 
+
+Our central panel spans the major providers in both modalities: OpenAI ( gpt-image and GPT, Achiam et al., 2023), xAI (Grok), Google (Gemini, Team, 2023), Alibaba (Qwen), and Z.ai (GLM). Each provider contributes several recent generations, with the exact checkpoints shown in the figures; the complete inventory, with references, is in Appendix A. Beyond this panel, targeted analyses add open comparison models with recorded: the architec-ture analysis contrasts diffusion models, FLUX, and autoregressive generators, and the preference-tuning ablation pairs SDXL (Podell et al., 2024) and SimpleAR (Wang et al., 2025) with their aligned checkpoints, holding the base model fixed. 
+
+3.3 Sense Classification 
+
+Using GPT 5.4 as our judge, each image/text generation is assigned to one of the word’s senses or a fallback label: multiple ( > 2 senses at once), unclear, or other (prompts in Appendix B). A multiple verdict triggers a follow-up listing the senses seen, so superposition is quantified rather than discarded. For each word-model cell we collapse the 30 labels into a distribution over senses. This per-cell distribution is then analyzed as we described in Section 3.3. To confirm the judge labels reliably, an author hand-labeled a random sample of 60 English images blind to the judge’s verdict and agreed with it on all 60. We also collect a human reference baseline from Prolific over the same 100 words (Ap-pendix E), scored by the same judge, under two framings matched to the modalities: “use the following word in a sentence” (meaning vs. text models) and “what image does this word evoke” (image vs. image models). 4Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 
+
+3.4 Distributional Metrics 
+
+We summarize each model’s behavior on a word as a sense distribution: the fraction of its 30 samples that the judge assigned to each candidate sense, with ‘multiple’, ‘other’, and ‘unclear’ as additional categories. These fallback labels/additional categories are rare (6.4% of all samples; 8.0% of image and 4.5% of text outputs), so they contribute little to the estimates below (per-model and human rates in Appendix D). All of our analyses compare these distributions using three standard quantities which we describe next. 
+
+3.4.1 Jensen–Shannon Similarity 
+
+To measure how differently two models resolve a word, we use the Jensen–Shannon (JS) similarity between their sense distributions p and q,
+
+JSS (p, q) = 1 −
+
+r 12 KL (p∥m) + 12 KL (q∥m), m = 12 (p + q).Here KL denotes the Kullback–Leibler divergence and m is the mean distribution. Using base-2 logarithms, JSS is bounded in [0, 1 ]. It equals 1 when the distributions are iden-tical and 0 when they have disjoint support. We use JS similarity throughout the paper to construct model-similarity matrices and hierarchical clustering, quantify within- and between-family cohesion, measure per-word inter-model disagreement, compare image and text models, and assess each model’s distance from corpus-frequency priors. 
+
+3.4.2 Shannon entropy 
+
+To measure how decisively a model commits to a single sense, we use the Shannon entropy of its sense distribution. For a distribution p over the senses s ∈ V, entropy is 
+
+H(p) = − ∑
+
+> s∈V
+
+ps log 2 ps,measured in bits. It quantifies the uncertainty of the distribution: H = 0 when all of the model’s samples fall on a single sense (a fully decisive model), and H grows as the samples spread more evenly across senses. For a word with |V| senses the maximum is log 2 |V| bits, attained by the uniform distribution. Because words differ in how many senses they have, we normalize by this maximum to obtain the normalized entropy ˜ H defined as ˜H(p) = H(p)
+
+log 2 |V| ∈ [0, 1 ],so that 0 marks a model that always picks the same sense and 1 a model that is maximally diverse, on a scale comparable across words. We use ˜ H to compare sense diversity across modalities, against the human baseline, and across model generations. 
+
+3.4.3 Principal component analysis 
+
+To visualize model behavior, we represent each model as the concatenation of its per-word sense distributions into a single feature vector, standardize the features, and project to two dimensions with PCA. Models that resolve polysemy similarly appear close together. We apply this within each modality and to the pooled image-and-text set to ask whether the dominant axis of variation reflects modality or model family. 5Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 GPT Image 1 GPT Image 1 Mini GPT Image 1.5 GPT Image 2 GPT-3.5 Turbo GPT-4o GPT-5 GPT-5.4 Nano GPT-5.4 Mini GPT-5.5 Grok Base Grok Pro Grok Quality Grok 4.20 Grok 4.20 NR Grok 4.3 Gemini 2.5 Flash Gemini 3.1 Flash Gemini 3 Pro Gemini 2.5 Flash Gemini 3.5 Flash Gemini 3.1 Pro Qwen-Image Qwen-Image 2.0 Qwen-Image 2.0 Pro Qwen2.5 7B Qwen3.5 9B Qwen3.5 397B GLM Image GLM-5.1 GLM-5.2 0.0 0.1 0.2 0.3 0.4 0.5        
+
+> Mean normalised entropy
+> OpenAI Grok Gemini Qwen GLM
+> Image models Text models Humans (image) Humans (text)
+
+Figure 2: Sense diversity across models and modalities, against the human baseline. Generated images commit to far fewer senses than generated text in nearly every family, and both modalities fall well short of human diversity. 
+
+4 Results 
+
+4.1 The Multimodal Gap Image models are less semantically diverse than their counterpart text models within every provider family . As shown in Figure 2, the semantics of the images generated by image-generation models in each family have consistently lower normalized entropies in their semantic diversity, compared to what is observed in the sentences generated by the text models. On average, image models reach a normalized entropy of only 0.10, compared to 0.25 for text models (paired Wilcoxon p < 10 −6). The gap is consistent across families, ranging from 0.09 (Gemini) to 0.22 (Grok). 
+
+Image and text-generation models consistently display less semantic diversity than humans. When human participants were asked what image a polysemous word evokes, people reach a mean normalized entropy of 0.47 (Figure 2), far above every AI model. Crucially, humans show no modality gap of their own: they are about equally diverse whether imagining a word ( Hnorm = 0.47) or using it in a sentence ( Hnorm = 0.50; paired 
+
+t-test p = 0.31). The image-versus-text collapse is therefore specific to models, where it is large ( d = 0.80), rather than a property of how the two modalities are naturally used. 
+
+English Turkish French Family Text Img Text Img Text Img OpenAI 0.234 0.061 0.287 0.148 0.217 0.072 Grok 0.307 0.090 0.274 0.169 0.231 0.099 Gemini 0.238 0.145 0.312 0.239 0.221 0.134 
+
+All 0.253 0.095 0.290 0.182 0.222 0.099 Table 1: Cross-lingual modality gap ( Hnorm ). Image < text in every language; the gap is smallest in Turkish. 
+
+Low diversity is observed when we conduct the same experiment in other languages . To assess whether our findings generalize across languages, we considered 25 polysemous words in both Turkish and French. We find that the tendency of models to ex-hibit reduced sense diversity is largely language-invariant: aver-aging over the OpenAI, Grok, and Gemini families evaluated in all three languages, text models reach Hnorm = 0.25, 0.29, and 0.22 in English, Turkish, and French, while image models reach 0.10, 0.18, and 0.10 respectively (Table 1). The modality gap holds in every language, 0.16 (English), 0.11 (Turkish), and 0.12 (French). 6Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 GPT Image 1 GPT Image 1 Mini GPT Image 1.5 GPT Image 2 Grok Base Grok Pro Grok Quality Gemini 2.5 Flash Gemini 3.1 Flash Gemini 3 Pro GPT Image 1 GPT Image 1 Mini GPT Image 1.5 GPT Image 2 Grok Base Grok Pro Grok Quality Gemini 2.5 Flash Gemini 3.1 Flash Gemini 3 Pro                                                                                                                                                                                                                               
+
+> 1.00 0.82 0.81 0.79 0.77 0.78 0.79 0.78 0.78 0.79 0.82 1.00 0.76 0.82 0.75 0.77 0.77 0.79 0.76 0.77 0.81 0.76 1.00 0.79 0.74 0.74 0.77 0.74 0.78 0.74 0.79 0.82 0.79 1.00 0.70 0.76 0.77 0.76 0.75 0.75 0.77 0.75 0.74 0.70 1.00 0.78 0.77 0.79 0.76 0.77 0.78 0.77 0.74 0.76 0.78 1.00 0.90 0.79 0.80 0.78 0.79 0.77 0.77 0.77 0.77 0.90 1.00 0.76 0.78 0.77 0.78 0.79 0.74 0.76 0.79 0.79 0.76 1.00 0.79 0.80 0.78 0.76 0.78 0.75 0.76 0.80 0.78 0.79 1.00 0.81 0.79 0.77 0.74 0.75 0.77 0.78 0.77 0.80 0.81 1.00
+> GPT-3.5 Turbo GPT-4o GPT-5 GPT-5.4 Nano GPT-5.4 Mini GPT-5.5 Grok 4.20 Grok 4.20 NR Grok 4.3 Gemini 2.5 Flash Gemini 3.5 Flash Gemini 3.1 Pro GPT-3.5 Turbo GPT-4o GPT-5 GPT-5.4 Nano GPT-5.4 Mini GPT-5.5 Grok 4.20 Grok 4.20 NR Grok 4.3 Gemini 2.5 Flash Gemini 3.5 Flash Gemini 3.1 Pro
+> 1.00 0.70 0.69 0.66 0.73 0.68 0.62 0.62 0.67 0.69 0.66 0.69 0.70 1.00 0.73 0.68 0.73 0.70 0.70 0.68 0.74 0.72 0.69 0.71 0.69 0.73 1.00 0.64 0.69 0.66 0.65 0.61 0.69 0.68 0.71 0.71 0.66 0.68 0.64 1.00 0.70 0.65 0.64 0.65 0.67 0.67 0.63 0.63 0.73 0.73 0.69 0.70 1.00 0.72 0.65 0.67 0.71 0.72 0.68 0.69 0.68 0.70 0.66 0.65 0.72 1.00 0.66 0.64 0.73 0.68 0.71 0.71 0.62 0.70 0.65 0.64 0.65 0.66 1.00 0.68 0.77 0.68 0.65 0.67 0.62 0.68 0.61 0.65 0.67 0.64 0.68 1.00 0.72 0.65 0.60 0.63 0.67 0.74 0.69 0.67 0.71 0.73 0.77 0.72 1.00 0.73 0.72 0.72 0.69 0.72 0.68 0.67 0.72 0.68 0.68 0.65 0.73 1.00 0.70 0.71 0.66 0.69 0.71 0.63 0.68 0.71 0.65 0.60 0.72 0.70 1.00 0.79 0.69 0.71 0.71 0.63 0.69 0.71 0.67 0.63 0.72 0.71 0.79 1.00
+
+0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00 
+
+> JS similarity (1 - mean JS distance)
+
+Figure 3: Pairwise sense-distribution similarity between models in each modality (left: image; right: text). Different image generators (left) converge on the same sense more than different text models (right) do (mean pairwise JS-similarities 0.78 vs. 0.69). Framing Pred. Gen. Human Meaning 0.721 0.246 0.496 Image 0.730 0.103 0.473 Table 2: Predicted vs. generated vs. hu-man ( Hnorm ). Models overestimate hu-man diversity yet generate little diversity themselves. 
+
+Nevertheless, large language models are still aware of semantic ambiguity, even if it is not strongly re-flected in their generated samples . We asked the text-generating models within each family to pre-dict the distribution of interpretations that people would assign to each polysemous word. Models con-sistently predicted substantially more diverse sense distributions ( Hnorm ≈ 0.73) than those observed in human judgments ( Hnorm ≈ 0.47), suggesting that they overestimate the prevalence of less common senses. This overestimation is even more pronounced when compared to the models’ own generations ( Hnorm = 0.246 for language and 0.103 for image generation), revealing a large gap between predicted and revealed semantic preferences (Table 2). 
+
+4.2 Comparing Sense Selection Across Models Different image models converge on the same sense more than different text models do. Given a fixed modality, for all OpenAI, Grok, and Gemini models, we compute the pairwise JS-similarities of the semantic output distributions between every pair of models, and average over all words (Figure 3). Image models are more alike than text models, with mean pairwise JS-similarities of 0.78 compared to 0.69, respectively ( p < 10 −3). 
+
+Diversity in textual outputs decreases with newer models, while semantic diversity in visual outputs remains low throughout. Plotting each model’s mean normalized entropy against its generation index (Figure 4), textual diversity falls steadily with newer models (Spearman ρ = −0.59, p = 0.02), and within every text family the newest model is the least diverse (e.g., OpenAI’s GPT-3.5 Turbo → GPT-5.5, 0.27 → 0.14; Gemini’s 2.5 Flash → 3.1 Pro, 0.33 → 0.21). Image models show no such trend ( ρ = + 0.19, p = 0.53) but sit far below text at every generation ( Hnorm ≈ 0.10 vs. 0.25), leaving little room to collapse further. 
+
+Diffusion image models uniquely superimpose multiple senses into a single image. The two LLM judges flag a generated image as depicting two or more senses at once for 6.6% of outputs from the diffusion-based FLUX models (Figure 5), versus just 0.9% for every other image family (model-level Mann–Whitney p = 0.01). The effect is concentrated in the FLUX.2 variants (7–11%). No other model in the panel exceeds 3.4%. Rather than 7Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 oldest newest   
+
+> model generation (oldest →newest)
+> 0.0 0.1 0.2 0.3 0.4
+> mean normalized entropy
+
+Text    
+
+> oldest newest
+> model generation (oldest →newest)
+
+Image    
+
+> OpenAI Grok Gemini Qwen
+
+Figure 4: Sense diversity from the oldest to the newest model in each family (left: text; right: image). Text models become steadily less diverse with each generation (Spearman ρ = −0.59, p = 0.02); image models show no trend and stay far lower. Error bars are ±1 standard error of the mean across the 100 words. FLUX.2 Max FLUX.2 Flex FLUX.2 Pro Gemini 3 Pro Grok Base Grok Quality Gemini 3.1 Flash Grok Pro Gemini 2.5 Flash FLUX.1.1 Pro GPT Image 1.5 GPT Image 1 Mini GPT Image 1 Qwen-Image 2.0 GPT Image 2 Qwen-Image Qwen-Image 2.0 Pro 
+
+> 0246810 12 14
+> superposition rate (%)
+
+Figure 5: Per-model rate of generated images that blend multiple senses into one. The diffusion-based FLUX models (blue) superimpose senses far more than any other image model (6.6% vs. 0.9%; model-level p = 0.01). Error bars are ±1 clustered standard error from a word-level bootstrap (2000 resamples of the 100 words), which accounts for superposition being strongly word-dependent. 
+
+committing to a single reading of the word, these diffusion models blend its competing senses into one composite image. 
+
+Modality, not model family, is the primary axis of how models resolve ambiguity. Em-bedding every model in one sense-distribution space and projecting to two dimensions (Figure 6), the models split along the first principal component by modality : every image generator falls on one side and every text model on the other, regardless of provider. A silhouette analysis confirms it: clustering by modality scores +0.27, whereas clustering by provider scores −0.04 (no structure). An image model and a text model from the same 
+
+company are thus less alike in the senses they choose than two image models from different 
+
+companies. This complements the model-specific signatures that make generators individu-ally identifiable (Cekinmez et al., 2026): in the space of which senses a model picks, what it generated matters more than who made it. 8Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 −15 −10 −5 0 5 10 15       
+
+> PC1 (15% var)
+> −10 010 20 30
+> PC2 (12% var) colored by modality
+> Image Text −15 −10 −5 0510 15
+> PC1 (15% var)
+> −10 010 20 30
+> colored by family
+> OpenAI Grok Gemini Qwen FLUX
+
+Figure 6: All models embedded in one sense-distribution space (PCA; left colored by modality, right by provider family; circles are image models, squares text). Models split by modality along PC1, not by provider: silhouette +0.27 by modality versus −0.04 by family. 
+
+4.3 Investigating Potential Sources of Sense Collapse 
+
+Model Tuning Base Tuned ∆
+
+SDXL DPO 0.25 0.18 −0.07 SimpleAR RL 0.11 0.10 −0.01 Table 3: Normalized entropy ( Hnorm ) over real senses, before and after preference tuning. DPO sharply reduces SDXL’s diversity; SimpleAR’s RL barely moves it. 
+
+Preference tuning narrows senses, but does not fully explain the collapse. A can-didate driver is the preference optimization applied during alignment, which rewards a single preferred output and can erode the spread of a model’s distribution. We test this with base-versus-tuned ablations on two open image generators, SDXL (Podell et al., 2024) and SimpleAR (Wang et al., 2025), each evaluated over the same 100 words. The effect is clear for SDXL: Diffusion-DPO (Wallace et al., 2024), a diffusion adaptation of direct preference optimization (Rafailov et al., 2023), lowers its normalized entropy over real senses from 0.25 to 0.18 ( ∆ = −0.07), a genuine concentration onto fewer senses (Table 3). For SimpleAR it is weak: reinforcement learning with GRPO (Shao et al., 2024) leaves sense-entropy almost unchanged (0.11 → 0.10); what it reduces is the share of unclassifiable outputs (23% → 19%) rather than the spread over real senses. Preference tuning thus contributes to the narrowing but cannot, on its own, account for the full modal-ity gap. Sense narrowing does not compound under iterated cross-modal transmission. 
+
+To simulate the joint impact of repeated use of AI models for generating and captioning images, we tested whether chaining image and text models amplifies sense narrowing. We test this with a paradigm from cognitive science akin to the telephone game (Kumar et al., 2024): seeding from each family’s most ambiguous words (i.e., its own highest-entropy word), we relay word → image → caption → image → · · · for five stateless iterations (30 chains per word, every production sense-judged), tracking sense-entropy at each step (Appendix F gives an example). The chains are essentially stationary: mean normalized sense-entropy shifts by only −0.03 over five iterations (0.70 → 0.66 for images, 0.67 → 0.64 for captions), and 8 out of 15 chains stay within 0.05 of where they began. The collapse is thus a property of single-shot generation, not an artifact that accumulates across repeated cross-modal transmission. 
+
+5 Conclusion 
+
+We set out to ask a simple question: when a word can mean several things, which meaning(s) does a model choose, and does that choice look the same textually and visually? By stripping 100 polysemous words of all context and presenting the bare word to a collection of text-to-image and text-generation models, we turned an everyday property of language into a 9Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 measurable distribution over senses, directly comparable across modalities and against how people respond to the same words. Our central finding is a multimodal gap. Image models collapse onto a far narrower set of meanings than text models in the same family, and both fall well short of the diversity people show when they imagine or use these words. This narrowing is not a failure of knowledge: when asked, the models describe a word’s meanings as broadly distributed, if anything more evenly than humans do. The gap appears only at generation, and it is largely the same across English, Turkish, and French, pointing to a property of how these systems interpret meaning rather than an artifact of one language or prompt. Viewed together, our results suggest that representing ambiguity and expressing it are distinct challenges that are heavily shaped by common finetuning practices such as RLHF. A model can know that “bank” has many senses and still, repeatedly draw only the riverbank when prompted. As multimodal systems increasingly shape what people read, see, and imagine, addressing this narrowing of meaning becomes a concrete step towards building AI systems whose grasp of meaning transfers honestly across modalities. 
+
+References 
+
+Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, et al. GPT-4 technical report. arXiv preprint arXiv:2303.08774 , 2023. Jean-Baptiste Alayrac, Jeff Donahue, Pauline Luc, Antoine Miech, Iain Barr, Yana Has-son, Karel Lenc, Arthur Mensch, Katherine Millican, Malcolm Reynolds, Roman Ring, Eliza Rutherford, Serkan Cabi, Tengda Han, Zhitao Gong, Sina Samangooei, Marianne Monteiro, Jacob L Menick, Sebastian Borgeaud, Andy Brock, Aida Nematzadeh, Sahand Sharifzadeh, Mikoł aj Bi ´ nkowski, Ricardo Barreira, Oriol Vinyals, Andrew Zisserman, and Kar´ en Simonyan. Flamingo: A visual language model for few-shot learning. In NeurIPS ,2022. Barrett R Anderson, Jash Hemant Shah, and Max Kreminski. Homogenization effects of large language models on human creative ideation. In Creativity & Cognition , 2024. Sanjeev Arora, Yuanzhi Li, Yingyu Liang, Tengyu Ma, and Andrej Risteski. Linear algebraic structure of word senses, with applications to polysemy. Transactions of the Association for Computational Linguistics , 2018. Emily M Bender, Timnit Gebru, Angelina McMillan-Major, and Shmargaret Shmitchell. On the dangers of stochastic parrots: Can language models be too big? In FAccT , 2021. Federico Bianchi, Pratyusha Kalluri, Esin Durmus, Faisal Ladhak, Myra Cheng, Debora Nozza, Tatsunori Hashimoto, Dan Jurafsky, James Zou, and Aylin Caliskan. Easily accessible text-to-image generation amplifies demographic stereotypes at large scale. In 
+
+FAccT , 2023. Black Forest Labs. FLUX1.1 [pro]. https://bfl.ai/models/flux-pro , 2024. Black Forest Labs. FLUX.2: Frontier visual intelligence. https://bfl.ai/blog/flux-2 ,2025a. Black Forest Labs. FLUX.2 [max]. https://bfl.ai/models/flux-2-max , 2025b. Tolga Bolukbasi, Kai-Wei Chang, James Y Zou, Venkatesh Saligrama, and Adam T Kalai. Man is to computer programmer as woman is to homemaker? Debiasing word embed-dings. In NeurIPS , 2016. Rishi Bommasani, Drew A Hudson, Ehsan Adeli, Russ Altman, Simran Arora, Sydney von Arx, Michael S Bernstein, Jeannette Bohg, Antoine Bosselut, Emma Brunskill, et al. On the opportunities and risks of foundation models. arXiv preprint arXiv:2108.07258 , 2021. 10 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 Rishi Bommasani, Kathleen A Creel, Ananya Kumar, Dan Jurafsky, and Percy S Liang. Pick-ing on the same person: Does algorithmic monoculture lead to outcome homogenization? In NeurIPS , 2022. Levin Brinkmann, Fabian Baumann, Jean-Franc ¸ois Bonnefon, Maxime Derex, Thomas F M ¨ uller, Anne-Marie Nussberger, Agnieszka Czaplicka, Alberto Acerbi, Thomas L Griffiths, Joseph Henrich, et al. Machine culture. Nature Human Behaviour , 2023. Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Language models are few-shot learners. In NeurIPS , 2020. Aylin Caliskan, Joanna J Bryson, and Arvind Narayanan. Semantics derived automatically from language corpora contain human-like biases. Science , 2017. Jasin Cekinmez, Omid Ghahroodi, Saad Fowad Chandle, Dhiman Gupta, and Ehsaneddin Asgari. ADAM: A diverse archive of mankind for evaluating and enhancing LLMs in biographical reasoning. arXiv preprint arXiv:2509.22991 , 2025. Jasin Cekinmez, Ryo Mitsuhashi, Addison J. Wu, and Yida Yin. Guess the unified model: How much can we recover from generated images? arXiv preprint arXiv:2605.25254 , 2026. Jaemin Cho, Abhay Zala, and Mohit Bansal. DALL-Eval: Probing the reasoning skills and social biases of text-to-image generation models. In ICCV , 2023. Colin Conwell and Tomer Ullman. Testing relational understanding in text-guided image generation. arXiv preprint arXiv:2208.00005 , 2022. Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. BERT: Pre-training of deep bidirectional transformers for language understanding. In NAACL , 2019. Anil R Doshi and Oliver P Hauser. Generative AI enhances individual creativity but reduces the collective diversity of novel content. Science Advances , 2024. Nelson Elhage, Tristan Hume, Catherine Olsson, Nicholas Schiefer, Tom Henighan, Shauna Kravec, Zac Hatfield-Dodds, Robert Lasenby, Dawn Drain, Carol Chen, et al. Toy models of superposition. Transformer Circuits Thread , 2022. Tyna Eloundou, Sam Manning, Pamela Mishkin, and Daniel Rock. GPTs are GPTs: Labor market impact potential of LLMs. Science , 2024. Kawin Ethayarajh. How contextual are contextualized word representations? Comparing the geometry of BERT, ELMo, and GPT-2 embeddings. In EMNLP , 2019. Gemini Team, Google DeepMind. Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities. arXiv preprint arXiv:2507.06261 , 2025. Moshe Glickman and Tali Sharot. How human–AI feedback loops alter human perceptual, emotional and social judgements. Nature Human Behaviour , 2025. Google DeepMind. Gemini 2.5 Flash Image (Nano Banana) model documentation. https: //ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-image , 2025a. Google DeepMind. Gemini 3 Pro Image model card. https://deepmind.google/models/ model-cards/gemini-3-pro-image/ , 2025b. Google DeepMind. Gemini 3.5 Flash model card. https://deepmind.google/models/ model-cards/gemini-3-5-flash/ , 2026a. Google DeepMind. Gemini 3.1 Flash Image model card. https://deepmind.google/models/ model-cards/gemini-3-1-flash-image/ , 2026b. Google DeepMind. Gemini 3.1 Pro model card. https://deepmind.google/models/ model-cards/gemini-3-1-pro/ , 2026c. 11 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 Thomas L Griffiths, Mark Steyvers, and Joshua B Tenenbaum. Topics in semantic represen-tation. Psychological Review , 2007. Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising diffusion probabilistic models. In 
+
+NeurIPS , 2020. Ari Holtzman, Jan Buys, Li Du, Maxwell Forbes, and Yejin Choi. The curious case of neural text degeneration. In ICLR , 2020. Kaiyi Huang, Kaiyue Sun, Enze Xie, Zhenguo Li, and Xihui Liu. T2I-CompBench: A comprehensive benchmark for open-world compositional text-to-image generation. In 
+
+NeurIPS , 2023. Ben Hutchinson, Jason Baldridge, and Vinodkumar Prabhakaran. Underspecification in scene description-to-depiction tasks. In ACL , 2022. Liwei Jiang, Yuanjun Chai, Margaret Li, Mickel Liu, Raymond Fok, Nouha Dziri, Yulia Tsvetkov, Maarten Sap, Alon Albalak, and Yejin Choi. Artificial hivemind: The open-ended homogeneity of language models (and beyond). In NeurIPS , 2026. Evgeny Kaskov, Elizaveta Petrova, Petr Surovtsev, Anna Kostikova, Ilya Mistiurin, Alexan-der Kapitanov, and Alexander Nagaev. Un-Doubling diffusion: LLM-guided disambigua-tion of homonym duplication. arXiv preprint arXiv:2509.21262 , 2025. Adam Kilgarriff. I don’t believe in word senses. Computers and the Humanities , 1997. Robert Kirk, Ishita Mediratta, Christoforos Nalmpantis, Jelena Luketina, Eric Hambro, Edward Grefenstette, and Roberta Raileanu. Understanding the effects of RLHF on LLM generalisation and diversity. In ICLR , 2024. Sreejan Kumar, Raja Marjieh, Byron Zhang, Declan Campbell, Michael Y Hu, Umang Bhatt, Brenden Lake, and Thomas L. Griffiths. Comparing abstraction in humans and machines using multimodal serial reproduction. In CogSci , 2024. Thomas K Landauer and Susan T Dumais. A solution to Plato’s problem: The latent semantic analysis theory of acquisition, induction, and representation of knowledge. Psychological Review , 1997. Alisa Liu, Zhaofeng Wu, Julian Michael, Alane Suhr, Peter West, Alexander Koller, Swabha Swayamdipta, Noah A Smith, and Yejin Choi. We’re afraid language models aren’t modeling ambiguity. In EMNLP , 2023a. Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee. Visual instruction tuning. In 
+
+NeurIPS , 2023b. Alexandra Sasha Luccioni, Christopher Akiki, Margaret Mitchell, and Yacine Jernite. Stable bias: Evaluating societal representations in diffusion models. In NeurIPS , 2023. Gary Marcus, Ernest Davis, and Scott Aaronson. A very preliminary analysis of DALL-E 2. 
+
+arXiv preprint arXiv:2204.13807 , 2022. Lisa Messeri and M. J. Crockett. Artificial intelligence and illusions of understanding in scientific research. Nature , 2024. Tomas Mikolov, Ilya Sutskever, Kai Chen, Greg S Corrado, and Jeff Dean. Distributed representations of words and phrases and their compositionality. In NeurIPS , 2013. George A Miller. WordNet: A lexical database for English. Communications of the ACM , 1995. Moin Nadeem, Anna Bethke, and Siva Reddy. StereoSet: Measuring stereotypical bias in pretrained language models. In ACL , 2021. Roberto Navigli. Word sense disambiguation: A survey. ACM Computing Surveys , 2009. OpenAI. GPT-4o system card. arXiv preprint arXiv:2410.21276 , 2024. 12 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 OpenAI. GPT-5 system card. https://openai.com/index/gpt-5-system-card/ , 2025a. OpenAI. Introducing our latest image generation model in the API. https://openai.com/ index/image-generation-api/ , 2025b. OpenAI. The new ChatGPT Images is here. https://openai.com/index/ new-chatgpt-images-is-here/ , 2025c. OpenAI. gpt-image-1-mini model page. https://developers.openai.com/api/docs/ models/gpt-image-1-mini , 2025d. OpenAI. Introducing GPT-5.4 mini and nano. https://openai.com/index/ introducing-gpt-5-4-mini-and-nano/ , 2026a. OpenAI. GPT-5.5 system card. https://openai.com/index/gpt-5-5-system-card/ , 2026b. OpenAI. Introducing ChatGPT Images 2.0. https://openai.com/index/ introducing-chatgpt-images-2-0/ , 2026c. Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Carroll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. Training language models to follow instructions with human feedback. In NeurIPS , 2022. Vishakh Padmakumar and He He. Does writing with language models reduce content diversity? In ICLR , 2024. Jeffrey Pennington, Richard Socher, and Christopher D Manning. GloVe: Global vectors for word representation. In EMNLP , 2014. Steven T Piantadosi, Harry Tily, and Edward Gibson. The communicative function of ambiguity in language. Cognition , 2012. Dustin Podell, Zion English, Kyle Lacey, Andreas Blattmann, Tim Dockhorn, Jonas M ¨ uller, Joe Penna, and Robin Rombach. SDXL: Improving latent diffusion models for high-resolution image synthesis. In ICLR , 2024. Qwen Team. Qwen2.5 technical report. arXiv preprint arXiv:2412.15115 , 2024. Qwen Team. Qwen-Image technical report. arXiv preprint arXiv:2508.02324 , 2025. Qwen Team. Qwen3.5: Towards native multimodal agents. https://qwen.ai/blog?id= qwen3.5 , 2026a. Qwen Team. Qwen-Image-2.0 technical report. arXiv preprint arXiv:2605.10730 , 2026b. Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural language supervision. In ICML , 2021. Rafael Rafailov, Archit Sharma, Eric Mitchell, Christopher D Manning, Stefano Ermon, and Chelsea Finn. Direct preference optimization: Your language model is secretly a reward model. In NeurIPS , 2023. Iyad Rahwan, Manuel Cebrian, Nick Obradovich, Josh Bongard, Jean-Franc ¸ois Bonnefon, Cynthia Breazeal, Jacob W Crandall, Nicholas A Christakis, Iain D Couzin, Matthew O Jackson, et al. Machine behaviour. Nature , 2019. Aditya Ramesh, Prafulla Dhariwal, Alex Nichol, Casey Chu, and Mark Chen. Hierarchical text-conditional image generation with CLIP latents. arXiv preprint arXiv:2204.06125 , 2022. Royi Rassin, Shauli Ravfogel, and Yoav Goldberg. DALLE-2 is seeing double: Flaws in word-to-concept mapping in Text2Image models. In Blackbox NLP @ EMNLP , 2022. Royi Rassin, Eran Hirsch, Daniel Glickman, Shauli Ravfogel, Yoav Goldberg, and Gal Chechik. Linguistic binding in diffusion models: Enhancing attribute correspondence through attention map alignment. In NeurIPS , 2023. 13 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 Anna Rogers, Olga Kovaleva, and Anna Rumshisky. A primer in BERTology: What we know about how BERT works. Transactions of the Association for Computational Linguistics ,2020. Timothy T Rogers and James L McClelland. Semantic cognition: A parallel distributed processing approach . 2004. Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bj ¨ orn Ommer. High-resolution image synthesis with latent diffusion models. In CVPR , 2022. Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily Denton, Seyed Kamyar Seyed Ghasemipour, Raphael Gontijo Lopes, Burcu Karagol Ayan, Tim Salimans, et al. Photorealistic text-to-image diffusion models with deep language understanding. In NeurIPS , 2022. Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, YK Li, Yang Wu, et al. DeepSeekMath: Pushing the limits of mathe-matical reasoning in open language models. arXiv preprint arXiv:2402.03300 , 2024. Ilia Shumailov, Zakhar Shumaylov, Yiren Zhao, Nicolas Papernot, Ross Anderson, and Yarin Gal. AI models collapse when trained on recursively generated data. Nature , 2024. Alex Tamkin, Kunal Handa, Avash Shrestha, and Noah Goodman. Task ambiguity in humans and language models. In ICLR , 2023. Chameleon Team. Chameleon: Mixed-modal early-fusion foundation models. arXiv preprint arXiv:2405.09818 , 2024. Gemini Team. Gemini: A family of highly capable multimodal models. arXiv preprint arXiv:2312.11805 , 2023. Adly Templeton, Tom Conerly, Jonathan Marcus, Jack Lindsey, Trenton Bricken, Brian Chen, Adam Pearce, Craig Citro, Emmanuel Ameisen, Andy Jones, et al. Scaling monosemantic-ity: Extracting interpretable features from Claude 3 Sonnet. arXiv preprint arXiv:2605.29358 ,2026. Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timoth´ ee Lacroix, Baptiste Rozi` ere, Naman Goyal, Eric Hambro, Faisal Azhar, Aurelien Rodriguez, Armand Joulin, Edouard Grave, and Guillaume Lample. LLaMA: Open and efficient foundation language models. arXiv preprint arXiv:2407.21783 , 2023. Veniamin Veselovsky, Berke Argin, Benedikt Stroebl, Chris Wendler, Robert West, James Evans, Thomas L Griffiths, and Arvind Narayanan. Localized cultural knowledge is conserved and controllable in large language models. arXiv preprint arXiv:2504.10191 ,2025. Bram Wallace, Meihua Dang, Rafael Rafailov, Linqi Zhou, Aaron Lou, Senthil Purush-walkam, Stefano Ermon, Caiming Xiong, Shafiq Joty, and Nikhil Naik. Diffusion model alignment using direct preference optimization. In CVPR , 2024. Junke Wang, Zhi Tian, Xun Wang, Xinyu Zhang, Weilin Huang, Zuxuan Wu, and Yu-Gang Jiang. SimpleAR: Pushing the frontier of autoregressive visual generation through pretraining, SFT, and RL. arXiv preprint arXiv:2504.11455 , 2025. Laura Weidinger, John Mellor, Maribeth Rauh, Conor Griffin, Jonathan Uesato, Po-Sen Huang, Myra Cheng, Mia Glaese, Borja Balle, Atoosa Kasirzadeh, et al. Ethical and social risks of harm from language models. arXiv preprint arXiv:2112.04359 , 2021. Chris Wendler, Veniamin Veselovsky, Giovanni Monea, and Robert West. Do Llamas work in English? On the latent language of multilingual transformers. In ACL , 2024. Jennifer C White and Ryan Cotterell. Schr ¨ odinger’s bat: Diffusion models sometimes generate polysemous words in superposition. arXiv preprint arXiv:2211.13095 , 2022. 14 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 Addison J. Wu, Ryan Liu, Xuechunzi Bai, and Thomas L. Griffiths. Large language models develop novel social biases through adaptive exploration. In ICML , 2026. xAI. Grok 4.20. https://docs.x.ai/developers/models/grok-4.20-0309-reasoning ,2026a. xAI. Grok 4.3. https://docs.x.ai/developers/models/grok-4.3 , 2026b. xAI. Grok Imagine API. https://x.ai/news/grok-imagine-api , 2026c. xAI. Grok Imagine quality mode. https://x.ai/news/grok-imagine-quality-mode , 2026d. Ning Yu, Larry Davis, and Mario Fritz. Attributing fake images to GANs: Learning and analyzing gan fingerprints. In ICCV , 2019. Z.ai. GLM-Image. https://huggingface.co/zai-org/GLM-Image , 2025. Z.ai. GLM-5.1 model card. https://huggingface.co/zai-org/GLM-5.1 , 2026a. Z.ai. GLM-5.2 model card. https://huggingface.co/zai-org/GLM-5.2 , 2026b. 15 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 
+
+A Model Inventory 
+
+The complete set of evaluated models. The central panel (below) is used throughout; two open comparison models with published training recipes are used only for the targeted analyses. 
+
+Provider Model Reference Image generation 
+
+Black Forest Labs FLUX.1.1 Pro (Black Forest Labs, 2024) Black Forest Labs FLUX.2 Flex (Black Forest Labs, 2025a) Black Forest Labs FLUX.2 Pro (Black Forest Labs, 2025a) Black Forest Labs FLUX.2 Max (Black Forest Labs, 2025b) Google Gemini 2.5 Flash (Google DeepMind, 2025a) Google Gemini 3.1 Flash (Google DeepMind, 2026b) Google Gemini 3 Pro (Google DeepMind, 2025b) xAI Grok Base (xAI, 2026c) xAI Grok Pro (xAI, 2026d) xAI Grok Quality (xAI, 2026d) OpenAI GPT Image 1 (OpenAI, 2025b) OpenAI GPT Image 1 Mini (OpenAI, 2025d) OpenAI GPT Image 1.5 (OpenAI, 2025c) OpenAI GPT Image 2 (OpenAI, 2026c) Alibaba Qwen-Image (Qwen Team, 2025) Alibaba Qwen-Image 2.0 (Qwen Team, 2026b) Alibaba Qwen-Image 2.0 Pro (Qwen Team, 2026b) Z.ai GLM Image (Z.ai, 2025) 
+
+Text generation 
+
+Google Gemini 2.5 Flash (Gemini Team, Google DeepMind, 2025) Google Gemini 3.5 Flash (Google DeepMind, 2026a) Google Gemini 3.1 Pro (Google DeepMind, 2026c) Z.ai GLM-5.1 (Z.ai, 2026a) Z.ai GLM-5.2 (Z.ai, 2026b) xAI Grok 4.20 (xAI, 2026a) xAI Grok 4.20 NR (xAI, 2026a) xAI Grok 4.3 (xAI, 2026b) OpenAI GPT-3.5 Turbo (Ouyang et al., 2022) OpenAI GPT-4o (OpenAI, 2024) OpenAI GPT-5 (OpenAI, 2025a) OpenAI GPT-5.4 Nano (OpenAI, 2026a) OpenAI GPT-5.4 Mini (OpenAI, 2026a) OpenAI GPT-5.5 (OpenAI, 2026b) Alibaba Qwen2.5 7B (Qwen Team, 2024) Alibaba Qwen3.5 9B (Qwen Team, 2026a) Alibaba Qwen3.5 397B (Qwen Team, 2026a) 
+
+Comparison models. The preference-tuning ablation (§4.3) holds the base model fixed and compares: 
+
+Checkpoint Reference SDXL 1.0, base Podell et al. (2024) SDXL 1.0 + Diffusion-DPO Wallace et al. (2024) SimpleAR, SFT checkpoint Wang et al. (2025) SimpleAR + GRPO (RL) Wang et al. (2025); Shao et al. (2024) 
+
+The architecture analysis reuses the image panel above, each model labeled diffusion or autoregressive. 16 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 
+
+B Prompts 
+
+Below, {word } is the stimulus and the candidate senses are the word’s entries from Ap-pendix C. 
+
+Generation. The image prompt is the bare word (language-agnostic): 
+
+{word }
+
+Text models are instructed in the word’s own language. English: 
+
+Use the following word in a single sentence: {word }. Reply with only the sentence and nothing else. 
+
+Turkish: 
+
+A¸ sa˘ gıdaki kelimeyi tek bir c ¨ umlede kullanın: {word }. Yalnızca c ¨ umleyi yazın, ba¸ ska hi¸ cbir ¸ sey yazmayın. 
+
+French: 
+
+Utilisez le mot suivant dans une seule phrase : {word }. R´ epondez uniquement avec la phrase et rien d’autre. 
+
+The image-framing (“imagine”) control used in the stated-versus-revealed analysis instead asks: 
+
+What image comes to mind when you think of the word “ {word }”? Describe it briefly. 
+
+Sense classification (judges). Each output is labeled by both judges (GPT-5.4 and Gemini-3.5-Flash). The image judge: 
+
+A text-to-image model was given only the single word “ {word }” as its prompt, with no other context. Look at the image and decide which meaning of “ {word }” it depicts. Choose exactly one of these labels: [the word’s candidate senses] , plus multiple (two or more senses at once), unclear , and other . Respond with only the label. 
+
+The text judge is identical except it shows the produced sentence in place of the image: 
+
+A language model was given only the single word “ {word }” as its prompt, with no other context, and asked to use it in one sentence. Here is the sentence it produced: “ [sentence] ”. Decide which meaning of “ {word }” the sentence uses. Choose exactly one of these labels: [candidate senses] , plus multiple ,
+
+unclear , other . Respond with only the label. 
+
+A multiple verdict triggers a follow-up: 
+
+This output clearly uses two or more distinct meanings of “ {word }” together. Of the meanings below, list every one that is actually present: [candidate senses] . Return the senses that apply (at least two). 
+
+Sense-distribution elicitation. For the stated-versus-revealed comparison (Table 2), each text model estimates how a word’s senses are distributed. Predicting people , sentence framing: 
+
+Consider the word “ {word }”. Its possible meanings are listed below. If 100 different people were each asked to use this word in a single sentence, what percentage would use each meaning? Give a percentage for every meaning; they should sum to 100. [candidate senses] 
+
+Predicting people , image framing: 
+
+. . . If 100 different people were each asked what image the word brings to mind, what percentage would picture each meaning? . . . 
+
+17 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 
+
+Predicting itself , sentence framing: 
+
+> . . . If you were asked to use this word in a single sentence 100 times, what percentage of your sentences would use each meaning? . . .
+
+Predicting itself , image-generation framing: 
+
+> . . . If you were asked to generate an image from this word 100 times, what percentage of your images would depict each meaning? . . .
+
+Each model answers with one percentage per sense, which we normalize to a distribution. 
+
+Human baseline. Prolific participants saw the bare word under two framings matched to the modalities; their responses are scored by the same judges and label set, with “a person” in place of “a model”. The exact participant instructions are given in Appendix E. 
+
+C Words and Senses 
+
+The complete stimulus set: every polysemous word and its candidate senses, for each language. 
+
+C.1 English (100 words) Word Senses 
+
+trunk tree, car, elephant, body, luggage 
+
+jordan country, person, shoes 
+
+bolt fastener, lightning, run, lock 
+
+bank finance, river, tilt, heap 
+
+pitch throw, tone, sales, field 
+
+bow bend, weapon, knot, ship, violin 
+
+spring season, coil, water, leap 
+
+crane bird, machine, stretch 
+
+club organization, venue, weapon, golf, cards 
+
+turkey bird, country, food, bowling, failure 
+
+shot gunfire, injection, attempt, drink, photo 
+
+bar pub, rod, block, law, music 
+
+mercury planet, element, god 
+
+jack lift, cards, name, connector 
+
+mole animal, skin, spy, chemistry, sauce 
+
+charge electric, fee, rush, accusation, responsibility 
+
+key lock, crucial, music, keyboard, legend 
+
+watch timepiece, observe, guard 
+
+ring jewelry, sound, circle, arena, call 
+
+nail finger, fastener, succeed 
+
+chip fragment, microchip, snack, token 
+
+cell biology, prison, phone, battery, spreadsheet 
+
+toast bread, tribute, doomed 
+
+track path, railroad, song, follow, athletics 
+
+wave water, gesture, physics, surge 
+
+train railway, teach, gown, sequence 
+
+anchor ship, news, secure 
+
+ash residue, tree 
+
+ball sphere, dance, fun 
+
+band music, strip, unite, frequency 
+
+bark dog, tree, ship 
+
+barrel cask, gun, oil 18 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 
+
+Word Senses 
+
+basket container, basketball 
+
+bass sound, fish, instrument 
+
+batter baseball, cooking, beat 
+
+beam light, support, smile, transmit 
+
+bench seat, sports, court, workbench 
+
+block solid, obstruct, city 
+
+bowl dish, roll, stadium 
+
+box container, fight, rectangle 
+
+brush tool, touch, shrubs 
+
+buck deer, dollar, resist 
+
+button fastener, press, badge 
+
+cane stick, plant, beat 
+
+cape cloak, land 
+
+capital city, money, letter, punishment 
+
+case container, legal, instance, investigation 
+
+chest body, box 
+
+coach trainer, vehicle, tutor, class 
+
+cobbler shoemaker, dessert 
+
+apple fruit, company 
+
+amazon river, rainforest, company, warrior 
+
+mars planet, god, candy 
+
+jaguar animal, car 
+
+mustang horse, car 
+
+cobra snake, yoga 
+
+python snake, language 
+
+fox animal, cunning, network 
+
+cardinal bird, clergy, main, number 
+
+ram sheep, force, memory 
+
+paddle oar, bat, wade 
+
+staple fastener, essential 
+
+pitcher baseball, jug 
+
+shuttle transport, spacecraft, badminton, weaving 
+
+tap faucet, hit, dance, access 
+
+drill tool, exercise, military 
+
+pump device, shoe, inflate 
+
+socket outlet, joint, tool 
+
+switch control, change, rod 
+
+iron metal, appliance, press, golf 
+
+crown headwear, top, monarchy 
+
+scale weigh, skin, music, size, climb 
+
+plane aircraft, surface, tool 
+
+fan cooling, admirer, spread 
+
+bridge crossing, card game, nose, ship 
+
+port harbor, left, wine, connector 
+
+lodge cabin, file, stuck 
+
+mine excavation, explosive, possessive 
+
+grave burial, serious 
+
+cast actors, throw, medical, mold 
+
+press media, push, printing 
+
+post mail, pole, job, publish, station 
+
+tip gratuity, point, advice, tilt 
+
+will volition, testament, future 
+
+file document, submit, tool, line 
+
+mortar cement, bowl, weapon 
+
+hide conceal, skin 
+
+tank container, vehicle, fail 
+
+seal animal, close, stamp 19 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 
+
+Word Senses 
+
+strike hit, labor, baseball, bowling 
+
+stock shares, supply, broth, livestock 
+
+bug insect, defect, annoy, surveillance 
+
+fly insect, travel, zipper 
+
+bat animal, sports, hit 
+
+pen writing, enclosure, prison 
+
+pool swimming, billiards, shared, puddle 
+
+rock stone, music, sway 
+
+fire flames, dismiss, shoot 
+
+match firestick, contest, pairing 
+
+tie necktie, fasten, draw, bond 
+
+C.2 Turkish (25 words) Word Senses 
+
+y¨ uz face, hundred, swim, surface 
+
+yaz summer, write 
+
+g¨ ul rose, laugh 
+
+dolu full, hail 
+
+ay moon, month 
+
+kaz goose, dig 
+
+ba˘ g vineyard, bond, tie 
+
+kol arm, sleeve, branch 
+
+bas ¸ head, beginning, chief 
+
+ocak january, stove, quarry 
+
+koy bay, put 
+
+fis ¸ plug, receipt, chip 
+
+halka ring, public 
+
+yıldız celestial, celebrity, symbol 
+
+ac ¸ hungry, open 
+
+sac ¸ hair, scatter, sheet 
+
+sa˘ g right, alive 
+
+diz knee, lineup 
+
+c¸almak steal, play, ring 
+
+bo˘ gaz throat, strait 
+
+c¸ene chin, chatter 
+
+k¨ ok root, origin, math 
+
+dal branch, dive, field 
+
+acı pain, spicy, bitter 
+
+kaymak slip, cream 
+
+C.3 French (25 words) Word Senses 
+
+trombone instrument, paperclip 
+
+souris animal, computer 
+
+timbre stamp, tone, buzzer 
+
+chaˆ ıne chain, channel, range, assembly 
+
+avocat lawyer, avocado 
+
+pile battery, stack, heads, exactly 
+
+cl´ e key, wrench, clef 
+
+bouchon cork, jam, bistro 
+
+rˋ egle ruler, rule, period 20 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026 
+
+Word Senses 
+
+cadre frame, context, executive 
+
+fˋ eve bean, trinket 
+
+mine expression, mine, lead, landmine 
+
+toile canvas, cloth, web, internet 
+
+prise outlet, grip, catch, dose 
+
+pont bridge, deck, weekend 
+
+coup blow, attempt, coup 
+
+batterie drums, battery, cookware 
+
+filet net, fillet, trickle 
+
+fort strong, loud, fort, skilled 
+
+gomme eraser, gum, rubber 
+
+planche plank, plate, exercise 
+
+canon cannon, standard, barrel, gorgeous 
+
+pouce thumb, inch, truce 
+
+chouette owl, cool 
+
+vase vase, mud 
+
+D Per-Model Diversity and Fallback Rates 
+
+Normalized entropy over real senses ( Hnorm , fallback excluded) and the fraction of outputs assigned each fallback label, multiple (two or more senses at once), unclear , other , and their total, per model and for the human baselines. Image models carry more fallback mass than text models; notably the unclear share is small everywhere, and humans’ fallback is dominated by multiple (people picturing several senses) rather than unclear .
+
+Model Hnorm Mult.% Uncl.% Other% All% 
+
+Image generation 
+
+GPT Image 1 0.075 0.3 1.4 2.5 4.2 GPT Image 1 Mini 0.058 0.4 1.4 2.8 4.5 GPT Image 1.5 0.063 0.4 2.5 4.4 7.3 GPT Image 2 0.050 0.1 2.4 2.2 4.7 Grok Base 0.045 3.0 0.1 0.8 4.0 Grok Pro 0.143 1.1 0.4 1.0 2.6 Grok Quality 0.081 1.2 0.3 1.0 2.5 Gemini 2.5 Flash 0.132 0.8 0.3 1.9 3.1 Gemini 3.1 Flash 0.161 1.2 0.0 1.6 2.8 Gemini 3 Pro 0.142 3.4 0.1 0.8 4.4 Qwen-Image 0.070 0.0 7.4 9.8 17.2 Qwen-Image 2.0 0.133 0.2 15.3 14.4 29.9 Qwen-Image 2.0 Pro 0.098 0.0 3.5 5.3 8.9 FLUX.1.1 Pro 0.129 0.6 4.1 5.8 10.4 FLUX.2 Flex 0.113 8.0 0.2 1.0 9.2 FLUX.2 Pro 0.130 7.4 0.4 0.9 8.7 FLUX.2 Max 0.136 10.5 0.3 0.7 11.5 
+
+Text generation 
+
+GPT-3.5 Turbo 0.266 0.5 0.5 3.0 4.0 GPT-4o 0.297 0.7 0.2 3.0 3.9 GPT-5 0.323 0.4 0.0 3.2 3.7 GPT-5.4 Nano 0.166 0.3 0.7 4.6 5.6 GPT-5.4 Mini 0.219 0.6 0.7 4.6 5.8 GPT-5.5 0.136 0.1 0.6 2.1 2.8 Grok 4.20 0.363 0.4 0.4 6.1 6.9 Grok 4.20 NR 0.272 0.2 0.7 5.2 6.1 Grok 4.3 0.286 0.2 0.0 2.6 2.8 Gemini 2.5 Flash 0.330 0.6 0.0 5.6 6.2 Gemini 3.5 Flash 0.173 0.0 0.0 2.8 2.8 Gemini 3.1 Pro 0.210 0.0 0.0 3.7 3.7 
+
+21 Oral Presentation, Scientific Understanding of Foundation Models @ COLM 2026                                         
+
+> Model Hnorm Mult.% Uncl.% Other% All% Qwen2.5 7B 0.212 0.6 1.3 5.7 7.6 Qwen3.5 9B 0.217 0.0 0.2 3.1 3.2 Qwen3.5 397B 0.212 0.0 0.0 2.9 2.9 GLM-5.1 0.274 0.0 0.0 3.8 3.8 GLM-5.2 0.286 0.0 0.0 3.3 3.3
+> Humans
+> Humans (image) 0.473 8.7 1.2 4.5 14.4 Humans (sentence) 0.496 2.5 0.9 5.5 8.9
+
+E Human Study 
+
+Recruitment. We collected the human baseline on Prolific over the same 100 English words. In total, 540 participants completed the study in June 2026, recruited as fluent English speakers with a minimum approval rate of 99% and at least 50 prior Prolific submissions. We placed no restriction on country of residence. 
+
+Task. Each participant responded to five polysemous words. In the meaning condition they wrote a sentence, “Use the word ‘ {word }’ in a sentence that clearly shows its meaning. Avoid vague sentences that could fit any word.” ; in the image condition they described the image the word brings to mind, “What image comes to mind when you think of the word ‘ {word }’? Describe it briefly.” Participants spent a median of 34 seconds per word. This yielded 2,782 responses (1,393 sentence, 1,389 image), about 14 per word per condition. 
+
+Scoring. Responses were classified into each word’s candidate senses by the same judge (GPT-5.4) used for the models, with the prompt referring to “a person” rather than “a model” (Appendix B). 
+
+F Iterated Cross-Modal Transmission 
+
+To test whether the collapse compounds when AI outputs are repeatedly re-consumed by other models, we run a stateless telephone game. Seeding from each family’s most ambiguous word (its own highest-entropy seed), we relay word → image → caption → image → · · · 
+
+for five iterations. Each step is independent: the image model sees only the previous caption (and vice versa), with no memory of earlier steps. We run 30 chains per seed and sense-judge every production, tracking normalized sense-entropy at each step. 
+
+Example. For the seed pitch (candidate senses: throw, tone, sales, field ), each chain commits to a single sense at the first generation and holds it for all five iterations; different chains commit to different senses, so the across-chain spread is preserved:                               
+
+> Chain Sense at iterations 1 →5Asales →sales →sales →sales →sales Btone →tone →tone →tone →tone Cthrow →throw →throw →throw →throw
+
+Because each chain is already committed by the first generation, transmission neither narrows nor broadens the sense distribution: mean normalized entropy shifts by only −0.03 over five iterations, and 8 of 15 chains stay within 0.05 of where they began. The collapse is thus a property of single-shot generation, not an artifact that accumulates across repeated cross-modal transmission. 22
