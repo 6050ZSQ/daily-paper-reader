@@ -1,0 +1,181 @@
+Title: Pun Intended: Multi-Agent Translation of Wordplay with Contrastive Learning and Phonetic-Semantic Embeddings
+
+URL Source: https://arxiv.org/pdf/2608.04311v1
+
+Published Time: Thu, 06 Aug 2026 00:18:48 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# Pun Intended: Multi-Agent Translation of Wordplay with Contrastive Learning and Phonetic-Semantic Embeddings 
+
+Russell Taylor 1[0009 −0007 −0702 −2375] , Benjamin Herbert 1[0009 −0009 −0179 −3835] ,and Michael Sana 1[0009 −0007 −6608 −7347] 
+
+Georgia Institute of Technology, Atlanta, GA 30332, USA 
+
+{rdtaylorjr,bherbert6,msana3}@gatech.edu 
+
+Abstract. Translating wordplay across languages has long challenged both professional translators and machine translation systems. We inves-tigate three approaches to translating puns from English to French by combining large language models with linguistic constraints for wordplay generation. Our baseline uses a large language model with feedback from a discrimi-nator prompted with positive and negative French examples. Our guided reasoning pipeline uses combined phonetic-semantic embeddings to re-trieve lexical candidates for wordplay generation. Finally, our multi-agent framework iteratively evaluates and regenerates candidate translations using specialized feedback. Moving beyond literal translation, our objective is to preserve the linguis-tic creativity, ambiguity, and humor of the source-text wordplay rather than simply reproduce its vocabulary. The multi-agent and guided chain-of-thought systems ranked first and second, respectively, in the CLEF JOKER 2025 Task 2 competition under expert human evaluation, de-spite only modest improvements in BLEU and BERTScore. These findings suggest that both explicit phonetic-semantic guidance and iterative multi-agent evaluation can improve LLM-based wordplay translation relative to direct discriminator-guided generation, particu-larly when balancing semantic fidelity, phonetic similarity, and natural target-language expression. 
+
+Keywords: Computational humor · Wordplay translation · Large lan-guage models · Phonetic-semantic retrieval · Multi-agent evaluation 
+
+# 1 Introduction 
+
+Translating puns across languages remains one of the most challenging prob-lems in machine translation because it requires preserving both meaning and wordplay. Puns rely on semantic ambiguity and linguistic incongruity, whereas language models are primarily trained to model regular linguistic and semantic patterns [4]. Such incongruity is central to what makes puns surprising and humorous [1]. arXiv:2608.04311v1 [cs.CL] 5 Aug 2026 Even when a source-language pun is correctly understood, an equivalent pun rarely exists in the target language. Because homonyms and other forms of word-play are language-specific, preserving both meaning and humor often requires creating entirely new wordplay rather than translating the original literally. Generating effective target-language wordplay requires creativity in addition to linguistic and cultural knowledge. Producing original humor is difficult even for humans, and professional translators have long regarded humor translation as one of the most challenging translation tasks [16,15]. Large language models possess broad linguistic and cultural knowledge ac-quired from web-scale corpora, making it possible to revisit computational ap-proaches to pun translation that were previously impractical. At the same time, recent advances in computational pun generation provide new mechanisms for modeling semantic ambiguity, phonetic similarity, and iterative refinement. We make two primary contributions. First, we show that prioritizing func-tional equivalence over literal correspondence produces stronger human evalua-tion for cross-lingual wordplay translation. Second, we investigate three progres-sively more sophisticated LLM-based approaches for achieving this objective: discriminator-guided generation, explicit phonetic-semantic guidance, and iter-ative multi-agent evaluation. 
+
+# 2 Related Work 
+
+Computational wordplay translation lies at the intersection of linguistic humor theory, translation studies, machine translation, computational pun generation, and evaluation of creative language. 
+
+2.1 Linguistics of Humor 
+
+The General Theory of Verbal Humor (GTVH) identifies script opposition as a central component of verbal humor, in which incompatible frames of reference are juxtaposed to produce surprise [2]. Veisbergs argues that humor can often be preserved in translation even when the underlying linguistic mechanisms change, provided the script opposition remains intact [22]. Relevance Theory argues that successful pun translation depends on repro-ducing comparable surprise and cognitive reinterpretation rather than identical lexical forms [26]. Aarons further argues that puns rely on tacit linguistic knowl-edge shared between speaker and listener, suggesting that models with broad implicit linguistic knowledge may be particularly well suited to this task [1]. 
+
+2.2 Professional Human Translation of Wordplay 
+
+Professional translation studies have long recognized wordplay as one of the most difficult forms of translation. Delabastita’s influential framework identified eight strategies for translating puns across languages [7], while Low proposed an itera-tive search procedure that progressively expands semantic and phonetic alterna-tives until suitable target-language wordplay is found [15]. Although developed for human translators, Low’s framework closely resembles modern retrieval-and-generation pipelines. 
+
+2.3 Machine Translation of Wordplay 
+
+Results from successive CLEF JOKER shared tasks have shown that pun trans-lation remains significantly more difficult than conventional machine translation [10]. Miller proposed a modular pipeline consisting of pun detection, semantic in-terpretation, phonetic retrieval, generation, and ranking [16]. Although difficult to implement before modern LLMs, recent reasoning models make this modular architecture practical. 
+
+2.4 Wordplay Generation 
+
+Prompt-based approaches improve wordplay generation through structured rea-soning. Xu et al. demonstrate that prompt design substantially affects pun recog-nition, explanation, and generation, while Zhong et al. and Wang et al. ex-tend these ideas through leap-of-thought prompting and multi-agent generation [25,28,23]. A second line of work incorporates explicit linguistic structure. He et al. model contextual support for multiple meanings, while Zeng et al. improve gen-eration through contrastive learning and discriminator-guided semantic planning [13,27]. Sharma et al. develop IPA-based phonetic embeddings and demonstrate their effectiveness on the English JOKER dataset [20]. We build on this method-ology by constructing French phonetic embeddings and incorporating them into a guided retrieval framework for cross-lingual pun translation. 
+
+2.5 Evaluation of Generated Wordplay 
+
+Evaluating translated wordplay remains challenging because conventional ma-chine translation metrics such as BLEU and BERTScore reward lexical similar-ity rather than preservation of figurative meaning and humor. Recent work has therefore proposed evaluation methods tailored to creative language, including metaphor-aware evaluation [24], literal translation error detection [4], and LLM-based ensemble evaluation of humor using multiple evaluator personas [12]. Our evaluation framework draws on these complementary approaches. Collectively, these studies suggest that successful wordplay translation re-quires both linguistic reasoning and evaluation methods that extend beyond lexical similarity. 
+
+# 3 Methodology 
+
+This section describes the datasets, models, and experimental procedures used in our study. We first present our baseline system and then introduce two pro-gressively more sophisticated approaches that incorporate guided reasoning and iterative multi-agent refinement. 3.1 Data and Resources 
+
+Our primary dataset was the CLEF JOKER 2025 Task 2 English–French Word-play Translation dataset [8,9]. The training set contains 1,405 English puns paired with 5,838 French translations, while the hidden test set consists of 376 English puns evaluated through the shared task. We also used the CLEF JOKER 2023 Pun Location and Interpretation dataset [10], supplementing it with manual annotations of the pun word, pun type, intended meanings, and supporting context for each English example. The annotations were produced collaboratively by the authors. We then compared them with LLM predictions, manually reviewing any disagreements before final-izing the annotations. These annotations served as the reference standard for pun identification. For contrastive discrimination, we constructed a balanced dataset by gen-erating one non-pun for each reference French pun in the JOKER dataset. We used gemini-2.5-flash-preview-05-20 , regenerating candidates until an in-dependent prompt verified that no wordplay remained. For phonetic-semantic retrieval, we trained French phonetic embeddings fol-lowing Sharma et al. [20] using the Lexique pronunciation database and Pan-Phon articulatory features [18], then concatenated them with pre-trained French FastText semantic embeddings [11]. Gemini 2.5 Pro was used for pun identification, o4-mini for pun-word and synonym translation, Lajavaness/bilingual-embedding-large for bilingual semantic similarity, Mistral Medium 2505 and o4-mini for baseline generation, and Gemini 2.5 Flash as the discriminators. We did not override the providers’ default generation parameters. 
+
+3.2 Baseline Pun Generation with Contrastive Discrimination 
+
+Figure 1 summarizes our baseline pun generation pipeline. Inputs were normal-ized for punctuation, capitalization, hashtags, and named entities.  
+
+> Fig. 1. Baseline pun generation pipeline with contrastive discrimination.
+
+Rather than asking models to translate the source sentence, we prompted large language models to generate a French pun that preserved both its semantic content and humorous effect. Following Mittal et al. [17], prompts encouraged the use of homonyms whose two senses were both supported by the surrounding context. Generated translations were evaluated by a gemini-2.5-flash-preview-05-20 
+
+discriminator. We chose a different model from the generator models to re-duce potential model-specific bias. Following Zeng et al. [27], we used few-shot prompting with 25 positive and 25 negative examples sampled from our bal-anced dataset of French puns and non-puns. Candidates classified as non-puns were regenerated for up to ten iterations. 
+
+3.3 Guided Chain-of-Thought with Phonetic-Semantic Embeddings 
+
+Figure 2 summarizes our second pipeline. The system identifies the English pun and its two meanings, generates two synonym lists representing each meaning, translates the pun word and synonym lists into French, retrieves French words that are semantically related to one meaning and phonetically related to the other, and supplies the resulting candidates to an LLM for guided generation.  
+
+> Fig. 2. Guided chain-of-thought pipeline with phonetic-semantic embeddings.
+
+Pun Word Identification and Translation For each English sentence, we used an LLM to identify the pun word, classify the wordplay as homographic or homophonic, and generate synonym lists representing each of its two intended meanings. We then translated the pun word and synonym lists into French. We evaluated pun identification against our manual annotations and mea-sured translation quality using bilingual embedding cosine similarity. A second prompt assessed whether the translated pun word remained a homonym whose senses aligned with the translated meanings. Phonetic-Semantic Retrieval We adapted the phonetic embedding method of Sharma et al. [20] to French by representing Lexique pronunciations as IPA sequences and converting them to PanPhon articulatory-feature bigrams [18]. Similarity between phoneme bigrams was computed using Jaccard similarity: 
+
+S(( Pa1, P a2), (Pb1, P b2)) = |F (Pa1, P a2) ∩ F (Pb1, P b2)||F (Pa1, P a2) ∪ F (Pb1, P b2)| . (1) We used these similarities to train 300-dimensional BiLSTM phonetic embed-dings, which were concatenated with 300-dimensional FastText semantic em-beddings for joint retrieval. This combination allows retrieval to preserve one intended meaning semantically while identifying a phonetically compatible ex-pression for the other. Following Low [15], we retrieved French words that were semantically similar to one translated meaning and phonetically similar to the other. We performed this search in both directions, alternately using each in-tended meaning as the semantic query and the other as the phonetic query. We determined empirically that retaining the top two candidates with cosine similarities above 0.75 balanced retrieval quality and noise: 
+
+cos( wsem , S) > 0.75 and cos( wphon , P ) > 0.75 , (2) where wsem and wphon denote the semantic and phonetic components of a candidate word, and S and P are the corresponding query vectors. 
+
+Guided Pun Generation Generation followed one of three strategies accord-ing to the identified pun type and the suitability of the translated pun word: 1. For homographic puns whose translated pun word remained a French homonym covering both intended meanings, the model was instructed to construct the translation around that word. 2. For other homographic puns, the model was instructed to select a French homonym whose two senses best approximated the translated meanings. 3. For homophonic puns, the model was instructed to generate a pair of phonet-ically similar French words corresponding to the two translated meanings. Each prompt included the identified pun type, the translated synonym lists, and the retrieved phonetic-semantic candidates. 
+
+3.4 Multi-Agent Evaluation and Refinement 
+
+Figure 3 illustrates the iterative refinement framework. Rather than selecting the initial translation directly, specialized LLM evaluators iteratively assessed complementary aspects of translation quality and provided feedback for revision. Following prior work on role-based prompting [19], we designed four evaluation prompts based on the MMTE dimensions of equivalence, quality, emotion, and authenticity [24]. Fig. 3. Iterative multi-agent evaluation and refinement pipeline. 
+
+Each evaluator assigned a task-specific numerical score together with con-cise textual feedback: equivalence and quality were rated on 0–2 scales, emotion on a binary 0–1 scale indicating whether emotional content was preserved, and authenticity on a 0–4 naturalness scale. The four scores were averaged, and the resulting feedback was used to generate a revised translation. Refinement con-tinued until the average score reached 2.0 or five iterations had been completed, after which the highest-scoring candidate was retained. Our code, full prompts, and augmented data are publicly available at https: //github.com/dsgt-arc/joker-2025 .
+
+# 4 Results 
+
+We first evaluate the intermediate components of the translation pipeline before comparing the three end-to-end translation approaches. 
+
+4.1 Evaluation of Pipeline Components 
+
+Our translation pipeline relies on three intermediate capabilities: identifying the source-language pun and its type, translating the intended meanings into French, and distinguishing successful French wordplay from literal or unsuccessful trans-lations. We therefore evaluated each component independently on the training set before integrating them into the complete system. 
+
+Pun Identification Table 1 compares automatic identification of the pun lo-cation and pun type against our manually annotated reference dataset. Large language models achieved high performance on both tasks, with pun location consistently easier than pun type classification. Pun type classification remained more challenging, likely reflecting ambiguity between homographic and homo-phonic wordplay.                                 
+
+> Table 1. Performance of LLMs on pun identification compared to manual annotations.
+> Pun Location Pun Type Model Acc. Prec. Rec. F1 Acc. Prec. Rec. F1
+> Gemini 2.5 Pro 0.97 1.00 0.97 0.97 0.89 0.90 0.89 0.89 o3 0.95 0.99 0.95 0.95 0.88 0.90 0.88 0.88 o4-mini 0.93 0.99 0.93 0.93 0.88 0.89 0.88 0.88 Claude Sonnet 4 0.93 0.99 0.93 0.92 0.86 0.88 0.86 0.86 Gemini 2.5 Flash 0.89 0.99 0.89 0.89 0.87 0.90 0.87 0.87 GPT-4.1 0.88 0.99 0.88 0.88 0.82 0.86 0.82 0.82
+
+Translation of Synonym Lists Table 2 compares several large language mod-els for translating the synonym lists representing the two intended meanings of each pun. The strongest models performed similarly, so we selected o4-mini be-cause of its lower cost and latency. All evaluated LLMs also outperformed Google Translate on this constrained translation task.                     
+
+> Table 2. Quality of synonym list translation measured using bilingual English–French embeddings.
+> Model Mean Cosine Variance Error Rate
+> Gemini 2.5 Pro 0.82 0.01 0.01 o4-mini 0.81 0.01 0.00 Claude Sonnet 4 0.81 0.01 0.01 Mistral Medium 2505 0.79 0.01 0.02 Gemini 2.5 Flash 0.79 0.02 0.18 Google Translate 0.78 0.01 0.00
+
+Contrastive Discriminator When tested using a manually labeled evaluation set of 450 examples, our contrastive discriminator achieved 100.0% accuracy on negative examples and 99.1% accuracy on positive examples. These results indicate that the discriminator can provide a reliable feedback signal for iterative generation. 
+
+4.2 End-to-End Translation Performance 
+
+Having validated the individual pipeline components, we next evaluated the complete translation systems on the official CLEF JOKER 2025 Task 2 test set. Performance was measured using BLEU, BERTScore, the shared-task pun Table 3. Official evaluation results on the CLEF JOKER 2025 Task 2 test set. Rank among 51 official submissions is shown in parentheses.           
+
+> System BLEU BERTScore Pun Location Manual
+> Multi-Agent 21.41 (41) 80.66 (41) 9.27% (1) 88.09% (1)
+> Guided CoT 16.52 (45) 78.42 (45) 7.85% (2) 85.71% (2) Baseline 14.94 (46) 78.30 (46) 3.57% (45) 47.62% (25)
+
+location metric, and manual evaluation. The shared-task pun location metric measures whether the generated translation places its wordplay at the same location as one of the reference translations. Manual evaluation was performed by a native French speaker with graduate-level training in wordplay translation. A translation was considered successful if it preserved the source meaning (fully or partially) while producing target-language wordplay [9]. Table 3 summarizes the official evaluation results. The multi-agent system ranked first among the 51 submitted systems under both the pun location metric and manual evaluation, while the guided system ranked second on both measures. The multi-agent system correctly localized the reference pun in 156 of the 1,682 evaluated translations, compared with 132 for the guided system and 60 for the baseline. Under manual evaluation, the three systems produced successful translations for 37, 36, and 20 of the 42 evaluated examples [9]. 
+
+# 5 Discussion 
+
+Our experiments yielded several lessons about pun translation, evaluation, and system design. Some confirmed long-standing ideas from translation theory, while others challenged common standards in computational translation. 
+
+5.1 What We Learned About Pun Translation 
+
+Our results reinforce a simple idea: pun translation is about recreating humor, not reproducing text. 
+
+Functional Equivalence Beats Lexical Correspondence Translation the-ory has long argued that successful pun translation depends on preserving the joke rather than the words. This principle guided the design of our systems from the outset. As Low writes, “If a joke is not translated as a joke, the translation is bad” [15]. We therefore designed our systems to pursue functional equivalence rather than lexical correspondence, encouraging them to recreate the joke rather than translate it literally. For example, rather than literally translating pun en_160, “That makes 144,” said Tom, grossly, our system produced « Ça fait douze au carré », dit-il carré-ment, replacing the English wordplay with a different French pun that preserves the joke. Throughout development, we observed that LLMs default to lexical and se-mantic equivalence when asked to translate. While desirable for conventional machine translation, this behavior is often at odds with pun translation. We therefore encouraged the models to recreate the joke rather than translate it literally. Our results provide empirical support for this long-standing principle of translation theory. Although our systems departed from conventional transla-tion objectives, they achieved the strongest human evaluation results in the JOKER shared task. We believe our emphasis on functional equivalence was a major contributor to this success. 
+
+Automatic Metrics Fundamentally Misunderstand Pun Translation 
+
+Our results suggest that current automatic metrics reward the wrong objec-tive for pun translation. BLEU and BERTScore reward lexical correspondence, whereas successful pun translation often requires abandoning it in order to pre-serve the joke. We deliberately optimized for functional equivalence rather than lexical overlap. The result was a striking inversion of the leaderboard: our systems ranked near the bottom according to BLEU and BERTScore, yet achieved the strongest human evaluation results in the shared task. This suggests that lexical-overlap metrics systematically undervalue successful pun translation. We therefore suggest that future evaluation criteria should prioritize func-tional equivalence over lexical correspondence in computational pun translation. 
+
+Puns Resist Simple Taxonomies Building computational systems made one fact unmistakable: puns are far more diverse than simple taxonomies suggest. Our initial distinction between homophonic and homographic puns quickly proved inadequate. Many puns combine multiple forms of ambiguity or contain multiple pun words. For example, pun en_3987, “My mate who’s an origami teacher has quit her job...”, simultaneously relies on paperwork , folding under pressure , and couldn’t cut it . These observations suggest that future computa-tional approaches would benefit from richer, multidimensional taxonomies of wordplay grounded in long-established linguistic frameworks [14,6,3,21]. 
+
+Delabastita Was Right Our findings provide compelling support for De-labastita’s optimism about pun translation. Delabastita argues that “excellent translation solutions can be found for many puns, if only translators use to the full the linguistic resources and textual leeway available to them in recreating the pragmatic function of the original wordplay” [5]. We began this paper by emphasizing the extraordinary difficulty of pun trans-lation [8]. Our results do not diminish that challenge, but they do show that it is far from insurmountable. Expert human evaluation judged 88.09% of our sampled translations to be successful, providing strong empirical evidence that high-quality computational pun translation is not merely possible, but achiev-able. 5.2 What We Learned About Our Methodology 
+
+Our experiments also yielded several methodological lessons about prompting, supervision, evaluation, and system architecture. 
+
+Creativity Before Constraint Our systems were almost entirely unsuper-vised, despite the shared task providing a purpose-built training set and many competing systems relying heavily upon it. Rather than constraining genera-tion from the outset, they generated candidate translations before refining them through guidance and iterative evaluation. This is consistent with the central intuition behind Leap-of-Thought [28]: preserving creative freedom before intro-ducing additional constraints. These observations suggest two broader lessons. First, creativity appears to benefit more from guidance than prescription. Rather than attempting to dic-tate how a pun should be translated, our most successful systems encouraged exploration and then evaluated the results. Second, computational pun transla-tion is fundamentally a search problem. This gradually changed how we thought about the task. Rather than teaching a model how to translate puns, we found ourselves helping it search for translations that already lay within its creative repertoire. 
+
+Architecture Shapes Translation Strategy System architecture shaped how our models translated puns, not just how well they translated them. While evaluating our final outputs, we were not surprised to discover that our systems often produced different translations. What surprised us was that they consistently adopted different translation strategies. Our multi-agent sys-tem tended to preserve both the linguistic structure and humorous effect of the source through iterative refinement, while the guided chain-of-thought sys-tem remained more closely anchored to the English through explicit linguistic reasoning. By contrast, our baseline frequently ignored the English altogether, producing fluent French puns, sometimes even well-known ones, with little lexical or semantic correspondence to the source. For pun en_40, “The class took a field trip to a meat processing plant, but what they saw was just offal,” the multi-agent system produced des abats-ominables, recreating both the setting and the wordplay, whereas the guided system produced the more literal Un vrai trip de tripes!. The baseline instead abandoned the original joke entirely, replacing it with an unrelated French pun. These patterns occurred quite often. Our experiments suggest that architecture is not merely an implementation detail: it influences the kinds of translation strategies that LLMs are likely to adopt. In our systems, prompting and agent interactions encouraged progres-sively stronger adherence to functional equivalence, whereas the unconstrained baseline often treated the source text as inspiration rather than something to translate. LLMs Have Become Surprisingly Good Evaluators One of our biggest surprises was how effective simple LLM-based evaluation proved to be. Our two best systems achieved virtually identical human evaluation scores within one point of each other, a statistically insignificant difference on such a small sample. Nevertheless, it was the multi-agent evaluator that came out ahead. This surprised us because our guided chain-of-thought system required substantially more engineering, and we had expected that the additional lin-guistic reasoning would prove decisive. Instead, relatively simple run-time LLM evaluation was sufficient to match and slightly outperform it. These results may also provide a promising alternative to traditional evalu-ation metrics. If lexical-overlap metrics optimize the wrong objective for pun translation, LLM-based evaluators may offer a more suitable way to assess whether a translation succeeds as a joke. As these evaluators continue to im-prove, they may become an increasingly valuable tool for computational humor research. 
+
+Low’s Polygonal Algorithm Is the Way Forward Our retrieval experi-ments convinced us that Low’s polygonal algorithm remains a promising roadmap for computational pun translation. We set out to implement Low’s proposal, but ultimately implemented only its first stage. Rather than exhausting the idea, we came away convinced that we had barely begun. In retrospect, Low’s framework reads less like translation theory than like an outline of a computational algorithm, and we believe it provides a compelling foundation for future work in computational pun translation [15]. 
+
+# 6 Conclusions 
+
+This study presented a multi-stage methodology for translating puns by pri-oritizing the preservation of humor and wordplay over literal equivalence. Our approach progressed from baseline prompting to guided chain-of-thought reason-ing using phonetic-semantic embeddings and finally to a multi-agent refinement loop. Our results showed that large language models are capable of nuanced lin-guistic reasoning, and that improvements to both pun generation and run-time evaluation contribute to translation quality. Ultimately, our findings suggest that successful computational pun translation depends less on reproducing the origi-nal words than on recreating their humorous effect.   
+
+> Acknowledgments. This work received financial support from DS@GT ARC. We thank Anthony Miyaguchi and Murilo Gustinelli for organizing and leading the DS@GT ARC program, and for their guidance, support, and insightful discussions throughout this project. We also thank the CLEF JOKER 2025 organizers for developing and maintaining the shared task and evaluation framework, and the anonymous reviewers for their constructive feedback, which helped improve this paper.
+> Disclosure of Interests. The authors declare that they have no competing interests.
+
+# References 
+
+1. Aarons, D.: Puns and tacit linguistic knowledge. In: The Routledge Handbook of Language and Humor, pp. 80–94. Routledge (2017) 2. Attardo, S., Raskin, V.: Script theory revis(it)ed: Joke similarity and joke repre-sentation model. Humor: International Journal of Humor Research 4(3-4), 293–347 (1991) 3. Attardo, S., Raskin, V.: Script theory revis(it)ed: Joke similarity and joke represen-tation model. Humor 4(3–4), 293–348 (1991). https://doi.org/10.1515/humr. 1991.4.3-4.293 
+
+4. Baziotis, C., Mathur, P., Hasler, E.: Automatic evaluation and analysis of id-ioms in neural machine translation. In: Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics. pp. 3682– 3700. Association for Computational Linguistics, Dubrovnik, Croatia (may 2023). 
+
+https://doi.org/10.18653/v1/2023.eacl-main.267 
+
+5. Delabastita, D.: Focus on the pun. Target. International Journal of Transla-tion Studies 6(2), 223–243 (1994). https://doi.org/https://doi.org/10.1075/ target.6.2.07del 
+
+6. Delabastita, D.: Introduction. The Translator 2(2), 127–139 (1996). https://doi. org/10.1080/13556509.1996.10798970 
+
+7. Delabastita, D.: Introduction to the special issue on wordplay and translation. The Translator 2(2), 127–139 (1996) 8. Ermakova, L., Campos, R., Bosser, A.G., Miller, T.: Overview of the CLEF 2025 JOKER lab: Humour in machine. In: Carrillo-de Albornoz, J., Gonzalo, J., Plaza, L., García Seco de Herrera, A., Mothe, J., Piroi, F., Rosso, P., Spina, D., Faggioli, G., Ferro, N. (eds.) Experimental IR Meets Multilinguality, Multimodality, and Interaction. pp. 315–337. Lecture Notes in Computer Science, Springer, Cham (2025). https://doi.org/10.1007/978-3-032-04354-2_18 
+
+9. Ermakova, L., Campos, R., Bosser, A.G., Miller, T.: Overview of the CLEF 2025 JOKER task 2: Wordplay translation from English into French. In: Faggioli, G., Ferro, N., Rosso, P., Spina, D. (eds.) Working Notes of the Conference and Labs of the Evaluation Forum (CLEF 2025). CEUR Workshop Proceedings, vol. 4038, pp. 2761–2779. CEUR-WS.org (2025) 10. Ermakova, L., Miller, T., Bosser, A.G., Palma Preciado, V.M., Sidorov, G., Ja-towt, A.: Overview of JOKER–CLEF-2023 track on automatic wordplay anal-ysis. In: Arampatzis, A., Kanoulas, E., Tsikrika, T., Vrochidis, S., Giachanou, A., Li, D., Aliannejadi, M., Vlachos, M., Faggioli, G., Ferro, N. (eds.) Experi-mental IR Meets Multilinguality, Multimodality, and Interaction. Lecture Notes in Computer Science, vol. 14163, pp. 397–415. Springer, Cham (2023). https: //doi.org/10.1007/978-3-031-42448-9_26 
+
+11. Grave, E., Bojanowski, P., Gupta, P., Joulin, A., Mikolov, T.: Learning word vec-tors for 157 languages. In: Proceedings of the International Conference on Language Resources and Evaluation (LREC 2018) (2018) 12. Góes, F., Zhou, Z., Sawicki, P., Grzes, M., Brown, D.G.: Crowd score: A method for the evaluation of jokes using large language model ai voters as judges (2022). 
+
+https://doi.org/10.48550/arXiv.2212.11214 
+
+13. He, H., Peng, N., Liang, P.: Pun generation with surprise. In: Proceedings of the 2019 Conference of the North American Chapter of the Association for Computa-tional Linguistics: Human Language Technologies, Volume 1 (Long and Short Pa-pers). pp. 173–181. Association for Computational Linguistics, Minneapolis, Min-nesota (2019). https://doi.org/10.18653/v1/N19-1172 14. Hempelmann, C.F., Miller, T.: Puns. In: Handbook of Language and Humor. De Gruyter (2022) 15. Low, P.A.: Translating jokes and puns. Perspectives: Studies in Translatology 
+
+19 (1), 59–70 (2011) 16. Miller, T.: The punster’s amanuensis: The proper place of humans and ma-chines in the translation of wordplay. In: Proceedings of the Human-Informed Translation and Interpreting Technology Workshop (HiT-IT 2019). pp. 57–65. In-coma Ltd., Shoumen, Bulgaria, Varna, Bulgaria (sep 2019). https://doi.org/10. 26615/issn.2683-0078.2019_007 
+
+17. Mittal, A., Tian, Y., Peng, N.: AmbiPun: Generating humorous puns with ambigu-ous context. In: Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies. pp. 1053–1062. Association for Computational Linguistics, Seattle, United States (jul 2022). https://doi.org/10.18653/v1/2022.naacl-main.77 
+
+18. Mortensen, D.R., Littell, P., Bharadwaj, A., Goyal, K., Dyer, C., Levin, L.: Pan-Phon: A resource for mapping IPA segments to articulatory feature vectors. In: Matsumoto, Y., Prasad, R. (eds.) Proceedings of COLING 2016, the 26th Interna-tional Conference on Computational Linguistics: Technical Papers. pp. 3475–3484. The COLING 2016 Organizing Committee, Osaka, Japan (dec 2016) 19. Shanahan, M., McDonell, K., Reynolds, L.: Role-play with large language models (2023) 20. Sharma, R., Dhawan, K., Pailla, B.: Phonetic word embeddings (2021) 21. Sun, J., Narayan-Chen, A., Oraby, S., Cervone, A., Chung, T., Huang, J., Liu, Y., Peng, N.: Expunations: Augmenting puns with keywords and explanations. arXiv preprint arXiv:2210.13513 (2022) 22. Veisbergs, A.: The contextual use of idioms, wordplay and translation. Perspec-tives: Studies in Translatology 5(1), 92–102 (1997) 23. Wang, H., Zhao, Y., Li, D., Wang, X., Liu, G., Lan, X., Wang, H.: Innovative think-ing, infinite humor: Humor research of large language models through structured thought leaps (2024) 24. Wang, S., Zhang, G., Wu, H., Loakman, T., Huang, W., Lin, C.: MMTE: Corpus and metrics for evaluating machine translation quality of metaphorical language (2024) 25. Xu, Z., Yuan, S., Chen, L., Yang, D.: A Good Pun Is Its Own Reword: Can large language models understand puns? In: Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing. pp. 11766–11782. Association for Computational Linguistics, Miami, Florida, USA (nov 2024). https://doi. org/10.18653/v1/2024.emnlp-main.657 
+
+26. Yus, F.: Humor and the search for relevance. Journal of Pragmatics 35 (9), 1295– 1331 (2003) 27. Zeng, J., Yang, L., Kang, J., Diao, Y., Yang, Z., Lin, H.: Barking up the Right Tree, a GAN-based pun generation model through semantic pruning. In: Proceedings of the 2024 Joint International Conference on Computational Linguistics, Lan-guage Resources and Evaluation (LREC-COLING 2024). pp. 2119–2131. ELRA and ICCL, Torino, Italia (may 2024). https://doi.org/10.18653/v1/2024.lrec-main.191 
+
+28. Zhong, S., Huang, Z., Gao, S., Wen, W., Lin, L., Zitnik, M., Zhou, P.: Let’s think outside the box: Exploring leap-of-thought in large language models with creative humor generation. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR). pp. 13246–13257 (jun 2024)

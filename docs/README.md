@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-08</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-09</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 25 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 16 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>12</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>13</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-08 20:54:33 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-09 20:31:24 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,9 +62,10 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读聚焦多语言与低资源语言模型，速读覆盖文件系统、多义词与法律推理基准。</p>
-<p>最值得关注：多语言LLM在EU-24+语言上的性能代价显著，且泰米尔语形态感知分词为低资源语言建模提供新思路。</p>
-<p>建议普通读者优先了解多语言模型的能力不均衡现象，并关注跨语言评测基准的构建进展。</p>
+<p>今日共生成 16 篇推荐（精读 5 篇，速读 11 篇）</p>
+<p>精读：《Beyond Sequence Order: Syntax-Informed Positional Embeddings for Transformers》（9.0/10）, 《SCHEDBench: A Benchmark for Evaluating LLM Constraint Faithfulness in Natural-Language Combinatorial Scheduling》（8.0/10）</p>
+<p>速读：《The Graph Language: How Knowledge Graphs Speak to Large Language Models》（7.0/10）, 《Beyond Accuracy: A Multidimensional Evaluation of Statistical Reasoning in Large Language Models》（7.0/10）, 《Efficient Grammar-Constrained Decoding via Parser Stack Classification》（7.0/10）</p>
+<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -73,12 +74,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">12 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Morphology Aware Reversible Semantic Tokenization and Hierarchical Word Composition for Tamil Language Models">Morphology Aware Reversible Semantic Tokenization and Hierarchical Word Composition for Tamil Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Language Equality has a Price: A Systematic Investigation of Multi-turn LLM Performance for EU-24+">Language Equality has a Price: A Systematic Investigation of Multi-turn LLM Performance for EU-24+</span></li><li><span class="dpr-home-dashboard-paper-title" title="Divergent large language model predictions from convergent representations in ambiguous word pairs">Divergent large language model predictions from convergent representations in ambiguous word pairs</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Beyond Sequence Order: Syntax-Informed Positional Embeddings for Transformers">Beyond Sequence Order: Syntax-Informed Positional Embeddings for Transformers</span></li><li><span class="dpr-home-dashboard-paper-title" title="SCHEDBench: A Benchmark for Evaluating LLM Constraint Faithfulness in Natural-Language Combinatorial Scheduling">SCHEDBench: A Benchmark for Evaluating LLM Constraint Faithfulness in Natural-Language Combinatorial Scheduling</span></li><li><span class="dpr-home-dashboard-paper-title" title="TQLite: Multi-LLM Jury Guided Distillation for Real-time MQM Translation Quality Evaluation">TQLite: Multi-LLM Jury Guided Distillation for Real-time MQM Translation Quality Evaluation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>6</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>3</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -86,12 +87,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">13 篇</strong>
+    <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Benchmarking LLMs on File System Design and Implementation">Benchmarking LLMs on File System Design and Implementation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Where did the ambiguity go? Examining how multimodal models interpret polysemous words">Where did the ambiguity go? Examining how multimodal models interpret polysemous words</span></li><li><span class="dpr-home-dashboard-paper-title" title="CrossLex: A Source-Grounded Benchmark for Cross-Jurisdictional Legal Reasoning in Large Language Models">CrossLex: A Source-Grounded Benchmark for Cross-Jurisdictional Legal Reasoning in Large Language Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="The Graph Language: How Knowledge Graphs Speak to Large Language Models">The Graph Language: How Knowledge Graphs Speak to Large Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Beyond Accuracy: A Multidimensional Evaluation of Statistical Reasoning in Large Language Models">Beyond Accuracy: A Multidimensional Evaluation of Statistical Reasoning in Large Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Efficient Grammar-Constrained Decoding via Parser Stack Classification">Efficient Grammar-Constrained Decoding via Parser Stack Classification</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>9</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>4</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>4</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>3</strong></span></div>
 </section>
 </div>
 
