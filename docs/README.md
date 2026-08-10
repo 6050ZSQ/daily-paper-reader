@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-09</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-10</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 16 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 9 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>7</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-09 20:31:24 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-10 21:28:41 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,10 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共生成 16 篇推荐（精读 5 篇，速读 11 篇）</p>
-<p>精读：《Beyond Sequence Order: Syntax-Informed Positional Embeddings for Transformers》（9.0/10）, 《SCHEDBench: A Benchmark for Evaluating LLM Constraint Faithfulness in Natural-Language Combinatorial Scheduling》（8.0/10）</p>
-<p>速读：《The Graph Language: How Knowledge Graphs Speak to Large Language Models》（7.0/10）, 《Beyond Accuracy: A Multidimensional Evaluation of Statistical Reasoning in Large Language Models》（7.0/10）, 《Efficient Grammar-Constrained Decoding via Parser Stack Classification》（7.0/10）</p>
-<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
+<p>今日精读聚焦LLM可解释性新路径，以句子级能量景观透视黑箱；同时关注粤语与爱尔兰语树库的语法工程实践。最值得留意的是，通过能量景观分析模型内部状态可提供可解释线索，而两跳泛化研究揭示了“知道两跳”并不足以实现推理。下一步建议可结合个人语体视角，思考语言模型输出与人类使用者之间的个性化差异。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Beyond Sequence Order: Syntax-Informed Positional Embeddings for Transformers">Beyond Sequence Order: Syntax-Informed Positional Embeddings for Transformers</span></li><li><span class="dpr-home-dashboard-paper-title" title="SCHEDBench: A Benchmark for Evaluating LLM Constraint Faithfulness in Natural-Language Combinatorial Scheduling">SCHEDBench: A Benchmark for Evaluating LLM Constraint Faithfulness in Natural-Language Combinatorial Scheduling</span></li><li><span class="dpr-home-dashboard-paper-title" title="TQLite: Multi-LLM Jury Guided Distillation for Real-time MQM Translation Quality Evaluation">TQLite: Multi-LLM Jury Guided Distillation for Real-time MQM Translation Quality Evaluation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Interpreting Black-Box Large Language Models with Sentence-Level Energy Landscapes">Interpreting Black-Box Large Language Models with Sentence-Level Energy Landscapes</span></li><li><span class="dpr-home-dashboard-paper-title" title="Grammar Engineering Meets LLMs: Development of Cantonese and Irish ParGram Treebanks">Grammar Engineering Meets LLMs: Development of Cantonese and Irish ParGram Treebanks</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>3</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>1</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -87,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">11 篇</strong>
+    <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="The Graph Language: How Knowledge Graphs Speak to Large Language Models">The Graph Language: How Knowledge Graphs Speak to Large Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Beyond Accuracy: A Multidimensional Evaluation of Statistical Reasoning in Large Language Models">Beyond Accuracy: A Multidimensional Evaluation of Statistical Reasoning in Large Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Efficient Grammar-Constrained Decoding via Parser Stack Classification">Efficient Grammar-Constrained Decoding via Parser Stack Classification</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Beyond &quot;AI Language&quot;: The case for the idiolectal nature of LLM output">Beyond &quot;AI Language&quot;: The case for the idiolectal nature of LLM output</span></li><li><span class="dpr-home-dashboard-paper-title" title="Why Knowing Both Hops Is Not Enough: Understanding Two-Hop Generalization in Language Models">Why Knowing Both Hops Is Not Enough: Understanding Two-Hop Generalization in Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Natural Language Processing Psychometrics">Natural Language Processing Psychometrics</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>4</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>4</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>1</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
 </section>
 </div>
 

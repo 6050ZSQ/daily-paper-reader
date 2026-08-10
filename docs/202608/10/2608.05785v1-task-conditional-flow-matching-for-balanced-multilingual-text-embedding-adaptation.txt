@@ -1,0 +1,410 @@
+Title: Task-Conditional Flow Matching for Balanced Multilingual Text Embedding Adaptation
+
+URL Source: https://arxiv.org/pdf/2608.05785v1
+
+Published Time: Fri, 07 Aug 2026 00:43:58 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# Task-Conditional Flow Matching for Balanced Multilingual Text Embedding Adaptation 
+
+Tirth Bhatt, Naren Kumar S, Mayank Singh 
+
+LINGO Research Group, Indian Institute of Technology Gandhinagar, India  
+
+> Correspondence: lingo@iitgn.ac.in
+
+Abstract 
+
+Multilingual text embedding models are com-monly adapted using a single training objective across diverse tasks, despite different tasks re-quiring fundamentally different optimization strategies. We introduce Task-Conditional Flow Matching (TCFM), a multilingual em-bedding adaptation framework that selectively applies Flow Matching to translation tasks while optimizing retrieval, classification, and pair-classification tasks with objectives better aligned to their learning dynamics. TCFM fur-ther combines teacher-guided representation preservation with a three-stage curriculum to enable stable adaptation. Evaluated on the Indic Massive Text Embedding Benchmark, TCFM establishes a new state-of-the-art, con-sistently improving embedding quality across a diverse set of multilingual tasks and gener-alizing across embedding model families. We will publicly release the codebase and datasets upon acceptance of the paper. 
+
+1 Introduction 
+
+Multilingual text embedding models provide a uni-fied representation for a wide range of downstream tasks, including retrieval, bitext mining, semantic textual similarity (STS), clustering, classification, and natural language inference. While recent mul-tilingual encoders demonstrate strong zero-shot ca-pabilities (Conneau et al., 2020; Wang et al., 2024), adapting them to new languages and domains re-mains challenging due to the substantial variation in downstream task characteristics (Muennighoff et al., 2023). A natural response to this challenge is to adapt a strong multilingual encoder using a mixture of parallel corpora and supervised down-stream datasets. However, optimizing a single ob-jective across heterogeneous task families often produces conflicting training signals (Aghajanyan et al., 2021), where improvements on some tasks come at the expense of others (Wang et al., 2020). Contrastive learning is currently the standard ap-proach for embedding adaptation, as it efficiently clusters related texts by pushing apart in-batch negatives (Gao et al., 2021). However, it strug-gles in diverse multi-task or multilingual settings as it treats all unpaired instances in a batch as strict negatives, they often suffer from the false-negative problem, where semantically similar sen-tences are incorrectly pushed apart (Chuang et al., 2020). Furthermore, this rigid separation can frag-ment the continuous embedding space, disrupting the smooth geometry needed to accurately model cross-lingual transformations (Ethayarajh, 2019). Flow Matching (Lipman et al., 2023) learns smooth transformations between continuous rep-resentations by modeling a vector field rather than directly aligning embeddings. This makes it well suited for multilingual embedding adap-tation, where translation pairs provide naturally corresponding representations. However, retrieval, classification, and pair-classification capture funda-mentally different semantic relationships, making a uniform transport objective sub-optimal across these heterogeneous tasks. In this work, we propose Task-Conditional Flow Matching (TCFM) , a multilingual em-bedding adaptation framework that applies Flow Matching only to translation-style sentence pairs while optimizing other task families with objec-tives better suited to their semantic characteris-tics. TCFM combines task-aware objective routing, teacher-guided representation preservation, and a three-stage curriculum to improve multilingual em-beddings. We further show that applying Flow Matching uniformly across all task families pro-vides no additional benefit, validating the proposed task-conditional design. Our contributions are summarized as follows: • We introduce Task-Conditional Flow Match-ing (TCFM) , which selectively applies Flow Matching to translation-style supervision 1arXiv:2608.05785v1 [cs.CL] 6 Aug 2026 while routing other tasks to more appropriate objectives. • We demonstrate the effectiveness of TCFM for Indic multilingual text embedding adapta-tion across multiple model scales, achieving improvements of 5.45% and 2.72% on In-dic MTEB over the Harrier-0.6B and Qwen3-Embedding-8B base models, respectively. 
+
+2 Related Work 
+
+Sentence and multilingual embeddings. 
+
+Sentence-BERT (Reimers and Gurevych, 2019) demonstrated the effectiveness of siamese networks for learning sentence embeddings, while SimCSE (Gao et al., 2021) showed that contrastive learning can produce high quality sentence representations using minimal aug-mentation. For multilingual settings, models such as LASER (Artetxe and Schwenk, 2019) and LaBSE (Feng et al., 2022) learn shared embedding spaces using large scale parallel corpora and translation-based objectives. More recent multilingual embedding models continue to rely primarily on contrastive objectives for cross-lingual alignment (Wang et al., 2024; Zhang et al., 2024; Chen et al., 2024). 
+
+Contrastive learning and false negatives. Con-trastive objectives based on InfoNCE (Oord et al., 2018) have become the standard training paradigm for sentence embeddings. While highly effective, they assume that all non positive examples should be separated, an assumption that is often violated in multilingual and multi-task datasets where exam-ples may share labels, intents, or semantic neighbor-hoods (Chuang et al., 2020). Prior work has there-fore explored multi-positive objectives (Khosla et al., 2020) and false-negative mitigation (Chuang et al., 2020) strategies to improve representation learning. 
+
+Flow Matching. It is a generative learning frame-work that models the transformation between two probability distributions by learning a continuous velocity field (Lipman et al., 2023). By regressing velocity along a predefined path, Flow Matching learns a vector field that transports representations between distributions. Unlike diffusion models, which learn to reverse a stochastic noising process, Flow Matching learns the transport dynamics di-rectly, resulting in a deterministic and computa-tionally efficient training objective (Lipman et al., 2023). Although Flow Matching has primarily been studied for image and generative modeling tasks, its ability to learn smooth transformations makes it an attractive objective for multilingual embedding alignment, where parallel translations naturally define semantically aligned pairs. Unlike recent multilingual embedding approaches, which commonly optimize heterogeneous supervi-sion using a unified contrastive objective (Wang et al., 2024; Su et al., 2023), the proposed frame-work applies different optimization objectives ac-cording to the semantic characteristics of each task family. 
+
+3 The TCFM Framework 
+
+Let fθ(x) ∈ Rd denote the sentence embedding produced by the encoder for an input text x, where the embedding is obtained by applying the pool-ing strategy native to the backbone architecture (e.g., mean pooling or end-of-sequence pooling) to the token-level representations. Additionally, let 
+
+f0(·) denote the corresponding frozen pretrained teacher encoder, which provides stable reference representations throughout adaptation. Each train-ing instance consists of an anchor xi, which serves as the primary reference text for the given task (e.g., a search query, a premise, or a source-language sen-tence). Associated with this anchor are a positive example yi, an optional set of additional positives 
+
+Pi, an optional hard negative ni, and a task family label ri.
+
+3.1 Task Families 
+
+We curate a training data consisting of four task families as discussed below. • Translation. consists of parallel sentences and semantically equivalent pairs which pro-vide explicit source-target correspondence, making it well suited for learning continuous semantic transformations across languages. • Classification. consists of samples that share the same label. Although these samples be-long to the same semantic class, they are not necessarily paraphrases. • Pair Classification. Pair classification datasets provide labeled sentence pairs that describe the semantic relationship between two texts, such as whether they are semanti-cally similar or belong to different relationship categories. 2• Retrieval and Re-ranking. Retrieval and re-ranking datasets consist of query-document pairs, where the objective is to capture the relevance of candidate documents to an infor-mation need. Unlike translation pairs, query and document play distinct semantic roles and are therefore not interchangeable, making the relationship inherently asymmetric. While the broader literature defines up to eight task families (Muennighoff et al., 2023), our frame-work categorizes tasks by their optimization com-patibility. By mapping tasks with shared con-trastive characteristics,such as clustering and se-mantic textual similarity into unified families, we ensure each group receives a coherent training ob-jective. This structure readily adapts to new tasks matching their learning signals. 
+
+3.2 Training Objectives 3.2.1 Multi-Positive Contrastive Loss 
+
+Contrastive learning serves as a alignment objective for representation learning. Given a batch of texts 
+
+B, the multi-positive InfoNCE objective for an anchor xi is formulated as: 
+
+Lcl (i) = − log 
+
+P 
+
+> p∈{ yi}∪ Pi
+
+exp  fθ(xi)⊤fθ(p)/τ P 
+
+> c∈B
+
+exp ( fθ(xi)⊤fθ(c)/τ )
+
+(1) where {yi} ∪ Pi denotes the set of all positive candidates associated with anchor xi, and τ is the temperature parameter. We apply this objective symmetrically for trans-lation (both languages as anchors) and asymmet-rically for retrieval (query to document only). To mitigate false negative supervision from unlabeled in-batch matches during translation training, we ex-clude highly similar non-positives from the denom-inator using a similarity threshold. Conversely, this filtering is disabled for pair-classification, where similar negatives provide essential learning signals. 
+
+3.2.2 Flow Matching 
+
+Flow Matching models continuous transformations between probability distributions by learning a de-terministic vector field. Given a source embedding 
+
+zs = fθ(xi) and a target embedding ztgt = fθ(yi),we sample an interpolation time t ∼ U (0 , 1) and construct the intermediate representation 
+
+z(t) = (1 − t)zs + tz tgt . (2) The corresponding target velocity is 
+
+u = ztgt − zs. (3) To stabilize optimization, the target velocity can be interpolated with the corresponding translation direction predicted by the frozen teacher encoder: 
+
+u⋆ = (1 −α)( ztgt −zs)+ α (f0(y) − f0(x)) , (4) where α controls the contribution of the teacher-guided transport direction. The velocity prediction network vϕ(·) is condi-tioned on the task instruction embedding extracted from the frozen teacher encoder. Let c = f0(Ir),where Ir denotes the task-specific instruction as-sociated with task family r. The Flow Matching objective minimizes the discrepancy between the predicted and target transport directions: 
+
+Lf low = 1 − cos( vϕ(z(t), t, c ), u ⋆) . (5) The Flow Matching objective learns a local trans-port field but does not necessarily update the en-coder representations. To allow the learned vector field to influence the embedding space while pre-venting large representation shifts, we introduce a bounded transport objective. The transported em-bedding is computed as 
+
+ˆz = norm ( zs + η norm ( vϕ(zs, 0, c ))) , (6) where η is a small transport step. The transported representation is then encour-aged to align with the target embedding: 
+
+Ltransport = 1 − cos (ˆ z, stopgrad( ztgt )) . (7) Parallel translation pairs represent semantically equivalent sentences across languages and there-fore admit meaningful continuous transformations in the embedding space. However, retrieval, classi-fication, and pair-classification tasks optimize fun-damentally different semantic relationships and do not naturally define transport trajectories between examples. Consequently, in our framework, Flow Matching is activated only for translation task fam-ilies. Together, the flow matching and bounded transport objectives regularize multilingual align-ment during translation training, while allowing the remaining task families to retain optimization objectives that better reflect their supervision char-acteristics. 3Dataset Task Family Description Total Train Languages                                 
+
+> local_wide_parallel Translation English–Indic parallel sentence pairs collected for multilingual translation alignment. 7.9M 130k 16 Indic + En
+> Samanantar (Ramesh et al., 2022) Translation Large-scale English–Indic parallel corpus containing semantically equivalent sentence pairs. 49.7M 55k 11 Indic + En
+> MASSIVE Same Intent (FitzGerald et al., 2022) Classification Multilingual utterances sharing the same intent label within each language. 1M 60k 8 Indic + En
+> MASSIVE Aligned Intent (FitzGerald et al., 2022) Classification Cross-lingual intent dataset aligning semantically equivalent utterances across languages. 1M 50k 8 Indic + En
+> IndicSentiment 1Classification Sentence-level sentiment classification dataset annotated with positive, negative, and neutral labels. 28k 20k 14 Indic
+> IndicXNLI (Aggarwal et al., 2022) Pair Classification Cross-lingual natural language inference dataset with entailment, contradiction, and neutral sentence pairs. 4.4M 5k 11 Indic
+> IndicMSMARCO (Prasan-jith et al., 2025) Retrieval Multilingual query–document relevance dataset for passage retrieval. 11.4M 24k 12 Indic
+> Bhasha (Madhani et al., 2023) Language Identity 2
+> Monolingual corpus spanning Indic languages used for language identity preservation. 123k 34k 22 Indic
+
+Table 1: Training datasets used by TCFM. The “Total” column denotes the full available scale of the source dataset, while the “Training” column reports the number of instances sampled for our multi-stage curriculum. 
+
+3.2.3 Teacher Preservation 
+
+Unconstrained optimization can gradually drift away from the semantic structure learned by the pretrained encoder. To preserve this prior knowl-edge, we regularize the adapted model using a frozen teacher encoder f0 through both pointwise and relational objectives. The pointwise teacher loss encourages each ex-ample to remain close to its original embedding direction: 
+
+Lteacher = 1 − cos( fθ(xi), f 0(xi)) (8) where fθ(·) and f0(·) denote the representations produced by the student and frozen teacher, respec-tively. While the pointwise objective preserves in-dividual embeddings, it does not constrain relation-ships between examples. We therefore introduce a relational preservation objective that matches the pairwise similarity structure of each mini-batch: 
+
+Lrel = HθH⊤ 
+
+> θ
+
+− H0H⊤ 
+
+> 0
+> 2
+> F
+
+(9) where Hθ and H0 denote the matrices formed by stacking the L2-normalized sentence representa-tions of all examples in the mini-batch produced by the student and teacher encoders, respectively. Flow Matching and contrastive learning aggres-sively adapt the embedding space toward the target multilingual tasks. We apply these dual preserva-tion objectives to regularize this adaptation pro-cess. Together, these constraints ensure that the adapted model retains the global semantic rela-tionships learned by the pretrained multilingual encoder while effectively specializing in the new task families. 
+
+3.2.4 Hard-Negative Margin Repair 
+
+Standard contrastive objectives can inadvertently reduce the separation between semantically related but distinct examples (Wang and Liu, 2021). To enforce a strict discriminative boundary, a cosine-margin objective (Reimers and Gurevych, 2019) is employed to ensure that an anchor x remains closer to its positive sample y than to a hard negative n
+
+by at least a predefined margin: 
+
+Lhn = max 
+
+
+
+0, m + cos( fθ(xi), f θ(ni)) −
+
+cos( fθ(xi), f θ(yi)) 
+
+
+
+,
+
+(10) where m is the margin hyperparameter. In our framework, certain task families, particularly nat-ural language inference and retrieval, provide ex-
+
+> 1https://huggingface.co/datasets/ai4bharat/ IndicSentiment
+> 2This dataset is not a part of our task family, but rather used for monolingual consistency
+
+4plicit hard-negative examples that require this strict separation. Consequently, this objective is acti-vated only for task families that contain explicit hard negatives. By conditionally applying this loss, the margin repair mechanism complements the pri-mary contrastive objective, preserving the relative ordering between positive and negative examples without affecting the continuous translation-style alignment. 
+
+3.2.5 Monolingual Consistency 
+
+While cross-lingual alignment encourages semanti-cally equivalent sentences from different languages to occupy nearby regions of the embedding space, excessive alignment may reduce the quality of monolingual representations. To preserve within-language semantic consistency, we incorporate a SimCSE-style self-consistency objective by encod-ing the same input twice under stochastic training conditions: 
+
+Lmono = Lsym (fθ(xi), f θ(˜ xi)) (11) where ˜x denotes a second encoding of the same input obtained under independent dropout masks during training. This objective regularizes local neighborhoods and improves the robustness of monolingual representations without requiring ad-ditional supervision. The cross-lingual alignment encourages semantically equivalent sentences from different languages to occupy nearby regions of the embedding space, excessive alignment can inad-vertently reduce the quality of monolingual repre-sentations. To preserve within-language semantic consistency, we incorporate this SimCSE-style self-consistency objective. It regularizes local neigh-borhoods and ensures the monolingual integrity of the representations remains robust as cross-lingual clusters are merged, all without requiring additional supervision. 
+
+3.2.6 Overall Objective and Curriculum 
+
+The complete training objective combines the task-specific losses introduced above: 
+
+L = λcLcl + ( λf Lf low + λtLtransport )+ ( λpLteacher + λrLrel )+ λhLhn + λmLmono .
+
+(12) where each λ controls the contribution of its corresponding objective. 
+
+3.3 Three-Stage Training Curriculum 
+
+TCFM is trained using a three-stage curriculum designed to progressively introduce increasingly di-verse supervision while preserving the multilingual representations learned during earlier stages. 
+
+Stage 1: Cross-Lingual Alignment. The first stage focuses exclusively on translation-style super-vision using the parallel corpora listed in Table 1. During this stage, Flow Matching and teacher-preservation objectives receive greater emphasis, enabling the model to establish stable multilingual representations before introducing more heteroge-neous supervision. 
+
+Stage 2: Multi-Task Semantic Adaptation. The second stage introduces multilingual classification and natural language inference datasets while main-taining a replay buffer of approximately 40k trans-lation pairs from Stage 1. By ensuring that this replay data constitutes approximately 23% of the overall training mixture, we effectively mitigate the catastrophic forgetting of the cross-lingual align-ment established during the first stage (Rolnick et al., 2019). Throughout this phase, we also pro-gressively increase the contribution of contrastive learning and hard-negative objectives. 
+
+Stage 3: Retrieval Adaptation and Monolin-gual Regularization. The final stage incorpo-rates asymmetric query-document retrieval to-gether with monolingual language-identity super-vision. The 40,000-sample replay buffer from the previous stages is retained throughout this training phase, comprising approximately 41% of the total Stage 3 data. Concurrently, the monolingual con-sistency objective regularizes within-language rep-resentations without sacrificing the cross-lingual alignment learned during the earlier stages. 
+
+4 Experimental Setup 
+
+4.1 Training Data 
+
+We construct a balanced multi-task training mix-ture across the four task families (Table 1), con-verting each source dataset into its objective-specific supervision format, ranging from sym-metric parallel pairs for translation and class-based semantic pairs for classification, to explicit entailment-contradiction pairs for NLI and asym-metric query-document pairs for retrieval. To en-rich continuous cross-lingual alignment, our trans-lation dataset incorporates local_wide_parallel ,5a self-curated corpus constructed by translating En-glish Wikipedia sentences 3 into 16 Indic languages using Sarvam-Translate 4. To prevent gradient im-balance (Wang et al., 2020) caused by massive parallel corpora (e.g., Samanantar) overpowering low-resource tasks, we employ stratified subsam-pling across languages and cap maximum dataset sizes rather than preserving native distributions. Ex-tended details on dataset formatting, preprocessing pipelines, and sampling strategies are provided in Appendix D. 
+
+4.2 Baseline Models 
+
+We evaluate the proposed framework across multiple architectures. Eval-uation studies are conducted using 
+
+google/embeddinggemma-300m (Schechter Vera et al., 2025), microsoft/harrier-oss-v1-270m ,
+
+microsoft/harrier-oss-v1-0.6B and 
+
+Qwen/Qwen3-Embedding-4B , while our best-performing model is obtained by adapting 
+
+Qwen/Qwen3-Embedding-8B (Qwen Team, 2025) using LoRA. For Gemma-based models, sentence representa-tions are obtained through mean pooling, whereas Harrier OSS and Qwen models employ left-padding safe EOS pooling. All embeddings are L2-normalized. The Flow Matching velocity network consists of a two-layer MLP with SiLU activations, Layer Normalization (Ba et al., 2016), and sinu-soidal timestep embeddings, further architectural hyperparameters are detailed in Appendix B. Al-though memory queues (Cao et al., 2022) were ex-plored during preliminary experiments, they were omitted from the final training recipe because they increased the likelihood of false negatives in het-erogeneous multi-task batches. 
+
+4.3 Evaluation Benchmark 
+
+We evaluate the proposed framework on the In-dic Massive Text Embedding Benchmark (Indic MTEB) (Enevoldsen et al., 2025). Indic MTEB evaluates embedding quality on Bitext Mining, Semantic Textual Similarity (STS), Classifica-tion, Clustering, Pair Classification, Retrieval, and Reranking. Although Multilingual MTEB covers a broader collection of languages and tasks, Indic MTEB retains a diverse set of embedding task fam-
+
+> 3https://huggingface.co/datasets/ sentence-transformers/wikipedia-en-sentences
+> 4https://huggingface.co/sarvamai/ sarvam-translate
+
+ilies while encompassing 25 linguistically diverse languages, making it a comprehensive benchmark for evaluating multilingual embedding models and the generalization of the proposed training objec-tives. 
+
+4.4 Evaluation Protocol 
+
+Our training follows the three-stage curriculum de-scribed in Section 3.3. To analyze the contribution of each stage, we evaluate checkpoints obtained at the end of every curriculum stage in addition to the final model. Unless otherwise specified, all reported improvements are measured relative to the corresponding frozen base model. 
+
+5 Results 
+
+We evaluate the TCFM framework on the Indic MTEB v3, spanning seven task families: Bitext Mining, Classification, Clustering, Pair Classifica-tion, Retrieval, Reranking, and Semantic Textual Similarity (STS). We evaluate TCFM on both 
+
+microsoft/harrier-oss-v1-0.6b and 
+
+Qwen/Qwen3-Embedding-8B to analyze the behavior of the proposed training framework in controlled settings and its effectiveness on a substantially larger embedding model. We observe an improvement in the Indic MTEB Score of microsoft/harrier-oss-v1-0.6b by 
+
++3.59 points. The largest improvement is observed on the Clustering benchmark, where TCFM in-creases performance by more than 21 points while also improving performance on the remaining task families. Table 2 summarizes category-level per-formance across models, while a fine-grained, per-task breakdown is provided in Appendix A. Cross-lingual alignment also benefits from the proposed framework, with IN22ConvBitextMining improv-ing by +3.30 points and IndicCrosslingualSTS 
+
+improving by +2.24 points. Performance improvements are not uni-form across every task category. While most categories benefit from adaptation, a small number of tasks exhibit a modest decrease, in-cluding SanskritShlokasClassification 
+
+(-5.31), IN22GenBitextMining (-0.16), 
+
+NepaliNewsClassification (-0.14), and 
+
+XQuADRetrieval (-0.23). Despite substantial overall gains, multilingual embedding adaptation remains a challenging multi-objective optimization problem. 6Gemma-300M Harrier-270M Harrier-0.6B Qwen-4B Qwen3-8B Task Category Base TCFM ∆ Base TCFM ∆ Base TCFM ∆ Base TCFM ∆ Base TCFM ∆                                                                                                             
+
+> Bitext Mining 60.80 65.28 +4.48 69.51 72.69 +3.18 76.94 78.51 +1.57 75.67 76.70 +1.03 77.61 78.36 +0.75 Classification 64.34 66.71 +2.36 62.99 68.03 +5.05 64.58 67.85 +3.27 69.59 71.00 +1.41 70.62 72.39 +1.77 Clustering 31.90 37.62 +5.72 30.57 46.04 +15.47 29.09 50.12 +21.03 39.74 51.45 +11.71 40.50 55.75 +15.25
+> Pair Classification 68.06 68.30 +0.24 63.02 67.96 +4.94 63.77 67.72 +3.95 77.08 78.95 +1.87 81.24 82.08 +0.84 Reranking 88.04 88.14 +0.10 85.68 85.72 +0.04 85.54 85.67 +0.13 86.36 86.48 +0.12 87.08 87.59 +0.51 Retrieval 80.65 81.12 +0.47 80.97 80.72 -0.26 80.69 81.72 +1.03 88.80 88.80 +0.00 93.50 93.22 -0.28 STS 43.74 46.27 +2.53 42.64 43.73 +1.09 48.82 51.06 +2.24 51.69 51.98 +0.29 59.45 60.10 +0.65
+> Average 64.34 66.68 +2.34 63.94 68.33 +4.40 65.87 69.46 +3.59 70.94 72.59 +1.65 72.89 74.87 +1.98
+
+Table 2: Task-category Indic MTEB results of TCFM across the evaluated model architectures. 
+
+Configuration Macro ( ∆) Bitext Classif. Cluster PairCls. Rerank Retrieval STS 
+
+Base Model 65.87 76.94 64.58 29.09 63.77 85.54 80.69 48.82 Contrastive +1.96 -2.38 +2.91 +20.30 +4.45 +0.36 -6.08 -3.83 Contrastive + Teacher +2.81 +0.17 +2.26 +21.32 +6.27 +0.48 +0.11 +0.46 Flow + Teacher +1.67 -0.20 +0.73 +21.15 +2.58 -0.05 +1.06 -0.82 Flow + Teacher (All Tasks) +1.63 -0.43 +0.66 +20.97 +3.02 +0.06 +1.17 -0.91 Flow + Contrastive +1.19 -0.95 +3.25 +16.82 +6.41 -2.63 -12.48 -8.99 Reordered Curriculum † +2.61 +0.67 +2.27 +11.27 +7.41 +0.94 +0.95 +2.16 Flow + Contrastive + Teacher +3.59 +1.57 +3.27 +21.03 +3.95 +0.13 +1.03 +2.24 
+
+Table 3: Component-wise ablation study on the Harrier-0.6B encoder. Positive values denote improvements over the frozen base model.Results are reported as the average improvement for each MTEB task category, using the same category-level aggregation as per the Table 2. † Stage Order Ablation denotes the curriculum Stage 1 → Stage 3 →
+
+Stage 2, instead of the proposed stages .
+
+To evaluate whether the proposed training strat-egy generalizes to larger language models, we ap-ply the framework to the Qwen3-Embedding-8B 
+
+using LoRA adaptation. Relative to the frozen base model, an absolute gain of +1.97 points is observed for the Indic MTEB. Improvements are observed across six of the seven benchmark cat-egories (see Table 2), while Retrieval exhibits a minor decrease (-0.28), indicating that the proposed framework maintains balanced performance while substantially improving performance in the remain-ing task families. Although the largest improve-ments are observed on the Clustering and Classifi-cation tasks. Cross-lingual alignment also benefits from adaptation, with conversational bitext mining improving by +1.32 points while maintaining com-petitive performance on generalized bitext mining and semantic textual similarity. 
+
+6 Ablation Experiments 
+
+6.1 Component Analysis 
+
+To better understand the respective roles of indi-vidual components of TCFM. We perform abla-tion studies on the Harrier-0.6B which provides an appropriate balance between model capacity Base Stage 1 Stage 2 Stage 3 
+
+65 70 75 
+
+Training Stage Overall Indic MTEB Score 
+
+Curriculum Progression 
+
+> Qwen3-8B Harrier-0.6B
+
+Figure 1: Step-wise performance trajectory across the TCFM training curriculum. 
+
+and the ability to systematically evaluate multiple training variants under a consistent experimental protocol †. Allowing us to study the individual ef-fects of contrastive learning, teacher preservation, Flow Matching, and task-conditional routing.  
+
+> †
+
+Unless otherwise specified, each experiment modifies a single component while keeping the remaining components. 
+
+7Table 3 summarizes the contribution of the prin-cipal components of TCFM. Contrastive learning combined with teacher preservation yields strong improvements on Pair Classification (+6.27), Clus-tering (+21.32), and STS (+0.46), while Flow Matching combined with teacher preservation in-duces gains on Retrieval (+1.06) and Clustering (+21.15). Indicating that the two objectives exhibit complementary strengths across different down-stream task families. Removing teacher preserva-tion while retaining both Flow Matching and con-trastive learning substantially reduces Retrieval (-12.48) and STS (-8.99), even as it improves certain classification tasks, implying that teacher preser-vation plays an important role in maintaining the semantic structure. 
+
+6.2 Does Curriculum learning really help? 
+
+We evaluate the intermediate checkpoints of each stage of the curriculum for both the Harrier-0.6B and Qwen3-Embedding-8B backbones. Each stage introduces a distinct combination of training objec-tives and supervision signals designed to address a specific aspect of multilingual representation learn-ing. Figure 1 summarizes the performance trends after each stage. 
+
+Stage 1: Establishing Cross-Lingual Alignment 
+
+Translation-based supervision establishes a robust multilingual foundation prior to task-specific adap-tation. Harrier-0.6B registers immediate improve-ments in continuous alignment tasks, notably clus-tering (+7.53), STS (+3.17), and pair classification (+2.61). Similarly, Qwen3-Embedding-8B estab-lishes cross-lingual alignment with early gains in STS (+1.02) and bitext mining (+0.31). Demon-strating that Lf low effectively smooths the shared representation space before heterogeneous task sig-nals are introduced. 
+
+Stage 2: Semantic Discrimination through Multi-Task Supervision Introducing Lcl and 
+
+Lhn improves task-specific accuracy but affects the architectures differently. Harrier-0.6B gains in classification (+2.90) and pair classification (+5.41) while retaining its Stage 1 alignment, demonstrat-ing that translation replay buffer prevents catas-trophic forgetting. Qwen3-Embedding-8B simi-larly gains in classification (+1.36) and pair classi-fication (+1.30). However, strict contrastive bound-aries temporarily disrupt its continuous represen-tation space, causing a regression in clustering (-3.36), highlighting the tension between discrimina-tive optimization and spatial uniformity in models. 
+
+Stage 3: Retrieval Adaptation and Balanced Op-timization The final stage resolves multi-task op-timization friction by utilizing Lmono as a geomet-ric regularizer. For Harrier-0.6B, retrieval perfor-mance successfully recovers (+1.90 over Stage 2), securing a final overall score of 69.46 . For Qwen3-Embedding-8B, this regularization proves essential; it resolves the spatial interference from Stage 2, un-locking a massive surge in clustering (+15.25) and elevating the overall benchmark to a peak of 74.87 .The successful convergence of both architectures validates this progressive multi-task curriculum. 
+
+6.3 Task-Conditional Flow Matching 
+
+To investigate whether Flow Matching should be applied uniformly across heterogeneous embed-ding tasks or selectively based on task characteris-tics, we compare our task-conditional formulation against a variant that applies Flow Matching to all task families. Restricting Flow Matching exclu-sively to translation tasks yields the highest overall Indic MTEB score (+1.67 vs. +1.63) while improv-ing performance in Bitext Mining (-0.20 vs. -0.43) and STS (-0.82 vs. -0.91). While uniform appli-cation across all tasks provides a marginal gain in Pair Classification (+3.02 vs. +2.58), but it fails to improve the broader benchmark performance. 
+
+7 Conclusion 
+
+In this work, we introduced TCFM. Our framework demonstrates that applying a single contrastive ob-jective across all training data is suboptimal for adapting multilingual embeddings. By restricting Flow Matching to translation tasks and utilizing standard contrastive methods for retrieval and clas-sification, TCFM creates a more balanced represen-tation space. Experiments on Indic MTEB validate this approach across multiple model architectures. Ultimately, our results show that task-aware opti-mization matching the loss function to the underly-ing task semantics is a highly effective strategy for multilingual representation learning. 
+
+8 Limitations 
+
+Although TCFM demonstrates strong empirical re-sults, several limitations remain. First, our evalua-tion is limited to the 22 scheduled Indian languages within the Indic MTEB benchmark. It remains to 8be seen whether this task-conditional strategy gen-eralizes equally well to other language families or massively multilingual global benchmarks. Second, while we hypothesize that Flow Match-ing improves the uniformity of the embedding space, our current evidence is empirical. Future work should include a formal geometric analysis to quantitatively measure how Flow Matching af-fects the alignment and anisotropy of the learned representations. Third, our framework currently utilizes Flow Matching primarily as an attractive mechanism to transport and align parallel translation pairs. The idea of incorporating a regularizer within the Flow Matching process to act as an explicit repulsive force, such as actively pushing dissimilar concepts or hard negatives apart along the learned vector field, remains unexplored. Investigating these re-pulsive flow dynamics could offer a novel way to improve discriminative boundaries without relying solely on contrastive margins. Finally, TCFM introduces additional computa-tional overhead compared to standard contrastive training. The framework requires maintaining a frozen teacher model in memory, optimizing a ve-locity prediction network, and managing a multi-stage data curriculum. Furthermore, because Flow Matching relies on explicit source-target pairs, it requires high quality parallel translation data. This dependence may limit its application in zero re-source languages where such parallel corpora are unavailable. 
+
+References 
+
+Divyanshu Aggarwal, Vivek Gupta, and Anoop Kunchukuttan. 2022. Indicxnli: Evaluating multi-lingual inference for indian languages. In Proceed-ings of the 2022 Conference on Empirical Methods in Natural Language Processing , pages 11161–11171. Armen Aghajanyan, Anchit Gupta, Akshat Shrivastava, Xilun Chen, Luke Zettlemoyer, and Sonal Gupta. 2021. Muppet: Massive multi-task representations with pre-finetuning. In Proceedings of the 2021 Con-ference on Empirical Methods in Natural Language Processing , pages 5799–5811, Online and Punta Cana, Dominican Republic. Association for Com-putational Linguistics. Mikel Artetxe and Holger Schwenk. 2019. Mas-sively multilingual sentence embeddings for zero-shot cross-lingual transfer and beyond. Transactions of the Association for Computational Linguistics ,7:597–610. Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hin-ton. 2016. Layer normalization. arXiv preprint arXiv:1607.06450 .Rui Cao, Yihao Wang, Yuxin Liang, Ling Gao, Jie Zheng, Jie Ren, and Zheng Wang. 2022. Explor-ing the impact of negative samples of contrastive learning: A case study of sentence embedding. In 
+
+Findings of the Association for Computational Lin-guistics: ACL 2022 , pages 3138–3152, Dublin, Ire-land. Association for Computational Linguistics. Jianlv Chen, Shitao Xiao, Peitian Zhang, Kun Luo, Defu Lian, and Zheng Liu. 2024. BGE M3-embedding: Multi-lingual, multi-functionality, multi-granularity text embeddings through self-knowledge distillation. 
+
+arXiv preprint arXiv:2402.03216 .Ching-Yao Chuang, Joshua Robinson, Lin Yen-Chen, Antonio Torralba, and Stefanie Jegelka. 2020. De-biased contrastive learning. In Advances in Neural Information Processing Systems , volume 33, pages 8765–8775. Alexis Conneau, Kartikay Khandelwal, Naman Goyal, Vishrav Chaudhary, Guillaume Wenzek, Francisco Guzmán, Edouard Grave, Myle Ott, Luke Zettle-moyer, and Veselin Stoyanov. 2020. Unsupervised cross-lingual representation learning at scale. In Pro-ceedings of the 58th Annual Meeting of the Associa-tion for Computational Linguistics , pages 8440–8451. Association for Computational Linguistics. Kenneth Enevoldsen, Isaac Chung, Imene Kerboua, Márton Kardos, Ashwin Mathur, David Stap, Jay Gala, Wissam Siblini, Dominik Krzemi´ nski, Genta Indra Winata, Saba Sturua, Saiteja Utpala, Mathieu Ciancone, Marion Schaeffer, Gabriel Se-queira, Diganta Misra, Shreeya Dhakal, Jonathan Rystrøm, Roman Solomatin, and 67 others. 2025. Mmteb: Massive multilingual text embedding bench-mark. arXiv preprint arXiv:2502.13595 .Kawin Ethayarajh. 2019. How contextual are contex-tualized word representations? comparing the ge-ometry of bert, elmo, and gpt-2 embeddings. In 
+
+Proceedings of the 2019 conference on empirical methods in natural language processing and the 9th international joint conference on natural language processing (EMNLP-IJCNLP) , pages 55–65. Fangxiaoyu Feng, Yinfei Yang, Daniel Cer, Naveen Ari-vazhagan, and Wei Wang. 2022. Language-agnostic BERT sentence embedding. In Proceedings of the 60th Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) , pages 878–891. Jack FitzGerald, Christopher Hench, Charith Peris, Scott Mackie, Kay Rottmann, Ana Sanchez, Aaron Nash, Liam Urbach, Vishesh Kakarala, Richa Singh, et al. 2022. Massive: A 1m-example multilin-gual natural language understanding dataset with 51 typologically-diverse languages. In Proceedings of the 60th Annual Meeting of the Association for 
+
+9Computational Linguistics (Volume 1: Long Papers) ,pages 4277–4302. Tianyu Gao, Xingcheng Yao, and Danqi Chen. 2021. SimCSE: Simple contrastive learning of sentence em-beddings. In Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing ,pages 6894–6910. Prannay Khosla, Piotr Teterwak, Chen Wang, Aaron Sarna, Yonglong Tian, Phillip Isola, Aaron Maschinot, Ce Liu, and Dilip Krishnan. 2020. Su-pervised contrastive learning. In Advances in Neural Information Processing Systems , volume 33, pages 18661–18673. Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Max-imilian Nickel, and Matt Le. 2023. Flow match-ing for generative modeling. In The Eleventh Inter-national Conference on Learning Representations (ICLR) .Yash Madhani, Mitesh M. Khapra, and Anoop Kunchukuttan. 2023. Bhasa-abhijnaanam: Native-script and romanized language identification for 22 indic languages. In Proceedings of the 61st Annual Meeting of the Association for Computational Lin-guistics (Volume 2: Short Papers) , pages 816–826. Association for Computational Linguistics. Niklas Muennighoff, Nouamane Tazi, Loïc Magne, and Nils Reimers. 2023. MTEB: Massive text embedding benchmark. In Proceedings of the 17th Conference of the European Chapter of the Association for Compu-tational Linguistics , pages 2014–2037. Association for Computational Linguistics. Aaron van den Oord, Yazhe Li, and Oriol Vinyals. 2018. Representation learning with contrastive predictive coding. arXiv preprint arXiv:1807.03748 .Pasunuti Prasanjith, Prathmesh B More, Anoop Kunchukuttan, and Raj Dabre. 2025. Indicrag-suite: Large-scale datasets and a benchmark for indian language rag systems. arXiv preprint arXiv:2506.01615 .Qwen Team. 2025. Qwen3 embedding: Advancing text embedding and reranking through foundation models. 
+
+arXiv preprint arXiv:2506.05176 .Gowtham Ramesh, Sumanth Doddapaneni, Aravinth Bheemaraj, Mayank Jobanputra, Raghavan AK, Ajitesh Sharma, Sujit Sahoo, Harshita Diddee, Mahalakshmi J, Divyanshu Kakwani, et al. 2022. Samanantar: The largest publicly available parallel corpora collection for 11 indic languages. Transac-tions of the Association for Computational Linguis-tics , 10:145–162. Nils Reimers and Iryna Gurevych. 2019. Sentence-BERT: Sentence embeddings using Siamese BERT-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natu-ral Language Processing (EMNLP-IJCNLP) , pages 3982–3992, Hong Kong, China. Association for Com-putational Linguistics. David Rolnick, Arun Ahuja, Jonathan Schwarz, Timo-thy Lillicrap, and Gregory Wayne. 2019. Experience replay for continual learning. Advances in neural information processing systems , 32. Henrique* Schechter Vera, Sahil* Dua, Biao Zhang, Daniel Salz, Ryan Mullins, Sindhu Raghuram Pa-nyam, Sara Smoot, Iftekhar Naim, Joe Zou, Feiyang Chen, Daniel Cer, Alice Lisak, Min Choi, Lucas Gonzalez, Omar Sanseviero, Glenn Cameron, Ian Ballantyne, Kat Black, Kaifeng Chen, and 69 others. 2025. Embeddinggemma: Powerful and lightweight text representations. Hongjin Su, Weijia Shi, Jungo Kasai, Yizhong Wang, Yushi Hu, Mari Ostendorf, others, and Tao Yu. 2023. One embedder, any task: Instruction-finetuned text embeddings. In Findings of the Association for Com-putational Linguistics: ACL 2023 , pages 1102–1121. Feng Wang and Huaping Liu. 2021. Understanding the behaviour of contrastive loss. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , pages 2495–2504. Liang Wang, Nan Yang, Xiaolong Huang, Linjun Yang, Rangan Majumder, and Furu Wei. 2024. Multilin-gual e5 text embeddings: A technical report. arXiv preprint arXiv:2402.05672 .Xinyi Wang, Yulia Tsvetkov, and Graham Neubig. 2020. Balancing training for multilingual neural machine translation. In Proceedings of the 58th Annual Meet-ing of the Association for Computational Linguistics ,pages 8526–8537, Online. Association for Computa-tional Linguistics. Xin Zhang, Yanzhao Zhang, Dingkun Long, Wen Xie, Ziqi Dai, Jialong Tang, Huan Lin, Baosong Yang, Pengjun Xie, Fei Huang, Meishan Zhang, Wenjie Li, and Min Zhang. 2024. mGTE: Generalized long-context text representation and reranking models for multilingual text retrieval. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing: Industry Track , pages 1393– 1412. Association for Computational Linguistics. 
+
+A Detailed Model Evaluations 
+
+While the primary experiments in Section 5 focus on the Harrier-0.6B and Qwen3-Embedding-8B architectures, we also evaluate the proposed Task-Conditional Flow Matching (TCFM) frame-work on several additional models to demonstrate its generalizability across different scales and architectural families. Specifically, we apply TCFM to google/embeddinggemma-300m ,
+
+microsoft/harrier-oss-v1-270m , and 
+
+Qwen/Qwen-Embedding-4B .10 Gemma-300M Harrier-270M Harrier-0.6B Qwen-4B Qwen3-8B Category Task Base TCFM ∆ Base TCFM ∆ Base TCFM ∆ Base TCFM ∆ Base TCFM ∆                                                                                                                                                                                                                                                                                                                                  
+
+> Bitext Mining IN22ConvBitextMining 41.33 47.09 +5.76 54.09 60.02 +5.93 65.47 68.77 +3.30 63.56 65.24 +1.68 66.77 68.09 +1.32 IN22GenBitextMining 80.26 83.47 +3.21 84.93 85.36 +0.43 88.41 88.25 -0.16 87.78 88.16 +0.38 88.45 88.63 +0.18
+> Classification BengaliSentimentAnalysis 82.78 80.00 -2.78 78.58 87.39 +8.81 85.21 86.58 +1.37 83.33 87.04 +3.71 87.22 89.27 +2.05 GujaratiNewsClassification 80.10 86.37 +6.27 82.01 84.86 +2.85 85.05 85.92 +0.87 85.94 86.19 +0.25 84.61 86.90 +2.29 HindiDiscourseClassification 37.17 39.29 +2.12 31.42 37.44 +6.02 36.28 39.53 +3.25 38.30 39.31 +1.01 42.58 42.97 +0.39 MTOPIntentClassification 70.29 73.00 +2.71 48.76 62.11 +13.35 49.82 70.24 +20.42 74.54 76.50 +1.96 78.09 80.57 +2.48 MalayalamNewsClassification 76.09 85.75 +9.66 75.52 83.76 +8.24 82.36 84.51 +2.15 88.30 89.22 +0.92 89.99 91.33 +1.34 MultiHateClassification 56.56 57.99 +1.43 56.82 57.18 +0.36 53.19 54.84 +1.65 62.69 62.59 -0.10 63.03 64.48 +1.45 NepaliNewsClassification 92.55 95.74 +3.19 95.85 96.33 +0.48 96.13 95.99 -0.14 94.18 94.34 +0.16 95.32 95.59 +0.27 PunjabiNewsClassification 75.80 78.60 +2.80 74.59 81.53 +6.94 78.92 79.36 +0.44 80.19 81.46 +1.27 81.15 82.48 +1.33 SanskritShlokasClassification 63.65 69.69 +6.04 85.83 81.46 -4.37 75.31 70.00 -5.31 66.88 64.79 -2.09 67.08 65.83 -1.25 SentimentAnalysisHindi 57.72 53.48 -4.24 50.47 64.81 +14.34 52.37 65.89 +13.52 69.68 76.19 +6.51 67.70 74.16 +6.46
+> TweetSentimentClassification 36.05 36.60 +0.55 33.98 35.78 +1.80 37.38 37.81 +0.43 41.29 42.03 +0.74 39.77 41.60 +1.83 UrduRomanSentimentClassification 43.38 43.99 +0.61 42.03 43.77 +1.74 42.91 43.54 +0.63 49.77 52.35 +2.58 50.86 53.50 +2.64
+> Clustering SIB200ClusteringS2S 31.90 37.62 +5.72 30.57 46.04 +15.47 29.09 50.12 +21.03 39.74 51.45 +11.71 40.50 55.75 +15.25 Pair Classification XNLI 68.06 68.30 +0.24 63.02 67.96 +4.94 63.77 67.72 +3.95 77.08 78.95 +1.87 81.24 82.08 +0.84
+> Reranking WikipediaRerankingMultilingual 88.04 88.14 +0.10 85.68 85.72 +0.04 85.54 85.67 +0.13 86.36 86.48 +0.12 87.08 87.59 +0.51
+> Retrieval BelebeleRetrieval 66.17 67.59 +1.42 66.61 67.05 +0.44 68.14 70.43 +2.29 83.79 83.72 -0.07 92.75 92.24 -0.51 XQuADRetrieval 95.13 94.64 -0.49 95.33 94.38 -0.95 93.24 93.01 -0.23 93.80 93.87 +0.07 94.25 94.21 -0.04
+> STS IndicCrosslingualSTS 43.74 46.27 +2.53 42.64 43.73 +1.09 48.82 51.06 +2.24 51.69 51.98 +0.29 59.45 60.10 +0.65
+> Average 64.34 66.68 +2.34 63.94 68.33 +4.40 65.87 69.46 +3.59 70.94 72.59 +1.65 72.89 74.87 +1.98
+
+Table 4: Detailed task-level Indic MTEB results of TCFM across the evaluated model architectures. 
+
+Table 4 summarizes the overall and task family performance for these models on the Indic MTEB benchmark. 
+
+EmbeddingGemma-300M: Using mean pool-ing, the EmbeddingGemma-300M model improves its overall Indic MTEB score from 64.34 to 66.68, yielding a net gain of +2.34. The adaptation is par-ticularly effective for cross-lingual alignment and semantic representation, showing strong improve-ments in Bitext Mining (+4.48) and STS (+2.53). Task-specific gains include notable improvements on GujaratiNewsClassification (+6.27) and Malay-alamNewsClassification (+9.66). 
+
+Harrier-270M: The Harrier-270M bidirectional encoder exhibits the largest relative improvement among the extended models, increasing its overall benchmark score by +4.43 (from 63.94 to 68.36). Consistent with the behavior observed in the 0.6B variant, this encoder shows a massive gain in Clus-tering (+15.38), alongside highly discriminative im-provements in Classification (+5.14) and Pair Clas-sification (+5.09). Specific datasets such as Senti-mentAnalysisHindi (+14.92) and MTOPIntentClas-sification (+13.52) benefit significantly from the multi-stage training. 
+
+Qwen-Embedding-4B: To verify scaling laws within the decoder-only family, we applied LoRA adaptation to a 4-billion parameter Qwen model. TCFM improves the overall score from 70.94 to 72.61 (+1.67). Similar to the Qwen3-Embedding-8B model, the 4B variant experiences its most dra-matic geometric restructuring in the Clustering task family, jumping by +11.88 points. It also yields consistent positive gains across Pair Classification (+1.88), Classification (+1.44), and Bitext Min-ing (+1.02), validating that the framework reliably stabilizes auto-regressive backbones during task-specific fine-tuning. 
+
+B Implementation Details and Hyperparameters 
+
+To ensure complete reproducibility, this section de-tails the training configurations, model parameteri-zations, and stage-wise hyperparameter schedules used across all experimental runs. 
+
+B.1 Hardware and Training Environment 
+
+All models were trained on NVIDIA H200 GPUs (141GB VRAM) using PyTorch and Hugging Face Accelerate with Scaled Dot Product Attention (SDPA) where applicable. Optimization was per-formed using AdamW with a fixed weight decay of 
+
+10 −2 and gradient clipping norm capped at 1.0.Training across all stages employed a constant learning rate schedule with a 1% linear warmup ra-tio. An effective global batch size of 256 (achieved via micro-batches of 16 or 32 with gradient accu-mulation steps of 8 or 16 ) was maintained across all architectures. 
+
+B.2 Architectural Configurations 
+
+• EmbeddingGemma-300M: Parameterized via full fine-tuning using native mean pool-11 (Gemma / Harrier) (Qwen 4B / 8B) Hyperparameter Stage 1 Stage 2 Stage 3 Stage 1 Stage 2 Stage 3                                                                                                       
+
+> Instruction Strategy none hard conditional none hard conditional
+> Encoder LR ( 256 batch) 3×10 −58×10 −63×10 −63×10 −58×10 −63×10 −6
+> Velocity Head LR 1×10 −55×10 −62×10 −65×10 −63×10 −63×10 −6
+> Temperature ( τ)0.07 0.07 0.095 0.07 0.07 0.04
+> Max Sequence Length 512 512
+> λcontrastive 0.10 0.30 0.25 0.10 0.30 0.20
+> λmonolingual ——0.80 ——0.80
+> λhard_negative —0.15 ——0.15 —Hard Neg. Margin —0.15 ——0.15 —
+> λflow 0.50 0.50 0.50 0.50 0.50 0.20
+> λtransport 0.10 0.20 0.20 0.10 0.20 0.05
+> Flow Hidden Dim. 512 4096
+> λteacher 1.50 1.50 1.50 1.50 1.50 1.50
+> λteacher_rel 1.50 3.00 3.50 1.50 2.50 3.00
+
+Table 5: Stage-wise hyperparameter specifications and loss coefficients across encoder and decoder model families. 
+
+ing with a maximum sequence length of 512 .Training was conducted in float32 precision across all 3 stages.Unlike the larger architec-tures, gradient checkpointing was disabled due to its smaller memory footprint. • Harrier Family (Harrier-270M and Harrier-0.6B): Both scales share an iden-tical training recipe. Models were trained via full fine-tuning using left-pad-safe end-of-sequence ( eos ) token pooling and a maximum sequence length of 512 with gradient checkpointing enabled. • Qwen Family (Qwen3-Embedding-4B and Qwen3-Embedding-8B): Both model scales share the same hyperparameters and parameter-efficient LoRA setup. LoRA was applied to all projection matrices ( q_proj ,
+
+k_proj , v_proj , o_proj , gate_proj ,
+
+up_proj , down_proj ) with rank r = 64 ,scaling factor α = 128 , and dropout 
+
+0.05 . Left-pad eos pooling and bfloat16 
+
+mixed-precision were utilized. 
+
+B.3 Stage-Wise Hyperparameter Schedule 
+
+Table 5 summarizes the exact stage-wise hyperpa-rameters and loss coefficients for all model families across our three-stage curriculum. 
+
+C Detailed Stage-Wise Progression 
+
+To provide deeper empirical insight into the multi-stage training curriculum discussed in Sec-tion 6.2, Table 6 details the incremental In-dic MTEB performance of three primary archi-tectures: EmbeddingGemma-300M, Harrier-0.6B, and Qwen3-Embedding-8B. The results demon-strate how different architectural families respond to the progressive introduction of heterogeneous supervision. 
+
+Encoder Stability and Monotonic Growth For the bidirectional encoders (EmbeddingGemma-300M and Harrier-0.6B), the curriculum induces highly stable, monotonic overall growth. Stage 1 successfully establishes a strong initial geometry, reflected by instant surges in Clustering across both models. The introduction of discriminative super-vision in Stage 2 drives sharp gains in Classifica-tion, though Harrier-0.6B experiences a temporary regression in Retrieval (-0.87) as the tasks com-pete for representation space. Stage 3 effectively resolves these multi-task frictions through mono-lingual regularization, securing peak overall scores of 66.68 and 69.46, respectively. 
+
+C.1 Model-Specific Adaptation Dynamics 
+
+We analyze stage-wise checkpoint trajectories across EmbeddingGemma-300M, Harrier-0.6B, and Qwen3-Embedding-8B to examine how dif-ferent models respond to the proposed curriculum. Table 6 reports per-stage Indic MTEB deltas rela-tive to the frozen base model for all three architec-tures. 12 Model Training Stage Overall Clustering Retrieval Classification EmbeddingGemma-300M Base Model 64.34 31.90 80.65 64.34 Stage 1: Cross-Lingual 65.32 (+0.98) 33.79 (+1.89) 81.19 (+0.55) 64.72 (+0.38)                                                                           
+
+> Stage 2: Multi-Task 65.99 (+1.65) 34.33 (+2.43) 80.77 (+0.12) 65.57 (+1.23)
+> Stage 3: Regularization 66.68 (+2.34) 37.62 (+5.72) 81.12 (+0.47) 66.71 (+2.36)
+> Harrier-0.6B Base Model 65.87 29.09 80.69 64.58 Stage 1: Cross-Lingual 67.23 (+1.36) 36.62 (+7.53) 81.56 (+0.88) 65.42 (+0.84)
+> Stage 2: Multi-Task 68.73 (+2.86) 41.12 (+12.03) 79.82 (-0.87) 67.48 (+2.90)
+> Stage 3: Regularization 69.46 (+3.59) 50.12 (+21.03) 81.72 (+1.03) 67.85 (+3.27)
+> Qwen3-Embedding-8B Base Model 70.94 39.74 88.80 69.59 Stage 1: Cross-Lingual 73.03 (+2.08) 41.10 (+1.36) 93.47 (+4.67) 70.65 (+1.06)
+> Stage 2: Multi-Task 73.73 (+2.78) 37.14 (-2.60) 93.26 (+4.46) 71.98 (+2.39)
+> Stage 3: Regularization 74.87 (+3.92) 55.75 (+16.01) 93.22 (+4.43) 72.39 (+2.80)
+
+Table 6: Stage-wise performance progression on Indic MTEB across architectures. Values in parentheses denote absolute point changes relative to the frozen base model. 
+
+The curriculum yields monotonically improv-ing overall scores across all models. All three models show consistent overall improvement from Stage 1 through Stage 3, confirming that the three-stage curriculum design is effective regardless of model architecture or scale. EmbeddingGemma-300M improves from +0.98 to +2.34, Harrier-0.6B from +1.36 to +3.59, and Qwen3-Embedding-8B reaches a final gain of +1.97. 
+
+Stage 2 causes task-specific, curriculum-expected regression in unsupervised tasks. Be-cause Stage 2 introduces classification and NLI supervision without retrieval data, Harrier-0.6B experiences a Retrieval regression of 0.87 points below baseline at this stage, recovering to +1.03 in Stage 3 once retrieval supervision is intro-duced. EmbeddingGemma-300M shows a milder Retrieval dip (+0.55 → +0.12 → +0.47). This pat-tern is consistent with the curriculum design rather than a model-specific failure. 
+
+Qwen3-Embedding-8B exhibits stronger task interference at Stage 2. Unlike the smaller mod-els, Qwen3-Embedding-8B experiences a Cluster-ing regression of 3.36 points below baseline at Stage 2—a task family not directly supervised at this stage. This interference is fully resolved by Stage 3 monolingual regularization, ultimately yielding the largest absolute Clustering gain of +15.25. The more pronounced Stage 2 interference in the largest model may reflect greater sensitivity of its high-capacity representations to the discrimi-native pressure of contrastive and hard-negative ob-jectives, or may be attributable to its LoRA-based adaptation strategy concentrating gradient updates in low-rank subspaces. Cleanly disentangling these factors would require controlled ablations match-ing scale and fine-tuning method, which we leave for future work. 
+
+Clustering gains scale with model capacity in-dependently of architecture. A consistent pat-tern across all models is that Clustering shows the largest absolute improvement after Stage 3 regularization. The magnitude of this gain dif-fers substantially: +5.72 for EmbeddingGemma-300M, +21.03 for Harrier-0.6B, and +15.25 for Qwen3-Embedding-8B. Notably, both Harrier-0.6B and EmbeddingGemma-300M follow asmooth, monotonic Clustering trajectory with no below-baseline regression, despite differing in ar-chitecture (decoder-only vs. bidirectional encoder). This suggests that the differences in adaptation dynamics observed across models are unlikely to be primarily attributable to attention mechanism alone. 
+
+D Extended Training Data Details and Preprocessing 
+
+This section provides comprehensive details on data formatting, preprocessing strategies, and strat-ified sampling procedures used to construct the TCFM training mixture. 
+
+D.1 Supervision Formatting Pipelines 
+
+To supply the precise learning signals required by our task-routing mechanism (Section 3.1), each raw dataset is converted into an objective-compatible format without introducing manual annotations: • Translation Supervision: Formatted as symmet-ric cross-lingual sentence pairs (xi, y i). Both 13 language directions are evaluated as anchors dur-ing multi-positive contrastive learning and Flow Matching transport. • Classification Supervision: Restructured into positive and negative semantic pairs based on class labels. Sentences sharing an identical label are paired as positives, while mismatched labels serve as negatives. • Pair Classification : Formatted into explicit triplet structures (xi, p i, n i). Entailment pairs are treated as positive candidates, while contra-diction pairs provide hard negatives for the hard-negative margin repair objective ( Lhn ). • Retrieval & Re-ranking Supervision: Struc-tured as asymmetric query-document pairs 
+
+(qi, d i). Unlike translation pairs, query-to-document alignment is computed strictly direc-tionally to preserve asymmetric relevance seman-tics. 
+
+D.2 Stratified Subsampling and Multi-Task Balancing 
+
+Directly training on native dataset distributions in-troduces severe optimization bottlenecks. Uncu-rated mixtures are heavily skewed toward massive foundational translation corpora,such as Samanan-tar, which contains over 49.7 million parallel sen-tences,causing gradient update directions to be dominated by translation alignment while math-ematically under-fitting lower-resource classifica-tion and retrieval tasks. To achieve balanced multi-task optimization across all 22 targeted Indic languages, we imple-ment a two-level stratified subsampling scheme: 1. Dataset Instance Capping: We cap the maxi-mum number of training instances per dataset (as reported in the “Train” column of Table 1), constraining total dataset volumes to prevent dominant corpora from monopolizing gradi-ent updates. 2. Cross-Lingual Uniformity: For multilin-gual datasets spanning multiple Indic lan-guages (e.g., IndicMSMARCO , IndicXNLI , and 
+
+MASSIVE ), we stratify sampling to enforce an equal representation per language, ensuring low-resource language scripts receive propor-tional optimization weight throughout all cur-riculum stages. 14
