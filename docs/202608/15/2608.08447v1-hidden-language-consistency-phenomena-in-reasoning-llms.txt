@@ -1,0 +1,2774 @@
+Hidden Language Consistency Phenomena in Reasoning LLMs
+Muhammad Ali Shafique
+Kansas State University
+alishafique@ksu.edu
+Kelly Marchisio
+Cohere
+kelly@cohere.com
+Abstract
+Multilingual reasoning models are commonly
+evaluated by whether they arrive at the cor-
+rect answer, but not by whether they pre-
+serve the intended language while reasoning
+and responding. This omission conceals im-
+portant multilingual behaviors that emerge as
+tasks become harder. In this paper, we study
+task difficulty, task accuracy, thinking-language
+consistency (TC), and answer-language con-
+sistency (AC) across reasoning models us-
+ing PolyMath benchmark in eight languages
+and four difficulty levels. We uncover four
+findings: (1) language consistency exhibits
+four difficulty-dependent behaviors: output-
+language consistency remains aligned with in-
+put, remains misaligned, degrades gradually,
+or collapses abruptly. (2) We identify the lan-
+guage consistency breakdown effect, where in-
+creasing difficulty can cause a sudden drop in
+output-language consistency, especially in less
+strongly represented and non-Latin-script lan-
+guages. (3) Due to this breakdown effect, ac-
+curacy can be preserved or even improved at
+a harder difficulty level as the model shifts to
+its internal dominant language. (4) Quantiza-
+tion can improve or degrade output-language
+consistency independently of its effect on accu-
+racy, with GPTQ and AWQ often outperform-
+ing AutoRound under tolerance-based voting
+with ϵ = 1.0. These results show that multilin-
+gual capability cannot be characterized by ac-
+curacy alone; reliable evaluation should jointly
+consider task accuracy, language consistency,
+and task difficulty for multilingual benchmarks.
+1
+Introduction
+Recent large language models (LLMs) with en-
+hanced reasoning capabilities have achieved strong
+performance on mathematical, scientific, and
+competition-level reasoning tasks (Jaech et al.,
+2024; Team et al., 2025b; Guo et al., 2025; Team,
+2025b; Rein et al., 2023; Lightman et al., 2024;
+Cobbe et al., 2021). These gains often rely on
+Low
+Medium
+High
+Top
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+Accuracy
+AC
+TC
+Figure 1: Difficulty-wise accuracy, thinking-language
+consistency (TC), and answer-language consistency
+(AC) of OLMo-3-7B-Think on Chinese PolyMath prob-
+lems. While accuracy decreases progressively with task
+difficulty, AC exhibits a sharp breakdown from 77.6% to
+13.9% between the low and medium levels. TC remains
+consistently low across all difficulty levels.
+long chain-of-thought reasoning (Wei et al., 2022),
+which can improve accuracy but also increase in-
+ference cost and lead models to “overthink” sim-
+ple problems (Chen et al., 2024b).
+As reason-
+ing models are increasingly used across languages,
+evaluation must consider not only whether the fi-
+nal answer is correct, but also whether the model
+preserves the requested language in its reasoning
+and/or response.
+Multilingual reasoning is commonly evaluated
+through accuracy across languages and difficulty
+levels. However, accuracy alone can conceal impor-
+tant multilingual behavior. A model may produce
+a correct answer while reasoning or responding
+in an unintended input language, or preserve the
+requested language while producing an incorrect
+answer. Final-answer accuracy, thinking-language
+consistency (TC), and answer-language consis-
+tency (AC) therefore capture distinct but comple-
+mentary dimensions of multilingual reasoning.
+1
+arXiv:2608.08447v1  [cs.CL]  9 Aug 2026
+
+
+Four Input–Output Language-Consistency Cases across Task Difficulty Levels
+(a) The model switches to Chinese for
+reasoning despite being instructed to
+think in English, while answering cor-
+rectly in English.
+Model Accuracy
+Input Consistency
+Output Consistency
+Low
+Med.
+High
+Top
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+Case 1: Output remains consistent.
+Low
+Med.
+High
+Top
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Case 2: Output remains inconsistent.
+Low
+Med.
+High
+Top
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+Case 3: Consistency declines gradually.
+Low
+Med.
+High
+Top
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Case 4: Consistency collapses abruptly.
+(b) Four difficulty-dependent language-consistency cases.
+Figure 2: Illustration and taxonomy of input–output language consistency in thinking traces. (a) An example of
+language switching within a thinking trace. (b) Four representative difficulty-dependent cases: Case 1, persistent
+alignment for English with Phi-4-mini-reasoning; Case 2, persistent misalignment for Arabic with Qwen3-30B-
+A3B-Thinking; Case 3, gradual degradation for Russian with DeepSeek-R1-Distill-Qwen-7B; and Case 4, abrupt
+collapse for Telugu with DeepSeek-R1-Distill-Qwen-7B.
+Task difficulty may further shape this relation-
+ship. Harder problems often require longer and
+more complex reasoning, increasing the likelihood
+of language drift. Language-specific factors, in-
+cluding script, tokenizer coverage, writing direc-
+tion, and multilingual representation, may further
+amplify this behavior (Ogueji et al., 2022; Team
+et al., 2022; Khondaker et al., 2023; Pozzobon
+et al., 2024). PolyMath (Wang et al., 2026) re-
+ports language-level output consistency scores and
+aggregate output consistency score across difficulty
+levels, but does not characterize how each output-
+language consistency scores evolves across diffi-
+culty levels. We fill this gap with a four-case tax-
+onomy and language-level consistency–difficulty
+analysis.
+As difficulty increases, output-language consis-
+tency may remain aligned with the input language,
+decline gradually, or collapse abruptly as models
+shift toward a dominant internal language (Fig-
+ure 1). We term this abrupt decline the language
+consistency breakdown effect.
+In this paper, we investigate how task difficulty
+affects multilingual language consistency and how
+this behavior interacts with task accuracy. We eval-
+uate five reasoning models and three non-reasoning
+models on PolyMath (Wang et al., 2026), cover-
+ing eight languages and four difficulty levels. The
+selected languages span diverse scripts and lev-
+els of multilingual representation. We measure
+final-answer accuracy, thinking-language consis-
+tency (TC), and answer-language consistency (AC)
+at each difficulty level, identify various language
+consistency behaviors, language-consistency break-
+down effect, prompt control, and systematically ex-
+amine how quantization changes output-language
+consistency scores. We find that:
+1. Language consistency exhibits four distinct
+difficulty-dependent behaviors (§4.1): We
+identify a taxonomy of multilingual generation
+behavior across task difficulty: (1) output stays
+consistent with input language-consistency, (2)
+output stays inconsistent, (3) output-language
+consistency declines gradually, and (4) output-
+language consistency collapses abruptly. This
+taxonomy shows that output-language consis-
+tency degradation is not a single uniform phe-
+nomenon, but can emerge differently across
+2
+
+
+models and languages (Figure 2).
+2. Increasing task difficulty degrades output-
+language consistency and can trigger
+abrupt drop (§4.2): As problems become
+harder, output-language consistency generally
+declines. When it exhibits a sudden and sub-
+stantial drop between consecutive difficulty
+levels, we term this the language consistency
+breakdown effect, which is more prevalent in
+lower-resource and non-Latin-script languages
+(Case 4 in Figure 2b).
+3. Language consistency breakdown breaks
+the expected monotonic accuracy–difficulty
+relationship (§4.3): Model accuracy is gener-
+ally expected to decline monotonically as task
+difficulty increases. We uncover non-linear
+behavior that breaks this rule: accuracy can
+preserve or improve at a higher difficulty level
+due to language consistency breakdown effect
+in thinking-language consistency (TC) and/or
+answer-language consistency (AC).
+4. Quantization affects output-language con-
+sistency (§5.1): To the best of our knowledge,
+this is the first study to systematically exam-
+ine how quantization affects output-language
+consistency in multilingual reasoning models.
+We find that quantization can either improve or
+degrade language consistency, independently
+of its effect on task accuracy. Under tolerance-
+based voting with ϵ = 1.0, GPTQ and AWQ
+often preserves or improves output-language
+consistency more effectively than AutoRound.
+Overall, our work highlights that multilingual
+models cannot be evaluated by final-answer accu-
+racy alone; task difficulty, thinking-language con-
+sistency, and answer-language consistency should
+be considered jointly to better understand multilin-
+gual reasoning behavior.
+2
+Preliminary and Related Work
+Multilingual Reasoning.
+Multilingual reasoning
+requires models to solve problems correctly while
+preserving the requested language in the reasoning
+trace, final answer, or both. Prior work shows that
+multilingual LLM performance varies substantially
+across languages because of differences in training
+data, tokenizer coverage, script, and degree of mul-
+tilingual representation (Ahia et al., 2021; Ogueji
+et al., 2022; Team et al., 2022; Khondaker et al.,
+2023; Pozzobon et al., 2024). These differences
+may become more pronounced in reasoning tasks,
+where longer and more complex generations create
+additional chances for language drift.
+Recent reasoning-oriented LLMs, such as Ope-
+nAI o1 (Jaech et al., 2024), DeepSeek-R1 (Guo
+et al., 2025), QwQ (Team, 2025b; Yang et al.,
+2024), and Kimi (Team et al., 2025b), have shown
+strong performance on mathematical and multi-
+step reasoning tasks. However, their evaluation
+commonly emphasizes final-answer accuracy, with
+less attention to whether the reasoning trace and
+final answer remain in the requested language.
+Code-Switching.
+Code-switching refers to natu-
+ral alternation between languages within an utter-
+ance or conversation (Do˘gruöz et al., 2021). Prior
+work has evaluated code-switched language un-
+derstanding and generation on tasks such as senti-
+ment analysis, machine translation, summarization,
+and language identification (Khanuja et al., 2020;
+Winata et al., 2023). These studies typically use
+human-produced data where switching between
+English and another language is intentional and
+linguistically meaningful.
+Despite this progress, current models still strug-
+gle to understand and generate code-switched text
+for several languages (Yong et al., 2023; Zhang
+et al., 2023). Our focus differs from natural code-
+switching because we study unintended language
+changes in model generations.
+Language Confusion.
+Unintended generation in
+the wrong language has been studied as source-
+language hallucination in zero-shot cross-lingual
+transfer (Vu et al., 2022; Li and Murray, 2023;
+Pfeiffer et al., 2023; Chirkova and Nikoulina, 2024)
+and as off-target translation in multilingual ma-
+chine translation (Chen et al., 2023; Sennrich et al.,
+2024). These behaviors occur when multilingual
+models generate in a language different from the
+requested target language in input prompt.
+Similar language confusion has also been ob-
+served in LLM responses (Marchisio et al., 2024;
+Kew et al., 2024; Faisal and Anastasopoulos, 2023;
+Chen et al., 2024a; Holtermann et al., 2024). Most
+prior work studies this behavior at the response
+level. In contrast, we separately evaluate language
+consistency in reasoning traces and final answers.
+This distinction is important because a model may
+reason in one language and answer in another.
+3
+
+
+Model
+Type
+Avg. Acc.
+TC below τcons @ Top
+AC below τcons @ Top
+DeepSeek-R1-Distill-Qwen-1.5B
+Reasoning
+20.3
+6/8
+6/8
+DeepSeek-R1-Distill-Qwen-7B
+Reasoning
+36.5
+6/8
+6/8
+OLMo-3-7B-Think
+Reasoning
+42.7
+6/8
+7/8
+Phi-4-mini-reasoning
+Reasoning
+32.5
+6/8
+6/8
+Qwen3-30B-A3B-Thinking-2507
+Reasoning
+62.3
+5/8
+0/8
+Gemma-3-12b-it
+Non-reasoning
+31.3
+N/A
+0/8
+Phi-4-mini-instruct
+Non-reasoning
+15.6
+N/A
+1/8
+Qwen3-30B-A3B-Instruct-2507
+Non-reasoning
+50.4
+N/A
+0/8
+Table 1: Overall task accuracy and language-consistency behavior across reasoning and non-reasoning models using
+forced-target-language prompting. Avg. Acc. denotes average PolyMath accuracy across eight languages. TC
+Below τcons @ Top and AC Below τcons @ Top count the languages with thinking- and answer-language consistency
+scores below τcons = 90% at Top difficulty. The threshold τcons is an analysis hyperparameter.
+3
+Experimental Setup and Dataset
+Evaluation Benchmark.
+We evaluate the mod-
+els on PolyMath (Wang et al., 2026), a multilingual
+mathematical benchmark spanning broad difficulty
+ranges: “low”: K-12 Mathematics, “medium”:
+High-School and University Level, “high”: com-
+petition math, and “top": Top Olympiad and Fron-
+tier Mathematics. We evaluate model performance
+across eight languages and study the effect of diffi-
+culty levels on accuracy and language consistency
+in reasoning and answer traces. PolyMath is se-
+lected because it spans diverse languages and dif-
+ficulty levels and provides standard scripts1 for
+evaluating final-answer correctness and language
+consistency.
+Models.
+We evaluate five reasoning models and
+three non-reasoning models: DeepSeek-R1-Distill-
+Qwen-1.5B, DeepSeek-R1-Distill-Qwen-7B (Guo
+et al., 2025), OLMo-3-7B-Think (Olmo et al.,
+2026), Phi-4-mini-reasoning (Abdin et al., 2025),
+and
+Qwen3-30B-A3B-Thinking-2507
+(Team,
+2025a) for reasoning, and Gemma-3-12B-it (Team
+et al., 2025a), Phi-4-mini-instruct, and Qwen3-
+30B-A3B-Instruct-2507 as non-reasoning models.
+This model selection allows comparison of
+multilingual
+behavior
+across
+reasoning
+and
+non-reasoning settings, and model scales.
+Inference Setup and Prompting Strategy.
+All
+inference is performed using the vLLM (Kwon et al.,
+2023) framework. We use the same inference set-
+tings as (Liu et al., 2025), with temperature = 0.6
+and top-p = 0.95. Our setup differs only in the
+maximum model sequence length; we use 65,536
+instead of 32,768 because multilingual generations
+1The official PolyMath scripts are used to compute final-
+answer correctness and language-consistency scores.
+may require more tokens to express the same se-
+mantic content. To reduce generation variation,
+models are evaluated using consistent inference set-
+tings across languages and difficulty levels with
+three seed values.
+For each problem,
+we use forced-target-
+language prompting in which model is instructed
+to reason and answer in the target language. The
+prompting strategy is explained in Appendix B.
+Evaluation Metrics.
+In addition to the stan-
+dard accuracy reported on PolyMath, we evaluate
+thinking-language consistency (TC) and answer-
+language consistency (AC) scores. Let ˆℓ,r denote
+the detected language of the reasoning trace and ℓi
+the requested language. We define TC as:
+TC = 1
+N
+X
+1[ˆℓ,r
+i = ℓi].
+(1)
+Similarly, let ˆℓ,a denote the detected language of
+the final answer. We define AC as:
+AC = 1
+N
+X
+1[ˆℓ,a
+i = ℓi].
+(2)
+We report overall and difficulty-wise accuracy,
+TC, and AC scores across languages and models
+to study whether increasing task difficulty affects
+final-answer correctness and language consistency
+differently. Further hardware and software details
+are reported in Appendix D.
+4
+Results
+Table 1 summarizes these difficulty-dependent
+behaviors across five reasoning and three non-
+reasoning
+models.
+Figures
+3
+and
+4
+re-
+port final-answer accuracy, thinking-language
+consistency (TC), and answer-language consis-
+tency (AC) across four difficulty levels for
+4
+
+
+DeepSeek-R1-Distill-Qwen-7B
+Accuracy
+Answer Consistency (AC)
+Thinking Consistency (TC)
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(a) English
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(b) Chinese
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(c) Arabic
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(d) Bengali
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(e) French
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(f) Russian
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(g) Swahili
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(h) Telugu
+Figure 3: Difficulty-wise final-answer accuracy, thinking-language consistency (TC), and answer-language con-
+sistency (AC) of DeepSeek-R1-Distill-Qwen-7B across eight languages and four PolyMath difficulty levels: 1 =
+low, 2 = medium, 3 = high, and 4 = top. Results: accuracy generally decreases with task-difficulty, but thinking-
+and answer-language consistency are language-dependent: accurate in English and Chinese, but breaking down for
+languages like Arabic, Bengali, French, Swahili, and Telugu.
+OLMo-3-7B-Think
+Accuracy
+Answer Consistency (AC)
+Thinking Consistency (TC)
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(a) English
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(b) Chinese
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(c) Arabic
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(d) Bengali
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(e) French
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(f) Russian
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(g) Swahili
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(h) Telugu
+Figure 4: Analogous plot to Figure 3, for OLMo-3-7B-Think. English and Russian maintain language consistency,
+while other languages consistency degrades rapidly with task difficulty.
+5
+
+
+Model
+Method
+W-A-KV Bits
+Avg. ∆Acc.
+Avg. ∆TC
+TC Co-wins
+TC Co-winner Lang.
+DeepSeek-R1
+Distill-Qwen-7B
+GPTQ
+4-16-16
+-3.39
+-5.40
+6/8
+en, zh, ar, fr, sw, te
+AWQ
+4-16-16
+-2.53
+-3.83
+5/8
+en, ar, bn, fr, ru
+AutoRound
+4-16-16
+-0.80
+-6.75
+3/8
+en, ar, bn
+OLMo-3-7B-Think
+GPTQ
+4-16-16
+-2.33
++4.28
+7/8
+en, zh, ar, bn, ru, sw, te
+AWQ
+4-16-16
+-2.39
++2.04
+6/8
+en, ar, bn, fr, ru, sw
+AutoRound
+4-16-16
+-1.14
+-0.19
+5/8
+en, ar, fr, sw, te
+Table 2: Summary of accuracy and thinking-language consistency (TC) ∆scores relative to Baseline across eight
+languages for DeepSeek-R1-Distill-Qwen-7B and OLMo-3-7B-Think. Avg. ∆Acc. and Avg. ∆TC report average
+changes over the eight shown languages. Green/red cells mark the best/worst average values among GPTQ, AWQ,
+and AutoRound within each model. Yellow cells summarize tolerance-based TC voting co-winners with ϵ = 1.0,
+i.e., methods within one TC point of the best ∆TC for each model-language group. Full per-language Acc./TC and
+∆Acc./∆TC results are reported in Table 6, 7, and 8.
+DeepSeek-R1-Distill-Qwen-7B and OLMo-3-7B-
+Think, respectively. Results for Qwen3-30B-A3B-
+Instruct, Qwen3-30B-A3B-Thinking, DeepSeek-
+R1-Distill-Qwen-1.5B, Gemma-3-12B-IT, Phi-4-
+mini-instruct, and Phi-4-mini-reasoning are pro-
+vided in Appendix Figures 6, 7, 8, 9, 10, and 11.
+4.1
+Four Difficulty-Dependent
+Language-Consistency Cases
+Output-language consistency does not follow a sin-
+gle pattern as task difficulty increases. Across mod-
+els and languages, we identify four representative
+cases based on how the output language aligns with
+the input language from low to top difficulty, as il-
+lustrated in Figure 2.
+Case 1: Output language remains consistent
+with the input language. Some models preserve
+the requested language across all difficulty levels,
+even as task accuracy decreases. For example, Phi-
+4-mini-reasoning maintains approximately 100%
+answer- and thinking-language consistency for En-
+glish from low through top difficulty, while accu-
+racy decreases from 94.0% to 14.0% (Figure 11).
+Case 2: Output language remains inconsis-
+tent with the input language. Some models con-
+sistently reason in a language different from the
+requested input language. For Arabic, Qwen3-
+30B-A3B-Thinking-2507 maintains 0% thinking-
+language consistency across all difficulty levels, in-
+dicating that model prefers to use dominant internal
+reasoning language (English) despite the Arabic in-
+put. Similar behavior appears for Bengali, French,
+Swahili, and Telugu (Figure 7).
+Case 3: Output-language consistency declines
+gradually. Language consistency may progres-
+sively decrease as task difficulty increases. For Rus-
+sian in DeepSeek-R1-Distill-Qwen-7B, thinking-
+language consistency decreases from 97.1% at low
+difficulty to 86.7% at top difficulty (Figure 3).
+Case 4:
+Output-language consistency de-
+clines abruptly. In some cases, language con-
+sistency exhibits a sudden and substantial de-
+crease between consecutive difficulty levels. For
+Telugu, DeepSeek-R1-Distill-Qwen-7B decreases
+from 99.2% at low difficulty to 11.7% at medium
+difficulty (Figure 3). We formally define and an-
+alyze this behavior as the language consistency
+breakdown effect in Section 4.2.
+4.2
+Language Consistency Breakdown Effect
+As task difficulty increases, reasoning models of-
+ten become less consistent in the language used for
+their thinking traces and final answers. We define
+the language consistency breakdown effect using a
+user-defined drop threshold ∆break. Between con-
+secutive difficulty levels d and d + 1, a breakdown
+occurs when
+∆TCd = TCd −TCd+1 ≥∆break,
+(3)
+∆ACd = ACd −ACd+1 ≥∆break.
+(4)
+We set ∆break = 30 percentage points and re-
+port sensitivity results for ∆break ∈{30, 50, 70}
+in Appendix C.2. For DeepSeek-R1-Distill-Qwen-
+7B, Bengali TC drops from 97.9% to 1.6%, while
+AC drops from 98.1% to 0.5% between low and
+medium difficulty. Similar breakdowns occur for
+Arabic, French, Swahili, and Telugu, whereas Chi-
+nese and Russian remain comparatively stable.
+The
+effect
+is
+strongly
+model-dependent.
+DeepSeek-R1-Distill-Qwen-1.5B and 7B exhibit
+AC and TC breakdowns in 5/8 languages, respec-
+tively. Qwen3-30B-A3B-Thinking-2507 exhibits
+no breakdown in either metric.
+Increasing task difficulty generally reduces
+TC and AC, with some languages exhibiting
+abrupt breakdowns in one or both.
+6
+
+
+en
+zh
+ar
+bn
+fr
+ru
+sw
+te
+0
+20
+40
+60
+80
+100
+Language Code
+Aggregated Thinking Consistency (%)
+Baseline
+GPTQ
+AWQ
+AutoRound
+Figure 5: Aggregated thinking-language consistency of Baseline and W4A16-quantized DeepSeek-R1-Distill-Qwen-
+7B across eight languages.
+4.3
+Language consistency breakdown breaks
+monotonic accuracy–difficulty trend
+Model accuracy is generally expected to decline
+monotonically as task difficulty increases. How-
+ever, language consistency breakdown effect intro-
+duces non-linear behavior that breaks this expected
+relationship: accuracy can preserve or improve at a
+higher difficulty level when TC and AC collapse.
+For DeepSeek-R1-Distill-Qwen-7B, Bengali ac-
+curacy increases (Figure 3) from 47.5% at low dif-
+ficulty to 50.9% at medium difficulty, while TC
+decreases from 97.9% to 1.6% and AC decreases
+from 98.1% to 0.5%. Swahili accuracy similarly
+increases from 4.5% to 35.7%, despite TC and AC
+collapsing from 89.9% and 85.3% to 1.9% and
+1.6%, respectively. Telugu exhibits the same pat-
+tern, with accuracy increasing from 22.9% to 41.9%
+while TC and AC decrease sharply.
+These results show that improved accuracy at a
+harder difficulty level does not necessarily indicate
+improved reasoning or answer consistency. Instead,
+the model may solve more problems by shifting
+toward a more dominant internal language during
+thinking or answer generation.
+The language consistency breakdown breaks
+the expected monotonic accuracy–difficulty re-
+lationship, revealing that accuracy can preserve
+or increase at a higher difficulty level when lan-
+guage consistency collapses.
+5
+Analyses and Discussion
+In this section, we analyze output-language consis-
+tency from perspectives of quantization, reasoning
+versus non-reasoning, and prompt control.
+5.1
+Impact of Quantization
+How does quantization affect multilingual reason-
+ing accuracy and thinking-language consistency?
+Quantization affects multilingual reasoning un-
+evenly: final-answer accuracy is generally pre-
+served or reduced, whereas output-language con-
+sistency can either improve or degrade depending
+on the model, language, and quantization method.
+To the best of our knowledge, this is the first sys-
+tematic study of how quantization affects thinking-
+language consistency in multilingual reasoning
+models.
+Among the evaluated W4A16 integer methods,
+AutoRound provides the strongest accuracy preser-
+vation. For DeepSeek-R1-Distill-Qwen-7B, Au-
+toRound reduces average accuracy by only 0.80
+points, compared with 2.53 for AWQ and 3.39
+for GPTQ. Similarly, for OLMo-3-7B-Think, Au-
+toRound yields the smallest degradation at 1.14
+points, compared with 2.33 for GPTQ and 2.39 for
+AWQ as showed in Table 2. This gives the overall
+accuracy-preservation order:
+AutoRound > AWQ ≥GPTQ.
+This ordering does not extend to output-language
+consistency, since quantization affects language
+consistency differently. It can degrade or improve
+and can be skewed by large gains or drops in a small
+number of languages. Therefore, we use tolerance-
+based voting as the main criteria to rank quanti-
+zation methods for TC and report avg. ∆TC as a
+complementary magnitude measure. The tolerance
+parameter ϵ defines the minimum TC difference
+considered meaningful, preventing very small gaps
+7
+
+
+from being over-interpreted. A method is counted
+as a co-winner if
+∆TCm ≥max
+m′∈M ∆TCm′ −ϵ,
+where M = {GPTQ, AWQ, AutoRound} and ϵ =
+1.0 percentage point. Under this criterion, GPTQ
+receives the better support for preserving or improv-
+ing TC, while AWQ achieves larger-magnitude im-
+provements; AutoRound performs comparatively
+worse as illustrated in Figure 5 and 12.
+Ap-
+pendix C.1 reports additional TC voting results
+for ϵ ∈{0.5, 1.0, 2.0}.
+Quantization affects accuracy and language
+consistency differently: AutoRound best pre-
+serves final-answer accuracy, while GPTQ and
+AWQ more often preserve or improve thinking-
+language consistency.
+5.2
+Reasoning versus Non-Reasoning
+How does task difficulty affect language consis-
+tency in reasoning and non-reasoning models?
+Reasoning and non-reasoning models exhibit dis-
+tinct language-consistency behavior as task diffi-
+culty increases. The evaluated non-reasoning mod-
+els remain comparatively stable, with no answer-
+language consistency (AC) breakdown across the
+eight languages. In contrast, DeepSeek-R1-Distill-
+Qwen-1.5B and 7B, OLMo-3-7B-Think, and Phi-4-
+mini-reasoning exhibit AC breakdowns in multiple
+languages as illustrated in Figure 8, 3, 4, and 11.
+Language-consistency degradation becomes
+more pronounced in reasoning models as task
+difficulty increases.
+5.3
+Prompt Control
+Can allowing models to reason in their preferred
+language improve answer-language consistency?
+Our main experiments explicitly instruct each
+model to reason and answer in the target lan-
+guage. As a prompt control, we relax the reasoning-
+language constraint and allow the model to select
+its preferred reasoning language while still requir-
+ing the final answer in the target language.
+We evaluate this control on DeepSeek-R1-Distill-
+Qwen-7B and Phi-4-mini-reasoning.
+Allowing
+unrestricted reasoning does not ensure answer-
+language consistency. DeepSeek-R1-Distill-Qwen-
+7B achieves answer-language consistency below
+τcons = 90% at Top difficulty for 6/8 languages.
+Phi-4-mini-reasoning achieves answer-language
+consistency below the threshold for 7/8 languages.
+English remains highly consistent, whereas Ara-
+bic, Bengali, French, Swahili, and Telugu exhibit
+substantially lower AC (Table 5).
+Allowing models to reason in their preferred
+language does not reliably preserve the re-
+quested answer language, particularly at higher
+difficulty levels.
+6
+Conclusion
+In this paper, we uncover hidden language-
+consistency phenomena in reasoning and non-
+reasoning LLMs, revealing how task difficulty af-
+fects final-answer accuracy, thinking-language con-
+sistency (TC), and answer-language consistency
+(AC). Using PolyMath across eight languages and
+four difficulty levels, we show that accuracy and
+language consistency capture distinct aspects of
+multilingual capability.
+Our results reveal four difficulty-dependent
+language-consistency behaviors, ranging from con-
+sistent TC and AC to gradual degradation and
+abrupt collapse. Increasing task difficulty gener-
+ally reduces thinking- and answer-language con-
+sistency, with some languages exhibiting the lan-
+guage consistency breakdown effect, where TC or
+AC drops abruptly. This effect is more prevalent
+in lower-resource and non-Latin-script languages
+and is substantially more pronounced in several rea-
+soning models, while the evaluated non-reasoning
+models maintain comparatively consistent answer-
+language consistency.
+We also uncover non-
+linear behavior that breaks the expected accuracy–
+difficulty relationship: accuracy can improve at a
+higher difficulty level as TC and AC collapse.
+Quantization further affects these dimensions
+unevenly. It can improve or degrade language-
+consistency
+independently
+of
+task
+accuracy.
+Among the evaluated W4A16 integer methods,
+AutoRound best preserves final-answer accuracy,
+while AWQ and GPTQ more often preserve
+or improve thinking-language consistency under
+tolerance-based voting with ϵ = 1.0.
+Overall, multilingual capability cannot be char-
+acterized by accuracy alone. Reliable evaluation
+should jointly consider task difficulty, accuracy,
+answer- and thinking-language consistency scores.
+7
+Limitations
+Model coverage.
+We evaluate five open rea-
+soning models and three non-reasoning models
+across several model families and scales. However,
+8
+
+
+our findings may not generalize to substantially
+larger models, closed-source systems, or models
+trained with different reasoning and post-training
+strategies.
+Language coverage.
+We evaluate eight lan-
+guages from PolyMath, selected to cover different
+scripts and levels of multilingual representation.
+The observed language-consistency patterns may
+differ for other languages, particularly those that
+are less represented in multilingual model training.
+Benchmark coverage.
+Our experiments focus
+on PolyMath, a multilingual mathematical reason-
+ing benchmark with four difficulty levels. The
+observed difficulty-related language-consistency
+breakdown may differ for other reasoning domains,
+such as scientific reasoning, coding, or open-ended
+tasks.
+Prompt dependence.
+Our experiments use
+native-language reasoning and boxed-answer in-
+structions. Different prompting strategies, such as
+English reasoning prompts across all languages,
+free-form responses, or few-shot prompting, may
+produce different language-consistency behavior.
+References
+Marah Abdin, Sahaj Agarwal, Ahmed Awadallah, Vid-
+hisha Balachandran, Harkirat Behl, Lingjiao Chen,
+Gustavo de Rosa, Suriya Gunasekar, Mojan Java-
+heripi, Neel Joshi, Piero Kauffmann, Yash Lara,
+Caio César Teodoro Mendes, Arindam Mitra, Be-
+smira Nushi, Dimitris Papailiopoulos, Olli Saarikivi,
+Shital Shah, Vaishnavi Shrivastava, and 4 others.
+2025. Phi-4-reasoning technical report. Preprint,
+arXiv:2504.21318.
+Orevaoghene Ahia, Julia Kreutzer, and Sara Hooker.
+2021.
+The low-resource double bind:
+An em-
+pirical study of pruning for low-resource machine
+translation.
+In Findings of the Association for
+Computational Linguistics: EMNLP 2021, pages
+3316–3333.
+Liang Chen, Shuming Ma, Dongdong Zhang, Furu Wei,
+and Baobao Chang. 2023. On the off-target problem
+of zero-shot multilingual neural machine translation.
+In Findings of the Association for Computational
+Linguistics: ACL 2023, pages 9542–9558, Toronto,
+Canada. Association for Computational Linguistics.
+Pinzhen Chen, Shaoxiong Ji, Nikolay Bogoychev, An-
+drey Kutuzov, Barry Haddow, and Kenneth Heafield.
+2024a. Monolingual or multilingual instruction tun-
+ing: Which makes a better alpaca. In Findings of the
+Association for Computational Linguistics: EACL
+2024, pages 1347–1356, St. Julian’s, Malta. Associa-
+tion for Computational Linguistics.
+Xingyu Chen, Jiahao Xu, Tian Liang, Zhiwei He,
+Jianhui Pang, Dian Yu, Linfeng Song, Qiuzhi Liu,
+Mengfei Zhou, Zhuosheng Zhang, and 1 others.
+2024b.
+Do not think that much for 2+ 3=?
+on
+the overthinking of o1-like llms.
+arXiv preprint
+arXiv:2412.21187.
+Wenhua Cheng, Weiwei Zhang, Haihao Shen, Yiyang
+Cai, Xin He, Lv Kaokao, and Yi Liu. 2024. Optimize
+weight rounding via signed gradient descent for the
+quantization of llms. In Findings of the Association
+for Computational Linguistics: EMNLP 2024, pages
+11332–11350.
+Nadezhda Chirkova and Vassilina Nikoulina. 2024.
+Key ingredients for effective zero-shot cross-
+lingual knowledge transfer in generative tasks.
+In Proceedings of the 2024 Conference of the
+North American Chapter of the Association for
+Computational
+Linguistics:
+Human
+Language
+Technologies (Volume 1: Long Papers), pages 7222–
+7238, Mexico City, Mexico. Association for Compu-
+tational Linguistics.
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian,
+Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias
+Plappert, Jerry Tworek, Jacob Hilton, Reiichiro
+Nakano, Christopher Hesse, and John Schulman.
+2021. Training verifiers to solve math word prob-
+lems. arXiv preprint arXiv:2110.14168.
+A. Seza Do˘gruöz, Sunayana Sitaram, Barbara E.
+Bullock, and Almeida Jacqueline Toribio. 2021.
+A survey of code-switching:
+Linguistic and so-
+cial perspectives for language technologies.
+In
+Proceedings of the 59th Annual Meeting of the
+Association for Computational Linguistics and the
+11th International Joint Conference on Natural
+Language Processing (Volume 1:
+Long Papers),
+pages 1654–1666, Online. Association for Computa-
+tional Linguistics.
+Fahim Faisal and Antonios Anastasopoulos. 2023.
+Geographic and geopolitical biases of language
+models.
+In Proceedings of the 3rd Workshop
+on Multi-lingual Representation Learning (MRL),
+pages 139–163, Singapore. Association for Compu-
+tational Linguistics.
+Elias Frantar, Saleh Ashkboos, Torsten Hoefler, and
+Dan Alistarh. 2022. Gptq: Accurate post-training
+quantization for generative pre-trained transformers.
+arXiv preprint arXiv:2210.17323.
+Leo Gao, Stella Biderman, Sid Black, Laurence Gold-
+ing, Travis Hoppe, Charles Foster, Jason Phang,
+Horace He, Anish Thite, Noa Nabeshima, and 1
+others. 2020.
+The pile: An 800gb dataset of di-
+verse text for language modeling.
+arXiv preprint
+arXiv:2101.00027.
+Daya Guo, Dejian Yang, Haowei Zhang, Junxiao
+Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu
+Zhang, Shirong Ma, Xiao Bi, and 1 others. 2025.
+Deepseek-r1: Incentivizing reasoning capability in
+9
+
+
+llms via reinforcement learning.
+arXiv preprint
+arXiv:2501.12948.
+Carolin Holtermann, Paul Röttger, Timm Dill, and
+Anne Lauscher. 2024. Evaluating the elementary
+multilingual capabilities of large language models
+with multiq.
+In Findings of the Association for
+Computational Linguistics: ACL 2024, pages 4476–
+4494.
+Aaron Jaech, Adam Kalai, Adam Lerer, Adam Richard-
+son, Ahmed El-Kishky, Aiden Low, Alec Helyar,
+Aleksander Madry, Alex Beutel, Alex Carney, and 1
+others. 2024. Openai o1 system card. arXiv preprint
+arXiv:2412.16720.
+Tannon Kew, Florian Schottmann, and Rico Sennrich.
+2024. Turning english-centric llms into polyglots:
+How much multilinguality is needed? In Findings
+of the Association for Computational Linguistics:
+EMNLP 2024, pages 13097–13124.
+Simran Khanuja, Sandipan Dandapat, Anirudh Srini-
+vasan, Sunayana Sitaram, and Monojit Choud-
+hury. 2020.
+GLUECoS: An evaluation bench-
+mark for code-switched NLP.
+In Proceedings of
+the 58th Annual Meeting of the Association for
+Computational Linguistics, pages 3575–3585, On-
+line. Association for Computational Linguistics.
+Md Tawkat Islam Khondaker, Abdul Waheed, Muham-
+mad Abdul-Mageed, and 1 others. 2023. Gptarae-
+val: A comprehensive evaluation of chatgpt on ara-
+bic nlp. In Proceedings of the 2023 Conference on
+Empirical Methods in Natural Language Processing,
+pages 220–247.
+Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying
+Sheng, Lianmin Zheng, Cody Hao Yu, Joseph Gon-
+zalez, Hao Zhang, and Ion Stoica. 2023. Efficient
+memory management for large language model serv-
+ing with pagedattention. In Proceedings of the 29th
+Symposium on Operating Systems Principles, pages
+611–626.
+Tianjian Li and Kenton Murray. 2023. Why does zero-
+shot cross-lingual generation fail? an explanation
+and a solution. In Findings of the Association for
+Computational Linguistics: ACL 2023, pages 12461–
+12476, Toronto, Canada. Association for Computa-
+tional Linguistics.
+Hunter Lightman, Vineet Kosaraju, Yuri Burda, Harri-
+son Edwards, Bowen Baker, Teddy Lee, Jan Leike,
+John Schulman, Ilya Sutskever, and Karl Cobbe.
+2024. Let’s verify step by step. In International
+Conference on Learning Representations, volume
+2024, pages 39578–39601.
+Ji Lin, Jiaming Tang, Haotian Tang, Shang Yang,
+Wei-Ming Chen, Wei-Chen Wang, Guangxuan
+Xiao, Xingyu Dang, Chuang Gan, and Song Han.
+2024.
+Awq: Activation-aware weight quantiza-
+tion for on-device llm compression and acceleration.
+Proceedings of machine learning and systems, 6:87–
+100.
+Ruikang Liu, Yuxuan Sun, Manyi Zhang, Haoli Bai,
+Xianzhi Yu, Tiezheng Yu, Chun Yuan, and Lu Hou.
+2025. Quantization hurts reasoning? an empirical
+study on quantized reasoning models. arXiv preprint
+arXiv:2504.04823.
+Kelly Marchisio, Wei-Yin Ko, Alexandre Berard, Théo
+Dehaze, and Sebastian Ruder. 2024. Understand-
+ing and mitigating language confusion in LLMs. In
+Proceedings of the 2024 Conference on Empirical
+Methods in Natural Language Processing, pages
+6653–6677, Miami, Florida, USA. Association for
+Computational Linguistics.
+Kelechi Ogueji, Orevaoghene Ahia, Gbemileke Onilude,
+Sebastian Gehrmann,
+Sara Hooker,
+and Julia
+Kreutzer. 2022. Intriguing properties of compres-
+sion on multilingual models. In Proceedings of the
+2022 Conference on Empirical Methods in Natural
+Language Processing, pages 9092–9110, Abu Dhabi,
+United Arab Emirates. Association for Computa-
+tional Linguistics.
+Team Olmo, :, Allyson Ettinger, Amanda Bertsch,
+Bailey Kuehl, David Graham, David Heineman,
+Dirk Groeneveld, Faeze Brahman, Finbarr Timbers,
+Hamish Ivison, Jacob Morrison, Jake Poznanski,
+Kyle Lo, Luca Soldaini, Matt Jordan, Mayee Chen,
+Michael Noukhovitch, Nathan Lambert, and 50 oth-
+ers. 2026. Olmo 3. Preprint, arXiv:2512.13961.
+Jonas Pfeiffer, Francesco Piccinno, Massimo Nicosia,
+Xinyi Wang, Machel Reid, and Sebastian Ruder.
+2023.
+mmT5: Modular multilingual pre-training
+solves source language hallucinations. In Findings
+of the Association for Computational Linguistics:
+EMNLP 2023, pages 1978–2008, Singapore. Associ-
+ation for Computational Linguistics.
+Luiza Pozzobon, Patrick Lewis, Sara Hooker, and Beyza
+Ermis. 2024. From one to many: Expanding the
+scope of toxicity mitigation in language models.
+Preprint, arXiv:2403.03893.
+David Rein, Betty Li Hou, Asa Cooper Stickland, Jack-
+son Petty, Richard Yuanzhe Pang, Julien Dirani, Ju-
+lian Michael, and Samuel R Bowman. 2023. Gpqa: A
+graduate-level google-proof q&a benchmark. arXiv
+preprint arXiv:2311.12022.
+Rico Sennrich, Jannis Vamvas, and Alireza Moham-
+madshahi. 2024. Mitigating hallucinations and off-
+target machine translation with source-contrastive
+and language-contrastive decoding. In Proceedings
+of the 18th Conference of the European Chapter
+of the Association for Computational Linguistics
+(Volume 2: Short Papers), pages 21–33, St. Julian’s,
+Malta. Association for Computational Linguistics.
+Gemma Team, Aishwarya Kamath, Johan Ferret, Shreya
+Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin,
+Tatiana Matejovicova, Alexandre Ramé, Morgane
+Rivière, Louis Rouillard, Thomas Mesnard, Geoffrey
+Cideron, Jean bastien Grill, Sabela Ramos, Edouard
+Yvinec, Michelle Casbon, Etienne Pot, Ivo Penchev,
+10
+
+
+and 197 others. 2025a. Gemma 3 technical report.
+Preprint, arXiv:2503.19786.
+Kimi Team, Angang Du, Bofei Gao, Bowei Xing,
+Changjiu Jiang, Cheng Chen, Cheng Li, Chenjun
+Xiao, Chenzhuang Du, Chonghua Liao, Chuning
+Tang, Congcong Wang, Dehao Zhang, Enming Yuan,
+Enzhe Lu, Feng Tang, Flood Sung, Guangda Wei,
+Guokun Lai, and 75 others. 2025b.
+Kimi k1.5:
+Scaling reinforcement learning with llms. ArXiv,
+abs/2501.12599.
+NLLB Team, Marta R. Costa-jussà, James Cross, Onur
+Çelebi, Maha Elbayad, Kenneth Heafield, Kevin Hef-
+fernan, Elahe Kalbassi, Janice Lam, Daniel Licht,
+Jean Maillard, Anna Sun, Skyler Wang, Guillaume
+Wenzek, Al Youngblood, Bapi Akula, Loic Barrault,
+Gabriel Mejia Gonzalez, Prangthip Hansanti, and
+20 others. 2022.
+No language left behind: Scal-
+ing human-centered machine translation. Preprint,
+arXiv:2207.04672.
+Qwen Team. 2025a. Qwen3 technical report. Preprint,
+arXiv:2505.09388.
+Qwen Team. 2025b. Qwq-32b: Embracing the power
+of reinforcement learning.
+Tu Vu, Aditya Barua, Brian Lester, Daniel Cer, Mo-
+hit Iyyer, and Noah Constant. 2022. Overcoming
+catastrophic forgetting in zero-shot cross-lingual gen-
+eration. In Proceedings of the 2022 Conference on
+Empirical Methods in Natural Language Processing,
+pages 9279–9300, Abu Dhabi, United Arab Emirates.
+Association for Computational Linguistics.
+Yiming Wang, Pei Zhang, Jialong Tang, Hao-Ran
+Wei, Baosong Yang, Rui Wang, Chenshu Sun,
+Feitong Sun, Jiran Zhang, Junxuan Wu, and 1 others.
+2026. Polymath: Evaluating mathematical reason-
+ing in multilingual contexts. Advances in Neural
+Information Processing Systems, 38.
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten
+Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou,
+and 1 others. 2022. Chain-of-thought prompting elic-
+its reasoning in large language models. Advances
+in neural information processing systems, 35:24824–
+24837.
+Genta Winata, Alham Fikri Aji, Zheng Xin Yong, and
+Thamar Solorio. 2023. The decades progress on code-
+switching research in NLP: A systematic survey on
+trends and challenges. In Findings of the Association
+for Computational Linguistics: ACL 2023, pages
+2936–2978, Toronto, Canada. Association for Com-
+putational Linguistics.
+An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui,
+Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu,
+Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jian-
+hong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang,
+Jingren Zhou, Junyang Lin, Kai Dang, and 23 oth-
+ers. 2024. Qwen2.5 technical report. arXiv preprint
+arXiv:2412.15115.
+Zheng Xin Yong, Ruochen Zhang, Jessica Forde, Skyler
+Wang, Arjun Subramonian, Holy Lovenia, Samuel
+Cahyawijaya, Genta Winata, Lintang Sutawika, Jan
+Christian Blaise Cruz, Yin Lin Tan, Long Phan,
+Long Phan, Rowena Garcia, Thamar Solorio, and
+Alham Aji. 2023. Prompting multilingual large lan-
+guage models to generate code-mixed texts: The case
+of south East Asian languages. In Proceedings of
+the 6th Workshop on Computational Approaches to
+Linguistic Code-Switching, pages 43–63, Singapore.
+Association for Computational Linguistics.
+Ruochen Zhang, Samuel Cahyawijaya, Jan Chris-
+tian Blaise Cruz, Genta Winata, and Alham Aji.
+2023.
+Multilingual large language models are
+not (yet) code-switchers.
+In Proceedings of the
+2023 Conference on Empirical Methods in Natural
+Language Processing, pages 12567–12582, Singa-
+pore. Association for Computational Linguistics.
+A
+Quantization Algorithms
+In this section, we briefly describe the quantiza-
+tion methods, evaluated in this study. All quan-
+tized models are produced using llm-compressor
+standard presets to ensure a fair and reproducible
+comparison across methods.
+A.1
+Integer W4A16 Quantization
+GPTQ.
+GPTQ (Frantar et al., 2022) is a post-
+training quantization method that reduces recon-
+struction error between full precision and quantized
+layer outputs of the model. Given input activation
+X and weight W, GPTQ tries to calculate quan-
+tized weight matrix ˆ
+W by solving:
+arg min
+ˆ
+W
+∥ˆ
+WX −WX∥F .
+It uses approximate second-order information to
+reduce quantization error. In this study, GPTQ
+is evaluated using the llm-compressor W4A16
+preset with group size g=128.
+AWQ.
+AWQ (Lin et al., 2024) is an activation-
+aware post-training quantization method that pro-
+tects salient weight channels by applying channel-
+wise scale factor before applying quantization.
+Given activations X, weights W, and scaling vec-
+tor s, AWQ rewrites the linear operation as:
+Y = (Xs−1)(sW⊤),
+where s is chosen to reduce quantization error due
+to activation outliers. We evaluate AWQ using
+llm-compressor W4A16 preset with group size
+g=128. Like GPTQ, we use calibration with 128
+samples from the Pile (Gao et al., 2020).
+11
+
+
+Model
+ϵ
+Method
+Co-winner Ranking
+Mean ∆TC
+DeepSeek-R1-Distill-Qwen-1.5B
+0.5
+GPTQ
+7
+8.90
+AWQ
+2
+3.92
+AutoRound
+4
+2.51
+DeepSeek-R1-Distill-Qwen-7B
+0.5
+GPTQ
+5
+-5.40
+AWQ
+4
+-3.83
+AutoRound
+2
+-6.75
+OLMo-3-7B-Think
+0.5
+GPTQ
+5
+4.28
+AWQ
+7
+2.04
+AutoRound
+1
+-0.19
+DeepSeek-R1-Distill-Qwen-1.5B
+1.0
+GPTQ
+7
+8.90
+AWQ
+2
+3.92
+AutoRound
+4
+2.51
+DeepSeek-R1-Distill-Qwen-7B
+1.0
+GPTQ
+6
+-5.40
+AWQ
+5
+-3.83
+AutoRound
+3
+-6.75
+OLMo-3-7B-Think
+1.0
+GPTQ
+7
+4.28
+AWQ
+7
+2.04
+AutoRound
+5
+-0.19
+DeepSeek-R1-Distill-Qwen-1.5B
+2.0
+GPTQ
+7
+8.90
+AWQ
+3
+3.92
+AutoRound
+4
+2.51
+DeepSeek-R1-Distill-Qwen-7B
+2.0
+GPTQ
+6
+-5.40
+AWQ
+5
+-3.83
+AutoRound
+4
+-6.75
+OLMo-3-7B-Think
+2.0
+GPTQ
+8
+4.28
+AWQ
+7
+2.04
+AutoRound
+7
+-0.19
+Table 3: Sensitivity of tolerance-based TC voting to ϵ. Methods within ϵ TC points of the best signed ∆TC are
+considered as co-winners. DeepSeek-R1-Distill-Qwen-1.5B/ 7B and OLMo-3-7B-Think values are recorded for
+eight languages.
+AutoRound.
+AutoRound (Cheng et al., 2024) is a
+post-training quantization method that uses signed
+gradient descent to optimize the weight rounding
+and clipping ranges values. Instead of relying on
+nearest rounding, it tries to learn the rounding de-
+cisions that reduce layer-wise reconstruction error
+with no extra inference time overhead. In our paper,
+we evaluate AutoRound using llm-compressor
+W4A16 preset with group size g=128.
+B
+Prompting Strategy.
+For each problem, the model is instructed to reason
+in the target language and the target language is
+again used to place the final-answer inside a boxed
+expression. These thinking and answer formatting
+phrases for given target language, are also provided
+by PolyMath (Wang et al., 2026). The prompting
+design is given below
+{target_language_question}
+{target_language_reasoning}
+{target_language_answer_formatting}
+For English, the prompt becomes:
+{target_language_question}
+Use English to think and answer.
+Note:
+Please put the final answer in
+\boxed{}.
+During post-processing, we split the model re-
+sponse into corresponding thinking and answer
+parts using the </think> delimiter if it is available.
+This way, we record raw response and correspond-
+ing reasoning and answer parts for the evaluations.
+C
+Additional Experiments
+C.1
+Tolerance-Based Voting
+We repeat tolerance-based voting with ϵ
+∈
+{0.5, 1.0, 2.0}. For each model-language pair, the
+method with the highest signed ∆TC is selected as
+the reference, and all methods within ϵ TC points
+are counted as co-winners. We report co-winner
+counts and average signed ∆TC in Table 3.
+C.2
+Breakdown-Threshold Sensitivity
+Table 4 reports breakdown counts under ∆break ∈
+{30, 50, 70} percentage points. As expected, the
+number of detected breakdowns generally de-
+creases as the threshold becomes stricter. However,
+the main conclusion remains same: DeepSeek rea-
+soning models exhibit breakdowns in both TC and
+12
+
+
+AC, OLMo-3-7B-Think and Phi-4-mini-reasoning
+primarily exhibit AC breakdowns, and Qwen3-
+30B-A3B-Thinking-2507 and the evaluated non-
+reasoning models remain comparatively stable.
+D
+Hardware and Software Details
+Our experimental pipeline consists of three stages.
+quantization, inference, and evaluation.
+For quantization, we use llm-compressor ver-
+sion 0.9.0.2 and compressed-tensors version
+0.13.0. For inference, we use vLLM version 0.20.1
+with torch version 2.11.0 and transformers ver-
+sion 5.7.0. Evaluation is performed using the offi-
+cial PolyMath scripts, which compute final-answer
+correctness as well as language consistency scores.
+All experiments are run on NVIDIA H100
+GPUs.
+E
+AI Assistance
+ChatGPT-5.5 was used for grammar refinement and
+latex coding assistance with table/ figure structure
+and debugging. The authors take full responsibility
+for the final published version.
+13
+
+
+∆break = 30
+∆break = 50
+∆break = 70
+Model
+TC
+AC
+TC
+AC
+TC
+AC
+DeepSeek-R1-Distill-Qwen-1.5B
+5/8
+5/8
+3/8
+4/8
+2/8
+1/8
+DeepSeek-R1-Distill-Qwen-7B
+5/8
+5/8
+5/8
+5/8
+4/8
+5/8
+OLMo-3-7B-Think
+0/8
+6/8
+0/8
+4/8
+0/8
+2/8
+Phi-4-mini-reasoning
+0/8
+4/8
+0/8
+3/8
+0/8
+0/8
+Qwen3-30B-A3B-Thinking-2507
+0/8
+0/8
+0/8
+0/8
+0/8
+0/8
+Gemma-3-12B-IT
+–
+0/8
+–
+0/8
+–
+0/8
+Phi-4-mini-instruct
+–
+0/8
+–
+0/8
+–
+0/8
+Qwen3-30B-A3B-Instruct-2507
+–
+0/8
+–
+0/8
+–
+0/8
+Table 4: Sensitivity of language-consistency breakdown counts to ∆break ∈{30, 50, 70} percentage points. Each
+value reports the number of languages, out of eight, exhibiting at least one breakdown between consecutive difficulty
+levels.
+Model
+Avg. Acc.
+TC below τcons @ Top
+AC below τcons @ Top
+DeepSeek-R1-Distill-Qwen-7B
+35.3
+6/8
+6/8
+Phi-4-mini-reasoning
+32.4
+6/8
+7/8
+Table 5: Task accuracy and language-consistency behavior under preferred-language reasoning prompting. Avg.
+Acc. denotes average PolyMath accuracy across eight languages. TC below τcons @ Top and AC below τcons @
+Top count languages with thinking- and answer-language consistency below τcons = 90% at Top difficulty. The
+threshold τcons is an analysis hyperparameter.
+14
+
+
+Qwen3-30B-A3B-Instruct-2507
+Accuracy
+Answer Consistency (AC)
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(a) English
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(b) Chinese
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(c) Arabic
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(d) Bengali
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(e) French
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(f) Russian
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(g) Swahili
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(h) Telugu
+Figure 6: Difficulty-wise final-answer accuracy, thinking-language consistency (TC), and answer-language consis-
+tency (AC) of Qwen3-30B-A3B-Instruct-2507 across eight languages and four PolyMath difficulty levels: 1 = low,
+2 = medium, 3 = high, and 4 = top. The results show that answer-language consistency is largely preserved across
+several languages.
+Qwen3-30B-A3B-Thinking-2507
+Accuracy
+Answer Consistency (AC)
+Thinking Consistency (TC)
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(a) English
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(b) Chinese
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(c) Arabic
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(d) Bengali
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(e) French
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(f) Russian
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(g) Swahili
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(h) Telugu
+Figure 7: Difficulty-wise final-answer accuracy, thinking-language consistency (TC), and answer-language consis-
+tency (AC) of Qwen3-30B-A3B-Thinking-2507 across eight languages and four PolyMath difficulty levels: 1 = low,
+2 = medium, 3 = high, and 4 = top. The results show that answer-language consistency is largely preserved, while
+the model often reasons in English or Chinese for Arabic, Bengali, French, Swahili, and Telugu.
+15
+
+
+DeepSeek-R1-Distill-Qwen-1.5B
+Accuracy
+Answer Consistency (AC)
+Thinking Consistency (TC)
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(a) English
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(b) Chinese
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(c) Arabic
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(d) Bengali
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(e) French
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(f) Russian
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(g) Swahili
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(h) Telugu
+Figure 8: Difficulty-wise final-answer accuracy, thinking-language consistency (TC), and answer-language consis-
+tency (AC) of DeepSeek-R1-Distill-Qwen-1.5B across eight languages and four PolyMath difficulty levels: 1 = low,
+2 = medium, 3 = high, and 4 = top. The results show that language consistency is preserved for English and Chinese
+but breaks down for several other languages.
+Gemma-3-12B-IT
+Accuracy
+Answer Consistency (AC)
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(a) English
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(b) Chinese
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(c) Arabic
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(d) Bengali
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(e) French
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(f) Russian
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(g) Swahili
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(h) Telugu
+Figure 9: Difficulty-wise final-answer accuracy, thinking-language consistency (TC), and answer-language consis-
+tency (AC) of Gemma-3-12B-IT across eight languages and four PolyMath difficulty levels: 1 = low, 2 = medium, 3
+= high, and 4 = top. The results show that answer-language consistency is largely preserved across languages.
+16
+
+
+Phi-4-mini-instruct
+Accuracy
+Answer Consistency (AC)
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(a) English
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(b) Chinese
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(c) Arabic
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(d) Bengali
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(e) French
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(f) Russian
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(g) Swahili
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(h) Telugu
+Figure 10: Difficulty-wise final-answer accuracy, thinking-language consistency (TC), and answer-language
+consistency (AC) of Phi-4-mini-instruct across eight languages and four PolyMath difficulty levels: 1 = low, 2 =
+medium, 3 = high, and 4 = top. The results show that answer-language consistency remains stable across most
+languages but decreases for a few as task difficulty increases.
+Phi-4-mini-reasoning
+Accuracy
+Answer Consistency (AC)
+Thinking Consistency (TC)
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(a) English
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(b) Chinese
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(c) Arabic
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(d) Bengali
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+Score (%)
+(e) French
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(f) Russian
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(g) Swahili
+1
+2
+3
+4
+0
+20
+40
+60
+80
+100
+Difficulty Level
+(h) Telugu
+Figure 11: Difficulty-wise final-answer accuracy, thinking-language consistency (TC), and answer-language
+consistency (AC) of Phi-4-mini-reasoning across eight languages and four PolyMath difficulty levels: 1 = low, 2 =
+medium, 3 = high, and 4 = top. The results show that thinking- and answer-language consistency are preserved for
+English and Chinese, while answer-language consistency breaks down for several other languages.
+17
+
+
+Model
+Method
+W-A-KV Bits
+Avg. Acc.
+Avg. TC
+Accuracy-wise Winner Lang.
+Accuracy-wise Loss Lang.
+DeepSeek-R1
+Distill-Qwen-7B
+—
+—
+36.5
+52.3
+–
+–
+GPTQ
+4-16-16
+33.1
+46.9
+–
+en, zh, ar, bn, sw, te
+AWQ
+4-16-16
+33.9
+48.5
+bn, sw
+fr, ru
+AutoRound
+4-16-16
+35.7
+45.6
+en, zh, ar, fr, ru, te
+–
+OLMo-3-7B-Think
+—
+—
+42.7
+27.0
+–
+–
+GPTQ
+4-16-16
+40.4
+31.3
+en
+zh, ar, sw, te
+AWQ
+4-16-16
+40.3
+29.1
+en
+bn, fr, ru
+AutoRound
+4-16-16
+41.6
+26.8
+zh, ar, bn, fr, ru, sw, te
+en
+Table 6: Summary of accuracy and thinking-language consistency (TC) across eight languages for DeepSeek-R1-
+Distill-Qwen-7B and OLMo-3-7B-Think. Avg. Acc. and Avg. TC report averages over the eight shown languages.
+Green/red cells mark the best/worst values among GPTQ, AWQ, and AutoRound within each model. Accuracy-wise
+winner/loss languages indicate where each method obtains the highest/lowest accuracy within the same model. Full
+per-language Acc./TC results are reported in Table 7.
+Model
+Method
+W-A-KV
+# Bits
+en
+zh
+ar
+bn
+fr
+ru
+sw
+te
+Avg
+Acc.
+TC
+Acc.
+TC
+Acc.
+TC
+Acc.
+TC
+Acc.
+TC
+Acc.
+TC
+Acc.
+TC
+Acc.
+TC
+Acc.
+TC
+DS-R1
+Qwen-7B
+—
+—
+49.2
+99.8
+46.0
+92.7
+39.2
+20.2
+36.3
+26.2
+42.0
+37.8
+37.6
+88.9
+16.1
+26.0
+25.3
+31.1
+36.5
+52.3
+GPTQ
+4-16-16
+44.8
+99.7
+40.3
+94.8
+33.6
+14.5
+32.4
+19.6
+39.8
+31.0
+37.0
+61.4
+14.1
+27.3
+22.6
+31.2
+33.1
+46.9
+AWQ
+4-16-16
+45.6
+99.7
+42.0
+92.7
+36.3
+15.5
+33.7
+21.8
+39.5
+30.2
+34.8
+86.6
+16.0
+20.4
+23.6
+25.2
+33.9
+48.5
+AutoRound
+4-16-16
+48.0
+100.0
+43.3
+91.9
+38.8
+14.5
+32.7
+21.3
+41.8
+26.8
+40.2
+63.5
+15.0
+25.8
+25.5
+24.9
+35.7
+45.6
+Olmo-3-7B
+-Think
+—
+—
+57.6
+99.7
+54.0
+11.3
+44.7
+0.5
+32.9
+3.1
+53.9
+0.4
+38.1
+99.4
+22.9
+0.7
+37.6
+1.1
+42.7
+27.0
+GPTQ
+4-16-16
+57.4
+99.9
+49.3
+44.2
+43.0
+1.3
+30.1
+3.5
+52.9
+0.6
+35.6
+98.2
+20.4
+1.3
+34.4
+1.4
+40.4
+31.3
+AWQ
+4-16-16
+57.4
+99.7
+51.0
+24.2
+43.8
+1.2
+29.2
+4.3
+51.2
+1.6
+34.1
+98.3
+20.7
+1.0
+35.2
+2.2
+40.3
+29.1
+AutoRound
+4-16-16
+56.2
+99.8
+51.5
+11.6
+46.0
+0.6
+30.5
+2.7
+54.2
+1.1
+37.5
+96.9
+21.1
+0.7
+35.6
+1.3
+41.6
+26.8
+Table 7: Accuracy and thinking-language consistency (TC) results across eight languages and quantization methods.
+Acc. denotes benchmark accuracy and TC denotes thinking-language consistency scores. The green/red cells
+mark the best/worst accuracy values respectively within each model-language-quantization group and total average
+column.
+Model
+Method
+W-A-KV
+# Bits
+en
+zh
+ar
+bn
+fr
+ru
+sw
+te
+Avg.
+∆
+∆Acc.
+∆TC
+∆Acc.
+∆TC
+∆Acc.
+∆TC
+∆Acc.
+∆TC
+∆Acc.
+∆TC
+∆Acc.
+∆TC
+∆Acc.
+∆TC
+∆Acc.
+∆TC
+Acc.
+TC
+DS-R1
+Qwen-7B
+GPTQ
+4-16-16
+-4.4
+-0.1
+-5.7
++2.1
+-5.6
+-5.7
+-3.9
+-6.6
+-2.2
+-6.8
+-0.6
+-27.5
+-2.0
++1.3
+-2.7
++0.1
+-3.39
+-5.40
+AWQ
+4-16-16
+-3.6
+-0.1
+-4.0
+0.0
+-2.9
+-4.7
+-2.6
+-4.4
+-2.5
+-7.6
+-2.8
+-2.3
+-0.1
+-5.6
+-1.7
+-5.9
+-2.53
+-3.83
+AutoRound
+4-16-16
+-1.2
++0.2
+-2.7
+-0.8
+-0.4
+-5.7
+-3.6
+-4.9
+-0.2
+-11.0
++2.6
+-25.4
+-1.1
+-0.2
++0.2
+-6.2
+-0.80
+-6.75
+Olmo-3-7B
+-Think
+GPTQ
+4-16-16
+-0.2
++0.2
+-4.7
++32.9
+-1.7
++0.8
+-2.8
++0.4
+-1.0
++0.2
+-2.5
+-1.2
+-2.5
++0.6
+-3.2
++0.3
+-2.33
++4.28
+AWQ
+4-16-16
+-0.2
+0.0
+-3.0
++12.9
+-0.9
++0.7
+-3.7
++1.2
+-2.7
++1.2
+-4.0
+-1.1
+-2.2
++0.3
+-2.4
++1.1
+-2.39
++2.04
+AutoRound
+4-16-16
+-1.4
++0.1
+-2.5
++0.3
++1.3
++0.1
+-2.4
+-0.4
++0.3
++0.7
+-0.6
+-2.5
+-1.8
+0.0
+-2.0
++0.2
+-1.14
+-0.19
+Table 8: Accuracy and Thinking-language Consistency (TC) ∆scores, relative to Baseline across eight languages.
+The green/red cells mark the best/worst integer methods by magnitude-based ∆TC scores. Yellow cells indicate
+tolerance-based TC voting co-winners with ϵ = 1.0, i.e., methods within one TC point of the best ∆TC for each
+model-language-quantization group are considered as co-winner. Table 3 reports tolerance-based voting results for
+ϵ = 1.0. DS-R1-Qwen-7B denotes DeepSeek-R1-Distill-Qwen-7B.
+18
+
+
+en
+zh
+ar
+bn
+fr
+ru
+sw
+te
+0
+20
+40
+60
+80
+100
+Language Code
+Aggregated Thinking Consistency (%)
+Baseline
+GPTQ
+AWQ
+AutoRound
+Figure 12: Aggregated thinking-language consistency of Baseline and W4A16-quantized OLMo-3-7B-Think across
+eight languages.
+Language Consistency for Chinese with DeepSeek-R1-Distill-Qwen-7B at low difficulty
+Figure 13: Example of output-language consistency: the model receives an Chinese input, reasons and answers in
+Chinese.
+19
+
+
+Language Inconsistency for Arabic with Qwen3-30B-A3B-Thinking at low difficulty
+Figure 14: Example of output-language inconsistency: the model receives an Arabic input, reasons in English, and
+answers in Arabic.
+20

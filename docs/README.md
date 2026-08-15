@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-10</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-15</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 9 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 21 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>7</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>8</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>13</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-10 21:28:41 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-15 20:47:44 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读聚焦LLM可解释性新路径，以句子级能量景观透视黑箱；同时关注粤语与爱尔兰语树库的语法工程实践。最值得留意的是，通过能量景观分析模型内部状态可提供可解释线索，而两跳泛化研究揭示了“知道两跳”并不足以实现推理。下一步建议可结合个人语体视角，思考语言模型输出与人类使用者之间的个性化差异。</p>
+<p>今日精读8篇、速读13篇，共完成21篇论文跟进。最值得关注的是两篇9分精读：语言模型中的焦点粒子与标量推理，以及训练数据粒度如何决定参数模块性。建议普通读者优先从模型推理可解释性方向入手阅读。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">2 篇</strong>
+    <strong class="dpr-home-dashboard-count">8 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Interpreting Black-Box Large Language Models with Sentence-Level Energy Landscapes">Interpreting Black-Box Large Language Models with Sentence-Level Energy Landscapes</span></li><li><span class="dpr-home-dashboard-paper-title" title="Grammar Engineering Meets LLMs: Development of Cantonese and Irish ParGram Treebanks">Grammar Engineering Meets LLMs: Development of Cantonese and Irish ParGram Treebanks</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Focus particles and scalar inferences across humans and language models">Focus particles and scalar inferences across humans and language models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Decodable But Not Detachable: Training Data Granularity Determines Parametric Modularity in Large Language Models">Decodable But Not Detachable: Training Data Granularity Determines Parametric Modularity in Large Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Interpreting Language Model Hidden States at Scale">Interpreting Language Model Hidden States at Scale</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>1</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>3</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">13 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Beyond &quot;AI Language&quot;: The case for the idiolectal nature of LLM output">Beyond &quot;AI Language&quot;: The case for the idiolectal nature of LLM output</span></li><li><span class="dpr-home-dashboard-paper-title" title="Why Knowing Both Hops Is Not Enough: Understanding Two-Hop Generalization in Language Models">Why Knowing Both Hops Is Not Enough: Understanding Two-Hop Generalization in Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Natural Language Processing Psychometrics">Natural Language Processing Psychometrics</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Hidden Language Consistency Phenomena in Reasoning LLMs">Hidden Language Consistency Phenomena in Reasoning LLMs</span></li><li><span class="dpr-home-dashboard-paper-title" title="Multilingual Emotion Neurons in Large Audio-Language Models">Multilingual Emotion Neurons in Large Audio-Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="OmnilingualGAIA2: Evaluating the Multilingual Gap in Frontier AI Agents">OmnilingualGAIA2: Evaluating the Multilingual Gap in Frontier AI Agents</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>1</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>6</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>2</strong></span></div>
 </section>
 </div>
 

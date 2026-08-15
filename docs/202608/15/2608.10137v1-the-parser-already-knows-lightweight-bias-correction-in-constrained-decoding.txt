@@ -1,0 +1,1091 @@
+The Parser Already Knows: Lightweight Bias Correction in Constrained Decoding
+Işıl Özgü, Yaoxuan Wu, Guy Van den Broeck, Miryung Kim
+University of California, Los Angeles
+Los Angeles, CA, USA
+isilozgu, thaddywu, guyvdb, miryung@cs.ucla.edu
+Abstract
+Grammar Constrained Decoding (GCD) forces Language
+Models (LMs) to produce syntactically valid outputs by mask-
+ing out non-conforming tokens at each step. However, rigid
+masking distorts the model’s underlying probability distri-
+bution, often biasing generation toward valid but suboptimal
+outputs. While online sampling restores this distribution, it
+requires computationally expensive iterative resampling. As
+a result, existing methods force a compromise between out-
+put quality and inference latency. Our key insight is that the
+internal parser and lexer states inherently maintained during
+incremental parsing already encode future grammatical valid-
+ity—exactly the information required to restore the LM’s true
+distribution. We propose a lightweight, offline-trained logit
+correction conditioned on this syntactic and lexical state to-
+gether with candidate next tokens. Because these states are
+already computed as a necessary part of incremental parsing
+for masking, extracting them adds negligible overhead while
+leaving the base LM’s weights completely untouched.
+Across several grammars, this correction substantially closes
+the gap between the masked distribution and the LM’s true
+distribution, consistently outperforming both masking and
+online sampling. Even its lightest variant, which relies on
+the candidate next token alone, still matches or exceeds both
+baselines: the next token itself carries an implicit lookahead,
+much like how parsers commonly use a lookahead token to re-
+solve ambiguous decisions. By restoring the probability mass
+that masking removes, it reconciles the LM’s probabilistic
+integrity with grammar conformance.
+1
+Introduction
+Problem statement.
+While Language Models (LMs) gen-
+erate remarkably human-like text and code (Chowdhery et al.
+2023; Li et al. 2022; Chen et al. 2021; Austin et al. 2021), they
+consistently struggle to satisfy rigid syntactic and semantic
+constraints (Lu et al. 2023; Li, Rahili, and Zhao 2025). In
+practice, prompt engineering and fine-tuning fall short of
+guaranteeing strict conformance to context-free grammars
+(CFGs) (Lu et al. 2025; Tenckhoff, Koddenbrock, and Rodner
+2026). This unreliability creates a bottleneck when integrat-
+ing LMs into real-world software pipelines: even minor syn-
+tax violations yield malformed outputs that cause immediate
+downstream failures in parsers, input validators, structured
+data processing engines, and auto-formalization frameworks
+(e.g., SMT solvers or SQL engines).
+Existing approaches.
+Prior work on constrained genera-
+tion fundamentally trades generation quality for computa-
+tional cost. The simplest approach, rejection sampling, re-
+peatedly draws completions until a valid candidate emerges
+within a fixed budget (Chowdhery et al. 2023; Chen et al.
+2023; Parys et al. 2026); however, this is computationally
+prohibitive and provides no formal compliance guarantee.
+Grammar Constrained Decoding (GCD) methods (Ugare
+et al. 2025; Dong et al. 2025; Park, Zhou, and D’Antoni
+2025; Willard and Louf 2023; Beurer-Kellner, Fischer, and
+Vechev 2024)1 address this by masking non-conforming log-
+its at each decoding step. While masking guarantees struc-
+tural compliance with minimal overhead, it only evaluates
+whether a token is valid locally, ignoring whether it fore-
+closes high-probability completions down the line. Conse-
+quently, masking distorts the model’s output distribution,
+often steering generation toward unnatural or degraded out-
+puts (Lew et al. 2023; Park et al. 2024).
+Online sampling techniques (Park et al. 2024; Parys et al.
+2026; Gonzalez et al. 2025; Lipkin et al. 2025) restore this
+lost probability mass by dynamically reweighting candidates,
+but doing so requires expensive online resampling at ev-
+ery step, severely inflating inference latency. Alternatively,
+tractable probabilistic model augmentation (Zhang et al.
+2023, 2024; Dang et al. 2026) avoids runtime sampling by
+pairing the LM with an offline surrogate model that is exactly
+computable. However, learning a tractable approximation of
+the full LM distribution is notoriously difficult and intro-
+duces significant modeling errors. Because each paradigm
+compromises on either latency, fidelity, or scalability, none
+of these options is ideal for practical deployment.
+Our solution.
+To resolve this trilemma, we propose an of-
+fline, decoupled framework that achieves strict grammatical
+correctness without sacrificing inference speed. Rather than
+altering base model weights or performing expensive on-
+line resampling, we introduce SHIM: a lightweight, offline-
+trained probability controller. Like a physical shim aligning
+1Some prior work (e.g. SMC Steering (Lew et al. 2023),
+AWRS (Lipkin et al. 2025), and P-GCD (Dang et al. 2026)) in-
+stead calls this masking-based family Locally Constrained Decod-
+ing (LCD) and reserves GCD for Globally Constrained Decoding;
+we keep GCD as Grammar Constrained Decoding throughout, us-
+ing local/global only as plain descriptors.
+arXiv:2608.10137v1  [cs.CL]  10 Aug 2026
+
+
+Root
+::=
+"(define-fun inv ((s (BitVec 4)) (t (BitVec 4)))
+(BitVec 4) " Start ")"
+Start
+::=
+"s" | "t" | "#x0" | "#x8" | "#x7"
+|
+"(" "bvneg" " " Start ")"
+|
+"(" "bvnot" " " Start ")"
+|
+"(" "bvand" " " Start " " Start ")"
+|
+"(" "bvlshr" " " Start " " Start ")"
+|
+"(" "bvor" " " Start " " Start ")" | . . .
+CFG: GBV4 Snapshot
+Figure 1: Subset of the BV4 bit-vector grammar. Start
+recurses over unary (bvneg, bvnot) and binary (bvand,
+bvlshr, bvor) operators over input variables s and t. Re-
+cursive structure like this induces high lookahead ambiguity
+during constrained decoding.
+S0
+S1
+S2
+S3
+S4
+S5
+(
+bvand
+bvlshr
+bvor
+s
+t
+s
+t
+)
+Start
+Op consumed
+Accept
+Figure 2: Incremental parser state transitions during decod-
+ing for the string (bvand s t) under the BV4 grammar
+(Figure 1). Because binary operators require two arguments,
+the parser advances through intermediate states S3 and S4
+before expecting the closing parenthesis.
+two mismatched surfaces, it aligns the masked distribution
+back to the LM’s true one. Our key insight is that the masking
+tool’s own parser and lexer state (Aho et al. 2006) already
+encode the grammatical structure this correction needs. In-
+stead of training a separate model to learn that structure from
+scratch, our controller reads it out directly, together with the
+candidate next token, at essentially no added cost. This keeps
+the controller lightweight while still capturing which con-
+tinuations remain grammatically valid, so generation stays
+natural and diverse rather than collapsing onto degenerate,
+low-probability sequences.
+Structured generation tools like Syncode maintain exactly
+this kind of incremental parser and lexer state (Wagner and
+Graham 1998) as they decode; we illustrate how these states
+work, and how our controller uses them, with a concrete
+example. Consider parsing the expression (bvand s t)
+under the BV4 grammar excerpt in Figure 1. The opening
+( is consumed as its own token, advancing the parser to S1
+in Figure 2; suppose the LLM’s tokenizer then produces b
+and v as its next two tokens. The LLM itself generates at the
+token level, but the lexer state tracks progress at the charac-
+ter level: its buffer accumulates the characters of the current,
+in-progress lexeme only, emptying each time a lexeme com-
+pletes – unlike the prefix x<i, which accumulates every token
+the LLM has generated. Since ( already completed as its own
+lexeme, the buffer excludes it and accumulates only b and v,
+regardless of how these characters were chunked into tokens.
+Right after these two tokens, the buffer is "bv", landing the
+lexer state on node v in Figure 3. Formally, the lexer state
+is the set of lexemes that remain consistent with this buffer,
+together with how far it has advanced into each candidate
+lexeme’s pattern. Here, bvand, bvlshr, and bvor are all
+still possible. The next token then narrows this set to the
+intended lexeme.
+ϵ
+b
+v
+a
+l
+o
+x
+nd (BVAND)
+shr (BVLSHR)
+r (BVOR)
+Masked / Rejected
+Lexer State at Step t
+(Buffer: "bv")
+Figure 3: Probability control conditioned on lexical state and
+candidate tokens. The lexer state is a node in this terminal
+trie; buffer "bv" alone cannot distinguish bvand, bvlshr,
+and bvor. Combining it with the candidate next token (e.g.,
+"a", "l", "o") resolves this, boosting valid continuations
+and masking invalid ones (e.g., "x").
+At this point in decoding, the parser itself is still at state
+S1 in Figure 2: it only advances once a complete operator
+token is consumed, so it gives no indication that the possibil-
+ities have already narrowed to bvand, bvlshr, and bvor.
+Only the lexer state captures this within-lexeme progress; the
+parser catches up once the operator token completes and it
+advances to S2.
+Together with the candidate next token, these two states
+map directly to a probabilistic adjustment factor at the logit
+level that approximates the future validity of the tokens; this
+factor, in turn, increases the chance of generating a sample
+that is true to the LLM’s valid sequence distribution. By
+training this controller on transitions between parser states
+and valid token sequences, we enable it to predict a candidate
+token’s likelihood of leading to a grammatically valid con-
+tinuation before the model samples a single token. During
+inference, we apply this correction by adding its logarithm to
+the masked logits of the streaming LLM output, effectively
+restoring the LLM’s natural distribution over valid sequences
+without the need for iterative sampling. Our method func-
+tions as a refinement layer on top of existing masking tools,
+including Syncode, XGrammar, and Outlines – together, over
+17,000 GitHub stars. It guarantees grammatical compliance
+regardless of the underlying tool, requiring only access to
+that tool’s internal parser, which already maintains the state
+our controller reads. This positions SHIM against masking,
+online sampling, and tractable augmentation at once: un-
+like GCD, it accounts for a token’s effect on future grammar
+conformance, not just conformance so far; unlike online sam-
+pling, it evaluates a fixed, pre-trained correction rather than
+updating its estimate during generation; and unlike HMM-
+based augmentation, it only needs to learn the narrow correc-
+tion induced by masking rather than distill the LLM’s entire
+output distribution.
+Evaluation.
+We implement our correction approach at
+three levels of feature availability and model capacity, all
+integrated on top of Syncode’s (Ugare et al. 2025) mask-
+ing infrastructure, built on the Lark parsing toolkit (Shinan
+2018). We choose Syncode as a state-of-the-art masker, but
+our approach extends to any GCD tool that exposes parser
+
+
+Step 0: Initial State (Prefix = "")
+’0’
+’1’
+’2’
+’A’
+0.495
+0.495
+0.007
+0.003
+pLLM
+Valid
+Valid
+Masked
+Masked
+Grammar Mask
+0.059
+0.941
+0.000000
+0.000000
+pH,adj
+Structured Features
+Parser State: S0
+Lexer State: L0
+Next Valid Tokens: {’0’,
+’1’}
+SHIM Logit Processor
+γ(0) = 2/17
+γ(1) = 32/17
+Extract
+Apply γ Correction
+Step 1 - Scenario A: Path 00000 (Prefix = "0")
+’0’
+’1’
+’2’
+’A’
+0.061
+0.850
+0.050
+0.039
+pLLM
+Valid
+Masked
+Masked
+Masked
+Grammar Mask
+1.000
+0.000000
+0.000000
+0.000000
+pH,adj
+Structured Features
+Parser State: S1
+Lexer State: L1
+Next Valid Tokens: {’0’}
+SHIM Logit Processor
+Absolute Constraint
+γ(0) = 1.0
+Extract
+Apply γ Correction
+Step 1 - Scenario B: Path 10101 (Prefix = "1")
+’0’
+’1’
+’2’
+’A’
+0.615
+0.250
+0.100
+0.035
+pLLM
+Valid
+Valid
+Masked
+Masked
+Grammar Mask
+0.711
+0.289
+0.000000
+0.000000
+pH,adj
+Structured Features
+Parser State: A2
+Lexer State: L2
+Next Valid Tokens: {’0’,
+’1’}
+SHIM Logit Processor
+No Further Constraint
+γ(0) = γ(1) = 1
+Extract
+Apply γ Correction
+Figure 4: Overview of the probability adjustment pipeline
+during constrained decoding. The pipeline masks invalid to-
+kens and applies a trained correction factor γ to the survivors,
+restoring the LM’s true grammatical distribution. γ is learned
+offline, conditioned on the parser state, lexer state, and can-
+didate next tokens.
+and lexer state. We generate training samples offline via the
+vanilla LLM and process them with Syncode to capture the
+parser state, lexer state, and candidate next token features.
+On these available features, we train (1) a Multi-Layer Per-
+ceptron (MLP) and (2) a lightweight Logistic Regressor,
+each estimating the probability that its input will yield a
+valid, high-probability generation in the future. We also train
+(3) a Logistic Regressor restricted to the candidate next to-
+ken alone. LR(1) parsers combine a lookahead token with
+their current parse state to resolve ambiguous decisions; we
+test whether the candidate next token alone already carries
+enough signal to predict future grammatical validity.
+We measure performance via KL divergence against
+the target LLM distribution and average inference latency,
+benchmarking SHIM against standard token masking via
+Syncode (Ugare et al. 2025) and the state-of-the-art online
+sampling framework ASAp (Park et al. 2024). Our strongest
+variant achieves up to 113× lower KL divergence than mask-
+ing and up to 235× lower divergence than online sampling,
+while all variants add negligible additional inference cost
+over standard masking.
+2
+Characterizing the Probability Drift
+Given an LLM p, a prompt x≤s of length s and a gram-
+mar constraint α, we want to sample from the conditional
+distribution
+p(x>s|x≤s, α) =
+Y
+i>s
+p(xi|x<i, α).
+However, we do not have access to the conditional next-token
+distribution p(xi|x<i, α) and therefore this approach is not
+practical. Instead, Grammar Constrained Decoding (GCD)
+tools give us access to a different, unconditional distribution
+qα, which we can sample from directly. At the token level,
+qα is defined as
+qα(xi|x<i) = p(xi|x<i)I(x<ixi ∈Pref(L(α)))
+P
+t∈V p(t|x<i)
+where V stands for the grammatically valid next tokens for
+the prefix x<i. qα masks out any token that would make the
+prefix invalid and renormalizes the LLM’s probability over
+the tokens that remain valid, where a prefix x<i is valid if it
+can still be extended into a complete string in L(α). Over a
+full sequence, qα factorizes the same way as the target:
+qα(x>s|x≤s) =
+Y
+i>s
+qα(xi|x<i).
+Unfortunately, this approximation is not exact: qα only masks
+based on whether the prefix conforms to the grammar so far,
+i.e., past grammaticality, so it does not incorporate the future
+grammaticality of the tokens it selects:
+qα(x>s|x≤s)̸ = p(x>s|x≤s, α).
+We demonstrate this with an example grammar Gsk,
+adapted from ASAp (Park et al. 2024), in Equation 1, illus-
+trated step by step in Figure 4, given as a regular expression
+over tokens Σ = {0, 1}. Suppose the grammar accepts bi-
+nary strings of length five, where a string can only continue
+with 0 if it started with 0.
+Gsk :
+00000 | 1(0 | 1)4
+(1)
+Suppose p(xi|x<i) is uniform. Simplifying the notation
+of p(xi|x<i) to p(x) for sequence x, we have
+p(00000) = p(10000) = ... = 1/32
+Then the target probability distribution p(x | α) for se-
+quence x should preserve the LLM’s distribution over the
+grammar-valid sequences, renormalized to sum to one, i.e.,
+every grammar-satisfying string should have a probability of
+1/17:
+p(00000|α) =
+p(00000)
+P
+x∈L(α)
+p(x) = 1/32
+17/32 = 1/17.
+At each generation step i, GCD algorithms that use token-
+level masking would only sample the next token xi if x≤i
+is a valid prefix of the grammar α. However, this masked
+decoding algorithm would distort the final distribution. For
+example, assume that the LLM would produce x1 = 0 and
+x1 = 1 with an even probability 1/2. Suppose the masked
+LLM chooses x1 = 0. Then, because the only grammar-
+satisfying string that starts with 0 is 00000, the decoding
+algorithm would always append a 0 to the existing generated
+string, so the probability of generating 00000 in the token-
+masked setting is 1/2. However, the actual probability should
+have been 1/17 to preserve the uniform distribution the LLM
+
+
+initially had, because the LLM models an even distribution
+over all 17 grammar-satisfying strings. Figure 4 traces this
+same grammar step by step: Step 0 shows SHIM’s correction
+factor γ pulling the masked, even 1/2–1/2 split over x1
+down to the target 1/17–16/17 split; Scenario A then shows
+why masking alone still forces x1=0 into the degenerate
+continuation 00000 described above; and Scenario B shows
+the complementary case, where the ideal γ is a no-op because
+every continuation after x1=1 is already grammar-valid.
+The root cause of the problem is that, in each decoding
+step, the algorithm should take into account the future, or
+the probability of the next token yielding a valid sequence
+in the future. Concretely, it should take into account the
+probability mass of valid future continuations, i.e., produce
+xi+1 according to the probability P
+x>i
+p(x≥i | x<i)[x ∈α],
+which is intractable.
+3
+SHIM Methodology
+At a high level, SHIM predicts a correction factor γ for each
+candidate next token and applies it to the masked distribution
+qα at every decoding step (Equation 2). We predict γ from
+three features already exposed by the masking tool: the parser
+state, the lexer state, and the candidate next token. Below, we
+first derive what an ideal γ would look like, simplify it into
+a tractable form, and then describe how we approximate it in
+practice with a lightweight model.
+Improving the alignment
+We aim to take qα, the distri-
+bution produced by an existing GCD tool, and improve it to
+become a better approximation q⋆
+α:
+q⋆
+α(x>s|x≤s) =
+Y
+i>s
+q⋆
+α(xi|x<i) ≈p(x>s|x≤s, α).
+Starting from an existing qα, we achieve this by applying a
+correction factor γ to the choice of next token:
+q⋆
+α(xi|x<i) ∝qα(xi|x<i) · γ(xi, x<i),
+(2)
+An impractical solution
+If γ(xi, x<i) ≈p(xi|x<i,α)
+qα(xi|x<i) , then
+the following solution is correct but impractical.
+q⋆
+α(x>s|x≤s) ≈p(x>s|x≤s, α)
+We can write γ by using Bayes’ rules and then simplifying
+the constant factors with respect to xi,
+γ(xi, x<i) ≈p(α|xi, x<i) p(xi|x<i)
+qα(xi|x<i) p(α|x<i)
+∝p(xi|x<i) p(α|xi, x<i)
+qα(xi|x<i)
+.
+Simplifying γ
+Let V = {xi | p(xi|x<i, α) > 0} be the set
+of tokens that can lead to a solution for α. Then,
+qα(xi|x<i) =
+(
+0
+if xi̸ ∈V
+p(xi|x<i)
+P
+t∈V p(y|x<i)
+otherwise.
+This means that the value of γ is irrelevant for the first case,
+since the definition of q⋆
+α multiplies it by zero. It also allows us
+to simplify γ for the second case. In that case, qα(xi|x<i) ∝
+p(xi|x<i) because P
+t∈V p(y|x<i) is a constant that does
+not depend on xi and the factor
+p(xi|x<i)
+qα(xi|x<i) in γ becomes a
+constant we can ignore. Thus, if γ(xi, x<i) ≈p(α|xi, x<i)
+we have that
+q⋆
+α(x>s|x≤s) ≈p(x>s|x≤s, α).
+In other words, the correction factor is the probability that
+the LLM generates something that satisfies the constraint.
+Proposed Solution: Lightweight Grammar Alignment
+Still, computing the quantity p(α|xi, x<i) is intractable. A
+practical workaround is to train from data a regression model
+for γ that looks at features of (xi, x<i) and predicts an esti-
+mate of p(α|xi, x<i). If α is a context-free grammar (CFG),
+we can use an interactive parser to expose its internal state
+S(xi, x<i) as a feature: this exposed state summarizes the
+prefix’s grammaticality so far and correlates with which fu-
+ture tokens keep the sequence valid, making it a natural sig-
+nal for the same future validity that p(α|xi, x<i) measures.
+Moreover, since we apply p(α|xi, x<i) as a probability cor-
+rection to valid tokens, the next token itself is another intu-
+itive feature: much like an LR(1) parser uses a single look-
+ahead token to resolve shift/reduce ambiguity about what to
+do next (Knuth 1965), the candidate next token can itself
+trigger a parser state transition, making it an early signal of
+what comes next and whether the sequence stays grammat-
+ically valid. However, LLM tokens and grammar lexemes
+rarely align one-to-one: a single LLM token can complete
+only part of a lexeme, in which case the parser makes no
+progress and the parser state S(xi, x<i) stays unchanged,
+leaving it uninformative about what comes next. We there-
+fore also expose the lexer state as a feature, since it tracks
+this finer-grained, within-lexeme progress and gives a sig-
+nal about what the parser is likely to do once the lexeme
+completes, even when the parser state alone would not have
+moved. Parser state and lexer state are thus complementary:
+parser state captures structure across completed lexemes but
+stalls mid-lexeme, while lexer state captures within-lexeme
+progress but is blind to structure beyond it. Together with
+the next token, these three features give γ a compact but
+sufficient signal of the sequence’s grammatical trajectory.
+We build this model’s training data from LLM samples:
+for each of 1000 generated sequences per grammar, we run
+the masking tool’s incremental parser over the sequence and,
+at every decoding step, record the parser state, lexer state, and
+candidate next token as a feature row, labeling it according to
+whether the resulting sequence is grammatically valid, i.e.,
+parsable in full. We instantiate this correction model at two
+levels of capacity. The simplest is a lightweight logistic re-
+gression model, which is cheap to train and to evaluate at each
+decoding step. To capture non-linear interactions between the
+parser state, lexer state, and next token that a linear model
+cannot, we also train a small Multi-Layer Perceptron (MLP)
+over the same features: a compact feed-forward network with
+two hidden layers (64 and 32 units, ReLU activations). We
+deliberately restrict the search to small architectures, select-
+ing this configuration by cross-validating on 5000 collected
+examples and picking the one with the lowest log-loss.
+4
+Experiments
+Baselines.
+We compare SHIM against Syncode (Ugare
+et al. 2025), a state-of-the-art masking-based GCD tool, and
+
+
+Figure 5: Our variants remain close to the target distribution as sample estimates grow. KL divergence is evaluated across four
+representative grammars and plotted as a function of k, the number of unique valid vanilla-LLM samples used to estimate the
+target. Our probability controller consistently maintains lower divergence as k scales.
+ASAp (Park et al. 2024), an online sampling method that it-
+eratively reweights its distribution toward the target. Because
+ASAp’s resampling cost grows with each sample, running it
+to convergence was computationally infeasible at our evalu-
+ation scale, so we cap it at 100 samples per grammar.
+Metrics.
+We measure probabilistic integrity via KL di-
+vergence to the target distribution, and computational effi-
+ciency via average inference time per sample. We estimate
+DKL(p(· | α) ∥q), where p is the LM’s distribution and q is
+a method’s distribution. We calculate this metric by drawing
+1000 samples from the LM and keeping the grammar-valid
+ones, then renormalizing both p and q over this finite set.
+Experimental setup.
+We evaluate on the Syntax Guided
+Synthesis (SyGuS) invariant-generation problems (Alur et al.
+2019), following prior work (Park et al. 2024), using
+Mistral-7B-Instruct-v0.2 as the base LLM. We
+focus on INV-BV, SyGuS’s bit-vector invertibility-condition
+split and the same benchmark ASAp was evaluated on; its
+grammar variants span a range of difficulty over a small,
+closed vocabulary, enabling an exact oracle distribution. We
+additionally evaluate on text-to-SQL using Spider (Yu et al.
+2019), whose schema-dependent identifiers form a much
+larger, open vocabulary than INV-BV’s, testing generaliza-
+tion across vocabulary structure. Table 1 gives the complete
+picture across all methods and BV4 grammars; the remainder
+of this section breaks this down into three parts, mirroring the
+feature levels introduced previously: (1) a full-feature MLP
+correction using parser state, lexer state, and the candidate
+next token, (2) a lightweight logistic regression on the same
+features, compared against Syncode and our online sampling
+baseline ASAp, and (3) a next-token-only correction. We will
+release our code and generated training data publicly upon
+publication under an open-source license.
+(1) Full-feature correction with an MLP.
+We first ask
+whether a corrector with access to the full feature set (next
+token, parser state, and lexer state) can recover more of the
+LM’s original distribution than masking alone. Table 1 re-
+ports the results for Syncode, our MLP variant, and ASAp
+across all 14 grammars: our MLP variant reduces KL diver-
+gence over Syncode on 11 of 14 grammars and over ASAp
+on all 14, running roughly 4.6× faster than ASAp on av-
+erage (3.64s vs. 16.62s). It remains slower than Syncode,
+though (3.64s vs. 2.97s) – the overhead we address next with
+a lighter-weight model.
+(2) A lightweight logistic regression matches the MLP
+at a fraction of the cost.
+We next replace the MLP with
+a lightweight logistic regression (LR_FULL) trained on the
+same full feature set, and compare both against Syncode
+and ASAp. Table 1 shows that LR_FULL matches or beats
+Syncode on 12 of 14 grammars, which is almost the same
+coverage as the MLP variant. While ASAp, despite reweight-
+ing its sampling distribution online, never achieves the lowest
+KL divergence in this comparison. We also evaluate whether
+this gap holds as more of the target distribution is revealed.
+Figure 5 shows KL as a function of k across four represen-
+tative grammars. Because an empirical KL estimate is opti-
+mistically biased when computed from few target samples,
+a curve that keeps rising as k grows is not a method getting
+worse with more sampling, but a more complete picture of
+the target exposing a gap the low-k estimate had missed. Un-
+der this test, MLP and LR_FULL stay low and largely flat,
+so their small KL in Table 1 was already close to the true
+value; LR_NT stabilizes rather than climbs but is not always
+low. ASAp instead climbs steadily and ends the worst of all
+methods on three of the four grammars shown, indicating its
+early competitiveness reflected an under-sampled evaluation
+rather than genuine closeness to the target distribution.
+This gap widens once we account for inference cost. Ta-
+ble 1’s bottom row shows LR_FULL running in 2.52s on
+average – faster than Syncode’s own 2.97s – and roughly
+7× faster than ASAp’s 16.62s. Because we train LR_FULL
+only once, offline, it requires no per-sample online training,
+unlike ASAp, which must update its internal representation
+after every generated sequence. LR_FULL even runs faster
+than Syncode overall. Computing γ adds a small per-step
+cost, but by correcting for future grammaticality, LR_FULL
+avoids the forced, longer completions that plain masking’s
+short-sighted choices can produce; the resulting savings from
+needing fewer steps outweigh that added cost.
+(3) The next token alone is enough to help, even with no
+parser or lexer access.
+Finally, we ask how much of this
+improvement survives when LR_NT restricts the corrector to
+
+
+Baselines
+Ours (SHIM)
+Grammar
+Syncode ASAp MLP
+LR_
+FULL
+LR_
+NT
+eq_bvlshr0
+0.382
+0.310 0.016
+0.033 0.100
+bvsge_bvashr1
+0.522
+0.583 0.139
+0.082 0.200
+ne_bvudiv1
+0.248
+0.197 0.0023 0.0022 0.012
+ne_bvudiv0
+0.079
+0.239 0.017
+0.003 0.107
+ne_bvurem1
+0.114
+0.359 0.064
+0.040 0.240
+ne_bvurem0
+0.311
+0.168 0.008
+0.024 0.097
+bvsge_bvnot
+0.006
+0.148 0.008
+0.001 0.177
+bvugt_bvneg
+0.277
+0.386 0.033
+0.117 0.282
+ne_bvneg
+0.032
+0.235 0.003
+0.001 0.015
+bvsge_bvneg
+0.046
+0.167 0.007
+0.014 0.196
+bvugt_bvurem1
+0.016
+0.308 0.075
+0.031 0.094
+bvugt_bvurem0
+0.080
+1.078 0.082
+0.100 0.146
+bvsgt_bvor
+0.087
+0.484 0.032
+0.078 0.058
+eq_bvand
+0.104
+0.258 0.003
+0.002 0.080
+Avg. time (LM: 3.40)
+2.97
+16.62
+3.64
+2.52
+2.45
+Table 1: Our probability controller lowers KL divergence
+across grammars and methods while keeping inference fast.
+KL divergence (↓) measures distortion relative to uncon-
+strained generation across grammars and baselines. Average
+latency per sequence (seconds) shows our lightweight con-
+troller adds negligible overhead over standard masked decod-
+ing, avoiding online sampling’s severe inference bottlenecks.
+only the candidate next token, with no parser or lexer state
+at all. This efficiency stems from the structure of BV4 gram-
+mars: because their terminals are notably short, individual
+LLM tokens frequently encapsulate the signal needed to trig-
+ger a parser state transition, so the next token alone provides
+an early, informative cue for whether a generation trajectory
+is losing its future grammatical correctness. The next token’s
+disambiguating role here mirrors the one a lookahead to-
+ken plays in LR(1) parsing, though without the parse state
+LR(1) normally pairs it with: for grammars with high overlap
+between LLM tokens and grammar lexemes, the next token
+alone still carries enough signal to guide the LLM toward ac-
+cepting continuations, without the corrector ever seeing the
+parser or lexer state directly. Table 1 reports KL divergence
+for Syncode, LR_NT, and ASAp across all 14 grammars. As
+the table shows, LR_NT is a genuinely weaker corrector than
+the full-feature variants (MLP, LR_FULL): it beats Syncode
+on exactly half the grammars rather than the vast majority,
+but it is never far behind Syncode even when it loses, and its
+correction model needs no parser or lexer state at all. This
+trade-off shows up in the bottom row too: LR_NT runs in
+2.45s on average, marginally faster than Syncode’s 2.97s and
+roughly 7× faster than ASAp’s 16.62s, while still costing
+less time than the heavier MLP variant (3.64s), echoing the
+trade-off from Part (1).
+(4) A second domain: text-to-SQL.
+We use a sample of
+four pairs from Spider as our benchmark. Table 2 reports
+KL divergence for each row. As on BV4, our lightweight
+correctors match or improve on Syncode’s masked distri-
+bution on most rows (store_product, entertainment_awards,
+Baselines
+Ours (SHIM)
+Grammar (row)
+Syncode ASAp MLP
+LR_
+FULL
+LR_
+NT
+store_product
+0.418
+0.717 0.310 0.327 0.128
+entertainment_awards
+0.082
+0.128 0.026 0.030 1.986
+election
+0.251
+0.300 0.431 0.375 0.746
+cre_theme_park
+0.060
+—
+0.041 0.049 0.295
+Avg. time (LM: 5.16)
+3.86
+80.44§ 4.54
+4.78
+3.95
+Table 2: Generalization to complex SQL queries. Rows re-
+port KL divergence per query; the bottom row shows mean
+inference time (seconds). §Grammar simplified so ASAp’s
+sampling terminates in finite time.
+cre_theme_park), though Syncode remains best on election.
+The LR_NT column in Table 2 shows that the next-
+token-only benefit from BV4 (Part (3) above) is conditional
+rather than universal: on store_product, LR_NT improves on
+the full-feature variants, consistent with the LR(1) looka-
+head intuition; but on entertainment_awards, it is substan-
+tially worse than every full-feature variant. This is not a
+contradiction of the lookahead story so much as a bound-
+ary on it, and the four rows’ queries make the boundary
+concrete: all four share the same grammar structure, dif-
+fering only in their closed vocabulary. LR_NT wins on
+store_product, whose query matches a substring via LIKE
+"%Scanner%" – once the LLM starts spelling out the
+pattern, the next token is nearly the whole signal, mirror-
+ing BV4’s short-terminal case. Its worst row is entertain-
+ment_awards, a flat numeric disjunction with the smallest
+vocabulary of the four and no strings at all; the difficulty
+there is not vocabulary size but that its schema has several
+near-duplicate column names (e.g. Num_of_Audience,
+NumOfAudience, Total_Audience), which only di-
+verge many tokens in – the bookkeeping the parser and lexer
+state provide and LR_NT discards. cre_theme_park has the
+largest vocabulary of the four but only a middling penalty,
+confirming vocabulary size alone is not the driver. Election,
+the only JOIN row, is LR_NT’s second-worst: which table
+a column belongs to is a structural decision the next token
+alone cannot track.
+Sample generation time also diverges sharply across meth-
+ods. On store_product, Syncode and our correctors generate
+a valid sample in 1.7–4.0s on average, while ASAp takes
+18.87s, roughly an order of magnitude slower. This gap nar-
+rows on the other three rows, where every method falls
+in the 2–8s range, but ASAp’s cost grows more steeply,
+reaching 93–108s on election and cre_theme_park. On
+cre_theme_park, that requires simplifying ASAp’s vocab-
+ulary to obtain a timing result; since this changes the target
+distribution, we omit its KL for that row. ASAp’s recognizer
+tracks every live parse alternative as a separate state rather
+than sharing prefixes across near-duplicates, so its per-step
+cost can grow combinatorially as the vocabulary grows more
+repetitive. SHIM’s inference cost, by contrast, is fixed re-
+gardless of grammar ambiguity.
+
+
+5
+Related Work
+Grammar Constrained Decoding:
+These methods en-
+force grammar conformance through token-level masking,
+differing mainly in how they make that masking efficient.
+Syncode (Ugare et al. 2025), Xgrammar (Dong et al. 2025),
+and GREATGRAMMA (Park, Zhou, and D’Antoni 2025)
+each precompute an offline artifact – a token mask store
+or token-lexeme dependency map – and consult it via
+lookup during decoding. Outlines (Willard and Louf 2023)
+instead reformulates decoding as transitions over an au-
+tomaton whose states map directly to allowed-token masks.
+DOMINO (Beurer-Kellner, Fischer, and Vechev 2024) tar-
+gets the LLM-token/grammar-lexeme mismatch directly,
+classifying tokens as a start, end, or continuation subtermi-
+nal and deriving the mask from a subterminal tree. Existing
+GCD methods guarantee grammar conformance only with
+respect to tokens generated so far, ignoring each token’s ef-
+fect on future grammar conformance and distorting the LM’s
+probability distribution by forcing it into a token domain
+its training never covered. We show this distortion can be
+learned from data, using features available at decoding time
+– the candidate next token together with the masking mecha-
+nism’s parser and lexer state – to correct masked probabilities
+and restore GCD’s probabilistic integrity.
+Online Sampling Methods:
+Rather than masking greed-
+ily, these methods restore the LM’s true conditional dis-
+tribution by tracking which prefixes are grammatical dead
+ends and repeatedly resampling around them. ASAp (Park
+et al. 2024) and CARS (Parys et al. 2026) both maintain
+such dead-end information and reweight future sampling to
+avoid it. MCMC (Gonzalez et al. 2025) and AWRS (Lipkin
+et al. 2025) adopt a propose-and-correct strategy, iteratively
+refining or adaptively rejecting candidates to prune invalid
+paths early. SMC Steering (Lew et al. 2023) instead for-
+malizes constrained generation as Sequential Monte Carlo
+posterior inference, using a learned proposal and potential
+to steer particles toward valid completions. All five meth-
+ods share the same downside: they must update their internal
+representation and recompute probabilities after every sam-
+pled sequence, bloating inference time. SHIM instead uses
+a lightweight probability controller trained offline and adds
+no inference-time overhead, even speeding up inference by
+aligning masked probabilities with the underlying model.
+Tractable
+Probabilistic
+Model
+Augmentation:
+GeLaTo (Zhang et al. 2023), Ctrl-G (Zhang et al.
+2024), and P-GCD (Dang et al. 2026) all pair the LLM
+with a second, tractable model, typically an HMM distilled
+offline via maximum likelihood from LLM samples. At each
+step, this model’s exact constraint-satisfaction likelihood
+is multiplied into the LLM’s next-token distribution. They
+differ mainly in how they reason about constraints. GeLaTo
+uses a hand-crafted dynamic program over CNF keyword
+clauses. Ctrl-G generalizes this to arbitrary DFAs via a
+GPU-parallelized backward recurrence. P-GCD instead
+fuses a tensorized constraint automaton with the distilled
+HMM via circuit multiplication, using the result as an SMC
+proposal and potential. SHIM follows this same augmen-
+tation philosophy, pairing the LLM with a small auxiliary
+model rather than modifying its weights or hard-masking
+its outputs. However, SHIM avoids distilling a full HMM
+approximation of the LLM’s output distribution. It instead
+learns only the narrow correction induced by grammar
+masking, from a few decoding-time features. This makes
+SHIM’s controller orders of magnitude smaller, cheap to
+retarget to new grammars, and interpretable, while still
+matching or exceeding prior methods’ distributional fidelity.
+6
+Conclusion
+Language models are increasingly deployed in real-world
+applications where strict adherence to formal constraints is
+necessary, ranging from code parsing and auto-formalization
+to structured data processing engines. While Grammar-
+Constrained Decoding (GCD) guarantees structural compli-
+ance in these settings, maintaining the LLM’s true probability
+distribution remains challenging. Traditional token masking
+is fast but distorts the distribution, while alternatives such
+as online sampling or HMM-based augmentation improve
+fidelity at the cost of significant computational overhead or
+complex output distribution modeling. We introduce SHIM,
+which avoids these pitfalls by learning only the probability
+adjustment based on the internal parser state instead of mask-
+ing. SHIM learns this correction offline from lightweight
+decoding-time features already computed during constrained
+decoding – the internal parser and lexer states, together with
+the candidate next token – which inherently encode future
+grammaticality yet have remained completely unexploited
+for logit adjustment. SHIM applies the learned correction
+during inference with negligible runtime overhead.
+On the BV4 SyGuS benchmark, our full-feature MLP –
+robust across varying feature availabilities, model capaci-
+ties, and grammar families – achieves up to 113× lower
+KL divergence than Syncode (mean 23×, median 7×) and
+up to 235× lower divergence than online sampling (mean
+56×, median 21×). A lightweight logistic regression trained
+on the same state features matches or exceeds the MLP’s
+performance on several grammars while executing as fast
+as, or faster than, standard token masking. When grammat-
+ical validity depends primarily on immediate local context,
+even a next-token-only controller—requiring zero parser or
+lexer state access—substantially improves upon both stan-
+dard GCD and online sampling. On Spider, a real-world
+text-to-SQL benchmark with larger and more ambiguous
+grammars, SHIM matches or surpasses baseline distribu-
+tions while maintaining fast inference speeds. In contrast,
+online sampling scales poorly on complex SQL rows, fail-
+ing to complete within practical time budgets. Overall, these
+results demonstrate that lightweight, offline-trained proba-
+bility control effectively closes the gap between speed and
+distributional fidelity in grammar-constrained decoding.
+References
+Aho, A. V.; Lam, M. S.; Sethi, R.; and Ullman, J. D. 2006.
+Compilers: Principles, Techniques, and Tools. Boston, MA,
+USA: Pearson Education, 2nd edition. ISBN 0321486811.
+Alur, R.; Fisman, D.; Padhi, S.; Singh, R.; and Udupa,
+
+
+A. 2019.
+SyGuS-Comp 2018: Results and Analysis.
+arXiv:1904.07146.
+Austin, J.; Odena, A.; Nye, M.; Bosma, M.; Michalewski, H.;
+Dohan, D.; Jiang, E.; Cai, C.; Terry, M.; Le, Q.; and Sutton,
+C. 2021. Program Synthesis with Large Language Models.
+arXiv:2108.07732.
+Beurer-Kellner, L.; Fischer, M.; and Vechev, M. 2024. Guid-
+ing LLMs The Right Way: Fast, Non-Invasive Constrained
+Generation. arXiv:2403.06988.
+Chen, M.; Tworek, J.; Jun, H.; Yuan, Q.; de Oliveira Pinto,
+H. P.; Kaplan, J.; Edwards, H.; Burda, Y.; Joseph, N.; Brock-
+man, G.; Ray, A.; Puri, R.; Krueger, G.; Petrov, M.; Khlaaf,
+H.; Sastry, G.; Mishkin, P.; Chan, B.; Gray, S.; Ryder, N.;
+Pavlov, M.; Power, A.; Kaiser, L.; Bavarian, M.; Winter, C.;
+Tillet, P.; Such, F. P.; Cummings, D.; Plappert, M.; Chantzis,
+F.; Barnes, E.; Herbert-Voss, A.; Guss, W. H.; Nichol, A.;
+Paino, A.; Tezak, N.; Tang, J.; Babuschkin, I.; Balaji, S.;
+Jain, S.; Saunders, W.; Hesse, C.; Carr, A. N.; Leike, J.;
+Achiam, J.; Misra, V.; Morikawa, E.; Radford, A.; Knight,
+M.; Brundage, M.; Murati, M.; Mayer, K.; Welinder, P.; Mc-
+Grew, B.; Amodei, D.; McCandlish, S.; Sutskever, I.; and
+Zaremba, W. 2021.
+Evaluating Large Language Models
+Trained on Code. arXiv:2107.03374.
+Chen, X.; Lin, M.; Schärli, N.; and Zhou, D. 2023. Teaching
+Large Language Models to Self-Debug. arXiv:2304.05128.
+Chowdhery, A.; Narang, S.; Devlin, J.; Bosma, M.; Mishra,
+G.; Roberts, A.; Barham, P.; Chung, H. W.; Sutton, C.;
+Gehrmann, S.; Schuh, P.; Shi, K.; Tsvyashchenko, S.;
+Maynez, J.; Rao, A.; Barnes, P.; Tay, Y.; Shazeer, N.; Prab-
+hakaran, V.; Reif, E.; Du, N.; Hutchinson, B.; Pope, R.; Brad-
+bury, J.; Austin, J.; Isard, M.; Gur-Ari, G.; Yin, P.; Duke,
+T.; Levskaya, A.; Ghemawat, S.; Dev, S.; Michalewski, H.;
+Garcia, X.; Misra, V.; Robinson, K.; Fedus, L.; Zhou, D.;
+Ippolito, D.; Luan, D.; Lim, H.; Zoph, B.; Spiridonov, A.;
+Sepassi, R.; Dohan, D.; Agrawal, S.; Omernick, M.; Dai,
+A. M.; Pillai, T. S.; Pellat, M.; Lewkowycz, A.; Moreira, E.;
+Child, R.; Polozov, O.; Lee, K.; Zhou, Z.; Wang, X.; Saeta,
+B.; Diaz, M.; Firat, O.; Catasta, M.; Wei, J.; Meier-Hellstern,
+K.; Eck, D.; Dean, J.; Petrov, S.; and Fiedel, N. 2023. PaLM:
+Scaling Language Modeling with Pathways. Journal of Ma-
+chine Learning Research, 24(240): 1–113.
+Dang, M.; Song, L.; Zhang, H.; Zhao, J.; den Broeck, G. V.;
+and Ermon, S. 2026. Mitigating Bias in Locally Constrained
+Decoding via Tractable Proposals. arXiv:2606.01926.
+Dong, Y.; Ruan, C. F.; Cai, Y.; Xu, Z.; Zhao, Y.; Lai, R.; and
+Chen, T. 2025. XGrammar: Flexible and Efficient Structured
+Generation Engine for Large Language Models. In Zaharia,
+M.; Joshi, G.; and Lin, Y., eds., Proceedings of Machine
+Learning and Systems, volume 7. MLSys.
+Gonzalez, E. A.; Vaidya, S.; Park, K.; Ji, R.; Berg-
+Kirkpatrick, T.; and D’Antoni, L. 2025. Constrained Sam-
+pling for Language Models Should Be Easy: An MCMC
+Perspective. arXiv:2506.05754.
+Knuth, D. E. 1965. On the translation of languages from left
+to right. Information and Control, 8(6): 607–639.
+Lew, A. K.; Zhi-Xuan, T.; Grand, G.; and Mansinghka, V. K.
+2023. Sequential Monte Carlo Steering of Large Language
+Models using Probabilistic Programs. arXiv:2306.03081.
+Li, L.; Rahili, S.; and Zhao, Y. 2025.
+Correctness-
+Guaranteed Code Generation via Constrained Decoding.
+arXiv:2508.15866.
+Li, Y.; Choi, D.; Chung, J.; Kushman, N.; Schrittwieser,
+J.; Leblond, R.; Eccles, T.; Keeling, J.; Gimeno, F.;
+Dal Lago, A.; Hubert, T.; Choy, P.; de Masson d’Autume,
+C.; Babuschkin, I.; Chen, X.; Huang, P.-S.; Welbl, J.; Gowal,
+S.; Cherepanov, A.; Molloy, J.; Mankowitz, D. J.; Suther-
+land Robson, E.; Kohli, P.; de Freitas, N.; Kavukcuoglu, K.;
+and Vinyals, O. 2022. Competition-level code generation
+with AlphaCode. Science, 378(6624): 1092–1097.
+Lipkin, B.; LeBrun, B.; Vigly, J. H.; Loula, J.; MacIver, D. R.;
+Du, L.; Eisner, J.; Cotterell, R.; Mansinghka, V.; O’Donnell,
+T. J.; Lew, A. K.; and Vieira, T. 2025. Fast Controlled Gen-
+eration from Language Models with Adaptive Weighted Re-
+jection Sampling. arXiv:2504.05410.
+Lu, A.; Zhang, H.; Zhang, Y.; Wang, X.; and Yang, D.
+2023. Bounding the Capabilities of Large Language Mod-
+els in Open Text Generation with Prompt Constraints.
+arXiv:2302.09185.
+Lu, Y.; Li, H.; Cong, X.; Zhang, Z.; Wu, Y.; Lin, Y.;
+Liu, Z.; Liu, F.; and Sun, M. 2025.
+Learning to Gener-
+ate Structured Output with Schema Reinforcement Learning.
+arXiv:2502.18878.
+Park, K.; Wang, J.; Berg-Kirkpatrick, T.; Polikarpova, N.;
+and D' Antoni, L. 2024. Grammar-Aligned Decoding. In
+Globerson, A.; Mackey, L.; Belgrave, D.; Fan, A.; Paquet,
+U.; Tomczak, J.; and Zhang, C., eds., Advances in Neural
+Information Processing Systems, volume 37, 24547–24568.
+Curran Associates, Inc.
+Park, K.; Zhou, T.; and D’Antoni, L. 2025. Flexible and Ef-
+ficient Grammar-Constrained Decoding. arXiv:2502.05111.
+Parys, P.; Vaidya, S.; Berg-Kirkpatrick, T.; and D’Antoni,
+L. 2026.
+Constrained Adaptive Rejection Sampling.
+arXiv:2510.01902.
+Shinan, E. 2018. Lark: A parsing toolkit for Python.
+Tenckhoff, S.; Koddenbrock, M.; and Rodner, E. 2026. LLM-
+StructBench: Benchmarking Large Language Model Struc-
+tured Data Extraction. arXiv:2602.14743.
+Ugare, S.; Suresh, T.; Kang, H.; Misailovic, S.; and Singh,
+G. 2025. SynCode: LLM Generation with Grammar Aug-
+mentation. Transactions on Machine Learning Research.
+Wagner, T. A.; and Graham, S. L. 1998. Efficient and flexi-
+ble incremental parsing. ACM Trans. Program. Lang. Syst.,
+20(5): 980–1013.
+Willard, B. T.; and Louf, R. 2023. Efficient Guided Genera-
+tion for Large Language Models. arXiv:2307.09702.
+Yu, T.; Zhang, R.; Yang, K.; Yasunaga, M.; Wang, D.; Li,
+Z.; Ma, J.; Li, I.; Yao, Q.; Roman, S.; Zhang, Z.; and Radev,
+D. 2019. Spider: A Large-Scale Human-Labeled Dataset for
+Complex and Cross-Domain Semantic Parsing and Text-to-
+SQL Task. arXiv:1809.08887.
+
+
+Zhang, H.; Dang, M.; Peng, N.; and Van Den Broeck, G.
+2023. Tractable Control for Autoregressive Language Gen-
+eration. In Krause, A.; Brunskill, E.; Cho, K.; Engelhardt, B.;
+Sabato, S.; and Scarlett, J., eds., Proceedings of the 40th In-
+ternational Conference on Machine Learning, volume 202 of
+Proceedings of Machine Learning Research, 40932–40945.
+PMLR.
+Zhang, H.; Kung, P.-N.; Yoshida, M.; Van den Broeck, G.;
+and Peng, N. 2024. Adaptable Logical Control for Large
+Language Models. In Globerson, A.; Mackey, L.; Belgrave,
+D.; Fan, A.; Paquet, U.; Tomczak, J.; and Zhang, C., eds.,
+Advances in Neural Information Processing Systems, vol-
+ume 37, 115563–115587. Curran Associates, Inc.
