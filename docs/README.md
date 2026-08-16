@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-15</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-16</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 21 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 20 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>8</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>13</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-15 20:47:44 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-16 20:37:43 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读8篇、速读13篇，共完成21篇论文跟进。最值得关注的是两篇9分精读：语言模型中的焦点粒子与标量推理，以及训练数据粒度如何决定参数模块性。建议普通读者优先从模型推理可解释性方向入手阅读。</p>
+<p>今日聚焦大模型评估，精读2篇高分论文并速读3篇相关研究，共覆盖20篇文献。最值得关注的是“评估时长影响模型排名”的发现，以及面向巴伐利亚方言文化的专属基准测试。普通读者不妨留意，大模型能遵循指令但数量有限，组合约束下易现“瓶颈”。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,9 +74,9 @@
     <strong class="dpr-home-dashboard-count">8 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Focus particles and scalar inferences across humans and language models">Focus particles and scalar inferences across humans and language models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Decodable But Not Detachable: Training Data Granularity Determines Parametric Modularity in Large Language Models">Decodable But Not Detachable: Training Data Granularity Determines Parametric Modularity in Large Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Interpreting Language Model Hidden States at Scale">Interpreting Language Model Hidden States at Scale</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Who Thinks Best Depends on How Long You Let Them: Budget-Dependent Rankings in LLM Evaluation">Who Thinks Best Depends on How Long You Let Them: Budget-Dependent Rankings in LLM Evaluation</span></li><li><span class="dpr-home-dashboard-paper-title" title="BavGround: A Benchmark for Regional Cultural Grounding and Dialect Competence in Bavarian">BavGround: A Benchmark for Regional Cultural Grounding and Dialect Competence in Bavarian</span></li><li><span class="dpr-home-dashboard-paper-title" title="Counterfactual Benchmarking and Training for Factuality Consistency and Order-Robust Grounded Reasoning in LLMs over Heterogeneous Knowledge">Counterfactual Benchmarking and Training for Factuality Consistency and Order-Robust Grounded Reasoning in LLMs over Heterogeneous Knowledge</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>4</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>2</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">13 篇</strong>
+    <strong class="dpr-home-dashboard-count">12 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Hidden Language Consistency Phenomena in Reasoning LLMs">Hidden Language Consistency Phenomena in Reasoning LLMs</span></li><li><span class="dpr-home-dashboard-paper-title" title="Multilingual Emotion Neurons in Large Audio-Language Models">Multilingual Emotion Neurons in Large Audio-Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="OmnilingualGAIA2: Evaluating the Multilingual Gap in Frontier AI Agents">OmnilingualGAIA2: Evaluating the Multilingual Gap in Frontier AI Agents</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="CORDA: A Benchmark for Hierarchical Harm-Centric Moral Reasoning in Large Language Models">CORDA: A Benchmark for Hierarchical Harm-Centric Moral Reasoning in Large Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="From Reasoning Depth to Reasoning Breadth: Evaluating Multi-Point Associative Reasoning in Large Language Models">From Reasoning Depth to Reasoning Breadth: Evaluating Multi-Point Associative Reasoning in Large Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Large Language Models Can Follow Instructions, But Not Many at Once: Phase Transitions in Compositional Constraint Satisfaction">Large Language Models Can Follow Instructions, But Not Many at Once: Phase Transitions in Compositional Constraint Satisfaction</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>6</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>9</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>2</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
 </section>
 </div>
 

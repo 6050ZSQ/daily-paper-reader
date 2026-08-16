@@ -1,0 +1,183 @@
+Title: DS@GT ARC at Touché: Large Language Models for Retrieval-Augmented Debate
+
+URL Source: https://arxiv.org/pdf/2608.08143v1
+
+Published Time: Tue, 11 Aug 2026 00:42:42 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# DS@GT ARC at Touché: Large Language Models for Retrieval-Augmented Debate 
+
+Anthony Miyaguchi ( )[0000 −0002 −9165 −8718] and Conor Johnston [0009 −0001 −1777 −9255] 
+
+Georgia Institute of Technology, North Ave NW, Atlanta, GA 30332, USA 
+
+{acmiyaguchi,cjohnston}@gatech.edu 
+
+Abstract. We extend the DS@GT ARC working-note submission to the Touché 2025 Retrieval-Augmented Debate task. The task has two subtasks: generating the next utterance in a simulated debate, and eval-uating debate responses according to the Gricean maxims of Quan-tity, Quality, Relation, and Manner. The DS@GT ARC submission con-sisted of six leading LLMs from three providers through a retrieval-augmented prompting pipeline. We summarize the results from the work-ing paper and explore whether multi-LLM evaluator agreement is a re-liable proxy for official evaluation performance. The analysis shows that frontier LLM systems are strong response generators, and as evalua-tors they agree strongly within model families. However this consensus does not reliably track the official evaluation target, with the largest gap on the Quality maxim. The accompanying source code for this paper is located at https://github.com/dsgt-arc/touche-2025-rad and https://github.com/dsgt-arc/touche-2025-rad-analysis. 
+
+Keywords: Large Language Models (LLM) · Retrieval-Augmented Generation (RAG) · Argumentative Systems · Self-Evaluation · Con-versational AI · DS@GT 
+
+## 1 Introduction 
+
+The DS@GT team participated in the Retrieval-Augmented Debating (RAD) task as part of the Touché 2025 competition [6]. The RAD task evaluates ar-gumentative systems in a controlled turn-based simulation where the system chooses to defend its previous response, or attack the opponent’s. In the first subtask, the system receives the current debate state, retrieves candidate sup-porting arguments, and then generates an utterance. In the second subtask, the system evaluates debate responses according to the Gricean maxims chosen by the organizers: Quantity, Quality, Relation, and Manner [3]. We describe our approach which leverages retrieval-augmented generation (RAG) using the ClaimRev corpus [11] and large language models (LLMs). This paper extends the original DS@GT working note [9]. Sections 3 and 4 summa-rize the submitted systems and their official evaluation, alongside new post-hoc arXiv:2608.08143v1 [cs.IR] 8 Aug 2026 2 A. Miyaguchi et al. 
+
+analyses of the organizer-released evaluation data. We interpret the relationship between evaluator consensus and official evaluation scores in Section 5. We design an evaluation pipeline to assess our responses across the re-quired dimensions. We hypothesize frontier LLMs can produce strong retrieval-augmented debate responses in Touché RAD 2025 and analyze the reliability of the evaluation process itself. We organize the follow-up analysis around three questions: how reliable multi-LLM judge consensus is, whether weak supervision can improve evaluator calibration, and whether evaluator consensus aligns with official evaluation scores. 
+
+## 2 Related Work 
+
+LLMs are effective debaters [5]. Although not examined in a debate environment, LLMs enhanced with RAG systems have been shown to improve in accuracy and consistency in responses [4]. These systems are well-suited for debate because they require strong argumentative skills, along with the ability to recall factual knowledge. Studies have shown that LLMs can surpass human performance in debate evaluations [8]. The original DS@GT working note deployed six publicly available models across three providers for retrieval-augmented debate response generation and evaluation, finding that LLMs performed well with retrieved arguments but tended toward verbose responses and consistent evaluation behavior [9]. The SINAI working note instead emphasized an open-source LLaMA3.1-8B-Instruct approach, using structured multi-step prompting for generation and zero-shot, few-shot, and analyzer-style prompting strategies for evaluation [12]. 
+
+## 3 Methodology 
+
+We develop a debate system for both the response and evaluation RAD subtasks using large language models. The response subtask generates an appropriate response to an ongoing debate. The evaluation subtask assesses the quality of the given response in the context of the debate. The interfaces adhere to the GenIRSim API, which is used to simulate and evaluate debates [7]. Each debate is defined by an underlying topic, simulated user, turn history, and the retrieved arguments for the responding system. The official response generation test collection consists of 100 topics. Each submitted run is simu-lated for five system turns, yielding 500 responses per run. The official response data distributed by the organizers consists of eight systems: six of the DS@GT submitted systems, one SINAI submitted system, and the organizers’ baseline. Subtask 1 is scored as the proportion of responses fulfilling the Gricean maxims as per official binary annotations, with submissions ranked through an average of all the scores. Subtask 2 is scored as a classification task with precision, re-call, and F1 per maxim, ranked by an average of the F1 scores. Post-competition the organizer annotations and evaluator scores were made available for analysis. Figure 1 shows one exchange from the released corpus. DS@GT ARC at Touché 3
+
+## topic. The Earth is not flat. 
+
+## user turn. Contrary to your flat Earth perspective, a vast amount of scientific evidence, including photos from space, confirms that the Earth is actually an oblate spheroid. 
+
+## retrieved argument 1 of 10. There exist pictures of the Earth from outer space showing that it’s not flat. 
+
+## system response. While photos from space provide strong visual support, some argue that 2D images alone are insufficient as definitive proof. However, consistent empirical evidence from nautical and aerospace measurements, as well as the observation of different stars in both hemispheres, further corroborate that Earth is a spheroid, not flat or merely disc-shaped. 
+
+Fig. 1. An example debate exchange from the organizer-released corpus (topic 7, first system turn of our gpt-4.1 run). The topic, simulated user turn, and retrieved arguments are provided by the organizers while the system generates the response. Official annotators marked all four maxims unsatisfied because the system argues the same stance as the user, while all six frontier LLM judges marked all four satisfied. 
+
+Table 1. Models used for RAD experiments via OpenRouter. 
+
+Model Name Release Date Context Input Output (tokens) ($/M) ($/M) 
+
+anthropic/claude_opus-4 2025-05-22 200,000 15 75 anthropic/claude_sonnet-4 2025-05-22 200,000 3 15 google/gemini-2.5-flash-preview-05-20 2025-05-20 1,048,576 0.15 0.60 google/gemini-2.5-pro-preview 2025-05-07 1,048,576 1.25 10 openai/gpt-4.1 2025-04-14 1,047,576 2 8openai/gpt-4o 2024-05-13 128,000 2.50 10                                                                     
+
+> // List of messages in the OpenAI completion API style
+> Message ={role :: String ,content :: String }
+> DebateRequest ={messages :: [Message ]}// Debate response utterance and retrieved arguments
+> Argument ={id :: String ,text :: String }
+> RetrievalResponse ={arguments :: [Argument ]}
+> SystemResponse ={utterance :: String ,arguments :: RetrievalResponse }// Debate response interface respond :: DebateRequest -> SystemResponse
+
+Fig. 2. The function signature of the responding endpoint the GenIRSim system expects for a valid simulation. The messages are passed in OpenAI-compatible chat completion format, with the roles of "user" and "assistant". 4 A. Miyaguchi et al.                                                                         
+
+> // Transcript of the simulated debate
+> UserTurn ={utterance :: String ,systemResponse :: SystemResponse }
+> Simulation ={userTurns :: [UserTurn ]}
+> EvaluationRequest ={simulation :: Simulation ,userTurnIndex :: Maybe Int }// Ascore between 0and 1on adimension of the debate turn
+> EvaluationResponse ={score :: Float }// Debate evaluation interface quantity :: EvaluationRequest -> EvaluationResponse
+> quality :: EvaluationRequest -> EvaluationResponse
+> manner :: EvaluationRequest -> EvaluationResponse
+> relation :: EvaluationRequest -> EvaluationResponse
+
+Fig. 3. The function interface for the evaluation portion of the GenIRSim API. A separate request is made for quantity, quality, manner, and relation. 
+
+3.1 Debate Response 
+
+The debate response is split into a retrieval and generation phase. In the retrieval phase, we obtain the top ten documents from the argument search system as evidence for a response. The search system utilizes organizer-hosted Elasticsearch and Stella embeddings to retrieve relevant debate documents [13]. The generation phase prompts an LLM, shown in Figure 4, with evidence and history of the debate. We then respond to the debate request using the interface described in Figure 2. The debate topic, retrieved arguments, and prior turns are inputs, while the model output is the response returned to GenIRSim (Figure 1). We made six submissions to the response-generation task with models se-lected from OpenRouter, an LLM gateway service that provides unified access to a diverse set of providers. We select flagship models with context windows ranging from 128k to 1m tokens listed in Table 1 across three providers in May and June 2025. Date-suffixed identifiers pin an exact snapshot, while the re-maining identifiers resolved to the provider’s then-current version of the listed release. Prices are reported in U.S. dollars per million input or output tokens. In exploratory tests, we generated a set of six random topics from the Claim-Rev corpus [11]. The simulated debate has a maximum of three turns per model, resulting in six simulations per model for a total of 18 utterances. We fed each model its previous simulations to verify the pipeline end-to-end before the official submissions. 
+
+3.2 Debate Evaluation 
+
+We evaluate debate responses in a zero-shot manner and made six submissions using the LLM models listed in Table 1. We prompt the LLM to judge the most recent responses and the topic of the debate as per Figure 5 with structured generation to generate numeric scores for quantity, quality, manner, and rela-tion. The web interface must expose four separate endpoints for the evaluation measures. To limit the total number of LLM calls, we evaluate all four measures in a single call and memoize the result. DS@GT ARC at Touché 5
+
+## evidence. {{ evidence }} 
+
+## role. You are an expert debate partner whose primary goal is to help the user develop and refine their debating skills. Your role is to thoughtfully challenge the user’s claim by presenting a well-constructed, evidence-based counter-argument. 
+
+## guidelines. Follow these guidelines to ensure your response is of the highest quality: [...omitted for brevity...] Your response should be relevant, well-reasoned, evidence-based, clear, and respectful. The goal is not simply to disagree, but to help the user sharpen their arguments and think more critically. 
+
+## constraints. Response must be 60 words or less; base arguments strictly on the given evidence; do not include specific citations. 
+
+## context. Respond to any previous user argument in the debate. The most recent user argument is: {{ context }} 
+
+Fig. 4. The prompt is used to generate a debate response in the first subtask. Evidence from the claims database is formatted as YAML at the start of the prompt, while the context of the entire argument is serialized at the end of the prompt. 
+
+## issue. {{ issue }} 
+
+## argument. {{ argument }} 
+
+## counter-argument. {{ counter_argument }} 
+
+## task. Critically evaluate the counter-argument on a scale from 0 (extremely poor) to 1 (exceptional) in increments of 0.01. [...omitted for brevity...] 
+
+## response format. Format your response as a single JSON object with exactly these keys: 
+
+> {"quantity": { "explanation": "...", "score": 0.50 }, "quality": { "explanation": "...", "score": 0.50 }, "relation": { "explanation": "...", "score": 0.50 }, "manner": { "explanation": "...", "score": 0.50 } }
+
+The explanation is a concise, critical justification citing strengths and weaknesses. The score is a number between 0 and 1. Your response: 
+
+Fig. 5. The prompt is used to generate all measures of the requested debate. The call to the LLM leverages structured output through the chat completion API provided by OpenRouter. 6 A. Miyaguchi et al. 
+
+We ran toy simulation topics through the baseline simulation image provided by the committee. The toy simulation consists of two topics: "Television is bad" and "Television is good." For every model, we evaluated the baseline simulations of these debates (two topics, one debate per topic with three messages each) four times. We used the baseline image for the simulations to ensure a consistent set of debates for evaluating our results. All runs were submitted through the TIRA platform [1]. Because API keys cannot be exposed safely inside the TIRA environment, the submitted software is a thin proxy client that forwards requests to a self-hosted service, which handles logging and the LLM calls via OpenRouter. 
+
+3.3 Evaluator Consensus and Calibration 
+
+After the official leaderboard period elapsed, we shifted our focus to the analy-sis of the model behavior, in particular behavior of LLMs as judges. The eight systems are the six DS@GT response-generation runs listed in Table 1, the orga-nizer baseline, and the SINAI/Lewis-carroll response-generation run. Each sys-tem is evaluated on 100 topics with five system turns per topic, producing 4,000 response turns joined to 49,600 organizer-released annotation/evaluation rows with no missing response joins. We look at evaluator consensus through pairwise Pearson correlation computed over response turns separately per maxim and mean averaged. Given the evaluator agreement, we tested whether a weak-supervision en-semble could improve over simple multi-LLM averaging. Our approach follows FlyingSquid-style label modeling [2] and is motivated by weak-verifier aggrega-tion work (Weaver) [10]. The voters are the six frontier LLM judges and ten surface heuristics covering length, lexical overlap, retrieval, readability, and rep-etition. The expanded pool adds the seven SINAI LLaMA-8B judge runs as additional voters. Each voter is binarized at its median and treated as a noisy vote over each Gricean dimension. The label model then estimates latent voter accuracies and calibrated system scores. This analysis is treated as a diagnostic for evaluator consensus. Additionally, we tested a dependency-aware version of the label model, where correlated voters such as same-family LLMs and length-related heuristics were explicitly linked. Since the weak-supervision experiments estimate which judges align with the latent consensus, we must evaluate whether that consensus corresponds to the official evaluation target. To test this, we compared latent judge accuracy esti-mates against the official Subtask 2 F1 scores. Official F1 measures performance against the lab organizers’ evaluation target, while latent accuracy measures agreement with the weak-supervision model’s inferred consensus, which needs to be taken into consideration during analysis. DS@GT ARC at Touché 7
+
+Table 2. Internal model evaluations across Gricean metrics, reported as mean ± stan-dard deviation, with the overall average computed from the four metric means.                                                                                    
+
+> Model Overall Quantity Quality Relation Manner
+> google/gemini-2.5-flash 0.407 0.315 ±0.184 0.350 ±0.220 0.269 ±0.314 0.694 ±0.148 openai/gpt-4o 0.387 0.319 ±0.076 0.363 ±0.092 0.302 ±0.194 0.565 ±0.127 google/gemini-2.5-pro 0.353 0.167 ±0.118 0.215 ±0.212 0.223 ±0.315 0.806 ±0.139
+> openai/gpt-4.1 0.317 0.219 ±0.099 0.247 ±0.102 0.167 ±0.178 0.635 ±0.093 anthropic/claude_opus-4 0.277 0.171 ±0.059 0.243 ±0.085 0.177 ±0.254 0.519 ±0.153 anthropic/claude_sonnet-4 0.268 0.215 ±0.048 0.238 ±0.079 0.120 ±0.180 0.500 ±0.186
+
+Table 3. Official Touché 2025 results for Subtask 1: proportion of responses fulfilling each Gricean maxim across submitted runs (SINAI runs omitted) 
+
+Team Run Average Quantity Quality Relation Manner 
+
+Baseline baseline 0.62 0.35 1.00 0.32 0.80 DS@GT gpt-4.1 0.70 0.95 0.17 0.82 0.84 
+
+DS@GT gemini-2.5-pro 0.65 0.94 0.26 0.74 0.67 DS@GT gemini-2.5-flash 0.50 0.70 0.07 0.80 0.41 DS@GT claude-opus-4 0.42 0.41 0.31 0.87 0.09 DS@GT gpt-4o 0.42 0.20 0.02 0.86 0.58 DS@GT claude-sonnet-4 0.38 0.35 0.05 0.94 0.17 
+
+## 4 Results 
+
+4.1 Leaderboard 
+
+Table 2 shows that the internal evaluator runs were generally strict, with Manner receiving the highest scores and Relation, Quantity, and Quality receiving lower scores. In the internal simulation evaluations, the Anthropic models were the most strict for overall score, with Opus 4 and Sonnet 4 coming in at 0.2773 and 0.2681, respectively. The standard deviations of both models were less than 0.2600, which is notably more consistent than those of the other models. Google’s Gemini 2.5 Flash Preview gave the highest overall score of 0.4068, while the Pro Preview gave an overall evaluation of 0.3527. OpenAI’s GPT-4o gave an overall average of 0.3870, and GPT-4.1 was at 0.3170. These averages are low overall. The models agree that Relation, Quantity, and Quality of the simulation responses were poor. Manner was the only maxim rated favorably across all models. We submitted multiple runs to the official Touché 2025 shared task leader-board. The results for both subtasks are shown in Table 3 and Table 4. Our GPT-4.1 and Gemini-2.5 runs ranked among the top submissions in Subtask 1 and showed competitive results in Subtask 2. 
+
+4.2 Evaluator Consensus and Calibration 
+
+Under the averaged judge scores in Figure 6, the DS@GT systems outperform the baseline, unlike under the official binary annotations in Table 3. Frontier 8 A. Miyaguchi et al. 
+
+Table 4. Official Touché 2025 results for Subtask 2: precision (P), recall (R), and F1-score for each maxim classification task (SINAI runs omitted).                                                                                               
+
+> Team Run Overall Quantity Quality Relation Manner F1 PRF1 PRF1 PRF1 PRF1
+> Baseline 1-baseline 0.67 0.57 1.00 0.73 0.24 1.00 0.38 0.78 1.00 0.87 0.52 1.00 0.68
+> DS@GT gemini-2.5-flash 0.64 0.59 0.86 0.70 0.18 0.66 0.29 0.81 0.99 0.89 0.52 0.99 0.68
+> DS@GT gpt-4o 0.64 0.59 0.88 0.71 0.17 0.63 0.27 0.82 0.99 0.89 0.52 0.97 0.67 DS@GT gpt-4.1 0.62 0.58 0.75 0.65 0.15 0.52 0.24 0.82 0.98 0.90 0.52 0.99 0.68
+> DS@GT gemini-2.5-pro 0.62 0.59 0.67 0.63 0.17 0.52 0.25 0.84 0.97 0.90 0.52 0.98 0.68
+> DS@GT claude-sonnet-4 0.56 0.43 0.49 0.49 0.15 0.36 0.21 0.83 0.92 0.88 0.51 0.93 0.66 DS@GT claude-opus-4 0.51 0.49 0.21 0.29 0.16 0.31 0.21 0.85 0.90 0.88 0.51 0.92 0.66
+
+LLM judges show substantial agreement during judging, but Figure 7 shows that this agreement is structured. Same-family judges are especially correlated. Claude Opus and Claude Sonnet have an average correlation of 0.844 across Gricean dimensions, while GPT-4.1 and GPT-4o average 0.772. Across the fron-tier judges, correlations are generally high for Quantity, Quality, and Relation, ranging from roughly 0.65 to 0.91. This means that high agreement should not be treated as fully independent evidence of evaluator validity. The strongest agreement is among model-family clusters, suggesting that consensus may re-flect shared model behavior rather than independent evaluator convergence on response quality. However, the LLaMA-8B judges submitted by SINAI correlate much less with frontier judges, ranging between 0.17 and 0.27. Additionally, they correlate weakly with each other, ranging between 0.15 and 0.29. Even though these judges are weaker, they provide less redundant signal, and the distinction between judge strength and judge diversity is pivotal in the following calibration analyses. After calibrating consensus among judges, we build a weakly-supervised label model to see how it might rank against the others in a post-competition setting. The frontier-only independent label model was nearly indistinguishable from the raw average rankings, with Kendall’s τ = 1 .0 across all four Gricean dimensions. This suggests that when the voter pool is dominated by highly correlated frontier LLM judges, the label model recovers the same consensus already present in the raw average. Therefore, weak-supervision did not substantially change the ranking when the voters agreed in similar ways. Adding the SINAI judges moved the rankings more because these judges were less redundant than the frontier models. With the expanded judge pool, Kendall’s τ between calibrated and raw rankings dropped to 0.93 for Quantity, 0.86 for Quality, 0.93 for Relation, and 0.71 for Manner in Table 5. This does not mean smaller judges were superior evaluators overall, only that they contributed less redundant signal than the frontier LLMs. Additionally, we tested a dependency-aware version of the label model, where correlated voters such as same-family LLMs and length-related heuristics were explicitly linked. This improved alignment with the official Subtask 2 F1, but only modestly. Spearman correlation increased from 0.366 to 0.408 for Quan-tity, 0.224 to 0.286 for Quality, 0.500 to 0.580 for Relation, and 0.011 to 0.075 DS@GT ARC at Touché 9 
+
+> Fig. 6. Average subtask 1 maxim scores by response-generation system, averaged over released judge scores on the organizer-released corpus; this differs from the official Subtask 1 metric.
+
+for Manner, suggesting that dependency-aware modeling discounts some redun-dancy in agreement, but it cannot build official-target signal when judges are highly correlated. The gap between consensus and the official target is largest for Quality, where dependency-aware latent accuracy averages 0.687 while mean official Quality F1 is 0.244. Overall, the weak-supervision experiments are use-ful for diagnosing consensus structure, but that consensus does not necessarily imply correctness. 
+
+## 5 Discussion 
+
+The Quality dimension was the clearest failure mode in our analysis. Quality is challenging in retrieval-augmented debate because it asks for more than a fluent, well-structured, relevant response. A high-quality response should be factually correct, supported by retrieved evidence, and useful within the debate context. In 10 A. Miyaguchi et al.  
+
+> Fig. 7. Mean pairwise judge-score correlation across Gricean dimensions. Frontier LLM judges show strong agreement, especially within model families, while SINAI LLaMA-8B judges are less correlated with the frontier judge pool.
+
+that sense, Quality overlaps with the other Gricean maxims while also requiring additional verification [3]. This helps explain why the gap between evaluator consensus and official F1 was largest for Quality. LLM judges can agree on a response that appears convincing, but that does not necessarily mean the response is actually supported by evidence. Subtask 2 ended up being one of the most interesting and valuable parts of the lab because Quality was so challenging to reliably rank. This allowed us to look beyond which systems generated strong responses and ask how evaluator systems behaved. The main limitation is that the Gricean maxims are broad evaluation targets. They are useful as high-level categories, but they do not fully specify what a judge should check, especially for Quality. Quality can include factuality, evidence support, reasoning validity, and argumentative usefulness. If DS@GT ARC at Touché 11                                  
+
+> Table 5. Weak-supervision calibration summary. Kendall’s τcompares calibrated sys-tem rankings with raw average rankings; Spearman’s ρcompares latent judge-accuracy estimates with official Subtask 2 F1.
+> Analysis Quantity Quality Relation Manner
+> Expanded pool: τvs. raw 0.930 0.860 0.930 0.710 Dependency-aware: τvs. raw 0.857 1.000 1.000 0.786 Expanded independent pool: ρvs. F1 0.366 0.224 0.500 0.011 Dependency-aware: ρvs. F1 0.408 0.286 0.580 0.075
+
+these are collapsed into a single score, judges may agree on surface plausibility without performing the same underlying evaluation. 
+
+## 6 Future Work 
+
+We aim to explore finer-grained control over the agent’s behavior. It would be beneficial to modify the agent’s behavior to more accurately simulate diverse perspectives and personalities and to encourage participants to strategize in ways that capitalize on the strengths and exploit the weaknesses in discourse. Behaviors can be implemented via controllable parameters that govern specific strategy types and explored by having several sets of behaviors, which, while not necessarily realistic, are easy to examine under controlled conditions. Strategies could include always deflecting, always attacking, or always conceding. Another area of future work is formulating a more robust evaluation frame-work. Although we have a basic evaluation system, having more time to explore the results of the evaluation between different models would be interesting in the context of a leaderboard. These results have to be grounded in human evaluation, but an ELO system could be used to rank models based on their performance in debates. Future RAD labs should report evaluator reliability alongside leaderboard scores, including inter-judge agreement, score distributions, model-family effects, length sensitivity, and dimension-level calibration. For Quality, future evalu-ations should include more explicit verification, such as separating factuality, evidence support, reasoning validity, and argumentative usefulness instead of collapsing them into one broad score. 
+
+## 7 Conclusions 
+
+Frontier LLM judges often agree strongly with one another, but this consen-sus is partly explained by their family and thus the underlying training cor-pus. Consensus-based latent accuracy estimates do not reliably align with the official Subtask 2 F1, with the largest gap on the Quality maxim. Therefore, the question is not only whether LLMs can debate effectively, but whether retrieval-augmented debate can be evaluated reliably through multi-LLM agree-ment on Gricean maxims [3]. The accompanying source code for this paper 12 A. Miyaguchi et al. 
+
+is located at https://github.com/dsgt-arc/touche-2025-rad and https://github. com/dsgt-arc/touche-2025-rad-analysis. 
+
+Acknowledgments. We thank the Data Science at Georgia Tech (DS@GT) CLEF competition group for their support. During the preparation of this work, the authors used Gemini and Claude for grammar and spelling checks, formatting assistance, and peer review simulation; the authors subsequently reviewed and edited the content and each take full responsibility for the publication’s content. 
+
+Disclosure of Interests. The authors have no competing interests to declare that are relevant to the content of this article. 
+
+## References 
+
+1. Fröbe, M., Wiegmann, M., Kolyada, N., Grahm, B., Elstner, T., Loebe, F., Hagen, M., Stein, B., Potthast, M.: Continuous Integration for Reproducible Shared Tasks with TIRA.io. In: Kamps, J., Goeuriot, L., Crestani, F., Maistro, M., Joho, H., Davis, B., Gurrin, C., Kruschwitz, U., Caputo, A. (eds.) Advances in Information Retrieval. 45th European Conference on IR Research (ECIR 2023). pp. 236–241. Lecture Notes in Computer Science, Springer Nature Switzerland, Dublin, Ireland (Apr 2023). https://doi.org/10.1007/978-3-031-28241-6_20 2. Fu, D., Chen, M., Sala, F., Hooper, S., Fatahalian, K., Re, C.: Fast and three-rious: Speeding up weak supervision with triplet methods. In: III, H.D., Singh, A. (eds.) Proceedings of the 37th International Conference on Machine Learning. Proceedings of Machine Learning Research, vol. 119, pp. 3280–3291. PMLR (13–18 Jul 2020), https://proceedings.mlr.press/v119/fu20a.html 3. Grice, H.P.: Logic and conversation. In: Speech acts, pp. 41–58. Brill (1975) 4. Hagström, L., Saynova, D., Norlund, T., Johansson, M., Johansson, R.: The Ef-fect of Scaling, Retrieval Augmentation and Form on the Factual Consistency of Language Models. In: Bouamor, H., Pino, J., Bali, K. (eds.) Proceedings of the 2023 Conference on Empirical Methods in Natural Language Process-ing. pp. 5457–5476. Association for Computational Linguistics, Singapore (Dec 2023). https://doi.org/10.18653/v1/2023.emnlp-main.332, https://aclanthology. org/2023.emnlp-main.332/ 5. Khan, A., Hughes, J., Valentine, D., Ruis, L., Sachan, K., Radhakrishnan, A., Grefenstette, E., Bowman, S.R., Rocktäschel, T., Perez, E.: Debating with More Persuasive LLMs Leads to More Truthful Answers. In: Salakhutdinov, R., Kolter, Z., Heller, K., Weller, A., Oliver, N., Scarlett, J., Berkenkamp, F. (eds.) Pro-ceedings of the 41st International Conference on Machine Learning. Proceed-ings of Machine Learning Research, vol. 235, pp. 23662–23733. PMLR (Jul 2024). https://doi.org/10.48550/arXiv.2402.06782, https://proceedings.mlr.press/ v235/khan24a.html 6. Kiesel, J., Çöltekin, Ç., Gohsen, M., Heineking, S., Heinrich, M., Fröbe, M., Ha-gen, T., Aliannejadi, M., Anand, S., Erjavec, T., Hagen, M., Kopp, M., Ljubešić, N., Meden, K., Mirzakhmedova, N., Morkevičius, V., Scells, H., Wolter, M., Zelch, I., Potthast, M., Stein, B.: Overview of Touché 2025: Argumentation Systems. In: Carrillo-de-Albornoz, J., Gonzalo, J., Plaza, L., García Seco de Herrera, A., Mothe, J., Piroi, F., Rosso, P., Spina, D., Faggioli, G., Ferro, N. (eds.) Experimen-tal IR Meets Multilinguality, Multimodality, and Interaction. 16th International DS@GT ARC at Touché 13 Conference of the CLEF Association (CLEF 2025). pp. 486–508. Lecture Notes in Computer Science, Springer Nature Switzerland, Madrid, Spain (Sep 2025). https://doi.org/10.1007/978-3-032-04354-2_25 7. Kiesel, J., Gohsen, M., Mirzakhmedova, N., Hagen, M., Stein, B.: Who Will Evalu-ate the Evaluators? Exploring the Gen-IR User Simulation Space. In: Goeuriot, L., Mulhem, P., Quénot, G., Schwab, D., Di Nunzio, G.M., Soulier, L., Galuščáková, P., García Seco de Herrera, A., Faggioli, G., Ferro, N. (eds.) Experimental IR Meets Multilinguality, Multimodality, and Interaction. 15th International Con-ference of the CLEF Association (CLEF 2024). pp. 166–171. Lecture Notes in Computer Science, Springer Nature Switzerland, Grenoble, France (Sep 2024). https://doi.org/10.1007/978-3-031-71736-9_11 8. Liu, X., Liu, P., He, H.: An Empirical Analysis on Large Language Models in De-bate Evaluation. In: Ku, L.W., Martins, A., Srikumar, V. (eds.) Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Vol-ume 2: Short Papers). pp. 470–487. Association for Computational Linguistics, Bangkok, Thailand (Aug 2024). https://doi.org/10.18653/v1/2024.acl-short.44, https://aclanthology.org/2024.acl-short.44/ 9. Miyaguchi, A., Johnston, C., Potdar, A.: DS@GT at Touché: Large Language Models for Retrieval-Augmented Debate. In: Working Notes of the Conference and Labs of the Evaluation Forum (CLEF 2025). CEUR Workshop Proceedings, vol. 4038, pp. 4641–4649. CEUR-WS.org, Madrid, Spain (2025), https://ceur-ws. org/Vol-4038/paper_387.pdf 10. Saad-Falcon, J., Buchanan, E.K., Chen, M.F., Huang, T.H., McLaughlin, B., Bhathal, T., Zhu, S., Athiwaratkun, B., Sala, F., Linderman, S., Mirhoseini, A., Ré, C.: Shrinking the generation-verification gap with weak verifiers (Jun 2025). https://doi.org/10.48550/arXiv.2506.18203, https://arxiv.org/abs/2506.18203 11. Skitalinskaya, G., Klaff, J., Wachsmuth, H.: Learning From Revisions: Quality Assessment of Claims in Argumentation at Scale. In: Merlo, P., Tiedemann, J., Tsarfaty, R. (eds.) Proceedings of the 16th Conference of the European Chapter of the Association for Computational Linguistics: Main Volume. pp. 1718–1729. Association for Computational Linguistics, Online (Apr 2021). https://doi.org/10. 18653/v1/2021.eacl-main.147 12. Vallecillo-Rodríguez, M.E., Martín-Valdivia, M.T., Montejo-Ráez, A.: SINAI at Touché: From Generation to Evaluation through Multistep and Comparative Prompting for Retrieval-Augmented Debate. In: Working Notes of the Confer-ence and Labs of the Evaluation Forum (CLEF 2025). CEUR Workshop Proceed-ings, vol. 4038, pp. 4662–4679. CEUR-WS.org (Sep 2025), https://ceur-ws.org/ Vol-4038/paper_390.pdf 13. Zhang, D., Li, J., Zeng, Z., Wang, F.: Jasper and Stella: Distillation of SOTA embedding models (Dec 2024). https://doi.org/10.48550/arXiv.2412.19048, https: //arxiv.org/abs/2412.19048

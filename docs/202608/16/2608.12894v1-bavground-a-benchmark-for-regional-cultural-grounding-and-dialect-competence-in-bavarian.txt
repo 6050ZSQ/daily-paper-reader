@@ -1,0 +1,438 @@
+Title: BavGround: A Benchmark for Regional Cultural Grounding and Dialect Competence in Bavarian
+
+URL Source: https://arxiv.org/pdf/2608.12894v1
+
+Published Time: Fri, 14 Aug 2026 00:45:48 GMT
+
+Number of Pages: 25
+
+Markdown Content:
+# BavGround: A Benchmark for Regional Cultural Grounding and Dialect Competence in Bavarian 
+
+Jophin John 1,* Michael Hoffmann 1,* 
+
+Jan Fillies 2,3,* Michael A. Hedderich 4,5 
+
+Barbara Plank 4,5 
+
+> 1
+
+Leibniz Supercomputing Centre (LRZ), Garching, Germany 
+
+> 2
+
+Stanford University, Stanford, California, USA 
+
+> 3
+
+Freie Universität Berlin, Germany 
+
+> 4
+
+Center for Information and Language Processing, LMU Munich 
+
+> 5
+
+Munich Center for Machine Learning (MCML)  
+
+> *Equal contribution.
+> Correspondence: Jophin.John@lrz.de, Michael.Hoffmann@lrz.de
+
+Abstract 
+
+Cultural evaluation of large language models (LLMs) often focuses on high-resource stan-dard languages, leaving regional culture and dialect communities underrepresented. We in-troduce B AV GROUND , a benchmark for eval-uating Bavarian regional cultural grounding and dialect competence across English, Ger-man and Bavarian. B AV GROUND contains 206 multiple-choice source questions across eight cultural domains per language, yielding 618 multi-parallel instances, with items covering both broadly accessible cultural knowledge and source-grounded regional knowledge from jour-nalism, historical sources, and specialist litera-ture. We evaluate fifteen 7B–10B open-weight instruction-tuned models and one closed-model reference. Strong multilingual models perform best overall, but performance drops on Bavar-ian items and source-grounded questions, in-dicating persistent difficulty with dialectal and localized cultural knowledge. We further show that conclusions depend strongly on evaluation protocol: raw answer-letter scoring, shuffled-letter scoring, option-text likelihood, generated-answer parsing, and semantic matching can produce different absolute scores and rankings, especially for regionally adapted models. Fi-nally, an exploratory analysis of GENBA-10B checkpoints suggests that continued pretraining improves answer-content likelihood unevenly across domains, while dialect competence re-mains comparatively weak. B AV GROUND sup-ports localized, protocol-aware evaluation of cultural representation in LLMs. 
+
+1 Introduction 
+
+Large language models (LLMs) are increasingly deployed in everyday settings, raising concerns about their reliability, fairness, and social impact (Bender et al., 2021; Blodgett et al., 2020). Agrowing body of work therefore evaluates whether LLMs represent culturally situated norms, values, linguistic practices, and forms of knowledge in reli-able and equitable ways (Gallegos et al., 2024; Liu et al., 2025). Recent cultural benchmarks have ad-vanced multilingual and cross-cultural evaluation (Shi et al., 2024; Myung et al., 2024; Seveso et al., 2025; Zhao et al., 2025), but many still operational-ize culture at national levels, broad geographic re-gions, or high-resource standard languages. This leaves regional, dialectal, and minority-language communities comparatively underrepresented. Regional cultures are not simply smaller ver-sions of national identities: they may involve dis-tinct histories, institutions, material practices, lin-guistic forms, and identity markers. Prior work emphasizes that cultural and linguistic evaluation should account for social context rather than treat-ing language varieties as interchangeable surface forms (Blodgett et al., 2020; Hershcovich et al., 2022). Recent work suggests that dialect speakers can be disadvantaged by current LLMs, including in German dialect settings (Bui et al., 2025). These concerns motivate evaluation below the nation-state level, especially for regional varieties closely re-lated to high-resource standard languages. We study this problem through Bavarian, a re-gional language variety spoken across southern Germany, Austria, and northern Italy by approxi-mately ten million people (Rowley, 2011). Bavar-ian is a useful test case because it combines strong regional identity, substantial dialectal variation, and a close relationship to Standard German. We in-troduce BAV GROUND , a benchmark for Bavarian arXiv:2608.12894v1 [cs.CL] 13 Aug 2026 regional cultural grounding and dialect competence. BAV GROUND contains 206 source multiple-choice questions across eight thematic categories, trans-lated into English, German, and Bavarian, yielding 618 evaluation instances. All German and Bavarian translations were produced manually by a native-speaking co-author. The benchmark combines broadly accessible general-knowledge questions with source-grounded regional questions derived from regional journalism, anthropological mono-graphs, and specialist historical sources. We evaluate fifteen instruction-tuned open-weight models in the 7B–10B range and find that B AV GROUND remains challenging even for strong multilingual systems: performance drops on Bavarian and on source-grounded regional questions. We further show that findings are highly sensitive to evaluation protocol. Canon-ical MCQA letter scoring can conflate cultural knowledge with answer-label priors, option or-der, and generation-format behavior, motivating our comparison with shuffled-label, option-text, generation-based, semantic-matching, and hidden-state diagnostics (Mizrahi et al., 2024; Wang et al., 2024; Dominguez-Olmedo et al., 2024). As an ex-ploratory case study, we also study training dynam-ics and track B AV GROUND performance across continued-pretraining checkpoints of a Bavarian-centric model, GENBA-10B-it (Hoffmann et al., 2025), finding uneven gains across domains, lan-guages, and protocols. This paper contributes: (1) B AV GROUND , a man-ually validated benchmark for Bavarian regional cultural grounding and dialect competence across English, German, and Bavarian; (2) an evaluation of fifteen 7B–10B open-weight instruction-tuned models showing persistent difficulty on Bavar-ian and source-grounded regional questions; and (3) a protocol-aware analysis showing that single-protocol MCQ scores can obscure important model behaviors. We additionally provide an exploratory GENBA-10B checkpoint analysis. 
+
+Artifact Availability. To support transparency and reproducibility, we plan to release the bench-mark, evaluation code, generated outputs, and the interactive analysis dashboard (Appendix H) upon acceptance of the paper. For the review pro-cess, these materials are available in anonymized form at: https://anonymous.4open.science/ r/BavGround-7C68/README.md .
+
+2 Related Work 
+
+2.1 Cultural Evaluation in NLP 
+
+Research on cultural representation in NLP has ex-panded rapidly, particularly in the context of mul-tilingual LLMs, fairness, and socially grounded generation (Gallegos et al., 2024; Liu et al., 2025). Existing work studies culture through at least two complementary perspectives. A first line of work conceptualizes culture through shared norms, values, beliefs, and socially situated behaviours, evaluating whether model out-puts align with culturally specific expectations sur-rounding morality, religion, politeness, or social interaction (Ma et al., 2024). For example, Naous et al. (2024) study culturally situated continuations in religious and social contexts, while broader work examines how language models reproduce cultur-ally dependent stereotypes (Abid et al., 2021; Kirk et al., 2021; Kumar et al., 2025). A second line of work conceptualizes culture through geographically situated knowledge, in-stitutions, historical memory and tales (Bhagat et al., 2026; Rooein et al., 2025; Hedderich et al., 2025). This perspective is especially common in benchmark construction, where cultural compe-tence is operationalized through factual or con-textual question answering. Recent benchmarks evaluate knowledge associated with specific na-tional or linguistic communities, including Italian cultural knowledge in ITALIC (Seveso et al., 2025) and multilingual cultural-awareness in MakiEval (Zhao et al., 2025), while broader cross-cultural NLP work highlights the challenges of represent-ing diverse communities within current systems (Hershcovich et al., 2022). Recent work has also questioned the theoretical assumptions underlying cultural NLP evaluation. Zhou et al. (2025) argue that much current work re-lies on coarse cultural proxies, particularly nation-state boundaries, that fail to capture substantial within-community variation, proposing localiza-tion as a more useful framing than static national categories. This critique is especially relevant for regional and minority language varieties, which remain comparatively underrepresented in exist-ing benchmarks despite their distinct histories, in-stitutions, and linguistic practices. B AV GROUND 
+
+contributes to this literature by focusing on Bavar-ian as a regional variety with a substantial speaker population and strong regional identity. 2.2 Evaluation Protocols for Cultural and Multiple-Choice Benchmarks 
+
+Existing work on cultural evaluation differs not only in what forms of culture is studied, but also in how cultural competence is measured. Common approaches include multiple-choice questionnaires in which models generate answer letters or score candidate options (Seveso et al., 2025; Zhao et al., 2025), as well as generated continuations or free-form responses in culturally situated scenarios. Recent work has increasingly shown that eval-uation outcomes depend strongly on methodol-ogy. Prompt wording, answer ordering, parsing strategy, and decoding configuration can substan-tially affect measured performance (Mizrahi et al., 2024), and in multilingual settings, prompting lan-guage alone can alter measured cultural compe-tence (Zhao et al., 2025). More broadly, Wang et al. (2024) demonstrate substantial mismatches between first-token probability rankings and gen-erated responses across answer selection, refusal behaviour, and prompt perturbations—suggesting that standard MCQA scoring captures only part of a model’s effective answer behaviour. Re-lated work has similarly documented option-order sensitivity and answer-label bias in MCQ evalu-ation (Pezeshkpour and Hruschka, 2024; Zheng et al., 2024), as well as ordering, labeling, prompt-perturbation, and response-generation-method ef-fects in survey-style LLM evaluations (Dominguez-Olmedo et al., 2024; Rupprecht et al., 2025; Ahnert et al., 2025). Together, these findings suggest that benchmark scores can partly reflect elicitation arti-facts rather than underlying knowledge. Different evaluation methods also probe dif-ferent capabilities in some setups: probability-based scoring measures preference over candidates, free-form generation evaluates instruction follow-ing and answer realization, semantic matching fo-cuses on meaning independent of formatting, and representation-level analyses probe internal model geometry. As a result, protocols may not produce identical rankings even on the same benchmark. Our work addresses this through a protocol-aware evaluation framework that compares probability-based scoring, answer-order perturba-tion, generation-based evaluation, semantic similar-ity matching, and hidden-state alignment diagnos-tics. We position this not as evidence that cultural benchmarks are unreliable, but as a demonstration that conclusions about cultural competence can de-pend substantially on evaluation methodology. 
+
+2.3 Continued Pretraining and Cultural Representation 
+
+Continued pretraining (CPT) has become a widely used strategy for adapting pretrained language mod-els to new domains and languages without retrain-ing from scratch (Gururangan et al., 2020), and is increasingly relied upon to expand linguistic cover-age while preserving previously learned capabili-ties (Choudhury et al., 2025; Koto et al., 2025). Most prior work evaluates CPT through aggre-gate downstream task performance or domain spe-cialization, with comparatively little attention to how culturally grounded knowledge evolves dur-ing training—particularly for regional or dialectal varieties. Cultural evaluations also typically ana-lyze only final checkpoints, treating cultural com-petence as a static property of released models. We extend this literature through an exploratory longitudinal analysis of GENBA-10B (Hoffmann et al., 2025), a German-English-Bavarian trilin-gual model developed through continued pretrain-ing. Rather than evaluating only the final check-point, we examine how different forms of culturally grounded knowledge evolve across intermediate checkpoints and whether cultural domains improve uniformly during Bavarian-focused adaptation. 
+
+3 BAV GROUND Benchmark 
+
+3.1 Dataset Construction 
+
+BAV GROUND is a multiple-choice benchmark for evaluating cultural knowledge and cultural bias in Bavarian. The benchmark comprises 206 source questions distributed across eight thematic cate-gories of Bavarian culture and identity with two types each. Within each category, the benchmark is divided into two structurally distinct types (sub-sets). The first type (GEN) contains broadly acces-sible general-knowledge questions targeting widely recognizable aspects of Bavarian culture. The sec-ond contains grounded questions (GRD) derived from regional journalism, anthropological mono-graphs, and specialist historical sources, targeting culturally specific knowledge unlikely to appear frequently in standard LLM pretraining corpora. The benchmark covers both ideational and material aspects of culture. Categories such as Living Tradi-tions and Customs and Bavarian Dialect and Lan-guage probe shared norms, practices, and linguistic identity, while categories such as Building and Sa-Category Type Example question                               
+
+> Historical GEN Which dynasty ruled Bavaria for centuries and ended its rule with the fall of the monarchy in 1918? GRD Why was King Ludwig III forced to leave Munich in a rented car on the evening of 7 November 1918? Politics GEN Which party has governed Bavaria continuously since 1957? GRD What is Bavaria often accused of by media in northern Germany? Living Traditions GEN What is the Bavarian tradition of erecting a decorated pole called? GRD Why are figures like the Vogelfaänger and Baärentreiber part of the Mittenwald Maschkera tradition? Culinary GEN What is Obatzda? GRD What does the Bavarian dish Wasserschnalzn consist of? Building & Sacred Heritage GEN Which Bavarian castle commissioned by King Ludwig II is often nicknamed a “fairy-tale castle”? GRD Why did visitor numbers at Schloss Neuschwanstein not increase dramatically in 2025 despite receiving UNESCO World Heritage status? Landscape GEN Which river flows through Munich and continues north toward the Danube? GRD Which Bavarian independent city grew the most in population between 2010 and 2020? Arts & Identity GEN Which composer is strongly associated with Bayreuth because his operas are performed at the Bayreuth Festival? GRD How did Franz Herzog von Bayern contribute to the public access of art collections? Language GEN What does the Bavarian expression „Geh, hör auf!” most likely mean in context? GRD What is the meaning of the Bavarian expression „Hawadehre“ ?
+
+Table 1: Example questions from B AV GROUND , illustrating one general (GEN) and one grounded (GRD) question per category. GEN questions target broadly available cultural knowledge; GRD questions are sourced from regional journalism and specialist monographs and probe knowledge unlikely to appear in standard LLM pretraining corpora. 
+
+cred Heritage, Landscape, and Culinary foreground material artifacts, physical environments, and ev-eryday practices. Historical and Politics cover the institutional and political dimensions of Bavarian identity. See Table 1 for examples of questions from both subsets across all eight categories. 
+
+3.1.1 General Knowledge Questions 
+
+The first ten questions in each category target broadly accessible cultural knowledge likely to ap-pear in general multilingual training data. These questions were generated using Claude Sonnet 4.6 with category-specific prompts of the form: “Create 10 multiple-choice questions that evalu-ate knowledge about Bavarian [category].” The resulting items cover foundational topics such as historical figures, landmarks, culinary traditions, and characteristic features of Bavarian dialect and landscape, providing a baseline probe of general Bavarian cultural awareness in LLMs. All ques-tions were subsequently checked for accuracy by two co-authors of the study and then translated into German and Bavarian by an in-house expert and native speaker. 
+
+3.1.2 Grounded Questions 
+
+The remaining questions in each category are grounded in specific primary sources selected man-ually by two in-house experts on a case-by-case ba-sis from a combination of regional journalism and specialist monographs. Journalistic sources were drawn primarily from the Süddeutsche Zeitung and other regional Bavarian outlets (e.g. Traunsteiner Tagblatt); scholarly sources included anthropolog-ical monographs (Liu, 2021; Merlan, 2004) and regional historical reference works. Sources were chosen with the explicit aim of identifying cultural knowledge that is unlikely to be well represented in the pretraining corpora of general-purpose LLMs: locally reported events, fine-grained ethnographic details, the specific institutional history of Bavar-ian political and religious life, and dialect-specific linguistic phenomena. Each grounded question is linked to its source document, with source meta-data and URLs included in the dataset release; these sources also serve as references for answer validation. This subset is intended to be substan-tially more challenging than the general knowledge questions and to function as a targeted probe of whether LLMs possess culturally deep, regionally specific knowledge (Geertz, 2025; Herzfeld, 2020) rather than surface-level familiarity with Bavaria as a tourist destination. 3.1.3 Distractor Construction 
+
+Three distractor options per question were con-structed manually and creatively by two co-authors with expert knowledge of Bavarian culture, history, and language, and native or near-native competence in English, German, and Bavarian. For grounded questions, distractors were additionally informed by the source documents used to construct the ques-tions. All distractors were designed to be plausible but incorrect, requiring genuine cultural familiarity to distinguish from the correct answer, and were reviewed as part of the validation procedure de-scribed in Section 3.2. 
+
+3.2 Annotation and Validation 
+
+Validation was applied to both question subsets. For GEN questions, which were initially generated using Claude Sonnet 4.6, two in-house expert an-notators with deep knowledge of Bavarian culture, history, and language independently reviewed each item for factual correctness, plausibility, discrim-inative quality, and clarity of the question stem. For GRD questions, which were constructed man-ually from regional sources, validation addition-ally covered the appropriateness of the assigned source. Each annotator reviewed the full set of questions produced by the other. Disagreements were resolved through discussion between the two annotators; items on which agreement could not be reached were removed from the dataset. Vali-dation covered the original English questions and extended to the German and Bavarian translations. 
+
+4 Experimental Setup 
+
+4.1 Models 
+
+We evaluate fifteen instruction-tuned open-weight models in the 7B–10B range. For readability, we group them by family orientation rather than treating the groups as strict architectural classes: German/Bavarian-oriented models (GENBA-10B-it, Leo, LLaMmlein), European multilingual mod-els (EuroLLM, Occiglot, Teuken, Pharia, Salaman-dra), and broader multilingual instruction models (Qwen2.5, Llama-3.1, Mistral, Gemma, OLMo, Granite, Aya). Appendix Table 6 lists the exact model names used in the experiments. We also in-clude gpt-5.4-mini as a closed-model reference. GENBA-10B (Hoffmann et al., 2025) is included both as a final instruction-tuned benchmark model and as a checkpoint case study. The checkpoint analysis evaluates 85 continued-pretraining check-points before final instruction tuning, from check-point 0 to 41,707; therefore, its final checkpoint is not expected to reproduce the instruction-tuned GENBA-10B result in Table 2. 
+
+4.2 Experimental Design 
+
+Our experiments use B AV GROUND as the central evaluation instrument in three ways. First, we evaluate fifteen instruction-tuned open-weight mod-els on the full benchmark to characterize current performance on Bavarian regional cultural knowl-edge across languages, thematic categories, and GEN/GRD question types, and compare to a closed model (localized prompt templates are reported in Appendix B). Second, we test whether measured cultural competence is stable across evaluation pro-tocols (See 4.3). Third, we apply B AV GROUND 
+
+longitudinally to 85 GENBA-10B checkpoints to study how regional cultural knowledge changes dur-ing a single continued-pretraining run. This check-point analysis is exploratory: it diagnoses domain-, language-, and protocol-specific changes over train-ing, rather than establishing general causal laws about continued pretraining. 
+
+4.3 Evaluation Framework 
+
+We evaluate B AV GROUND with a protocol-aware framework because MCQ scores can be af-fected by label priors, option order, tokeniza-tion, option length, and generation/parsing be-havior. We compare three main views of the same benchmark items: letter measures answer-label likelihood by scoring A–D with condi-tional log-probability; option_text_avg mea-sures answer-content likelihood by scoring each full option text and normalizing by token length; and semantic_embed_generated_answer mea-sures generated-answer meaning by mapping de-terministic model outputs to the closest option us-ing a multilingual Sentence-Transformers model based on MPNet (Reimers and Gurevych, 2019; Song et al., 2020). We additionally run diagnostic variants, including shuffled-label scoring, unnor-malized option-text scoring, generated-letter and generated-option parsing, question–option seman-tic baselines, and hidden-state alignment probes. These diagnostics are used to identify label priors, answer-format failures, shallow question–option similarity, and representation-level effects rather than as primary leaderboard metrics. Full protocol and implementation details are provided in Ap-pendix C, Table 7. 4.4 Metrics 
+
+Our primary metric is accuracy, computed sepa-rately by protocol and reported by language, cat-egory, and GEN/GRD subset. For checkpoint analysis, we report accuracy trajectories across GENBA-10B checkpoints. For semantic matching and hidden-state alignment, we additionally inspect the correct-answer margin: similarity to the cor-rect option minus the maximum similarity to any incorrect option. We use 95% nonparametric boot-strap confidence intervals, computed by resampling benchmark items with replacement, for the main accuracy gaps tested in the Results: GEN versus GRD, English/German versus Bavarian, GENBA 
+
+option_text_avg versus letter , and pairwise differences among the top three open-weight mod-els under letter scoring. Details and intervals are reported in Appendix Table 8. We include an interactive dashboard for model-, checkpoint-, language-, domain-, and strategy-level error analy-sis in the supplementary material; screenshots and JSON output details are in Appendix H. 
+
+5 Results and Analysis 
+
+5.1 Open-Weight Models Struggle with Grounded and Dialectal B AV GROUND 
+
+Items 
+
+Table 2 reports the standard letter scoring re-sults for all fifteen instruction-tuned open-weight models and the closed-model reference. The strongest open-weight group consists of EuroLLM-9B-Instruct, Qwen2.5-7B-Instruct, and Llama-3.1-8B-Instruct, all clustered around 69% accuracy. Their pairwise bootstrap intervals include zero, so we treat them as a tied top tier rather than as mean-ingfully separated. Granite-3.0-8B-Instruct follows closely at 66.3%, while Occiglot-7B-Instruct and Aya-Expanse-8B form the next tier above 60%. The open-weight mean is 53.0%, indicating that BAV GROUND remains difficult for 7B to 10B open-weight models under standard multiple-choice let-ter scoring. The full category-expanded version of this table is provided in Appendix Table 9, and ad-ditional cross-protocol model rankings are reported in Appendix Table 14. The overall ranking also masks systematic lan-guage variation. Averaged across models, German is highest at 57.6%, followed by English at 55.7%, while Bavarian drops to 45.9%. Bootstrap inter-vals confirm the Bavarian gap under letter scor-ing: English exceeds Bavarian by 9.8 points [7.5, 12.2], and German exceeds Bavarian by 11.7 points [9.5, 14.0]. This gap is visible even among the strongest models: EuroLLM reaches 74.3% in Ger-man and 71.8% in English, but 62.1% in Bavarian; Llama-3.1 similarly falls from 75.2% in German to 62.1% in Bavarian. Qwen2.5 is the most bal-anced of the top models, with 72.8% in English, 67.5% in German, and 67.0% in Bavarian. At the lower end, GENBA-10B-it reaches 41.9% over-all and LLaMmlein-7B-Chat is a clear outlier at 11.2%, showing that standard letter selection is especially brittle for some regionally oriented or smaller instruction-tuned systems. Appendix Ta-bles 16 and 15 give the corresponding language-and category-level averages across protocols. As a closed-model reference point, 
+
+gpt-5.4-mini reaches 89.6% under first-token answer-letter log-probability scoring, 20.2 points above the strongest open-weight model, EuroLLM-9B-Instruct. Its performance is also more stable across languages, with 89.3% in English, 91.3% in German, and 88.3% in Bavarian. The GEN–GRD gap remains visible even for this stronger model: accuracy drops from 95.0% on GEN questions to 86.2% on GRD questions. Thus, closed-model performance shows that BAV GROUND is solvable at high accuracy, but grounded and Bavarian-specific items still remain harder than broadly accessible cultural facts. Additional closed-model category breakdowns are shown in Appendix Table 17. 
+
+5.2 General Knowledge Does Not Transfer Cleanly to Grounded Regional Knowledge 
+
+The letter-only breakdown in Table 2 shows a con-sistent gap between general-knowledge (GEN) and grounded (GRD) questions. Across all models, av-erage accuracy drops from 63.1% on GEN to 46.7% on GRD, a 16.4-point decrease with a 95% boot-strap interval of [8.2, 24.3]. The strongest GEN score is Llama-3.1-8B-Instruct at 80.4%, followed by EuroLLM at 79.2% and Occiglot at 77.5%. On GRD questions, Qwen2.5-7B-Instruct is strongest at 65.6%, narrowly ahead of EuroLLM at 63.2% and Granite at 62.4%. This indicates that high per-formance on broadly accessible Bavarian cultural facts does not always transfer to source-grounded, region-specific questions. Averaged over the fifteen open-weight models, BAV GROUND difficulty varies substantially by do-main (Table 3; full results in Appendix Table 15). Under letter scoring, Living Traditions, Arts & Model All EN DE BAV GEN GRD EuroLLM-9B 69.4 71.8 74.3 62.1 79.2 63.2 Qwen2.5-7B 69.1 72.8 67.5 67.0 74.6 65.6 Llama-3.1-8B 68.6 68.4 75.2 62.1 80.4 61.1 Granite-3.0-8B 66.3 72.3 62.1 64.6 72.5 62.4 Occiglot-7B 61.8 55.8 70.9 58.7 77.5 51.9 Aya-8B 60.8 64.6 71.4 46.6 73.3 52.9 Mistral-7B 57.9 68.9 64.1 40.8 68.8 51.1 OLMo-2-7B 54.2 64.1 48.5 50.0 60.4 50.3 Salamandra-7B 52.1 51.9 63.1 41.3 66.7 42.9 Gemma-2-9B 47.7 53.9 53.9 35.4 58.8 40.7 Leo-7B 46.4 50.5 48.5 40.3 47.5 45.8 Teuken-7B 44.5 44.7 51.9 36.9 59.6 34.9 Pharia-7B 43.5 49.5 48.5 32.5 62.5 31.5 GENBA-10B-it 41.9 35.9 50.0 39.8 55.8 33.1 LLaMmlein-7B 11.2 10.2 13.6 9.7 8.8 12.7 Open-weight mean 53.0 55.7 57.6 45.9 63.1 46.7     
+
+> gpt-5.4-mini 89.6 89.3 91.3 88.3 95.0 86.2
+
+Table 2: Letter-scoring accuracy (%) on B AV GROUND 
+
+for open-weight models and the closed-model reference. 
+
+All is computed over all 618 translated instances; EN, DE, and BAV denote the three language subsets, while GEN and GRD denote general-knowledge and grounded subsets. Category-level and cross-protocol results are reported in Appendix Tables 15 and 14.                    
+
+> All lang. Let. by lang. Category Let. Opt. Sem. EN DE BAV Arts & Identity 61.2 61.9 67.0 63.7 65.9 54.1 Building & Sacred 43.3 55.9 52.6 44.6 48.7 36.6 Culinary 54.4 62.2 60.5 59.2 59.5 44.5 History 54.3 68.1 57.2 55.2 58.9 48.8 Landscape 54.3 63.5 57.2 58.7 59.5 44.8 Language 35.6 39.4 45.3 37.1 41.6 28.3 Traditions 61.4 63.3 60.5 65.7 63.7 54.8 Politics 60.6 60.2 56.9 62.4 63.7 55.7
+> Let.=letter; Opt.=option-text avg.; Sem.=semantic generated.
+
+Table 3: Average open-weight accuracy (%) by category. 
+
+Identity, and Politics are easiest, whereas Language is consistently hardest. This is not merely due to Bavarian prompt comprehension: Language re-mains difficult in English and German, indicating that reasoning about dialectal forms and meanings is a distinct challenge. Content-based scoring im-proves several domains, especially Historical and Building & Sacred Heritage, but Language remains weak across protocols, suggesting that dialect com-petence remains difficult even when answer-label effects are reduced. 
+
+5.3 Protocol Sensitivity Across Models: GENBA as a Case Study 
+
+The preceding results show that B AV GROUND is challenging under standard letter scoring, but the broader protocol comparison shows that this is only one view of model behaviour. Across all fifteen models, accuracy rises from 53.0% under letter 
+
+to 59.3% under option_text_avg ; the correspond-ing option-text analogue of Table 2 is reported in Appendix Table 14, with the full strategy break-down in Appendix Table 10. This shift is model-specific: the strongest letter models remain sta-ble or decrease slightly under option_text_avg 
+
+(EuroLLM 69.4 →68.9, Qwen 69.1 →63.9, Llama 68.6 →64.9), whereas lower-ranked or strongly label-skewed models gain substantially (LLaMm-lein +31.7, Pharia +18.9, GENBA +17.0). This sug-gests that protocol choice does not merely rescale the leaderboard: it reveals which models are robust across answer formats and which are penalized by answer-label or formatting effects. Label-prior and shuffled-label diagnostics are reported in Appendix Tables 13 and 11. GENBA-10B provides a clear case study of this protocol sensitivity. Although it is Bavarian-oriented, it ranks near the bottom under the default letter protocol. Under content-based evaluation, however, its performance is substan-tially higher: Table 18 shows that GENBA in-creases from 41.9% with letter scoring to 58.9% with option_text_avg and 61.5% with seman-tic matching of generated answers. The paired 
+
+option_text_avg –letter gap is 17.0 points [10.7, 23.5] (Appendix Table 8). We therefore interpret GENBA not as solving B AV GROUND ,but as illustrating how answer-letter evaluation can understate recoverable answer content for some models. This recovery is also uneven across domains: the largest gains occur in language 
+
+and historical , with smaller but still substantial gains in building_and_sacred_heritage and 
+
+culinary (Appendix Table 20). Importantly, alternative protocols do not erase BAV GROUND ’s core difficulty structure: Bavarian remains below English and German under most strategies, and GRD questions remain harder than GEN questions. 
+
+5.4 Checkpoint Trajectories during Continued Pretraining 
+
+We use the GENBA checkpoints to examine how regional cultural knowledge changes dur-ing continued pretraining. Figure 1 aggregates all English, German, and Bavarian instances and tracks checkpoints before final instruction tun-ing, so its final point is not expected to match the instruction-tuned GENBA row in Table 2. Figure 1: GENBA-10B continued-pretraining accuracy over all 618 instances before final instruction tuning. 
+
+Across these checkpoints, letter accuracy re-mains low and unstable, rising from 11.2% to a peak of 19.3% before ending at 12.1%. By contrast, 
+
+option_text_avg improves from 25.4% to 50.8%, and semantic_embed_generated_answer peaks at 50.3% around checkpoint 14.5k. Continued pre-training therefore strengthens answer-content like-lihood and generated-answer semantics more than answer-letter calibration. The gains are uneven across languages and do-mains: Bavarian remains below English and Ger-man at the final checkpoint, and Language remains the weakest domain despite stronger improvements in Politics, Arts & Identity, Living Traditions & Customs, and Culinary. Other metrics reinforce this picture: semantic matching of generated an-swers improves substantially, while hidden-state alignment changes only weakly, indicating that bet-ter answer generation does not translate uniformly across all evaluation views. Full breakdowns are provided in Appendix Tables 22–25 and Appendix Figures 2–6. Overall, the checkpoint analysis sug-gests uneven capability development rather than uniform improvement across different domains. 
+
+6 Discussion 
+
+Our findings highlight three implications for eval-uating culturally grounded knowledge in LLMs. First, regional cultural knowledge is not a single capability. Models perform better on broadly rec-ognizable Bavarian facts than on dialect compe-tence and source-grounded regional items. We do not claim that every grounded item is intrinsically “deeper” than encyclopaedic knowledge; some prac-tices are well documented in public sources, as the all-model error examples in Appendix Table 5 il-lustrate. The point is methodological: national or tourism-facing coverage does not guarantee com-petence on localized formulations, dialect expres-sions, institutional details, or source-specific re-gional knowledge. B AV GROUND therefore tests whether models can move beyond recognizing Bavaria as a named cultural region toward answer-ing questions across language variety, domain and evidence type. Second, our results corroborate prior work show-ing that MCQA evaluations are protocol-sensitive, and extend this observation to regional cultural grounding. On B AV GROUND , protocol choice changes not only absolute scores but also the fail-ure modes that become visible. Standard letter 
+
+scoring can understate performance for models such as GENBA by conflating cultural knowledge with answer-label and position behaviour, while EuroLLM’s drop under semantic matching shows that strong option likelihood does not necessarily imply reliable answer realization. We therefore use shuffled-letter, option-text, semantic, and hidden-state diagnostics to separate label priors, answer-content preference, generated-answer meaning, and representation-level alignment. Finally, the checkpoint analysis is an exploratory case study of GENBA-10B. Continued pretrain-ing improves some evaluation views substantially but unevenly: Bavarian remains below English and German, dialect remains the weakest domain, and hidden-state alignment does not consistently track option-text gains. BAVGROUND can there-fore help diagnose whether systems need dialect-focused instruction tuning, answer-format calibra-tion, or community-informed evaluation before de-ployment with Bavarian-speaking users. 
+
+7 Conclusion and Future Work 
+
+We presented B AV GROUND , a localized bench-mark for evaluating Bavarian regional cultural grounding and dialect competence across English, German, and Bavarian. By combining general cultural questions with source-grounded regional items and multiple evaluation protocols, BAV -GROUND enables controlled analysis of cultural knowledge below the level of national categories and high-resource standard languages. Our experiments show that localized cultural evaluation should be both domain-aware and protocol-aware. The same benchmark surfaces several distinct phenomena: persistent difficulty on Bavarian and source-grounded items, variation across cultural domains, sensitivity to answer for-mat, and uneven capability development during continued pretraining. These findings suggest that regional cultural competence is better understood as a set of interacting capabilities rather than as a single aggregate accuracy score. BAV GROUND is a starting point for localized, protocol-aware cultural evaluation. Future work should extend it to other regional and minority lan-guage communities and broaden community partic-ipation. 
+
+8 Limitations 
+
+First, our evaluation covers fifteen instruction-tuned models in the 7B–10B parameter range, pro-viding a broad cross-section of current open-weight model families but leaving larger-scale and closed-weight systems largely uncharacterized. The single closed-model reference (gpt-5.4-mini) contextual-izes benchmark difficulty but is insufficient to draw conclusions about frontier model behavior. Find-ings about the relationship between model orienta-tion and cultural performance may not generalize beyond this parameter range, and we encourage fu-ture work to evaluate B AV GROUND against larger open-weight and closed systems as they become accessible. Second, the checkpoint analysis is restricted to GENBA-10B, meaning that the non-monotonic trajectories, domain-specific gains, and protocol divergences we document are properties of one continued-pretraining run under one training con-figuration. We cannot determine whether these dynamics, including the divergence between let-ter accuracy and option-text likelihood, or the per-sistent weakness of the Language domain, reflect general properties of Bavarian-focused adaptation or idiosyncrasies of GENBA’s architecture, data mixture, or training schedule. Capacity-matched control runs trained on non-Bavarian data would be necessary to attribute observed checkpoint gains to cultural content exposure rather than general continued-pretraining effects, and we do not in-clude such controls here. Third, the ten general-knowledge questions per category were generated using Claude Sonnet 4.6. Since Claude model outputs are widely used in LLM post-training pipelines, some of the evalu-ated models may have been exposed to similar or overlapping content during instruction tuning, potentially inflating performance on the general-knowledge subset relative to the grounded ques-tions. We cannot rule out this form of bench-mark contamination, and future versions of B AV -GROUND should consider replacing AI-generated general questions with human-authored items or questions drawn from independently verified sources. Fourth, B AV GROUND was manually translated into English, German, and Bavarian, but Bavarian is not a single uniform variety: it encompasses considerable dialectal variation across much of Bavaria, Austria, and South Tyrol, and our transla-tions target one written representation of this con-tinuum. We do not calculate inter-translator agree-ment for the Bavarian translations specifically, and we do not evaluate whether the translated items pre-serve the pragmatic and dialectal specificity of the source questions. Given that dialect competence is a central claim of the benchmark, this is a meaning-ful gap. Future work should document translation methodology more rigorously, validate Bavarian items with native speakers from multiple dialectal sub-regions, and consider whether a single written Bavarian form is sufficient or whether sub-regional variation warrants separate evaluation tracks. Fifth, the source-grounded questions are con-strained by the availability of relevant anthropo-logical literature: despite consulting domain ex-perts, only one key monograph (Liu, 2021) and one key article (Merlan, 2004) on Bavarian cul-ture could be identified as suitable primary sources. This scarcity also restricts the overall size of the grounded subset, as the manual creation of source-tied questions, each requiring careful reading, item construction, and expert review, is substantially more time-intensive than automated generation. Future work should seek to expand the range of primary sources consulted, potentially in collabora-tion with regional libraries, ethnographic archives, or Bavarian cultural institutions. Sixth, the Bavarian translations were produced by a single translator who, although a native Chiem-gau variety speaker, has resided outside Bavaria for an extended period. Prolonged absence from a dialect community is likely a driver of dialect attri-tion, and the translations may consequently exhibit a low Levenshtein distance from the correspond-ing German translations. Model performance on Bavarian items should therefore be interpreted as an upper bound: the true capability gap between models on German and Bavarian is likely larger than our results indicate. Finally, our longitudinal design across 85 check-points does not support strong causal claims about the mechanisms driving observed changes in cultural representation. Disentangling increased model capacity from the influence of Bavarian-specific training data remains difficult (Betley et al., 2026), and training smaller models from scratch with intermediate checkpoints would provide a cleaner handle on these causal dynamics. 
+
+9 Ethical Concerns 
+
+In this work we used only publicly available models and source materials and did not collect or process any private or sensitive personal data. The evalu-ated open-weight models are used only as evalua-tion targets, and we do not redistribute third-party model weights. Their use is governed by the cor-responding model cards, licenses, and API terms; Appendix Table 6 reports the exact model identi-fiers or Hugging Face links where available. The closed-model reference is accessed only through its API terms. Because cultural benchmarks necessarily sim-plify complex and internally diverse identities, BAV GROUND should not be interpreted as a defini-tive representation of Bavarian culture or dialect usage. We further caution against interpreting any single benchmark score as a definitive measure of cultural competence or bias, since our results show that evaluation protocol substantially affects mea-sured performance. The generated model outputs and checkpoint behaviors analyzed in this work do not represent the personal views of the authors. As part of our transparency and reproducibility commitments, we provide an anonymized artifact for review and plan to release the benchmark, evalu-ation code, and generated outputs upon acceptance. 
+
+References 
+
+Abubakar Abid, Maheen Farooqi, and James Zou. 2021. Persistent anti-muslim bias in large language models. In Proceedings of the 2021 AAAI/ACM Conference on AI, Ethics, and Society , pages 298–306. Georg Ahnert, Anna-Carolina Haensch, Barbara Plank, and Markus Strohmaier. 2025. Survey response gen-eration: Generating closed-ended survey responses in-silico with large language models. arXiv preprint arXiv:2510.11586 .Emily M Bender, Timnit Gebru, Angelina McMillan-Major, and Shmargaret Shmitchell. 2021. On the dangers of stochastic parrots: Can language models be too big? In Proceedings of the 2021 ACM confer-ence on fairness, accountability, and transparency ,pages 610–623. Jan Betley, Niels Warncke, Anna Sztyber-Betley, Daniel Tan, Xuchan Bao, Martín Soto, Megha Srivastava, Nathan Labenz, and Owain Evans. 2026. Training large language models on narrow tasks can lead to broad misalignment. Nature , 649(8097):584–589. Kirti Bhagat, Shaily Bhatt, Athul Velagapudi, Aditya Vashistha, Shachi Dave, and Danish Pruthi. 2026. Tales: A taxonomy and analysis of cultural repre-sentations in llm-generated stories. In Proceedings of the 2026 CHI Conference on Human Factors in Computing Systems , pages 1–26. Su Lin Blodgett, Solon Barocas, Hal Daumé Iii, and Hanna Wallach. 2020. Language (technology) is power: A critical survey of" bias" in nlp. arXiv preprint arXiv:2005.14050 .Minh Duc Bui, Carolin Holtermann, Valentin Hofmann, Anne Lauscher, and Katharina von der Wense. 2025. Large language models discriminate against speakers of german dialects. In Proceedings of the 2025 Con-ference on Empirical Methods in Natural Language Processing , pages 8223–8251. Monojit Choudhury, Shivam Chauhan, Rocktim Jy-oti Das, Dhruv Sahnan, Xudong Han, Haonan Li, Aaryamonvikram Singh, Alok Anil Jadhav, Utkarsh Agarwal, Mukund Choudhary, and 1 others. 2025. Llama-3-nanda-10b-chat: An open genera-tive large language model for hindi. arXiv preprint arXiv:2504.06011 .Ricardo Dominguez-Olmedo, Moritz Hardt, and Celes-tine Mendler-Dünner. 2024. Questioning the survey responses of large language models. Advances in Neural Information Processing Systems , 37:45850– 45878. Isabel O Gallegos, Ryan A Rossi, Joe Barrow, Md Mehrab Tanjim, Sungchul Kim, Franck Dernon-court, Tong Yu, Ruiyi Zhang, and Nesreen K Ahmed. 2024. Bias and fairness in large language models: A survey. Computational Linguistics , 50(3):1097– 1179. Clifford Geertz. 2025. Thick description: Toward an in-terpretive theory of culture (1973). In Close Reading and Its Alternatives , pages 107–125. Routledge. Suchin Gururangan, Ana Marasovi´ c, Swabha Swayamdipta, Kyle Lo, Iz Beltagy, Doug Downey, and Noah A Smith. 2020. Don’t stop pretraining: Adapt language models to domains and tasks. In 
+
+Proceedings of the 58th annual meeting of the association for computational linguistics , pages 8342–8360. Michael A Hedderich, Anyi Wang, Raoyuan Zhao, Flo-rian Eichin, Jonas Fischer, and Barbara Plank. 2025. What’s the difference? supporting users in identify-ing the effects of prompt and model changes through token patterns. In Proceedings of the 63rd Annual Meeting of the Association for Computational Lin-guistics (Volume 1: Long Papers) , pages 20093– 20123. Daniel Hershcovich, Stella Frank, Heather Lent, Miryam De Lhoneux, Mostafa Abdou, Stephanie Brandl, Emanuele Bugliarello, Laura Cabello Pi-queras, Ilias Chalkidis, Ruixiang Cui, and 1 others. 2022. Challenges and strategies in cross-cultural nlp. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 6997–7013. Michael Herzfeld. 2020. The poetics of manhood: con-test and identity in a cretan mountain village. Michael Hoffmann, Jophin John, Stefan Schweter, Gokul Ramakrishnan, Hoi-Fong Mak, Alice Zhang, Dmitry Gaynullin, and Nicolay J Hammer. 2025. Llama-genba-10b: A trilingual large language model for german, english and bavarian. arXiv preprint arXiv:2509.05668 .Hannah Rose Kirk, Yennie Jun, Filippo Volpin, Haider Iqbal, Elias Benussi, Frederic Dreyer, Aleksandar Shtedritski, and Yuki Asano. 2021. Bias out-of-the-box: An empirical analysis of intersectional occupa-tional biases in popular generative language models. 
+
+Advances in neural information processing systems ,34:2611–2624. Fajri Koto, Rituraj Joshi, Nurdaulet Mukhituly, Yuxia Wang, Zhuohan Xie, Rahul Pal, Daniil Orel, Parvez Mullah, Diana Turmakhan, Maiya Goloburda, and 1 others. 2025. Sherkala-chat: Building a state-of-the-art llm for kazakh in a moderately resourced setting. 
+
+arXiv preprint arXiv:2503.01493 .Charaka Vinayak Kumar, Ashok Urlana, Gopichand Kanumolu, Bala Mallikarjunarao Garlapati, and Pruthwik Mishra. 2025. No llm is free from bias: A comprehensive study of bias evaluation in large language models. arXiv preprint arXiv:2503.11985 .Chen Cecilia Liu, Iryna Gurevych, and Anna Korho-nen. 2025. Culturally aware and adapted nlp: A taxonomy and a survey of the state of the art. Trans-actions of the Association for Computational Linguis-tics , 13:652–689. Danfeng Liu. 2021. Making Heimat in the modern world: state, Catholicism, and nature in a Bavarian village community . Ph.D. thesis, London School of Economics and Political Science. Bolei Ma, Xinpeng Wang, Tiancheng Hu, Anna-Carolina Haensch, Michael A. Hedderich, Barbara Plank, and Frauke Kreuter. 2024. The potential and challenges of evaluating attitudes, opinions, and val-ues in large language models. In Findings of the Association for Computational Linguistics: EMNLP 2024 , pages 8783–8805, Miami, Florida, USA. Asso-ciation for Computational Linguistics. Francesca Merlan. 2004. Preserving the farm in south-ern germany. Culture & agriculture , 26(1-2):124– 136. Moran Mizrahi, Guy Kaplan, Dan Malkin, Rotem Dror, Dafna Shahaf, and Gabriel Stanovsky. 2024. State of what art? a call for multi-prompt llm evaluation. 
+
+Transactions of the Association for Computational Linguistics , 12:933–949. Junho Myung, Nayeon Lee, Yi Zhou, Jiho Jin, Rifki A Putri, Dimosthenis Antypas, Hsuvas Borkakoty, Eu-nsu Kim, Carla Perez-Almendros, Abinew A Ayele, and 1 others. 2024. Blend: A benchmark for llms on everyday knowledge in diverse cultures and lan-guages. Advances in Neural Information Processing Systems , 37:78104–78146. Tarek Naous, Michael J Ryan, Alan Ritter, and Wei Xu. 2024. Having beer after prayer? measuring cultural bias in large language models. In Proceedings of the 62nd annual meeting of the association for compu-tational linguistics (volume 1: Long papers) , pages 16366–16393. Pouya Pezeshkpour and Estevam Hruschka. 2024. Large language models sensitivity to the order of op-tions in multiple-choice questions. In Findings of the Association for Computational Linguistics: NAACL 2024 , pages 2006–2017. Nils Reimers and Iryna Gurevych. 2019. Sentence-BERT: Sentence embeddings using Siamese BERT-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Process-ing and the 9th International Joint Conference on Natural Language Processing , pages 3982–3992. As-sociation for Computational Linguistics. Donya Rooein, Vilém Zouhar, Debora Nozza, and Dirk Hovy. 2025. Biased tales: Cultural and topic bias in generating children’s stories. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 52–72. Anthony R Rowley. 2011. Bavarian: Successful dialect or failed language. Handbook of language and ethnic identity. The success-failure continuum in language and ethnic identity efforts , 2:299–309. Jens Rupprecht, Georg Ahnert, and Markus Strohmaier. 2025. Prompt perturbations reveal human-like biases in llm survey responses. arXiv preprint arXiv:2507.07188 .Andrea Seveso, Daniele Potertì, Edoardo Federici, Mario Mezzanzanica, and Fabio Mercorio. 2025. Italic: An italian culture-aware natural language benchmark. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Asso-ciation for Computational Linguistics: Human Lan-guage Technologies (Volume 1: Long Papers) , pages 1469–1478. Weiyan Shi, Ryan Li, Yutong Zhang, Caleb Ziems, Sunny Yu, Raya Horesh, Rogério Abreu De Paula, and Diyi Yang. 2024. Culturebank: An online community-driven knowledge base towards cultur-ally aware language technologies. In Findings of the Association for Computational Linguistics: EMNLP 2024 , pages 4996–5025. Kaitao Song, Xu Tan, Tao Qin, Jianfeng Lu, and Tie-Yan Liu. 2020. MPNet: Masked and permuted pre-training for language understanding. In Advances in Neural Information Processing Systems , volume 33, pages 16857–16867. Xinpeng Wang, Bolei Ma, Chengzhi Hu, Leon Weber-Genzel, Paul Röttger, Frauke Kreuter, Dirk Hovy, and Barbara Plank. 2024. “my answer is c”: First-token probabilities do not match text answers in instruction-tuned language models. In Findings of the Associa-tion for Computational Linguistics: ACL 2024 , pages 7407–7416. Raoyuan Zhao, Beiduo Chen, Barbara Plank, and Michael A Hedderich. 2025. Makieval: A multi-lingual automatic wikidata-based framework for cul-tural awareness evaluation for llms. arXiv preprint arXiv:2505.21693 .Chujie Zheng, Hao Zhou, Fandong Meng, Jie Zhou, and Minlie Huang. 2024. Large language models are not robust multiple choice selectors. In International Conference on Learning Representations , volume 2024, pages 19426–19454. Naitian Zhou, David Bamman, and Isaac L Bleaman. 2025. Culture is not trivia: Sociocultural theory for cultural nlp. In Proceedings of the 63rd Annual Meet-ing of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 25869–25886. A Appendix Overview 
+
+This appendix follows the structure of the main paper. Appendix B documents the benchmark in-stances and prompt templates. Appendix C de-scribes the result artifacts used for the analyses. Ap-pendix D provides additional open-weight model results from results_allmodels . Appendix E reports the closed-model reference results from 
+
+results_closedmodels . Appendix F expands the protocol-sensitivity analysis for GENBA-10B. Ap-pendix G gives checkpoint-level summaries and figures from results_genba_checkpoints . Ap-pendix H describes the dashboard and stored JSON outputs. 
+
+B Dataset and Prompt Details 
+
+The evaluated B AV GROUND files contain 206 source questions translated into English, German, and Bavarian, yielding 618 multiple-choice in-stances. Table 4 reports the category distribution used by the result files.                     
+
+> Category Source Qs. Instances Arts & Identity 25 75 Building & Sacred Heritage 29 87 Culinary 25 75 Historical 25 75 Landscape 25 75 Language 25 75 Traditions & Customs 27 81 Politics 25 75 Total 206 618
+
+Table 4: B AV GROUND category counts. Each source question is evaluated in English, German, and Bavarian. 
+
+Table 5 lists representative items missed by all evaluated systems under standard letter scor-ing, including the closed-model reference. The GRD examples qualify our interpretation of source-grounded difficulty: these items are linked to pub-lic sources in the dataset metadata, yet models still consistently select distractors. Their failure there-fore cannot be explained simply by inaccessible evidence or lack of web presence. The GEN exam-ple shows that errors also occur for broader dialect knowledge when the question requires precise lin-guistic competence. We use these cases to support a limited methodological claim: public documenta-tion or regional-media coverage does not by itself imply that models can answer localized cultural questions reliably. The localized answer-generation prompt asks the model to start with the selected option letter and optionally continue with the exact option text. The English template is:                  
+
+> {question} Options: A: {option_A} B: {option_B} C: {option_C} D: {option_D} Reply by starting with the correct option letter: A, B, C, or D. You may optionally continue with the exact option text. Examples: ’B’ or ’B: Lenbachhaus’. Answer:
+
+The German instruction is:            
+
+> Beginne mit dem richtigen Buchstaben A, B, Coder D. Danach darfst du optional den exakten Optionstext nennen. Beispiele: ’B’ oder ’B: Lenbachhaus’.
+
+The Bavarian instruction is:                
+
+> Fang mit dem richtigen Buchstaben A, B, Coda Do. Danach derfst optional den exakten Optionstext dazuschreibn. Beispui: ’B’ oder ’B: Lenbachhaus’.
+
+C Evaluation Artifacts and Protocols 
+
+Table 6 lists the open-weight model groupings used in the experimental setup together with the exact result-file target names and model links. These groupings are intended to make the model set read-able; they are not mutually exclusive claims about pretraining data or architecture. The open-weight result repository (https://anonymous.4open.science/r/ BavGround-7C68/README.md ) contains 111,240 item-level records: 15 model targets, 12 evalu-ation protocols, and 618 instances per complete model-protocol run. The closed-model directory contains 1,236 records for gpt-5.4-mini , cov-ering letter and generate_letter_and_text .The checkpoint directory contains 630,360 records: 85 GENBA checkpoint targets, 12 protocols, and 618 instances per checkpoint-protocol run. Each JSON result file stores run metadata, tar-get identifier, dataset path, filters, generation and diagnostic settings, elapsed time, and per-item outputs. Per-item fields include the item identi-fier, language, category, prompt, correct option la-bel, parsed prediction, correctness, and protocol-specific diagnostics such as label log-probabilities, generated text, cosine similarities, or hidden-state alignment scores. The semantic match-ing results use the Sentence Transformers model 
+
+paraphrase-multilingual-mpnet-base-v2 .Category Subset Item Question focus Gold answer All-model distractor pattern Public source Language GEN language_en_003 Bavarian sound shift for Standard German ei , as in nein                          
+
+> B: oa →noa A: 15, D: 1 General item; no ex-ternal source Building &Sacred Heritage GRD building_and_sacred _heritage_en_013
+> Museum displaying a Maria Magdalena figure for-merly from the Dominikanerkirche in Augsburg B: Louvre A: 15, D: 1 SZ article Historical GRD historical_en_012 First meeting place of the Worker, Soldier, and Farmer Council under Kurt Eisner on 7 Nov. 1918 C: Landtag building in Pranner-straße A: 15, D: 1 SZ article Language GRD language_en_015 Meaning of the Bavarian dialect word Stranitzl C: Eine Papiertüte A: 8, B: 7, D: 1 SZ quiz Living Traditions &Customs GRD living_traditions _and_customs_en_021
+> Year in which Mariä Lichtmess lost official public-holiday status C: In 1912 A: 9, D: 5, B: 2 SZ article
+
+Table 5: Examples of GEN and publicly sourced GRD items missed by all 15 open-weight models and the 
+
+gpt-5.4-mini closed-model reference under standard letter scoring. Distractor counts report the predicted labels among the 16 systems; the gold label is omitted from the pattern because no system selected it. SZ denotes Süddeutsche Zeitung. 
+
+Grouping Open weight model name Model identifier / link German/Bavarian-oriented genba-10b-it local GENBA-10B instruction-tuned release; no Hugging Face link German/Bavarian-oriented leo-hessianai-7b-chat LeoLM/leo-hessianai-7b-chat 
+
+German/Bavarian-oriented LLaMmlein_7B_chat LSX-UniWue/LLaMmlein_7B_chat 
+
+European multilingual EuroLLM-9B-Instruct utter-project/EuroLLM-9B-Instruct 
+
+European multilingual occiglot-7b-eu5-instruct occiglot/occiglot-7b-eu5-instruct 
+
+European multilingual Teuken-7B-instruct-research-v0.4 openGPT-X/Teuken-7B-instruct-research-v0.4 
+
+European multilingual Pharia-1-LLM-7B-control-hf Aleph-Alpha/Pharia-1-LLM-7B-control-hf 
+
+European multilingual salamandra-7b-instruct BSC-LT/salamandra-7b-instruct 
+
+Broader multilingual instruction Qwen2.5-7B-Instruct Qwen/Qwen2.5-7B-Instruct 
+
+Broader multilingual instruction Llama-3.1-8B-Instruct meta-llama/Llama-3.1-8B-Instruct 
+
+Broader multilingual instruction Mistral-7B-Instruct-v0.3 mistralai/Mistral-7B-Instruct-v0.3 
+
+Broader multilingual instruction gemma-2-9b-it google/gemma-2-9b-it 
+
+Broader multilingual instruction OLMo-2-1124-7B-Instruct allenai/OLMo-2-1124-7B-Instruct 
+
+Broader multilingual instruction granite-3.0-8b-instruct ibm-granite/granite-3.0-8b-instruct 
+
+Broader multilingual instruction aya-expanse-8b CohereLabs/aya-expanse-8b 
+
+Table 6: Open-weight model targets used for evaluation ( results_allmodels in the repository contains more information). Main result tables use shortened display names for space; this table reports the exact JSON metadata field target_name and the corresponding model identifier or Hugging Face link where available. 
+
+The 12 protocols available for the open-weight and checkpoint experi-ments are letter , letter_shuffled ,
+
+option_text , option_text_avg ,
+
+generate_letter , generate_option_text ,
+
+generate_letter_and_text ,
+
+semantic_embed_generated_answer ,
+
+semantic_embed_option ,
+
+semantic_embed_contextual_option ,
+
+embed_contextual_option , and 
+
+embed_isolated_option . We treat the first eight as output-level evaluation protocols and the final four as semantic or representation-level diagnostics. We implement the protocol comparison with five scoring families. Probability-based scor-ing includes letter , which scores candidate labels A–D by conditional log-probability, and 
+
+option_text /option_text_avg , which score the answer texts directly with and without length normalization. Answer-order perturbation 
+
+uses letter_shuffled to repeat letter scoring after deterministically shuffling the displayed option order. Generation-based scoring uses 
+
+generate_letter , generate_option_text , and 
+
+generate_letter_and_text to evaluate deter-ministic generated answers and parse them back to option labels. External semantic matching uses the multilingual MPNet sentence-embedding model 
+
+paraphrase-multilingual-mpnet-base-v2 :
+
+semantic_embed_generated_answer embeds generated answers and maps them to the closest option, while semantic_embed_option and 
+
+semantic_embed_contextual_option are output-independent question–option baselines. 
+
+Hidden-state alignment compares final-layer hidden states from each evaluated open-weight model using contextual and isolated option representations as representation-level diagnostics rather than token probabilities. Table 7 summarizes the implementation de-tails that are compressed in the main text. For probability-based open-weight scoring, plain and whitespace-prefixed candidate strings are both con-sidered when tokenization makes the leading-space variant distinct; the better-scoring variant is re-tained. For margin diagnostics, the correct-answer margin is the score of the correct option minus the highest score assigned to any incorrect option, where incorrect options are the three distractor choices in the multiple-choice item. Table 8 reports paired bootstrap intervals for the main comparisons used in the analysis. The boot-strap script is included in the supplementary code as code/bootstrap_biabav_ci.py . We resam-ple source question IDs with replacement, so trans-lated English, German, and Bavarian versions of the same source question remain in the same boot-strap cluster. This avoids treating parallel transla-tions as fully independent items. 
+
+D Additional Open-Weight Model Results 
+
+Table 9 provides the full category-expanded ver-sion of the main letter -scoring model compari-son. The main text reports the compact language and GEN/GRD view for readability. Table 10 reports the full output-level protocol breakdown. The mean score rises from 53.0% un-der letter to 59.3% under option_text_avg and 57.1% under semantic generated-answer match-ing. The largest option_text_avg gains occur for LLaMmlein (+31.7 points), Pharia (+18.9), GENBA (+17.0), Salamandra (+10.7), and Leo (+10.4), showing that answer-format effects are not unique to GENBA. Table 11 compares canonical letter scoring with letter_shuffled . The two scores are strongly correlated across models (Pearson r =0.95 , Spearman ρ = 0 .94 ; both p < . 001 ), and the top four canonical letter models change by only 1.0 point on average. Larger gains are concentrated among lower-scoring or more label-skewed mod-els, so the shuffled diagnostic supports the stability of the main open-model ranking while also show-ing why protocol-sensitive systems should not be evaluated by canonical letter alone. Table 12 reports model-specific answer-label dis-tributions under canonical letter scoring. The label-prior expected accuracy is computed from the model’s marginal predicted-label distribution and the benchmark’s marginal gold-label distribu-tion, without item-level information. The trivial label-only baselines are 25.0% for uniform random, 9.7% for always-A, 42.2% for always-B, 35.9% for always-C, and 12.1% for always-D. Table 14 compares all 15 open-weight models across the main evaluation families. Standard let-ter scoring favours EuroLLM, Qwen, and Llama, while semantic generated-answer matching favours Llama, Mistral, Aya, Salamandra, and Granite. This confirms that model rankings depend on the evaluation view. Tables 16 and 15 aggregate the open-weight re-sults by language and category. Bavarian is lowest under letter scoring, but the gap narrows under content- and generation-based scoring. Across cat-egories, Language remains the hardest output-level category. 
+
+E Closed-Model Reference Results 
+
+The closed-model run in results_closedmodels 
+
+evaluates the OpenAI API model iden-tifier gpt-5.4-mini under letter and 
+
+generate_letter_and_text . The stored re-sult files are timestamped 2026-05-12 12:11:31. For letter , we score A–D using first-token API log-probabilities with top_logprobs=5 ;for generate_letter_and_text , we parse generated answers from a prompt asking for the letter followed by optional option text. The runner configuration stores temperature=0 ,
+
+temperature_sent_to_api=None ,
+
+letter_max_completion_tokens=64 , and 
+
+generate_max_completion_tokens=128 . The artifacts do not include a more specific dated snapshot suffix beyond the API model ID, so we report the model ID and run timestamp rather than treating the closed model as a fixed open-weight checkpoint. 
+
+F GENBA Protocol Diagnostics 
+
+Table 19 gives the full GENBA strategy breakdown. GENBA improves from 41.9% under letter scor-ing to 58.9% under length-normalized option-text scoring and 61.5% under semantic matching of gen-erated answers. This supports the main claim that standard answer-letter evaluation understates the amount of answer content recovered by alternative protocols. The protocol effect is category-dependent (Ta-ble 20). Historical questions show the largest recov-ery under option_text_avg , rising from 46.7% to 80.0%. Language rises from 14.7% under letter 
+
+to 56.0% under option_text_avg , but remains weaker than most other categories under several generation protocols. Table 21 shows the answer-label distributions be-hind this protocol sensitivity. GENBA heavily over-Protocol family Strategies Implementation details Letter likelihood letter ; letter_shuffled Scores A–D by conditional log-probability. The shuffled variant deter-ministically permutes displayed option order using the item ID, scores the displayed labels, and maps predictions back to the original option identity. Option-text likelihood option_text ; option_text_avg Scores the full option text rather than the answer label. option_text         
+
+> uses summed token log-probability; option_text_avg divides by the number of option tokens to reduce option-length effects. Generation generate_letter ;
+> generate_option_text ;
+> generate_letter_and_text
+> Uses deterministic generation with a maximum of 24 new tokens for open-weight runs. Outputs are parsed by initial answer-letter matching, exact option-text matching, contained or prefix option-text matching, and token-overlap matching when needed. External semantic matching semantic_embed_option ;
+> semantic_embed_contextual_option ;
+> semantic_embed_generated_answer
+> Uses the multilingual MPNet model named in the main text. The first two strategies are output-independent baselines because they compare the question to option texts without using the evaluated LLM’s generated answer; semantic_embed_generated_answer embeds the generated an-swer and selects the nearest option by cosine similarity. Hidden-state alignment embed_contextual_option ;
+> embed_isolated_option
+> Uses the evaluated open-weight model’s final-layer hidden states. The final prompt state is the answer anchor and is compared by cosine simi-larity to mean-pooled option-token states. Contextual alignment embeds options as prompt continuations; isolated alignment embeds options in the template Answer: {option_text} .
+
+Table 7: Evaluation protocol details used by the benchmark runners in 
+
+code/run_checkpoints_eval_v4_genba_v2.py , code/run_checkpoints_eval_v4_genba_v2_embed_v3.py ,and the semantic-embedding job scripts. 
+
+Comparison Gap (pp) 95% bootstrap CI Open-weight mean, letter : GEN − GRD 16.4 [8.2, 24.3] Open-weight mean, letter : English − Bavarian 9.8 [7.5, 12.2] Open-weight mean, letter : German − Bavarian 11.7 [9.5, 14.0] GENBA-10B-it: option_text_avg − letter 17.0 [10.7, 23.5] 
+
+letter : EuroLLM-9B − Qwen2.5-7B 0.3 [-4.7, 5.3] 
+
+letter : EuroLLM-9B − Llama-3.1-8B 0.8 [-3.2, 4.9] 
+
+letter : Qwen2.5-7B − Llama-3.1-8B 0.5 [-4.2, 5.2] 
+
+Table 8: Nonparametric bootstrap confidence intervals for key accuracy gaps. Intervals use 10,000 resamples over source question IDs and are reported in percentage points. 
+
+predicts option A under standard letter scoring and generate_letter_and_text , while shuffled labels, option-text scoring, and semantic matching produce more balanced distributions. 
+
+G Additional Checkpoint Results 
+
+The checkpoint directory contains 85 GENBA checkpoints from checkpoint 0 through checkpoint 41,707. Table 22 summarizes trajectories by pro-tocol. option_text_avg improves from 25.4% to 50.8%, peaking at 51.3% near checkpoint 41.5k. In contrast, letter accuracy peaks much lower, at 19.3% around checkpoint 18.5k, and ends at 12.1%. Table 23 illustrates the kinds of errors behind the metric divergence at checkpoint 14.5k. The exam-ples are drawn directly from the stored checkpoint outputs. They show three recurring patterns: a strong prior for option A under strict letter parsing, generated text that contains the correct answer con-tent but does not begin with the correct parseable label, and dialect expressions where option-text likelihood identifies the correct meaning while both letter generation and contextual hidden-state align-ment select a distractor. For log-probability scores, less negative values indicate stronger model prefer-ence. Tables 24 and 25 summarize option_text_avg 
+
+trajectories by category and language. Language remains the weakest final category at 30.7%, while Bavarian remains below English and German at the final checkpoint. Figures 4–6 separate the category-strategy trajec-tories by language. These figures show that aggre-gate checkpoint improvements can hide language-specific instability, especially for Bavarian items. 
+
+H Interactive Analysis Dashboard 
+
+We include the Streamlit dashboard code in the supplementary material. The dashboard entry point is dashboard/app.py ; it loads the same per-item JSON files summarized above and supports filter-ing by target model or checkpoint, language, cat-Table 9: Letter-scoring accuracy (%) for all evaluated open-weight models on B AV GROUND , with aggregate language, GEN/GRD, and category breakdowns. Build. = building and sacred heritage; Trad. = living traditions and customs. 
+
+Model All EN DE BAV GEN GRD Hist. Cul. Lang. Land. Pol. Arts Build. Trad. EuroLLM-9B 69.4 71.8 74.3 62.1 79.2 63.2 76.0 78.7 42.7 69.3 73.3 80.0 58.6 77.8 Qwen2.5-7B 69.1 72.8 67.5 67.0 74.6 65.6 70.7 80.0 48.0 66.7 73.3 77.3 65.5 71.6 Llama-3.1-8B 68.6 68.4 75.2 62.1 80.4 61.1 76.0 73.3 42.7 69.3 72.0 82.7 57.5 76.5 Granite-3.0-8B 66.3 72.3 62.1 64.6 72.5 62.4 64.0 74.7 42.7 73.3 70.7 78.7 54.0 74.1 Occiglot-7B 61.8 55.8 70.9 58.7 77.5 51.9 64.0 62.7 40.0 62.7 70.7 66.7 56.3 71.6 Aya-8B 60.8 64.6 71.4 46.6 73.3 52.9 62.7 64.0 45.3 61.3 61.3 78.7 49.4 65.4 Mistral-7B 57.9 68.9 64.1 40.8 68.8 51.1 56.0 61.3 32.0 61.3 64.0 65.3 50.6 72.8 OLMo-2-7B 54.2 64.1 48.5 50.0 60.4 50.3 58.7 52.0 34.7 49.3 68.0 65.3 36.8 70.4 Salamandra-7B 52.1 51.9 63.1 41.3 66.7 42.9 58.7 52.0 38.7 48.0 61.3 58.7 34.5 66.7 Gemma-2-9B 47.7 53.9 53.9 35.4 58.8 40.7 52.0 54.7 36.0 34.7 56.0 56.0 39.1 54.3 Leo-7B 46.4 50.5 48.5 40.3 47.5 45.8 40.0 36.0 45.3 54.7 48.0 48.0 42.5 56.8 Teuken-7B 44.5 44.7 51.9 36.9 59.6 34.9 37.3 41.3 41.3 52.0 58.7 52.0 29.9 45.7 Pharia-7B 43.5 49.5 48.5 32.5 62.5 31.5 38.7 45.3 26.7 50.7 56.0 48.0 32.2 51.9 GENBA-10B-it 41.9 35.9 50.0 39.8 55.8 33.1 46.7 32.0 14.7 52.0 52.0 50.7 34.5 53.1 LLaMmlein-7B 11.2 10.2 13.6 9.7 8.8 12.7 13.3 8.0 4.0 9.3 24.0 10.7 8.0 12.3 Mean 53.0 55.7 57.6 45.9 63.1 46.7 54.3 54.4 35.6 54.3 60.6 61.2 43.3 61.4 
+
+egory, question subset, and evaluation strategy. It visualizes aggregate accuracy, category-level ac-curacy, checkpoint trajectories, and answer-choice distributions, making it useful for error analysis and reproducibility rather than as a separate metric. Figure 7 shows the dashboard interface. Model Letter Letter-shuf. Option-text Opt.-avg Gen-letter Gen-option Gen-letter+txt Sem.-gen EuroLLM-9B 69.4 69.4 60.7 68.9 69.4 76.4 52.3 54.4 Qwen2.5-7B 69.1 68.0 63.3 63.9 69.1 71.8 72.5 66.7 Llama-3.1-8B 68.6 72.7 62.3 64.9 68.1 77.2 68.4 76.2 Granite-8B 66.3 67.3 55.3 62.5 65.4 69.6 68.9 67.6 Occiglot-7B 61.8 63.9 45.6 57.6 47.9 62.6 39.5 60.4 Aya-Expanse-8B 60.8 62.6 54.2 58.6 64.9 70.6 61.3 70.2 Mistral-7B 57.9 65.0 60.4 66.5 61.2 71.2 56.8 71.2 OLMo-2-7B 54.2 55.8 52.1 58.6 54.0 57.9 49.5 48.7 Salamandra-7B 52.1 57.1 53.9 62.8 57.4 72.2 66.3 69.6 Gemma-2-9B 47.7 53.6 42.2 55.5 73.9 75.2 74.4 50.5 Leo-7B 46.4 40.1 42.7 56.8 41.1 46.4 32.7 31.4 Teuken-7B 44.5 54.2 34.3 48.4 44.5 53.7 23.1 49.0 Pharia-7B 43.5 53.6 49.7 62.5 45.1 51.9 37.9 48.7 GENBA-10B-it 41.9 53.2 57.0 58.9 51.9 57.3 39.8 61.5 LLaMmlein-7B 11.2 24.6 20.2 42.9 0.0 0.0 0.0 30.4 Mean 53.0 57.4 50.3 59.3 54.3 60.9 49.6 57.1 
+
+Table 10: Accuracy (%) across output-level evaluation protocols for all fifteen open-weight models. Opt.-avg is length-normalized option-text scoring; Sem.-gen maps generated answers to options using external semantic similarity.                                                    
+
+> Model letter letter_shuffled ∆
+> EuroLLM-9B 69.4 69.4 +0.0 Qwen2.5-7B 69.1 68.0 -1.1 Llama-3.1-8B 68.6 72.7 +4.0 Granite-3.0-8B 66.3 67.3 +1.0 Occiglot-7B 61.8 63.9 +2.1 Aya-8B 60.8 62.6 +1.8 Mistral-7B 57.9 65.0 +7.1 OLMo-2-7B 54.2 55.8 +1.6 Salamandra-7B 52.1 57.1 +5.0 Gemma-2-9B 47.7 53.6 +5.8 Leo-7B 46.4 40.1 -6.3 Teuken-7B 44.5 54.2 +9.7 Pharia-7B 43.5 53.6 +10.0 GENBA-10B-it 41.9 53.2 +11.3 LLaMmlein-7B 11.2 24.6 +13.4 Mean 53.0 57.4 +4.4
+
+Table 11: Canonical letter and shuffled-label accuracy (%) for the 15 open-weight models. letter_shuffled 
+
+deterministically permutes displayed answer labels and maps predictions back to original option identities, preserving item content while testing sensitivity to the canonical label-position mapping. Model Acc. Pred. A Pred. B Pred. C Pred. D Label-prior exp. Residual Gold – 60 (9.7) 261 (42.2) 222 (35.9) 75 (12.1) – –EuroLLM-9B 69.4 159 (25.7) 189 (30.6) 166 (26.9) 104 (16.8) 27.1 42.3 Qwen2.5-7B 69.1 166 (26.9) 233 (37.7) 161 (26.1) 58 (9.4) 29.0 40.1 Llama-3.1-8B 68.6 166 (26.9) 205 (33.2) 169 (27.3) 78 (12.6) 28.0 40.6 Granite-3.0-8B 66.3 144 (23.3) 196 (31.7) 198 (32.0) 80 (12.9) 28.7 37.6 Occiglot-7B 61.8 211 (34.1) 164 (26.5) 179 (29.0) 64 (10.4) 26.2 35.6 Aya-8B 60.8 198 (32.0) 166 (26.9) 151 (24.4) 103 (16.7) 25.3 35.6 Mistral-7B 57.9 274 (44.3) 150 (24.3) 132 (21.4) 62 (10.0) 23.4 34.5 OLMo-2-7B 54.2 220 (35.6) 231 (37.4) 119 (19.3) 48 (7.8) 27.1 27.1 Salamandra-7B 52.1 306 (49.5) 139 (22.5) 151 (24.4) 22 (3.6) 23.5 28.6 Gemma-2-9B 47.7 302 (48.9) 174 (28.2) 116 (18.8) 26 (4.2) 23.9 23.8 Leo-7B 46.4 204 (33.0) 322 (52.1) 72 (11.7) 20 (3.2) 29.8 16.7 Teuken-7B 44.5 259 (41.9) 114 (18.4) 90 (14.6) 155 (25.1) 20.1 24.4 Pharia-7B 43.5 326 (52.8) 121 (19.6) 79 (12.8) 92 (14.9) 19.8 23.7 GENBA-10B-it 41.9 370 (59.9) 91 (14.7) 105 (17.0) 52 (8.4) 19.2 22.8 LLaMmlein-7B 11.2 600 (97.1) 6 (1.0) 11 (1.8) 1 (0.2) 10.5 0.7 
+
+Table 12: Predicted answer-label distributions under canonical letter scoring. Cells for predicted labels report count and percentage. Because the canonical gold-label distribution is imbalanced, raw letter accuracy can be associated with model-specific answer-label priors. Label-prior expected accuracy is computed from the model’s marginal predicted-label distribution and the benchmark’s marginal gold-label distribution, without item-level information. Residual is actual accuracy minus label-prior expected accuracy. We use this diagnostic together with the shuffled-label comparison in Table 11 to distinguish majority-label effects from sensitivity to the canonical label-position mapping.                              
+
+> Predictor Pearson rSpearman ρInterpretation Predicted B rate .64 ( p=.010 ).65 ( p=.009 )Models that predict B more often tend to score higher, consistent with B being the majority gold label. Predicted C rate .93 ( p < . 001 ).89 ( p < . 001 )C preference is also strongly associated with accuracy, reflecting that C is the second most frequent gold label. Predicted B+C rate .89 ( p < . 001 ).77 ( p < . 001 )Preference for the two frequent labels explains substan-tial between-model variation in raw letter accuracy. Label-prior expected accuracy .87 ( p < . 001 ).74 ( p=.002 )Marginal label alignment with the benchmark distribu-tion is strongly associated with leaderboard position. JS distance to gold labels -.98 ( p < . 001 )-.95 ( p < . 001 )Models whose predicted-label distribution is farther from the gold distribution tend to have lower raw
+> letter accuracy.
+
+Table 13: Correlations across the 15 open-weight models between actual canonical letter accuracy and answer-label-prior diagnostics. JS denotes Jensen-Shannon distance between the model’s predicted-label distribution and the benchmark gold-label distribution. These correlations are descriptive and do not imply that label priors causally determine item-level correctness. Model Letter Opt.-avg Sem.-gen H-state ctx. H-state iso. EuroLLM-9B 69.4 68.9 54.4 27.2 28.5 Qwen2.5-7B 69.1 63.9 66.7 29.9 34.5 Llama-3.1-8B 68.6 64.9 76.2 27.0 38.3 Granite-8B 66.3 62.5 67.6 31.2 27.3 Occiglot-7B 61.8 57.6 60.4 37.1 31.2 Aya-Expanse-8B 60.8 58.6 70.2 23.9 37.4 Mistral-7B 57.9 66.5 71.2 33.0 30.9 OLMo-2-7B 54.2 58.6 48.7 32.8 34.8 Salamandra-7B 52.1 62.8 69.6 26.5 33.8 Gemma-2-9B 47.7 55.5 50.5 13.1 30.1 Leo-7B 46.4 56.8 31.4 30.1 34.5 Teuken-7B 44.5 48.4 49.0 30.6 32.2 Pharia-7B 43.5 62.5 48.7 27.2 32.0 GENBA-10B-it 41.9 58.9 61.5 29.0 30.4 LLaMmlein-7B 11.2 42.9 30.4 14.7 50.0 
+
+Table 14: Open-weight model accuracy (%) across major evaluation families. Opt.-avg is length-normalized option-text scoring. Sem.-gen maps generated answers to options using external semantic similarity. H-state ctx./iso. are hidden-state alignment diagnostics. 
+
+Category Letter Opt.-avg Sem.-gen H-state ctx. H-state iso. Arts & Identity 61.2 61.9 67.0 30.7 40.3 Building & Sacred 43.3 55.9 52.6 26.7 32.3 Culinary 54.4 62.2 60.5 27.4 27.6 Historical 54.3 68.1 57.2 22.9 33.9 Landscape 54.3 63.5 57.2 30.7 36.7 Language 35.6 39.4 45.3 30.3 27.0 Traditions 61.4 63.3 60.5 26.5 39.8 Politics 60.6 60.2 56.9 25.6 32.1 
+
+Table 15: Average open-weight model accuracy (%) by category. 
+
+Metric EN DE BAR Letter 55.7 57.6 45.9 Option-text-avg 61.9 59.8 56.1 Semantic generated 56.0 59.7 55.7 Hidden-state contextual 29.5 26.5 26.6 Hidden-state isolated 33.6 33.5 34.1 
+
+Table 16: Average open-weight model accuracy (%) by language. 
+
+Strategy All EN DE BAR Arts Build. Cul. Hist. Land. Lang. Trad. Pol. Letter 89.6 89.3 91.3 88.3 97.3 79.3 94.7 88.0 90.7 81.3 97.5 89.3 Generate-letter+txt 88.0 89.8 88.8 85.4 96.0 83.9 93.3 84.0 90.7 77.3 93.8 85.3 
+
+Table 17: gpt-5.4-mini accuracy (%) by language and category under the two closed-model protocols available in results_closedmodels . Build. = building and sacred heritage; Trad. = living traditions and customs; Pol. = politics. Table 18: GENBA-10B-it accuracy (%) under different evaluation protocols. Sem.-gen denotes semantic matching of generated answers. 
+
+Strategy All EN DE BAV GEN GRD Letter 41.9 35.9 50.0 39.8 55.8 33.1 Letter-shuf. 53.2 48.5 60.2 51.0 63.3 46.8 Option-text 57.0 61.2 56.8 52.9 70.0 48.7 Option-text-avg 58.9 63.6 59.2 53.9 67.1 53.7 
+
+Generate-letter 51.9 46.6 60.2 49.0 64.2 44.2 Generate-option 57.3 57.8 63.1 51.0 72.5 47.6 Generate-letter+txt 39.8 38.8 45.1 35.4 55.0 30.2 Sem.-gen 61.5 62.6 65.0 56.8 73.8 53.7 
+
+Strategy All EN DE BAR Letter 41.9 35.9 50.0 39.8 Letter-shuffled 53.2 48.5 60.2 51.0 Option-text 57.0 61.2 56.8 52.9 Option-text-avg 58.9 63.6 59.2 53.9 Generate-letter 51.9 46.6 60.2 49.0 Generate-option 57.3 57.8 63.1 51.0 Generate-letter+text 39.8 38.8 45.1 35.4 Semantic generated 61.5 62.6 65.0 56.8 Hidden-state contextual 29.0 32.5 25.7 28.6 Hidden-state isolated 30.4 28.2 30.1 33.0 
+
+Table 19: GENBA-10B-it accuracy (%) across evaluation strategies and languages. 
+
+Category Letter Letter-shuf. Option-text Opt.-avg Gen-letter Gen-option Gen-letter+txt Sem.-gen Historical 46.7 53.3 69.3 80.0 57.3 70.7 44.0 72.0 Culinary 32.0 49.3 46.7 54.7 42.7 54.7 28.0 66.7 Language 14.7 36.0 65.3 56.0 22.7 36.0 10.7 48.0 Landscape 52.0 60.0 61.3 60.0 65.3 65.3 45.3 66.7 Politics 52.0 57.3 58.7 56.0 54.7 56.0 54.7 50.7 Arts & Identity 50.7 53.3 60.0 56.0 66.7 68.0 52.0 69.3 Building & Sacred 34.5 57.5 43.7 55.2 47.1 46.0 36.8 54.0 Traditions 53.1 58.0 53.1 54.3 59.3 63.0 46.9 65.4 
+
+Table 20: GENBA-10B-it category-level accuracy (%) across output-level evaluation protocols. 
+
+Strategy A B C DGold 60 261 222 75 Letter 370 91 105 52 Letter-shuffled 130 201 174 113 Option-text-avg 151 228 146 93 Generate-letter+text 417 84 95 22 Semantic generated 185 172 163 98 
+
+Table 21: GENBA-10B-it predicted answer-label distributions across selected strategies. 
+
+Metric Ckpt 0 Best Ckpt Best Final Letter 11.2 18.5k 19.3 12.1 Option-text 16.8 16k 40.3 38.3 Option-text-avg 25.4 41.5k 51.3 50.8 Generate-letter 11.8 14.5k 37.7 23.0 Generate-option 11.2 14.5k 44.0 29.4 Generate-letter+text 11.7 14.5k 29.8 17.0 Semantic generated 27.2 14.5k 50.3 41.9 Hidden-state contextual 25.9 27.5k 29.8 29.3 Hidden-state isolated 35.6 0 35.6 29.9 
+
+Table 22: GENBA checkpoint trajectories by evaluation metric. Final refers to checkpoint 41,707. Item Question focus Gold and wrong option Letter / generation evidence Recovered or conflicting signal 
+
+culinary_en_012 Cultural meaning of saure Lüngerl 
+
+Gold B: humble dish served at wed-dings and funeral meals in scarcity. Wrong A: festive dish for wealthy families. Letter prefers A over B (A −2.41 , B
+
+−3.97 ). Generated letter+text produces an unfinished explanation without a parseable correct label. Option-text-avg prefers B (B −0.27 , C 
+
+−0.63 , A −0.80 , D −1.18 ). Semantic similarities also prefer B (B .69, A .58). 
+
+historical_de_011 Ludwig III leaving Munich on 7 Nov. 1918 Gold C: chauffeur joined the revo-lution and official cars were unus-able. Wrong A: loyal troops had surrounded the city. Letter prefers A over C (A −2.39 , C
+
+−2.89 ). Generated letter+text begins by listing distractor options and is parsed as A. Option-text-avg narrowly prefers C over A (C −0.52 , A −0.54 ). Semantic genera-tion strongly prefers C (C .96 vs. B .28, A .21). Contextual hidden-state alignment also selects C. 
+
+language_en_001 Meaning of “Geh, hör auf!” Gold B: Stop it / You’re kidding me! Wrong A: Go, listen up! Letter strongly prefers A over B (A −2.48 ,B −4.34 ). Generated letter+text outputs “A: Go, listen up!” Option-text-avg recovers B (B −1.01 , A 
+
+−1.15 , C −1.33 , D −4.36 ). Seman-tic generation and contextual hidden-state alignment still select A, reflecting an overly literal interpretation. 
+
+Table 23: Representative checkpoint-14.5k output patterns illustrating why checkpoint metrics diverge. Letter scores are label log-probabilities; option-text-avg scores are average option-text log-probabilities; semantic values are cosine similarities. For log-probabilities, less negative is better. 
+
+Domain Ckpt 0 Best Ckpt Best Final Arts & Identity 21.3 39k 60.0 58.7 Building & Sacred 39.1 23k 59.8 51.7 Culinary 28.0 28k 64.0 57.3 Historical 36.0 41.5k 58.7 53.3 Landscape 28.0 16k 58.7 53.3 Language 18.7 33k 30.7 30.7 Traditions 22.2 6k 56.8 53.1 Politics 8.0 4.5k 53.3 48.0 
+
+Table 24: GENBA domain trajectories under option_text_avg . Final refers to checkpoint 41,707. 
+
+Subset Ckpt 0 Best Ckpt Best Final All 25.4 41.5k 51.3 50.8 EN 29.1 23.5k 57.3 54.4 DE 25.2 23k 57.3 56.3 BAR 21.8 38.5k 44.7 41.7 
+
+Table 25: GENBA checkpoint accuracy (%) by language under option_text_avg . Final refers to checkpoint 41,707. 
+
+Figure 2: GENBA-10B checkpoint trajectories by evaluation strategy, aggregated across all languages and categories. This figure complements the two-line main-text plot by showing the remaining output-level protocols. Figure 3: GENBA-10B checkpoint trajectories by category and evaluation strategy, using all available checkpoints. Each panel corresponds to one B AV GROUND category and each line corresponds to one output-level evaluation protocol. 
+
+Figure 4: GENBA-10B checkpoint trajectories for English items by category and evaluation strategy. Figure 5: GENBA-10B checkpoint trajectories for German items by category and evaluation strategy. 
+
+Figure 6: GENBA-10B checkpoint trajectories for Bavarian items by category and evaluation strategy. Figure 7: Interactive dashboard for inspecting B AV GROUND evaluation outputs across models, checkpoints, languages, domains, and scoring strategies.
