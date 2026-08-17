@@ -1,0 +1,2112 @@
+Title: Every Token Counts: Exact Likert-Scale Distributions for Measuring LLM Attitudes and Biases
+
+URL Source: https://arxiv.org/pdf/2608.10503v1
+
+Published Time: Wed, 12 Aug 2026 00:37:18 GMT
+
+Number of Pages: 33
+
+Markdown Content:
+# Every Token Counts: Exact Likert-Scale Distributions for Measuring LLM Attitudes and Biases 
+
+Davood Wadi 
+
+McGill University 
+
+Mohsen Ghodrat 
+
+University Canada West 
+
+Matthew Philp 
+
+Marketing Management Toronto Metropolitan University 
+
+Abstract 
+
+As Large Language Models (LLMs) are in-creasingly deployed as autonomous agents, ac-curately evaluating their latent values and bi-ases is critical. The NLP community typi-cally evaluates models using large, unstruc-tured benchmarks. While effective for general capabilities, these datasets fundamentally con-flate causal mechanisms: even when an aggre-gate bias is detected, unstructured evaluations cannot disentangle whether it stems from base-line traits, contextual confounders, or complex interactions. To address this, we introduce an analytically exact framework for the controlled behavioral evaluation of LLMs. We bridge hu-man psychometrics with LLM mechanics by resolving gaps in design, measurement, and analysis. First, we replace unstructured prompt-ing with fully crossed factorial experiments to systematically isolate causal main and inter-action effects. Second, we eliminate Monte Carlo text sampling noise by operating directly on exact, token-level Probability Mass Func-tions (PMFs). Third, we derive a multivariate ordinal consensus metric and a distributional ANOVA to process these PMFs analytically. We validate our framework with a case study on consumer ethnocentrism across five LLMs, demonstrating how our approach isolates sys-temic country-of-origin biases that aggregate benchmarks otherwise obscure. 
+
+1 Introduction 
+
+As Large Language Models (LLMs) are increas-ingly deployed as autonomous agents (Wang et al., 2024; Xi et al., 2025; Wadi and Ma, 2026), evaluat-ing their latent biases and subjective behaviors is critical. A pressing question in this new era is how to accurately quantify latent behavioral constructs, such as personality traits, moral values, or sociopo-litical biases, to ensure AI fairness and safe global deployment. Historically, the NLP community has evalu-ated models using large, unstructured benchmark datasets (Hendrycks et al., 2020; Bommasani et al., 2023). 1 While this scale-first paradigm is highly effective for measuring general capabilities (e.g., trivia, coding), it is fundamentally ill-equipped for precise behavioral evaluation (Santurkar et al., 2023; Durmus et al., 2024). Even when unstruc-tured benchmarks successfully detect an aggregate bias in a model, they inherently lack the analyti-cal power to disentangle which underlying factors actually caused that behavior, obscuring whether a bias is a hardwired training defect or a context-dependent adaptation (Wadi and Ma, 2026). Consider an intuitive example: evaluating an LLM for gender bias using a large, unstructured dataset of professional scenarios. A benchmark might successfully detect a statistically significant bias against female subjects on aggregate. How-ever, the unstructured dataset cannot disentangle 
+
+why this bias exists. Because the prompt contexts vary across the dataset, "female" subjects might fre-quently be paired with specific scenarios, such as "corporate leadership." Is the model fundamentally biased against women across all contexts (a main effect of gender)? Is the model simply generating more critical text about leadership roles in general, regardless of gender (a main effect of context)? Or does the model treat genders equally most of the time, but severely penalize the specific combina-tion of "female" and "leadership" (an interaction effect )? A benchmark dataset conflates these dis-tinct causal mechanisms. To disentangle what drives a model’s behavior, we propose a shift from unstructured dataset scal-ing to controlled experimentation. We formulate LLM evaluation as a fully crossed factorial design, where every distinct variable (e.g., demographic, 
+
+> 1We use unstructured to denote evaluation sets that ag-gregate large numbers of heterogeneous prompts without a controlled factorial structure, such that the covariates of in-terest (e.g., demographic, context, task) are not orthogonally crossed and are therefore statistically confounded.
+
+1arXiv:2608.10503v1 [cs.CL] 11 Aug 2026 context, LLM persona) is treated as an independent factor. We systematically evaluate every possible combination using validated psychometric scales (Cronbach, 1950; Batterton and Hale, 2017). This experimental control grants us the analytical power to mathematically isolate causal main effects and higher-order interactions. This fills an important gap in behavioral attribution that aggregate bench-marks lack. In standard NLP evaluation, scaling up a dataset with thousands of generated prompts is an excellent way to test general model capabilities. However, if we try to apply this "scale-first" approach to a psy-chological survey by adding thousands of synthetic, unvalidated questions, we risk altering the core trait we are trying to measure, a problem known as re-ducing construct validity (Flake and Fried, 2020). To keep our measurements reliable, we rely on carefully calibrated questions used by behavioral scientists (e.g., Likert scales). Moreover, trans-lating behavioral methods from humans to LLMs has several major methodological gaps, which we formalize as experimental design, measurement, and analysis. We formulate a statistical framework to execute controlled behavioral experiments on LLMs, while addressing these gaps. First, to address the design gap, our framework formulates LLM evaluation as a fully crossed fac-torial experiment . By treating variables (e.g., the specific LLM being tested, the target demographic in the prompt) as distinct experimental factors, we systematically separate a model’s baseline behav-ior from causal main effects and higher-order in-teractions. This experimental control grants us the analytical power to mathematically isolate biases free of confounding contexts. Second, to address the measurement gap, we bypass the issues of generative text sampling. Hu-man behavioral science relies on sampling because the underlying probability distribution of a hu-man mind is inaccessible. NLP has adopted this paradigm via Monte Carlo text sampling to simu-late a "population" of responses (Wadi and Fredette, 2025), often injecting additional noise via the tem-perature parameter. However, an LLM possesses a constant, fully observable internal state for a given prompt. Generating multiple text responses is ef-fectively taking repeated, noisy draws from a static mathematical distribution. Our framework, instead, operates directly on exact, token-level Probabil-ity Mass Functions (PMFs) to eliminate sampling error. Third, to address the analytical gap, we formu-late the statistical mechanics required to process these exact PMFs. When NLP researchers evaluate token probabilities, they typically rely on metrics like Shannon entropy over valid tokens (Farquhar et al., 2024). However, entropy fails on Likert scales because it ignores ordinality. For example, entropy cannot distinguish between an LLM heav-ily polarized between "Strongly Agree" (5) and "Strongly Disagree" (1) versus one smoothly con-centrated around "Neutral" (3). We bridge this gap by introducing a multivariate consensus metric that respects ordinal distance. We also formulate 
+
+distributional ANOVA to analytically compute the exact probability distributions of the isolated causal effects. To empirically validate our general-purpose framework, we present a case study on consumer ethnocentrism, the sociological phenomenon where an entity systematically favors its country of ori-gin and rejects foreign entities (Shankarmahesh, 2006). Applying established ethnocentrism scales to five modern LLMs, our framework shows how models’ countries of origin inherently interact with target countries, thereby allowing us to test for the magnitude of ethnocentrism for each LLM. We mathematically show that controlled experiments can isolate geographic biases without relying on large, unstructured datasets. We contribute a unified, deterministic framework for the causal behavioral evaluation of LLMs on ordinal psychometric instruments. The framework casts evaluation as a fully crossed factorial experi-ment operating directly on exact token-level Proba-bility Mass Functions (PMFs), and its methodolog-ical core is a distributional ANOVA that isolates causal effects as full probability distributions. The pipeline: • decomposes the composite construct distribu-tion into baseline, main-effect, and interaction-effect distributions via a distributional Hoeffd-ing decomposition with Optimal-Transport-based paired contrasts and a formal ANOVA-consistency guarantee (Theorem 3.1); • propagates item-level PMFs into an exact composite-score distribution using discrete convolution; and • addresses a failure mode of Shannon entropy on Likert scales by quantifying ordinal re-sponse certainty using a multivariate exten-2sion of the Consensus metric (Tastle and Wier-man, 2007). 
+
+2 Related work 
+
+Recent works have utilized psychometric tests to measure a wide array of constructs (Jiang et al., 2024; Li et al., 2024; Helwe et al., 2025). However, recent studies demonstrate that eliciting psychome-tric responses via text generation is highly unsta-ble. Simple prompt perturbations can significantly downgrade the consistency of LLM responses on persona axes (Shu et al., 2024). Moreover, tradi-tional psychometric testing on LLMs suffers from low ecological validity when relying on standard generative outputs (Jung et al., 2026). Part of this instability stems from generative sampling, which is a methodological artifact borrowed from human surveying, and obscures their actual underlying dis-tribution (Deas and McKeown, 2025). 
+
+Uncertainty and probability in LLMs Recog-nizing the limitations of text-based sampling, a growing body of literature has turned to analyz-ing exact token probabilities to better understand LLMs’ internal states. Kuribayashi et al. (2024) demonstrated that utilizing exact next-word proba-bilities is far superior to instruction-tuned prompt-ing when simulating human cognitive behaviors. Similarly, recent work cautions that prompting LLMs directly for their uncertainty yields poorly calibrated text (Liu et al., 2025), whereas their ex-act internal token probabilities remain highly pre-dictive (Bentegeac et al., 2025; Kadavath et al., 2022). To quantify the variance within these predic-tive probability distributions, the NLP community relies almost exclusively on Shannon entropy or its semantic derivatives (Farquhar et al., 2024). En-tropy is highly effective for tasks where the output space consists of distinct, categorical facts (e.g., detecting hallucinations across mutually exclusive answers). However, standard metrics like entropy fail when applied to behavioral evaluation using psychometric rating scales. This is because en-tropy treats all tokens as unordered, categorical variables, ignoring the ordinality of a Likert scale. Because standard uncertainty metrics are indiffer-ent to this ordinality, we lack the mathematical foundation to utilize exact token probability mass functions (PMFs) for behavioral evaluation. As demonstrated in 3, our framework resolved this impasse by formulating a measure of consensus specifically designed for ordinal variables. 
+
+Geopolitical bias and ethnocentrism in LLMs 
+
+As LLMs are deployed globally, there is growing concern regarding their cultural neutrality. A ro-bust body of literature documents that LLMs ex-hibit systemic geopolitical and geographical biases (Shwartz, 2022; Bhatia and Shwartz, 2023; Bhatia et al., 2024; Naous and Xu, 2025; Kruspe, 2024). Furthermore, models frequently struggle to bridge culture gaps (Tanwar et al., 2025; Cecilia Liu et al., 2024; Saha et al., 2025; Liu et al., 2026). To sys-tematically quantify these cultural alignments, re-searchers frequently turn to global sociological in-struments, such as the World Values Survey (Zhao et al., 2024). Yet, these evaluations suffer from the exact generative brittleness highlighted above. Kabir et al. (2025) noted that evaluating cultural alignment in LLMs using standard multiple-choice surveys leads to wildly inconsistent outputs under minor perturbations, such as choice reordering. To bypass this brittleness, research has advo-cated moving toward unconstrained, open-ended generative evaluations. However, relying on open-ended generation introduces a new set of method-ological bottlenecks. Specifically, it is notoriously difficult to reliably parse distinct categorical or or-dinal scores from free-text outputs. Open-ended generation is highly susceptible to "fence-sitting", where models generate evasive disclaimers (e.g., "As an AI, I do not have a country...") rather than re-vealing their latent behavioral stance (Bhatia et al., 2025; Liu et al., 2025). Dealing with these nu-ances typically requires utilizing another LLM as a judge to evaluate the text, which merely injects a secondary layer of bias into the evaluation pipeline. 
+
+3 Methodology 
+
+Figure 1 illustrates our framework. We formulate LLM evaluation as a fully crossed factorial exper-iment to resolve the design gap. Within this de-sign, we treat the LLM as a generator of exact Probability Mass Functions (PMFs) to resolve the measurement gap and bypass generative sampling noise. Finally, we process exact PMFs through an analytical pipeline, which provides the foundation necessary for evaluating ordinal psychometric data and isolating causal behavioral shifts. 
+
+3.1 Experiment design 
+
+Rather than probing models with large datasets of ad-hoc prompt variations, we formalize LLM be-havioral evaluation as a fully crossed fixed-effects 3Experiment Design                            
+
+> Fully crossed factorial design Factors: Model ×Target Country
+> Instrument: Kordinal items (Likert 1–7) Fixed system prompt + item templates
+> Data Collection
+> Query each item under each condition Record next-token PMF Praw (t|x)
+> Define valid token set Vval
+> Consensus
+> Map valid tokens to ordinal scale Y
+> Compute multivariate Consensus/Dissension
+> Constraint
+> FailureRate = 1 −P
+> t∈V val Praw (t|x)
+> Renormalize P(t|x, t ∈ V val )
+> Construct
+> Convolve item PMFs ⇒composite score S
+> Compute main/interaction effect distribu-tions Summaries: E, dPD, SNR
+
+Figure 1: High-level exact-PMF framework: Fully crossed experiment design → token probability data collection 
+
+→ three-layer analysis (Constraint, Consensus, Construct). 
+
+experiment. We define our experiment through a set of independent factors (e.g., the M ODEL being tested, and the T ARGET COUNTRY in the prompt; see Fig. 7). Each factor contains distinct levels (e.g., four specific countries). A single experimen-tal condition, denoted as λ, represents one spe-cific combination of these factors (e.g., M ODEL 
+
+= Llama-3.3, T ARGET = Canada). Testing every possible combination of λ forms our complete ex-perimental design space D. By evaluating across the entirety of D, we can mathematically isolate the effect of one variable while controlling for the others. Under each condition λ, the model eval-uates a psychometric instrument consisting of K
+
+individual questions (items). For each item, the model’s response is bounded to an ordinal Likert scale Y ranging from ymin to ymax (e.g., digits 1 through 7). A central property of this design is context isola-tion. The model’s internal state is effectively reset between items. This is an advantage that LLM be-havioral analysis has over human behavioral analy-sis. With humans, there is a within-subjects carry-over effect that contaminates subsequent responses of human participants, whereas statelessness of LLMs does not suffer from this limitation. For a fixed experimental condition λ, the predicted response Yk, λ for item k depends solely on the spe-cific isolated prompt xk, λ. Following Wadi and Fredette (2025), we treat the items as conditionally independent given λ, meaning the joint probabil-ity mass function over the scale factorizes exactly: 
+
+P (Yλ = y | λ) = QKk=1 P (Yk, λ = yk | λ).
+
+3.2 Constraint 
+
+Before analyzing behavior, we must ensure the model adheres to the psychometric instrument. LLMs generate predictions over a large vocabu-lary ( V), but a Likert scale only permits specific ordinal tokens (e.g., digits 1 through 7). For a given prompt x, let Praw (t | x) denote the model’s next-token probability mass function over the full vocabulary V, where t ∈ V is a can-didate token. Let Vval ⊂ V be the valid token set with a surjective mapping ϕ : Vval → Y as-sociating valid tokens to ordinal values. To ac-count for tokenizer idiosyncrasies (e.g., BPE lead-ing spaces like " 7" versus "7" ), Vval includes all valid digit surface forms, but strictly excludes semantic equivalents (e.g., "seven" ) to penalize syntactic constraint failures. We define the model’s failure rate as 1 − P 
+
+> t∈V val
+
+Praw (t | xk, λ), which quantifies how often the model fence-sits (i.e., re-fuses to answer) or hallucinates out of the con-straint. For all subsequent behavioral analyses, we utilize the renormalized conditional distribu-tion on Vval . Because multiple tokens can map to the same digit, we sum over the pre-image to yield an exact ordinal item PMF: P (Yk, λ = y |
+
+λ) = P 
+
+> t∈ϕ−1(y)
+
+P (t | xk, λ, t ∈ V val ). This fol-lows the convention in human behavioral experi-ments, which excludes human responses that do not adhere to instructions (Cronbach, 1950). 
+
+3.3 Consensus 
+
+Quantifying the expected value (mean) of a Likert response is necessary but insufficient, as identical means can mask fundamentally different behav-ioral regimes (e.g., polarizing mass on {1, 7} vs. 4stable mass on {4, 4}). Standard uncertainty metrics like Shannon en-tropy over valid tokens fail here because they are in-variant to ordinal distance. To address this, we com-pute a multivariate generalization of Consensus (Tastle and Wierman, 2007) directly on the model’s PMF. This metric explicitly scales probabilities by their distance from the mean. Let μ be the item-wise mean vector and dmax = √K (ymax − ymin )
+
+be the maximum diagonal distance on the Likert scale. The multivariate Consensus ( Cns ) is defined as 2:     
+
+> Cns( Yλ) = 1 + X
+> y∈Y K
+> P(y) log 2
+> 
+> 1− ∥y−μ∥2
+> dmax
+> 
+> .
+> (1)
+
+Unlike entropy, this metric correctly quantifies the model’s internal consistency. It severely penalizes polarization at the extremes and rewards concen-trated probability mass, allowing us to accurately measure the model’s opinion certainty (Table 3). It also resolves the issue of collapsing PMFs from the convolution operator (Fig. 6). 
+
+3.4 Construct 
+
+A common approach to analyzing LLM behavior involves comparing descriptive statistics, such as average response scores across different prompt manipulations. While this practice is highly infor-mative for observing general trends, analyzing raw point estimates inherently obscures information about the underlying variance. Consequently, it becomes difficult to ascertain whether the observed difference between groups is statistically signifi-cant, or whether the magnitude of the difference (effect size) is meaningful in practice. Moreover, a key component of controlled experiments is under-standing interactions between factors. Two factors can interact to amplify or decrease their individual effects (Wadi et al., 2026). To overcome these limitations, we adapt the Analysis of Variance (ANOVA) framework for LLMs. A statistically grounded factorial frame-work allows us to systematically answer three crit-ical questions: (1) whether the behavioral shift between conditions is statistically significant, (2) isolated from confounding variables, what the ex-act effect size and magnitude of that shift is, and (3) how experimental factors interact to jointly shape the model’s behavior.    
+
+> 2Dissension ( Dsn ) is defined as 1−Cns
+
+In standard psychometrics, a latent trait, such as ethnocentrism, cannot be reliably measured by a single question. Rather, it is quantified using an instrument containing a total of K individual Likert items. Let Yk, λ represent the model’s or-dinal response to item k under a specific experi-mental condition λ (e.g., a specific target country and LLM). The composite construct score Sλ is de-fined as the sum of these individual item responses (Sλ = PKk=1 Yk, λ). Because our framework oper-ates on exact probability distributions rather than single scalar outputs, we evaluate the full probabil-ity mass function (PMF) of this composite score. Given the conditional independence of items (Sec. A.2), according to standard probability the-ory, the distribution of a sum of independent vari-ables is computed via discrete convolution (denoted by the operator ⊛). Therefore, the exact probabil-ity distribution of the total construct score PSλ is derived by convolving the individual item PMFs: 
+
+PSλ = PY1,λ ⊛ · · · ⊛ PYK, λ . Unlike standard eval-uation methods that compute descriptive statistics over a handful of noisy, sampled text generations, the convolution approach analytically derives the exact probability distribution of the final construct score ( PSλ ). This propagates all aleatoric uncer-tainty from the token level up to the final construct level. Next, we need to systematically decompose LLM responses ( PSλ ) into distinct, interpretable components. Rather than evaluating each experi-mental condition ( λ) as a whole, we decompose the model’s overall construct distribution into three parts: the model’s baseline behavior, the isolated Main Effects (e.g., how much changing the Tar-get Country specifically shifts the behavior), and the Interaction Effects (e.g., how the Target Coun-try interacts with a specific LLM). We formalize this using a distributional Hoeffding decomposition. Let S0 represent the grand-mixture baseline across all conditions, Ec(λc) represent the Main Effect distribution for factor c at level λc, and EU (λU )
+
+represent the higher-order Interaction Effect distri-bution for a subset of factors U . This decomposi-tion satisfies the following identity in expectation:            
+
+> E[Sλ] = E[S0]
+> | {z }
+> Grand Mean
+> +X
+> c∈C
+> E[Ec(λc)]
+> |{z }
+> Main Effects
+> +X
+> U⊆C |U|≥ 2
+> E[EU(λU)]
+> |{z }
+> Interactions
+> ,
+> (2)
+
+This exact-PMF provides the guarantee that the expected values of the derived probability distri-5butions ( E[Ec(λc)] and E[EU (λU )] ) match the proven fixed-effects parameters calculated in tradi-tional human ANOVA experiments. We formalize this alignment with the following theorem (Proof in App. A.9): 
+
+Theorem 3.1. For any fully crossed experimental design, the expectations of the isolated effect dis-tributions ( Ec, EU ) recover the classical unique Hoeffding decomposition. 
+
+In practical terms, Theorem 3.1 guarantees that when we measure a higher-order behavior, such as a "country-of-origin bias" (an interaction effect), we have mathematically stripped away the model’s baseline ethnocentrism (main effect). This ensures researchers do not double-count biases, achieving the exact same control over confounding variables used by human behavioral scientists. Finally, to translate these effect distributions into interpretable behavioral insights, we extract the following summary metrics for our case study, re-ported for any given effect distribution E:• Mean Shift ( E[E]): The expected value of the distribution, representing the actual mag-nitude (effect size) of the isolated behavioral effect. • Predictive Dispersion ( SD( E)): The stan-dard deviation of the effect, capturing the model’s aleatoric uncertainty regarding the shift. • Discrete Probability of Direction ( dPD ): 
+
+Defined as max( P(E > 0) , P(E < 0)) , this metric quantifies the extent to which the be-havioral shift exhibits a consistent directional-ity (i.e., strictly positive or strictly negative), independent of the effect’s magnitude (App. A.4.8). • Signal-to-Noise Ratio ( SNR ): Calculated as 
+
+|E[E]|/SD( E), SNR quantifies the statistical reliability of the effect, indicating whether the observed behavioral shift is a robust, dis-tinct phenomenon or merely an artifact of the model’s internal uncertainty. With these metrics, we now apply this methodol-ogy to our main sociotechnical concern. We test whether LLMs exhibit systematically biased ethno-centric behaviors based on their country of origin. See App. A.4.12 for details of each metric. 
+
+4 Experiment 
+
+4.1 Design 
+
+We test our framework using the Consumer Ethno-centrism Tendencies Scale (CETSCALE; Shimp and Sharma, 1987). This is a widely validated 
+
+K=17 -item Likert instrument with a response space of Y = {1, . . . , 7}. While a 17-item sur-vey is much smaller than typical NLP benchmark datasets, it constitutes a complete, rigorously tested measurement tool in the behavioral sciences. Us-ing this exact, unmodified scale ensures that we are reliably measuring the intended bias without diluting the test. We employ a symmetrical, fully crossed 
+
+5 × 4 fixed-effects design across factors 
+
+{MODEL , TARGET }. The model levels include open-weights models representing four distinct countries-of-origin: LMODEL = {Llama 3.3 70B and Gemma 3 27B (USA); Qwen3 Next 80B (China); Aya Expanse 32B (Canada); and Ministral 14B (France) }. The Tar-get Country levels mirror these origins: 
+
+LTARGET = {USA , China , Canada , France }.This symmetrical 5 × 4 design is critical as it allows our framework to mathematically isolate (i) the global main effects of M ODEL and T ARGET ,and (ii) the precise M ODEL × TARGET interaction effects (e.g., asking a Chinese-developed model to express its ethnocentrism towards USA), which represent the actual country-of-origin bias. All conditions share an identical stimulus struc-ture. A fixed system message strictly enforces the response schema ("...Respond with ONLY the digit."). Each of the 17 CETSCALE items acts as a user-message template ( Tk) containing a tar-get country placeholder (e.g., {People}, {Adj}). The T ARGET factor deterministically instantiates these placeholders via a strict lexicon (Figure 7). Importantly, prompt wording is treated as a fixed experimental control rather than tuned per model, with the aim to mirror stimulus control in human behavioral experiments. For each (MODEL , TARGET , k ) ∈ L MODEL ×LTARGET × { 1, . . . , 17 }, we perform a single for-ward pass and record the exact next-token PMF (Praw (t | xk, λ)) over the full vocabulary. 3 We 
+
+> 3Because we directly extract the analytical probability dis-tribution over the logits, our measurement is strictly determin-istic. It bypasses autoregressive decoding entirely, rendering generation hyperparameters such as temperature or top- p irrelevant.
+
+6define Vval as the specific valid digit tokens 
+
+{1, . . . , 7} for each model’s respective tokenizer. In total, this yields 5 × 4 × 17 = 340 exact item-level predictive distributions. These PMFs are di-rectly passed through the Constraint Layer to mea-sure formatting failures, the Consensus Layer to measure ordinal certainty, and the Construct Layer to isolate distributional Hoeffding effect sizes. 
+
+4.2 Results Constraint. As shown in Figure 2, Gemma 3, Llama 3.3, and Qwen3 demonstrate near-perfect adherence to the task constraints, concentrating their probability mass almost entirely on valid or-dinal tokens ( M < 0.001 , SD < 0.001 ). In contrast, Ministral exhibits a small but consistent failure to constrain its mass to the requested dig-its ( M = 0 .002 , SD = 0 .001 ). More notably, Aya Expanse displays the highest aggregate fail-ure rate ( M = 0 .006 ) driven by large variance (SD = 0 .049 ). This indicates that utilizing Aya or Ministral in automated agentic settings could lead to sporadic breakdowns due to their proba-bilistic inability to adhere strictly to psychometric constraints. Aya Gemma 3 Llama 3.3 Ministral Qwen3 Next 
+
+> Model Family
+> 10 −10
+> 10 −7
+> 10 −4
+> 10 −1
+> Failure Rate
+> 20 40 60 80
+> Model Size (B parameters)
+
+Figure 2: Failure Rate across the evaluated LLMs. 
+
+Consensus. Across all target countries, four mod-els show exceptionally high internal agreement re-garding the instrument, maintaining Cns > 0.88 
+
+(Figure 3). Ministral is a major outlier, exhibit-ing substantially lower consensus across all targets (Cns ≈ 0.65 –0.67 ). This shows that, even after enforcing valid digits, Ministral’s item-level PMFs frequently place large probability mass on conflict-ing ends of the Likert scales. This stark contrast highlights the critical necessity of an ordinal-aware dispersion metric. Standard entropy would fail to capture this specific behavioral dissonance (Table 5). Aya Gemma 3 Llama 3.3 Ministral Qwen3 Next 0.00.20.40.60.81.0
+
+> Cns
+> Canada China France USA
+
+Figure 3: Multivariate Consensus (Cns ) for the CETSCALE instrument. Lower values indicate severe behavioral polarization. 
+
+Construct. To contextualize the LLMs’ response to the CETSCALE, we compare each model’s pre-dictive distribution for T ARGET =USA against the human sample means and standard deviations re-ported in the original CETSCALE validation stud-ies (Shimp and Sharma, 1987; Table 1; Figure 8) 4.Several LLMs exhibit expected composite scores comparable to, or explicitly exceeding, those ob-served in the most ethnocentric human populations. See the full distributions in Figure 10. 
+
+Table 1: Comparison of CETSCALE scores between historical human populations (Shimp and Sharma, 1987) and LLMs evaluated in this study (restricted to the T AR -
+
+> GET
+
+=USA condition). Higher composite score indicates higher ethnocentrism.                                          
+
+> SUBJECT SAMPLE / M ODEL E[S]SD[S] HUMAN DETROIT (USA) 68.58 25.96 CAROLINAS (USA) 61.28 24.41 DENVER (USA) 57.84 26.10 LOS ANGELES (USA) 56.62 26.37 STUDENTS (P RE )51.92 16.37 STUDENTS (P OST )53.39 16.52 LLM AYA EXPANSE 32B 89.11 1.32 LLAMA 3.3 70B 71.99 0.95 MINISTRAL 14B 70.20 5.25 GEMMA 3 27B 60.32 0.94 QWEN 3 N EXT 80B 53.85 1.17
+
+Main Effects. Extracting precise main effect dis-tributions (Table 2), reveals large and systematic behavioral divides. A YA -32B exhibits a severe pos-itive deviation from the grand mean ( E = 21 .19 ,
+
+> 4The human data (collected prior to 1987) serves strictly as a historical magnitude anchor to calibrate the CETSCALE, not as a baseline for modern human attitudes. Note that this reference concerns expected-score magnitude only: a model’s PMF dispersion reflects the internal uncertainty of a single en-tity and is not commensurable with the interpersonal variance of a human population sample."
+
+720 30 40 50 60 70 80 90 100 
+
+> CETSCALE
+> 0.00.10.20.30.40.50.6
+> P (Sm,t )
+> USA Canada China France
+
+(a) Aya Expanse 32B 20 30 40 50 60 70 80 90 100 
+
+> CETSCALE
+> 0.00.10.20.30.40.50.6
+> P (Sm,t )
+> USA Canada China France
+
+(b) Qwen3 Next 80B 
+
+Figure 4: Distribution of CETSCALE for Aya Expanse 32B (high) vs. Qwen3 Next 80B (low) ethnocentrism and Target Country. 
+
+SNR = 1 .63 , dPD > 0.99 ), indicating a perva-sive ethnocentrism that far exceeds human base-lines. Conversely, Q WEN 3-80B demonstrates a highly robust negative main effect ( E = −14 .63 ,
+
+SNR = 1 .20 , dPD = 0 .93 ), resulting in expected scores similar to liberal human populations. Analyzing the main effects for the Target Coun-tries (Table 2; and the pairwise contrasts in Table 7; Figure 9) reveals that the most statistically robust biases involve China. Across all models, there is a systemic decrease in ethnocentrism when the target is China ( E = −6.46 , SNR = 1 .04 ), contrasting sharply with the relative favoritism shown toward North American targets (e.g., USA-China contrast 
+
+E = 9 .30 , SNR = 1 .34 ). 
+
+Table 2: Summaries of main effects. 
+
+PARAMETER E SD SNR dPD 
+
+μ∅ 66.25 14.21 AYA EXPANSE 32B 21.19 13.01 1.63 0.99 GEMMA 3 27B -11.99 13.15 0.91 0.77 LLAMA 3.3 70B 0.31 12.79 0.02 0.55 MINISTRAL 14B 5.11 9.59 0.53 0.62 QWEN 3 N EXT 80B -14.63 12.17 1.20 0.93 USA 2.84 5.43 0.52 0.55 CANADA 4.62 5.72 0.81 0.90 CHINA -6.46 6.19 1.04 0.95 FRANCE -1.00 4.72 0.21 0.54 
+
+Interaction Effects and Country-of-Origin Bias. 
+
+We define country-of-origin bias as a positive in-teraction between a model and its own country of origin, measured as an isolated deviation from the grand-mean baseline. The interaction distribu-tions ( EU ) show that several models exhibit struc-tured, non-additive interaction patterns (Figure 5; Table 6), though the strength and directionality of these effects vary considerably across models. The clearest regional pattern appears for G EMMA 3-27B and L LAMA 3.3-70B (both U.S.-developed), which show positive interactions toward the North American bloc (USA and Canada) alongside a pro-nounced negative interaction with China. Both models exhibit positive own-country (USA) interac-tions ( +3 .21 and +2 .59 ), consistent with ingroup favoritism, although these particular ingroup cells are directionally moderate ( dPD = 0 .63 and 0.58 ). We emphasize that clean own-country favoritism is not universal across all five models. A YA -32B (Canada, −3.77 ) and Q WEN 3 N EXT -80B (China, 
+
+−0.20 ) do not exhibit a positive own-country inter-action, and M INISTRAL -14B shows a positive but modest France interaction ( +2 .45 ) that is smaller than its interaction with China. This showcases how the PMF ANOVA framework isolates each interaction from the model’s baseline behavior and main effects and allows researchers to empirically test whether a construct such as country-of-origin bias is present, absent, or reversed for a given model. Aya Gemma 3 Llama 3.3 Ministral Qwen3 Next                  
+
+> Model
+> Canada China France USA
+> Target -3.77 2.14 5.2 -2.99 -0.57 5.35 -5.4 -4.29 4.54 -0.2 -0.39 0.05 -3.5 2.45 1.39 -1.18 3.21 2.59 -4.0 -0.61 −4
+> −2024
+
+Figure 5: Interactions of Model and Target Country. 
+
+8Aggregate vs. Factorial Benchmarks. To empir-ically demonstrate the danger of conflating causal mechanisms, we compared factorial interactions against an aggregate benchmark (App. 9). If a re-searcher were to evaluate Target Country bias by taking an aggregate average, they would conclude there is a universal negative bias against France (E = −1.00 ) and China ( E = −6.46 ). How-ever, factorial decomposition shows this aggregate view is directionally incorrect for specific models: Ministral-14B actually exhibits positive ingroup favoritism toward France ( +2 .45 ). Similarly, while the aggregate benchmark suggests a universal pe-nalization of China, both Aya-32B ( +5 .35 ) and Ministral-14B ( +4 .54 ) exhibit strong positive in-teractions. 
+
+4.3 The Cost of Generative Sampling 
+
+To quantify the cost of the standard NLP Monte Carlo sampling paradigm, we benchmarked a simu-lated sampling approach against our exact distribu-tions (acting as ground truth; App. A.8). Standard text sampling introduces severe, previously unquan-tified reliability issues in behavioral evaluation. First, sampling noise degrades the detection of subtle biases. Because the standard error decays only as 1/√N , a standard sampling budget of 
+
+N = 100 still yields a standard error of up to 0.52 composite-score points for low-consensus models (App. A.8.1). To determine how often this noise leads to false conclusions, we calculated the flip probability ( Pflip ): the chance that finite sampling recovers an effect with the wrong sign (App. A.9). At N = 10 , standard sampling flips the sign of small effects ( |E| < 1) 18% of the time, and even at 
+
+N = 100 , it flips them 6.3% of the time. The exact-PMF framework achieves the N → ∞ limit in a single forward pass, ensuring no interaction effect is masked or reversed by sampling variance. Sec-ond, non-default decoding (e.g., temperature scal-ing) introduces systematic biases that no amount of sampling can fix. Our analysis (App. A.8.2) shows that for models with low internal consensus (e.g., Ministral), modifying temperature artificially shifts the latent construct score by up to 2.79 points. 
+
+4.4 Prompt Sensitivity 
+
+A common critique in NLP behavioral evaluation is that model outputs are highly sensitive to prompt phrasing. A key strength of casting evaluation as a fully crossed factorial design is its extensibility. Any potential confounder can be introduced as an additional factor and isolated via the distributional ANOVA. To demonstrate this, we promoted the admin-istration (system) prompt to a first-class experi-mental factor ( λPrompt ). As detailed in App. A.10, we tested five additional framing variants (ranging from a market-research persona to minimal format-ting; Table 13) across three models and four target countries, yielding 1,224 exact item-level PMFs. The full ANOVA decomposition (Tables 14 and 15) show three key findings. First, the core country-of-origin signals are robust. The T ARGET main ef-fects reproduce the directional pattern of the main study under statistical control for framing. Second, prompt framing acts as a causal main effect of its own, shifting the latent construct score by up to 13.5 points depending on the phrasing used. Third, the framework formally quantifies model-specific prompt sensitivity via the M ODEL × PROMPT in-teraction. We isolate that while Gemma 3 exhibits low sensitivity to wording changes, both Aya and Ministral interact strongly with specific framings. 
+
+5 Conclusion 
+
+In this work, we introduced a new paradigm for the behavioral evaluation of LLMs, shifting the focus from large-scale, unstructured benchmark datasets to controlled factorial experiments. By bridging human psychometrics with LLM mechanics, we addressed critical gaps in experimental design, mea-surement, and analysis. By operating directly on ex-act, token-level Probability Mass Functions (PMFs) without generative sampling noise, we formulated an analytical pipeline, featuring a multivariate ordi-nal consensus metric and a distributional ANOVA. This pipeline allows researchers to mathematically isolate causal behavioral shifts and factor interac-tions without artificially inflating variance. We validated this framework with a case study on consumer ethnocentrism. We isolated systemic country-of-origin biases that would otherwise be obscured by confounding variables in standard ob-servational datasets. Ultimately, by prioritizing causal experimental control and exact probabil-ity distributions over text sampling, this general-purpose framework provides a statistically rigorous foundation for future research into LLM alignment, values, and latent behavioral traits. 9Limitations 
+
+While our mathematical framework is designed to be applied to any behavioral evaluation, our em-pirical experiments focus exclusively on consumer ethnocentrism. We deliberately chose to analyze a single construct in depth to clearly illustrate how the distributional ANOVA operates under the hood. Now that the methodology is established, applying this exact-PMF framework to a much wider array of psychological traits, moral values, and geopoliti-cal biases is an exciting direction for future work. Therefore, the specific findings in this paper should not be interpreted as comprehensive claims about the general political ideology or cultural alignment of the tested models. Furthermore, all experiments were conducted in English. Whether the observed systemic biases hold when models are queried in other languages or scripts remains an open empirical question. Ad-ditionally, as these are snapshot evaluations, our findings reflect the models’ latent states at the time of testing and may not generalize to future weight updates or subsequent model versions. A common critique in NLP evaluation concerns model sensitivity to prompt variations. We adopt the strict position from behavioral psychometrics that the prompt template is a standardized measure-ment instrument, not a tunable hyperparameter. In human surveying, rewording a validated item con-stitutes a fundamental change to the construct being measured, rather than a robustness failure of the ex-periment. We stress, however, that our framework treats any experimental variable as a crossed fac-tor, so prompt phrasing is itself a first-class factor 
+
+λPrompt that the design directly supports. Introduc-ing a set of semantically-equivalent paraphrases as levels of λPrompt requires no change to the underly-ing theory. The Prompt main effect and the Model 
+
+× Prompt and Target × Prompt interactions are recovered by the identical distributional-ANOVA method. In this view, prompt sensitivity becomes a measurable, isolable effect rather than an uncon-trolled confound. Methodologically, our framework relies on exact next-token probability distributions and is explic-itly designed for constrained, single-token response paradigms (e.g., Likert scales). While major propri-etary providers (e.g., OpenAI, Anthropic, Google) currently expose log-probabilities via their APIs, providers that entirely obscure their next-token probabilities fall outside the scope of this approach. Furthermore, as LLMs increasingly utilize multi-token reasoning protocols (e.g., Chain-of-Thought) prior to generating a final response, extending our Consensus and Construct statistics to integrate over latent multi-token trajectory spaces remains a com-plex, open challenge for future work. 
+
+Ethical Considerations 
+
+This framework is intended as a diagnostic tool for model evaluation and behavioral research. Scores on any single psychometric construct should not be interpreted as a comprehensive safety certifi-cation, nor should findings about specific models be generalized to the organizations or cultures as-sociated with their development. We caution that comparison to human benchmarks is provided for calibration purposes only and should not be used to normalize or excuse systematic bias in language models. Finally, as with any measurement frame-work, there is a risk that optimizing directly against these metrics could produce models that score fa-vorably without genuinely reducing the underlying biases the instruments are designed to detect. 
+
+Acknowledgements 
+
+The authors acknowledge the use of AI writing as-sistants for proofreading and improving the overall clarity of the writing. 
+
+References         
+
+> Katherine A Batterton and Kimberly N Hale. 2017. The likert scale what it is and how to use it. Phalanx ,50(2):32–39. Raphaël Bentegeac, Bastien Le Guellec, Grégory Kuchcinski, Philippe Amouyel, and Aghiles Ham-roun. 2025. Token probabilities to mitigate large language models overconfidence in answering medi-cal questions: quantitative study. Journal of medical Internet research , 27:e64348. Mehar Bhatia, Shravan Nayak, Gaurav Kamath, Marius Mosbach, Vered Shwartz, Siva Reddy, and 1 others. 2025. Value drifts: Tracing value alignment during llm post-training. arXiv preprint arXiv:2510.26707 .Mehar Bhatia, Sahithya Ravi, Aditya Chinchure, Eu-nJeong Hwang, and Vered Shwartz. 2024. From local concepts to universals: Evaluating the multi-cultural understanding of vision-language models. In Proceedings of the 2024 Conference on Empiri-cal Methods in Natural Language Processing , pages 6763–6782, Miami, Florida, USA. Association for Computational Linguistics.
+
+10 Mehar Bhatia and Vered Shwartz. 2023. GD-COMET: A geo-diverse commonsense inference model. In 
+
+Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , pages 7993–8001, Singapore. Association for Computa-tional Linguistics. Rishi Bommasani, Percy Liang, and Tony Lee. 2023. Holistic evaluation of language models. Annals of the New York Academy of Sciences , 1525(1):140–146. Chen Cecilia Liu, Fajri Koto, Timothy Baldwin, and Iryna Gurevych. 2024. Are multilingual LLMs culturally-diverse reasoners? an investigation into multicultural proverbs and sayings. In Proceedings of the 2024 Conference of the North American Chap-ter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 2016–2039, Mexico City, Mexico. As-sociation for Computational Linguistics. Jacob Cohen. 2013. Statistical power analysis for the behavioral sciences . routledge. Lee J Cronbach. 1950. Further evidence on response sets and test design. Educational and psychological measurement , 10(1):3–31. Nicholas Deas and Kathleen McKeown. 2025. Artificial impressions: Evaluating large language model behav-ior through the lens of trait impressions. In Proceed-ings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 19418–19444, Suzhou, China. Association for Computational Lin-guistics. Esin Durmus, Karina Nguyen, Thomas Liao, Nicholas Schiefer, Amanda Askell, Anton Bakhtin, Carol Chen, Zac Hatfield-Dodds, Danny Hernandez, Nicholas Joseph, Liane Lovitt, Sam McCandlish, Orowa Sikder, Alex Tamkin, Janel Thamkul, Jared Kaplan, Jack Clark, and Deep Ganguli. 2024. To-wards measuring the representation of subjective global opinions in language models. In First Confer-ence on Language Modeling .Sebastian Farquhar, Jannik Kossen, Lorenz Kuhn, and Yarin Gal. 2024. Detecting hallucinations in large language models using semantic entropy. Nature ,630(8017):625–630. Jessica Kay Flake and Eiko I Fried. 2020. Measure-ment schmeasurement: Questionable measurement practices and how to avoid them. Advances in meth-ods and practices in psychological science , 3(4):456– 465. Chadi Helwe, Oana Balalau, and Davide Ceolin. 2025. Navigating the political compass: Evaluating multi-lingual LLMs across languages and nationalities. In 
+
+Findings of the Association for Computational Lin-guistics: ACL 2025 , pages 17179–17204, Vienna, Austria. Association for Computational Linguistics. Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. 2020. Measuring massive multitask language under-standing. arXiv preprint arXiv:2009.03300 .Hang Jiang, Xiajie Zhang, Xubo Cao, Cynthia Breazeal, Deb Roy, and Jad Kabbara. 2024. PersonaLLM: In-vestigating the ability of large language models to express personality traits. In Findings of the Associ-ation for Computational Linguistics: NAACL 2024 ,pages 3605–3627, Mexico City, Mexico. Association for Computational Linguistics. Jana Jung, Marlene Lutz, Indira Sen, and Markus Strohmaier. 2026. Do psychometric tests work for large language models? evaluation of tests on sex-ism, racism, and morality. In Proceedings of the 19th Conference of the European Chapter of the As-sociation for Computational Linguistics (Volume 1: Long Papers) , pages 8143–8173, Rabat, Morocco. Association for Computational Linguistics. Mohsinul Kabir, Ajwad Abrar, and Sophia Ananiadou. 2025. Break the checkbox: Challenging closed-style evaluations of cultural alignment in LLMs. In Pro-ceedings of the 2025 Conference on Empirical Meth-ods in Natural Language Processing , pages 24–51, Suzhou, China. Association for Computational Lin-guistics. Saurav Kadavath, Tom Conerly, Amanda Askell, Tom Henighan, Dawn Drain, Ethan Perez, Nicholas Schiefer, Zac Hatfield-Dodds, Nova DasSarma, Eli Tran-Johnson, and 1 others. 2022. Language mod-els (mostly) know what they know. arXiv preprint arXiv:2207.05221 .Anna Kruspe. 2024. Musical ethnocentrism in large lan-guage models. In Proceedings of the 3rd Workshop on NLP for Music and Audio (NLP4MusA) , pages 62– 68, Oakland, USA. Association for Computational Lingustics. Tatsuki Kuribayashi, Yohei Oseki, and Timothy Bald-win. 2024. Psychometric predictive power of large language models. In Findings of the Association for Computational Linguistics: NAACL 2024 , pages 1983–2005, Mexico City, Mexico. Association for Computational Linguistics. Xingxuan Li, Yutong Li, Lin Qiu, Shafiq Joty, and Li-dong Bing. 2024. Evaluating psychological safety of large language models. In Proceedings of the 2024 Conference on Empirical Methods in Natural Lan-guage Processing , pages 1826–1843, Miami, Florida, USA. Association for Computational Linguistics. Chen Cecilia Liu, Hiba Arnaout, Nils Kovaˇ ci´ c, Dana Atzil-Slonim, and Iryna Gurevych. 2026. Tailored emotional LLM-supporter: Enhancing cultural sensi-tivity. In Proceedings of the 19th Conference of the European Chapter of the Association for Computa-tional Linguistics (Volume 1: Long Papers) , pages 535–574, Rabat, Morocco. Association for Computa-tional Linguistics. Zhuozhuo Joy Liu, Farhan Samir, Mehar Bhatia, Laura K. Nelson, and Vered Shwartz. 2025. Is 
+
+11 it bad to work all the time? cross-cultural eval-uation of social norm biases in gpt-4. Preprint ,arXiv:2505.18322. Dominique Makowski, Mattan S. Ben-Shachar, and Daniel Lüdecke. 2019. bayestestr: Describing ef-fects and their uncertainty, existence and significance within the bayesian framework. Journal of Open Source Software , 4(40):1541. Tarek Naous and Wei Xu. 2025. On the origin of cul-tural biases in language models: From pre-training data to linguistic phenomena. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Lin-guistics: Human Language Technologies (Volume 1: Long Papers) , pages 6423–6443, Albuquerque, New Mexico. Association for Computational Linguistics. Gian-Carlo Rota. 1964. On the foundations of combi-natorial theory: I. theory of möbius functions. In 
+
+Classic Papers in Combinatorics , pages 332–360. Springer. Sougata Saha, Saurabh Kumar Pandey, Harshit Gupta, and Monojit Choudhury. 2025. Reading between the lines: Can LLMs identify cross-cultural communica-tion gaps? In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Asso-ciation for Computational Linguistics: Human Lan-guage Technologies (Volume 1: Long Papers) , pages 8043–8067, Albuquerque, New Mexico. Association for Computational Linguistics. Shibani Santurkar, Esin Durmus, Faisal Ladhak, Cinoo Lee, Percy Liang, and Tatsunori Hashimoto. 2023. Whose opinions do language models reflect? In 
+
+Proceedings of the 40th International Conference on Machine Learning , volume 202 of Proceedings of Machine Learning Research , pages 29971–30004. PMLR. Mahesh N Shankarmahesh. 2006. Consumer ethno-centrism: an integrative review of its antecedents and consequences. International marketing review ,23(2):146–172. Terence A Shimp and Subhash Sharma. 1987. Con-sumer ethnocentrism: Construction and validation of the cetscale. Journal of marketing research ,24(3):280–289. Bangzhao Shu, Lechen Zhang, Minje Choi, Lavinia Dunagan, Lajanugen Logeswaran, Moontae Lee, Dal-las Card, and David Jurgens. 2024. You don’t need a personality test to know these models are unre-liable: Assessing the reliability of large language models on psychometric instruments. In Proceed-ings of the 2024 Conference of the North American Chapter of the Association for Computational Lin-guistics: Human Language Technologies (Volume 1: Long Papers) , pages 5263–5281, Mexico City, Mexico. Association for Computational Linguistics. Vered Shwartz. 2022. Good night at 4 pm?! time ex-pressions in different cultures. In Findings of the As-sociation for Computational Linguistics: ACL 2022 ,pages 2842–2853, Dublin, Ireland. Association for Computational Linguistics. Eshaan Tanwar, Anwoy Chatterjee, Michael Saxon, Alon Albalak, William Yang Wang, and Tanmoy Chakraborty. 2025. Do you know about my nation? investigating multilingual language models’ cultural literacy through factual knowledge. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 14956–14979, Suzhou, China. Association for Computational Lin-guistics. William J Tastle and Mark J Wierman. 2007. Con-sensus and dissention: A measure of ordinal disper-sion. International Journal of Approximate Reason-ing , 45(3):531–545. Cédric Villani and 1 others. 2008. Optimal transport: old and new , volume 338. Springer. Davood Wadi and Marc Fredette. 2025. A monte-carlo sampling framework for reliable evaluation of large language models using behavioral analysis. In The 2025 Conference on Empirical Methods in Natural Language Processing .Davood Wadi, Renaud Legoux, Marc Fredette, and Sylvain Sénécal. 2026. The interplay of altruism and financial incentives: Maximizing online reviews through effective messaging. Journal of Electronic Commerce Research , 27(2). Davood Wadi and Yu Ma. 2026. Shopping by algo-rithm: How agentic ai deploys human heuristics as a surrogate consumer. Lei Wang, Chen Ma, Xueyang Feng, Zeyu Zhang, Hao Yang, Jingsen Zhang, Zhiyuan Chen, Jiakai Tang, Xu Chen, Yankai Lin, and 1 others. 2024. A survey on large language model based autonomous agents. 
+
+Frontiers of Computer Science , 18(6):186345. Zhiheng Xi, Wenxiang Chen, Xin Guo, Wei He, Yi-wen Ding, Boyang Hong, Ming Zhang, Junzhe Wang, Senjie Jin, Enyu Zhou, and 1 others. 2025. The rise and potential of large language model based agents: A survey. Science China Information Sci-ences , 68(2):121101. Wenlong Zhao, Debanjan Mondal, Niket Tandon, Dan-ica Dillion, Kurt Gray, and Yuling Gu. 2024. World-ValuesBench: A large-scale benchmark dataset for multi-cultural value awareness of language models. In Proceedings of the 2024 Joint International Con-ference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024) ,pages 17696–17706, Torino, Italia. ELRA and ICCL. 
+
+12 A Appendix 
+
+A.1 Experiment Design 
+
+We restate the experimental design and notation used throughout the paper in a self-contained for-mat here and provide the proofs. We adopt a generalized fully crossed factorial experimental design. All independent variables, including language model identity, are treated as factors embedded within a unified design space. Let C = {1, . . . , C } denote the index set of ex-perimental factors. Each factor c ∈ C admits a fi-nite set of discrete levels, with cardinality Λc ∈ N.We denote the level selected for factor c by 
+
+λc ∈ { 1, . . . , Λc}.
+
+The complete experimental design is given by the Cartesian product of the level sets of all factors, 
+
+D = Y
+
+> c∈C
+
+{1, . . . , Λc}. (3) For any subset of factors U ⊆ C , we denote 
+
+λU := ( λc)c∈U the vector of factor levels indexed by U . The vector of the levels for the complete factor set is hence denoted as λC (abbreviated as 
+
+λ). The dependent variable is measured through a psychometric instrument consisting of K items. Each item is designed to elicit a response on a shared ordinal scale formalized as an ordered set 
+
+(Y, ⪯)
+
+Y = {ymin , . . . , y max }. (4) Each prompt instructs the model to respond with a single digit only (one token) indicating the ordinal category, Y, with no additional text. We therefore treat the model’s response as the next-token distri-bution. The joint response from all items, K, corre-sponds to a vector 
+
+y = ( y1, . . . , y K ) ∈ Y K . (5) In behavioral experiments only a subset of the complete output space corresponds to valid re-sponses. Let V denote the model’s full token vo-cabulary, and let Vval ⊂ V denote the set of valid tokens for the task with the same cardinality as Y,
+
+|V val | = |Y| . Let Praw (t | x) denote the model’s next-token probability distribution given a prompt 
+
+x, defined over the full vocabulary V. We define the valid probability mass as 
+
+Pval (x) = X
+
+> t∈V val
+
+Praw (t | x). (6) To interface with the language model, we define a surjective mapping 
+
+ϕ : Vval → Y (7) that accounts for tokenizer-specific variations of digits (e.g., leading spaces) and associates a spe-cific subset of valid vocabulary tokens Vval ⊂ V 
+
+with their numeric values, Y. This mapping trans-forms the token distribution into a probability mass function over ordinal integers, allowing us to use or-dinal dispersion measures to calculate the internal consistency of the model’s predictive distribution. 
+
+A.2 Conditional Independence via Context Isolation 
+
+A central property of this design is that the model’s internal state is reset between items. For a fixed experimental condition λ, the response Yk, λ for item k depends solely on the specific prompt xk, λ
+
+and the model parameters. Following Wadi and Fredette (2025), we treat the items as conditionally independent given λ. Formally, for any realization vector y ∈ Y K , the joint probability mass function factorizes as 
+
+P (Yλ = y | λ) = 
+
+> K
+
+Y
+
+> k=1
+
+P (Yk, λ = yk | λ). (8) This assumption justifies the use of product mea-sures for joint distributions (Appendix A.3) and convolution for composite sums (Appendix A.4). 
+
+A.3 The Consensus Layer 
+
+Having confirmed the model’s focus on valid out-puts, we now superimpose the numeric, ordinal structure of the task onto the analysis. We require a measure that quantifies whether the model’s at-titude towards the numeric scale is behaviorally consistent. Consider a single item with a 7-point Likert scale ( Y = {1, . . . , 7}). A distribution as-signing equal mass to opposing endpoints with the following probability mass functions (PMFs) 
+
+P (Y = 1) = 0 .5, P (Y = 7) = 0 .5,
+
+exhibits dissension, as the model simultaneously expresses diametrically opposing views. In con-trast, a distribution concentrated on adjacent scale 13 Table 3: Visualization of LLM Consensus (Cns) and Dissension (Dsn) cases. Each histogram depicts a char-acteristic output distribution on a 1–7 scale.        
+
+> CNS ENTROPY DISTRIBUTION
+> 1.00 0.00
+> 0.84 1.57
+> 0.47 2.81
+> 0.74 1.00
+> 0.00 1.00
+
+points, 
+
+P (Y = 5) = 0 .5, P (Y = 6) = 0 .5,
+
+is logically consistent, reflecting only local uncer-tainty regarding the precise intensity of the attitude. To obtain a measure of consensus from a sample of individuals, Tastle and Wierman (2007) intro-duced Consensus ( Cns ) as            
+
+> Cns( Y) = 1 + X
+> y∈Y
+> 
+> P(Y=y)×log 2
+> 
+> 1− |y−μY|
+> dmax
+> 
+> (9)
+
+where μY = P 
+
+> y∈Y
+
+yP (Y = y) is the expected value of the ordinal distribution and dmax =
+
+ymax − ymin . Table 3 illustrates Consensus on dif-ferent PMFs. The issue with using entropy to mea-sure consensus is shown in the 4th ( P (3) = 0 .5
+
+and P (5) = 0 .5) and 5th row ( P (1) = 0 .5 and 
+
+P (7) = 0 .5), where the latter shows lower lev-els of consensus, but entropy gives the same value (Entropy = 1 .00 ). Whereas the original Consensus statistic is de-fined over a sample of aggregated scalar responses, our setting differs in two fundamental ways. First, with language models as subjects, we have direct 1 2 3 4 5 6 7Item 1 Response 1234567Item 2 Response (4,4) (1,7) (7,1) Equal aggregate 
+
+Figure 6: The failure of aggregate Consensus in captur-ing between-item dissension. Distinct response patterns in a two-item Likert space (e.g., (4 , 4) vs. (1 , 7) ) col-lapse to the same scalar score after aggregation. The original Consensus measure operates on this projection and cannot detect between-item dissension. 
+
+access to the PMF of the data generation process rather than sampled responses. Second, behavioral instruments such as Likert scales typically con-sist of multiple items, each with varying levels of Consensus and Dissension. Calculating Consensus over aggregated responses disregards the inter-item Dissension. Standard aggregation procedures, such as sum-mation or averaging, project this space onto a single scalar dimension. Figure 6 illustrates this effect for a two-item, 7-point Likert scale. Response patterns such as (4 , 4) , (1 , 7) , and (7 , 1) all yield the same aggregate sum, causing the inter-item Dissension to be lost. However, these points occupy very dif-ferent locations in the original two-dimensional response space, with (1 , 7) and (7 , 1) representing maximal disagreement between items. Thus, we derive the Multivariate Consensus (Consensus from now on) across all items on a com-mon ordinal scale. For each item k ∈ { 1, . . . , K },we utilize the mapping ϕ (Eq. 7) to project the renormalized token distribution onto the ordinal scale Y (Eq. 5). We define the item-level ordinal random variable Yk with probability mass function 
+
+P (Yk = y) = P  t = ϕ−1(y) | xk, t ∈ V val 
+
+ ,
+
+(10) 14 where xk is the prompt for item k. This step for-mally converts the model’s token prediction into a numeric behavioral response. We compute the ex-pected response for each item, forming the centroid of the joint distribution 
+
+μ = ( μ1, . . . , μ K ), (11) where μk = P 
+
+> y∈Y
+
+yP (Yk = y). The centroid, μ,represents the model’s expected position on each Likert item in the K-dimensional space. We de-fine the maximum possible distance between any response vector and the centroid as the diagonal of the hypercube defined by the scale extrema 
+
+dmax = pK (ymax − ymin )2. (12) This normalizes distances to the unit interval and ensures comparability across instruments with different numbers of items. The Multivariate Con-sensus is defined as the expected logarithmic agree-ment of the joint distribution with respect to the centroid (Eq. 1). Intuitively, this measure assigns higher consen-sus when the probability mass is concentrated near the centroid across all items, and lower consen-sus when mass is dispersed or polarized. Unlike entropy-based measures, Consensus is sensitive to ordinal distances. When K = 1 , the multivariate formulation reduces to the original Consensus (Tas-tle and Wierman, 2007), with the key distinction that we operate directly on the true PMF rather than on sampled responses. Multivariate Dissen-sion ( Dsn ) is defined as the complement of Con-sensus, representing the degree of polarization or dispersion away from the mean. 
+
+Dsn( Y) = 1 − Cns( Y) (13) 
+
+A.4 The Construct Layer 
+
+Our goal is to quantify differences in the dependent variable across experimental conditions and mod-els, while fully propagating uncertainty induced by the model’s generative process. We formalize inference over latent scale scores using an analyt-ical fixed-effects ANOVA/Hoeffding decomposi-tion. For a specific condition vector λ, the compos-ite scale score, Sλ, is the aggregation of item-level random variable responses 
+
+Sλ =
+
+> K
+
+X
+
+> k=1
+
+Yk, λ. (14) Let PYk, λ denote the PMF of item k under con-dition λ. Given independence (Sec. A.2), the dis-tribution of the composite score is obtained via discrete convolution 
+
+PSλ = PY1,λ ⊛ PY2,λ ⊛ · · · ⊛ PYK, λ . (15) 
+
+A.4.1 Factorial Decomposition Over Distributions 
+
+We formalize an analytical ANOVA/Hoeffding de-composition of the composite scale score. Our framework constructs a unique family of centered effect distributions {EU }U ⊆C , representing main effects and interactions, such that the total expected score satisfies the additive identity            
+
+> E[Sλ] = E[S0]
+> | {z }
+> Grand Mean
+> +X
+> c∈C
+> E[Ec(λc)]
+> |{z }
+> Main Effects
+> +X
+> U⊆C |U|≥ 2
+> E[EU(λU)]
+> |{z }
+> Interactions
+> ,
+> (16)
+
+while retaining the full probability mass function for every term in the summation. For each experimental condition λ ∈ D , the composite scale score Sλ is a discrete random vari-able with probability mass function PSλ (Eq. 14). Rather than reducing Sλ to a point estimate, we treat the mapping 
+
+λ 7 → PSλ (17) as the primitive object of analysis. This allows all uncertainty induced by the model’s generative process to be propagated exactly through subse-quent analyses. Given the fully crossed factorial de-sign, all factor combinations are symmetric. There-fore, the design space D takes on a uniform proba-bility distribution π, assigning equal weight to each experimental condition. 
+
+Assumption A.1 (Fully Crossed Fixed-Effects Design) . The experimental design space D =Q 
+
+> c∈C
+
+{1, . . . , Λc} is finite and fully crossed. All expectations over D are taken with respect to the uniform measure. 
+
+Proposition A.2 (Linearity of Expectation under Mixture Marginalization) . Let D be a finite facto-rial design with probability measure π, and let 
+
+P ¯S = Eλ∼π[PSλ ] be the mixture distribution. Then, 
+
+E[ ¯S] = Eλ∼π[E[Sλ]] . (18) The proof follows immediately from the linearity of finite sums and the definition of expectation. 15 Corollary A.3 (Expectation of Factorial Marginal Distributions) . Let SU (λU ) denote a factorial marginal distribution defined by marginalizing PSλ
+
+over λ−U under the uniform measure. Then 
+
+E[SU (λU )] = Eλ−U [E[Sλ]] .
+
+The proof follows directly from Prop. A.2 by taking π to be the uniform distribution over λ−U .
+
+A.4.2 Grand Mixture Distribution 
+
+To establish a baseline for factorial effects, we con-struct the distributional equivalent of the classical ANOVA Grand Mean. We compute this as the Grand Mixture Distribution ( PS0 ), obtained by av-eraging the composite score distributions uniformly across the entire design space D
+
+PS0 = Eλ∼π[PSλ ] = 1
+
+|D| 
+
+X
+
+> λ∈D
+
+PSλ . (19) The random variable S0 encapsulates the global background distribution of the construct, encom-passing all sources of variation in the experiment. 
+
+A.4.3 Marginal Distributions 
+
+ANOVA Marginal Mean averages responses over complementary factors to isolate a specific level. We extend it by computing the Marginal Slice Dis-tribution ( PMc(λc)). This is obtained by taking the uniform mixture of composite score distributions over all factors other than c,     
+
+> PMc(λc)=Eλ−c
+> h
+> PS(λc, λ−c)
+> i
+> =1
+> |D −c|
+> X
+> λ−c∈D −c
+> PS(λc, λ−c).(20)
+
+The random variable Mc(λc) is the predictive distribution of the composite score when fac-tor c is fixed at level λc, averaging uniformly over all remaining factors. At the expectation level (Prop. A.2), E[Mc(λc)] equals the classical marginal mean. 
+
+Corollary A.4 (Grand mixture as an average of marginal slices) . Under Assumption A.1, for any factor c,
+
+PS0 = 1Λc
+
+> Λc
+
+X
+
+> λc=1
+
+PMc(λc). (21) 
+
+Proof. Fix c ∈ C . The grand mixture distribution is 
+
+PS0 = 1
+
+|D| 
+
+X
+
+> λ∈D
+
+PSλ . (22) Under Assumption A.1, the design space factors as D = {1, . . . , Λc} × D −c, where D−c := Q
+
+> d∈C\{ c}
+
+{1, . . . , Λd}. Hence each λ ∈ D can be written uniquely as λ = ( λc, λ−c) with λc ∈{1, . . . , Λc} and λ−c ∈ D −c. We may rewrite the sum in Eq. (22) as a double sum 
+
+PS0 = 1
+
+|D| 
+
+> Λc
+
+X
+
+> λc=1
+
+X
+
+> λ−c∈D −c
+
+PS(λc, λ−c) . (23) Because the design is fully crossed, |D| =Λc |D −c|. Substituting this into Eq. (23) gives         
+
+> PS0=1Λc|D −c|
+> ΛcX
+> λc=1
+> X
+> λ−c∈D −c
+> PS(λc, λ−c)(24)
+> =1Λc
+> ΛcX
+> λc=1
+> 1
+> |D −c|
+> X
+> λ−c∈D −c
+> PS(λc, λ−c)
+> .(25)
+
+The expression in parentheses in Eq. (25) is ex-actly the marginal slice distribution PMc(λc) from Eq. (20). Therefore, 
+
+PS0 = 1Λc
+
+> Λc
+
+X
+
+> λc=1
+
+PMc(λc),
+
+which proves Eq. (21). 
+
+A.4.4 Expectation-Level Decomposition 
+
+Our primary estimands in the Construct Layer are predictive distributions (PMFs) and contrast distri-bution constructed via mixtures and paired subtrac-tion. Because such contrasts depend on a chosen coupling, they do not, in general, admit an addi-tive decomposition at the level of random variables. However, our distributional framework connects to classical fixed-effects ANOVA at the expectation 
+
+level (Eq. 16). Let μ(λ) be the deterministic mean surface over the factorial design 
+
+μ(λ) := E[Sλ] , λ ∈ D . (26) Here, we state the Hoeffding/ANOVA decomposi-tion of μ on the finite product space D. We provide the unique collection of expectation-level effect components {μU }U ⊆C that our distributional effect estimands target in expectation. 
+
+Theorem A.5 (Expectation-Level ANOVA/Hoeffding Decomposition) . Assume a finite fully crossed design D endowed with the uniform product measure (Assumption A.1). There 
+
+16 exists a unique collection of functions {μU }U ⊆C 
+
+such that 
+
+μ(λ) = X 
+
+> U⊆C
+
+μU (λU ), (27) 
+
+and each component satisfies the identifiability (sum-to-zero) constraints           
+
+> ΛcX
+> λc=1
+> μU(λU) = 0 for all U⊆ C and all c∈U. (28)
+
+Proof. We work on the finite product space D with the uniform product measure implied by Assump-tion A.1. For any function f : D → R and any subset U ⊆C, define the uniform marginalization operator                   
+
+> (TUf)( λU) := Eλ−U[f(λU,λ−U)] (29)
+> =1
+> |D −U|
+> X
+> λ−U∈D −U
+> f(λU,λ−U),(30)
+
+where D−U := Q 
+
+> c∈C\ U
+
+{1, . . . , Λc}. By con-struction, TU f depends only on λU , and TC f = f .Define components recursively in increasing or-der of |U |
+
+μ∅ := ( T∅μ) (a constant) , (31) 
+
+μU (λU ) := ( TU μ)( λU ) − X 
+
+> V⊊U
+
+μV (λV ), (32) 
+
+U̸ = ∅.
+
+This is well-defined because the right-hand side for 
+
+μU only involves μV with strictly smaller index sets V ⊊ U , which have already been defined. From Eq. (31) we immediately obtain, for every 
+
+U ⊆ C ,
+
+(TU μ)( λU ) = X 
+
+> V⊆U
+
+μV (λV ). (33) For U = ∅ this holds by definition. For U̸ = ∅ it is a simple rearrangement of (31). Setting U = C
+
+and using TC μ = μ yields 
+
+μ(λ) = X 
+
+> V⊆C
+
+μV (λV ),
+
+which is Eq. (27). 
+
+Identifiability. Fix U ⊆ C and c ∈ U . Uniformly averaging μU over λc gives               
+
+> Eλc[μU(λU)] = Eλc[( TUμ)( λU)] −X
+> V⊊U
+> Eλc[μV(λV)] .
+> (34)
+
+Because the measure is a product measure, aver-aging TU μ over λc removes coordinate c from the conditioning, 
+
+Eλc [( TU μ)( λU )] = ( TU \{ c}μ)( λU \{ c}).
+
+For V ⊊ U , if c ∈ V then Eλc [μV ] = 0 by induc-tion on |V |. If c / ∈ V then μV does not depend on 
+
+λc and the average leaves it unchanged. Hence,            
+
+> Eλc[μU(λU)] = ( TU\{ c}μ)( λU\{ c})−X
+> V⊆U\{ c}
+> μV(λV).
+> (35)
+
+The right-hand side is zero by applying Eq. (33) with U \ { c}. Therefore Eλc [μU (λU )] = 0 , which under uniformity is equivalent to Eq. (28). 
+
+Uniqueness. Suppose {˜μU } is another collection satisfying Eq. (27) and Eq. (28). Define hU := ˜μU − μU . Then P 
+
+> U
+
+hU (λU ) = 0 for all λ and each hU satisfies the same sum-to-zero constraints. Apply TU to P 
+
+> W
+
+hW = 0 , where W is any subset of C. If W ⊆ U , then TU hW = hW . If W̸ ⊆ U ,pick c ∈ W \ U . Marginalizing over −U averages over λc, and the sum-to-zero constraint implies 
+
+TU hW = 0 . Thus, 
+
+0 = TU
+
+ X 
+
+> W⊆C
+
+hW
+
+ = X 
+
+> W⊆U
+
+hW for all U ⊆ C .
+
+Taking U = ∅ gives h∅ = 0 . Proceed by induction on |U |. Assuming hV = 0 for all V ⊊ U , the identity above implies hU = 0 . Hence hU ≡ 0 for all U , proving uniqueness. 
+
+Corollary A.6 (Möbius inversion form) . The com-ponents in Theorem A.5 admit the explicit inclusion– exclusion form            
+
+> μU(λU) = X
+> V⊆U
+> (−1) |U|−| V|(TVμ)( λV),U⊆ C .
+> (36)
+
+Proof. Equation (33) states that for each fixed U ,
+
+(TU μ) = P  
+
+> V⊆U
+
+μV . This is exactly the zeta-transform relation on the Boolean lattice (2 C , ⊆).Applying Möbius inversion (Rota 1964) yields Eq. (36). 17 Remark A.7 . By Prop. A.2 and the definition of the global marginal slice distribution MU (λU )
+
+(Eq. (60)), 
+
+E[MU (λU )] = ( TU μ)( λU ).
+
+Thus, TU μ can be interpreted as the classical marginal mean surface, and μU in Eq. (36) are the associated ANOVA/Hoeffding effect components targeted by our distributional effect estimands in expectation. 
+
+A.4.5 Main Effects Distribution 
+
+Classical ANOVA main effects quantify centered deviations of a factor-level marginal mean from the grand mean. In our distributional setting, we seek an effect distribution whose expectation recovers the ANOVA main effect (Eq. 16). There are various choices for computing the difference distribution. One option is to compute the convolution-based subtraction Mc(λc) − S0. The main problem with this derivation is that it treats the slice distribu-tion of the factor, Mc(λc), and the grand mixture, 
+
+S0, as independent. This is an incorrect assump-tion because S0 and Mc(λc) are clearly correlated (Mc(λc) is a component of the mixture S0). Moreover, convolution of two random variables adds their variance together. This inflates the variance associated with the main effect of factor 
+
+c. Specifically, the convolution-based subtraction 
+
+Mc(λc) − S0 corresponds to a between-subjects 
+
+contrast (difference of two independent draws), which can yield substantial variability even when the two distributions are identical .We therefore derive the main-effect distributions by minimizing the variance of the paired difference between the specific level and the baseline. This approach isolates the systematic shift attributable to the factor while removing the "noise" common to both distributions. To achieve this, we employ a comonotone coupling (i.e., 1D monotone opti-mal transport), which maximizes the covariance between paired draws (Villani et al., 2008). The pairing has two components. We have a blocked construction that respects the factorial de-sign by holding the complementary factors λ−c
+
+fixed. Within each block, we have a canonical comonotone coupling, which minimizes the ex-pected squared difference between paired draws among all couplings with the same marginals. 
+
+Definition A.8 (Paired difference of two univariate discrete distributions) . Let X and Y be univariate discrete random variables with finite support and CDFs FX and FY . Let U ∼ Unif(0 , 1) and define the (left-continuous) generalized inverse CDF 
+
+F −1(u) := inf {z ∈ R : F (z) ≥ u}.
+
+The comonotone coupling is given by X↑ := 
+
+F −1 
+
+> X
+
+(U ) and Y ↑ := F −1 
+
+> Y
+
+(U ). We define the paired difference random variable as 
+
+X ⊖ Y := X↑ − Y ↑. (37) This construction preserves marginals ( X↑ d
+
+= X,
+
+Y ↑ d
+
+= Y ), hence E[X ⊖ Y ] = E[X] − E[Y ].Let supp( X) = {x1 < · · · < x m} with masses 
+
+pi = P (X = xi) and define Pi = Pir=1 pr with 
+
+P0 = 0 . Similarly, let supp( Y ) = {y1 < · · · <yn} with masses qj and Qj = Pjs=1 qs with Q0 =0. The comonotone coupling assigns joint mass          
+
+> wij = max
+> n
+> 0,min( Pi, Q j)−max( Pi−1, Q j−1)
+> o
+> ,(38)
+> i= 1 , . . . , m, j = 1 , . . . , n. (39)
+
+The paired-difference PMF is the pushforward under (x, y ) 7 → x − y,
+
+PX⊖Y (z) = 
+
+> m
+
+X
+
+> i=1
+> n
+
+X
+
+> j=1
+
+wij 1{z = xi − yj }. (40) All terms are finite and are computed deterministi-cally from the two input PMFs. To respect the factorial dependence structure (i.e., S0 is constructed from the same family {Sλ}
+
+as Mc(λc)), we form a grand-mean baseline within each block λ−c by averaging only over the levels of factor cPS0|λ−c := 1Λc
+
+> Λc
+
+X
+
+> λ′
+> c=1
+
+PS(λ′ 
+
+> c,λ−c)
+
+. (41) Mixing these blocked baselines uniformly over 
+
+λ−c recovers the original grand mixture distribu-tion 1
+
+> |D −c|
+
+P 
+
+> λ−c
+
+PS0|λ−c = PS0 .
+
+The (centered) main-effect distribution for factor 
+
+c at level λc is the uniform mixture of paired within-block contrasts 
+
+Ec(λc) := Eλ−c
+
+S(λc,λ−c) ⊖ S0|λ−c
+
+ . (42) At the PMF level this becomes      
+
+> PEc(λc)=1
+> |D −c|
+> X
+> λ−c∈D −c
+> PS(λc, λ−c)⊖S0|λ−c.(43)
+
+18 Each paired-difference PMF in Eq. (43) is com-puted exactly via the mass-matching formula in Eq. (40). No estimation or approximation is used at any stage. 
+
+Corollary A.9 (Expectation-level centering and sum-to-zero) . For each factor c ∈ C and level λc,
+
+E[Ec(λc)] = E[Mc(λc)] − E[S0] . (44) 
+
+Moreover, the paired main effects satisfy the stan-dard ANOVA sum-to-zero constraint in expectation 
+
+ΛcX
+
+λc=1 
+
+E[Ec(λc)] = 0 . (45) 
+
+Proof. By definition (Eq. (43)), the main-effect random variable Ec(λc) is the uniform mixture over blocks λ−c ∈ D −c of the paired contrast 
+
+S(λc,λ−c) ⊖ S0|λ−c . Equivalently, we can repre-sent the mixture hierarchically. Draw λ−c ∼
+
+Unif( D−c), then draw 
+
+
+
+S↑
+
+(λc,λ−c), S ↑
+
+0|λ−c
+
+
+
+from the comonotone coupling. Set Ec(λc) = S↑
+
+(λc,λ−c) − S↑
+
+0|λ−c . Because D−c
+
+is finite, we may apply iterated expectations. 
+
+E[Ec(λc)] = 1
+
+|D −c|
+
+X
+
+> λ−c∈D −c
+
+ES(λc,λ−c) ⊖ S0|λ−c
+
+ .
+
+(46) 
+
+Fix a block λ−c. By Def. A.8, 
+
+S(λc,λ−c) ⊖ S0|λ−c = S↑
+
+(λc,λ−c) − S↑
+
+0|λ−c ,
+
+where S↑
+
+(λc,λ−c)
+
+d
+
+= S(λc,λ−c) and S↑
+
+0|λ−c
+
+d
+
+= S0|λ−c .Therefore the expectations match their marginals 
+
+E
+
+h
+
+S↑
+
+> (λc,λ−c)
+
+i
+
+= ES(λc,λ−c)
+
+ , (47) 
+
+E
+
+h
+
+S↑
+
+> 0|λ−c
+
+i
+
+= ES0|λ−c
+
+ . (48) 
+
+Using linearity of expectation, which does not 
+
+require independence, 
+
+ES(λc,λ−c) ⊖ S0|λ−c
+
+ = ES(λc,λ−c)
+
+ − ES0|λ−c
+
+ .
+
+(49) 
+
+Eq. (49) holds for any coupling with the given marginals. The comonotone coupling is chosen to minimize dispersion, but preserves the mean. Substitute Eq. (49) into Eq. (46): 
+
+E[Ec(λc)] = 1
+
+|D −c|
+
+X
+
+> λ−c∈D −c
+
+ ES(λc,λ−c)
+
+ − ES0|λ−c
+
+ 
+
+= 1
+
+|D −c|
+
+X
+
+> λ−c∈D −c
+
+ES(λc,λ−c)
+
+| {z }
+
+> (⋆)
+
+(50) 
+
+− 1
+
+|D −c|
+
+X
+
+> λ−c∈D −c
+
+ES0|λ−c
+
+| {z }
+
+> (†)
+
+. (51) 
+
+For (⋆), by the definition of the marginal slice distribution PMc(λc) (Eq. (20)) and Prop. A.2, 
+
+E[Mc(λc)] = 1
+
+|D −c|
+
+X
+
+λ−c∈D −c
+
+ES(λc,λ−c)
+
+ .
+
+For (†), expand the blocked grand mean (Eq. (41)) and apply Theorem A.2, 
+
+1
+
+|D −c|
+
+X
+
+> λ−c
+
+ES0|λ−c
+
+ = 1
+
+|D −c|
+
+X
+
+> λ−c
+
+E
+
+ 1Λc
+
+> Λc
+
+X
+
+> λ′
+> c=1
+
+S(λ′
+
+> c,λ−c)
+
+
+
+(52) 
+
+= 1
+
+|D −c|
+
+X
+
+> λ−c
+
+1Λc
+
+> Λc
+
+X
+
+> λ′
+> c=1
+
+ES(λ′
+
+> c,λ−c)
+
+
+
+(53) 
+
+= 1
+
+|D| 
+
+X
+
+> λ∈D
+
+E[Sλ] = E[S0]. (54) 
+
+We used |D| = Λ c |D −c| and the definition of the grand mixture S0 (Eq. (19)). Substituting these two identifications into Eq. (51) yields 
+
+E[Ec(λc)] = E[Mc(λc)] − E[S0] ,
+
+which proves Eq. (44). Sum Eq. (46) over λc ∈ { 1, . . . , Λc}
+
+> Λc
+
+X
+
+> λc=1
+
+E[Ec(λc)] = 1
+
+|D −c|
+
+X
+
+> λ−c∈D −c
+> Λc
+
+X
+
+> λc=1
+
+(55) 
+
+ES(λc,λ−c) ⊖ S0|λ−c
+
+ . (56) 
+
+Apply Eq. (49) inside the inner sum 
+
+> Λc
+
+X
+
+> λc=1
+
+ES(λc,λ−c) ⊖ S0|λ−c
+
+ = (57) 
+
+> Λc
+
+X
+
+> λc=1
+
+ E[S(λc,λ−c)] − E[S0|λ−c ] = (58) 
+
+> Λc
+
+X
+
+> λc=1
+
+E[S(λc,λ−c)] − Λc E[S0|λ−c ]. (59) 
+
+19 But by definition of the blocked grand mean and linearity of expectation, 
+
+E[S0|λ−c ] = 1Λc
+
+> Λc
+
+X
+
+> λ′
+> c=1
+
+E[S(λ′
+
+> c,λ−c)
+
+],
+
+so ΛcE[S0|λ−c ] = PΛc 
+
+> λ′
+> c=1
+
+E[S(λ′
+
+> c,λ−c)
+
+]. Hence the inner expression is identically zero for every λ−c,and therefore the outer average is also zero 
+
+> Λc
+
+X
+
+> λc=1
+
+E[Ec(λc)] = 0 ,
+
+which proves Eq. (45). 
+
+A.4.6 Interaction Effects Distribution 
+
+Whereas main effects quantify additive shifts at-tributable to individual factors, interaction effects quantify departures from additivity when multiple factors are fixed jointly. In classical fixed-effects ANOVA/Hoeffding decompositions, the U -way in-teraction component is obtained by Möbius inver-sion of marginal means on the Boolean lattice of factor subsets. In our framework, since we are dealing directly with PMFs of the population, we define interaction effects using a paired, design-blocked contrast. We hold the complementary factors λ−U fixed (block-ing). Within each block, we couple all terms in the alternating sum via a shared latent quantile vari-able (comonotone coupling). This yields a paired distribution for the interaction contrast. For any nonempty subset of factors U ⊆ C and level vector λU , define the U -way marginal slice distribution as the uniform mixture over all remain-ing factors 
+
+PMU (λU ) = 1
+
+|D −U |
+
+X 
+
+> λ−U∈D −U
+
+PS(λU ,λ−U ) . (60) We further set M∅ := S0.Fix a nonempty subset of factors U ⊆ C and a realization of the complementary factors λ−U ∈D−U . For any V ⊆ U , define the within-block design space 
+
+DU \V := Y 
+
+> c∈U\V
+
+{1, . . . , Λc}.
+
+We derive the blocked marginal slice distribution as the uniform mixture over the remaining factors in U \ V , holding λ−U fixed 
+
+PMV |λ−U (λV ) (61) 
+
+:= 1
+
+|D U \V |
+
+X   
+
+> λU\V∈D U\V
+
+PS(λV ,λU \V ,λ−U ) . (62) This unifies several cases, 
+
+MU |λ−U (λU ) ≡ S(λU ,λ−U ), (63) 
+
+M∅| λ−U = 1
+
+|D U |
+
+X 
+
+> λU∈D U
+
+S(λU ,λ−U ), (64) where M∅| λ−U is the blocked grand mean (over factors U ) within the fixed complement λ−U .Averaging blocked slices over λ−U recovers the global marginal slices from Eq. (60). 
+
+PMV (λV ) = 1
+
+|D −U |
+
+X 
+
+> λ−U∈D −U
+
+PMV |λ−U (λV ).
+
+(65) In particular, taking V = ∅ yields  
+
+> 1
+> |D −U|
+
+P 
+
+> λ−U
+
+PM∅| λ−U = PS0 .To define a distribution for an alternating sum without imposing independence, we use a shared-quantile (comonotone) coupling. 
+
+Definition A.10 (Comonotone-coupled linear con-trast) . Let {Xr}Rr=1 be univariate discrete ran-dom variables with finite support and CDFs 
+
+{Fr}Rr=1 . Let U ∗ ∼ Unif(0 , 1) and define 
+
+X↑ 
+
+> r
+
+:= F −1 
+
+> r
+
+(U ∗) using the (left-continuous) gen-eralized inverse from Def. A.8. For coefficients 
+
+α = ( α1, . . . , α R) ∈ RR, define the comonotone-coupled linear contrast 
+
+L↑(α; X1, . . . , X R) := 
+
+> R
+
+X
+
+> r=1
+
+αrX↑ 
+
+> r
+
+. (66) For R = 2 and α = (1 , −1) , this reduces to the paired difference X1 ⊖ X2 (Def. A.8). Because each X↑ 
+
+> r
+
+= F −1 
+
+> r
+
+(U ∗) is a step function of U ∗, the contrast in Eq. (66) is piecewise constant on a finite partition of [0 , 1] . Let 
+
+B := {0, 1} ∪ 
+
+> R
+
+[
+
+> r=1
+
+{Fr(x) : x ∈ supp( Xr)} ,
+
+and let 0 = u0 < u 1 < · · · < u L = 1 be the sorted distinct elements of B. For ℓ = 1 , . . . , L , define 
+
+zℓ := 
+
+> R
+
+X
+
+> r=1
+
+αrF −1 
+
+> r
+
+(uℓ).
+
+20 Then the PMF of Z := L↑(α; X1, . . . , X R) is 
+
+PZ (z) = 
+
+> L
+
+X
+
+> ℓ=1
+
+(uℓ − uℓ−1) 1{z = zℓ}, (67) aggregating masses for identical zℓ values. This computation is exact and deterministic. Fix U ⊆ C with |U | ≥ 2. For a given level vector λU and block λ−U , define the within-block interaction-effect random variable as the paired Möbius contrast over blocked slices 
+
+HU |λ−U (λU ) := X 
+
+> V⊆U
+
+(−1) |U |−| V |  MV |λ−U (λV )↑ ,
+
+(68) where all terms are coupled comonotonically via the same U ∗ in Def. A.10. The PMF of 
+
+HU |λ−U (λU ) is computed exactly using Eq. (67) with R = 2 |U | and coefficients αV = ( −1) |U |−| V |.Finally, we define the global U -way interaction effect distribution by mixing uniformly over com-plementary factors: 
+
+PEU (λU ) = 1
+
+|D −U |
+
+X 
+
+> λ−U∈D −U
+
+PHU |λ−U (λU ). (69) 
+
+Two-way interactions. For U = {a, b }, within a fixed block λ−ab the paired two-way interaction is 
+
+H{a,b }| λ−ab (λa, λ b) = S↑ 
+
+> (λa,λ b,λ−ab )
+
+(70) 
+
+− M ↑ 
+
+> a|λ−ab
+
+(λa) (71) 
+
+− M ↑ 
+
+> b|λ−ab
+
+(λb) (72) 
+
++ M ↑∅| λ−ab , (73) and PE{a,b }(λa,λ b) is the uniform mixture of these within-block PMFs over λ−ab .
+
+Corollary A.11 (Expectation-level ANOVA con-sistency and centering) . Let μ(λ) = E[Sλ] and let 
+
+{μU }U ⊆C be the unique Hoeffding/ANOVA com-ponents from Theorem A.5. For any U ⊆ C with 
+
+|U | ≥ 2 and any λU ,
+
+E[EU (λU )] = μU (λU ). (74) 
+
+In particular, the interaction effects are centered in expectation. For any c ∈ U ,
+
+> Λc
+
+X
+
+> λc=1
+
+E[EU (λU )] = 0 . (75) 
+
+Proof. Fix λ−U . By construction, the comonotone coupling in Eq. (68) preserves the marginal distri-bution of each term MV |λ−U (λV ), hence it does not alter expectations. Therefore, by linearity of expectation,             
+
+> EHU|λ−U(λU)=X
+> V⊆U
+> (−1) |U|−| V|EMV|λ−U(λV).
+> (76)
+
+Next, expand the blocked slice definition (Eq. (61)) and apply linearity of expectation to ob-tain 
+
+EMV |λ−U (λV ) (77) 
+
+= 1
+
+|D U \V |
+
+X   
+
+> λU\V∈D U\V
+
+μ(λV , λU \V , λ−U ).
+
+(78) Now average Eq. (76) uniformly over λ−U
+
+(Eq. (69)). Because the design is a finite prod-uct space, averaging over λ−U and over λU \V is equivalent to averaging over all complementary coordinates λ−V . Thus 
+
+E[EU (λU )] (79) 
+
+= 1
+
+|D −U |
+
+X
+
+> λ−U
+
+EHU |λ−U (λU ) (80) 
+
+= X 
+
+> V⊆U
+
+(−1) |U |−| V | 1
+
+|D −V |
+
+X
+
+> λ−V
+
+μ(λV , λ−V )
+
+| {z }  
+
+> =( TVμ)( λV)
+
+.
+
+(81) The final expression is exactly the Möbius inver-sion / Hoeffding component μU (λU ) (Rota, 1964), equivalent to the recursion in Theorem A.5. This proves Eq. (74). The centering property Eq. (75) then follows from the identifiability constraints in Theorem A.5. 
+
+A.4.7 Hypothesis Testing 
+
+We distinguish our hypothesis evaluation from null-hypothesis significance testing (NHST). Rather than accept–reject decisions based on p-values, which presuppose sampling variability from finite data, we evaluate directional scientific claims using exact predictive effect distributions computed ana-lytically from the model’s next-token probabilities. In our framework, the primitive objects of infer-ence are centered effect random variables, namely 21 paired main effects Ec(λc) (Eq. (42)) and paired interaction effects EU (λU ) (Eq. (69)). Their PMFs are computed deterministically via finite mixtures and paired comonotone contrast operations. Ac-cordingly, there is no sampling error. Uncer-tainty in these effect distributions reflects intrin-sic stochasticity of the model’s predictive behavior under the stimulus (i.e., the aleatoric uncertainty). We summarize each centered effect distribu-tion E using mean shift ( E[E]), predictive dis-persion ( SD( E)), discrete Probability of Direction (dPD( E)), and a standardized signal-to-noise ra-tio ( SNR( E)) based on the SD of the paired effect distribution. 
+
+A.4.8 Discrete Probability of Direction 
+
+To evaluate directional hypotheses, we adopt a dis-crete formulation of the Probability of Direction (PD). In Bayesian inference, PD is typically defined for continuous posteriors, where P(E = 0) = 0 
+
+(Makowski et al., 2019). Here, predictive effect distributions are discrete and may place non-zero mass on exact equality. We therefore treat {E = 0 }
+
+as a distinct behavioral outcome. Let E denote a centered effect random variable, either Ec(λc) or EU (λU ). The discrete Probability of Direction (dPD) is 
+
+dPD( E) = max  P(E > 0) , P(E < 0) , (82) dPD quantifies the extent to which the effect ex-hibits consistent directionality, irrespective of sign. 
+
+A.4.9 Effect Size (Mean Shift) 
+
+We define effect size as the expectation of the cen-tered effect distribution 
+
+E[E] = X
+
+> z
+
+z P E (z), (83) where the sum ranges over the finite support of E.
+
+E[E] is the magnitude of the effect E.
+
+A.4.10 Predictive Dispersion (SD) 
+
+Intrinsic variability of the centered effect is cap-tured by its predictive standard deviation 
+
+SD( E) = 
+
+sX
+
+> z
+
+ z − E[E]2 PE (z). (84) Because our effect distributions are constructed via paired contrasts, SD( E) reflects residual predictive heterogeneity in the effect itself, rather than disper-sion induced by taking differences of independent draws. 
+
+A.4.11 Signal-to-Noise Ratio 
+
+We summarize standardized effect magnitude using a signal-to-noise ratio computed directly on the paired effect distribution 
+
+SNR( E) = |E[E]|
+
+SD( E) . (85) When SD( E) = 0 , the effect is deterministic under the paired contrast. In this case SNR( E) is treated as +∞ if E[E]̸ = 0 and 0 if E[E] = 0 .The signal-to-noise ratio SNR is closely related to standardized effect sizes such as Cohen’s d (Co-hen, 2013), which quantifies mean deviations rel-ative to within-group variability. However, in our setting, variability reflects intrinsic stochasticity of the language model rather than sampling er-ror. We therefore use conventional heuristics (e.g., 
+
+≈ 0.2, 0.5, 0.8 for small, medium, large) only as descriptive reference points, not as decision thresh-olds. 
+
+A.4.12 Interpretation 
+
+Inferential conclusions are drawn from the joint configuration of dPD( E), E[E], SD( E), and 
+
+SNR( E). High dPD( E) indicates strong direc-tional regularity, while large SNR( E) indicates that the expected shift dominates the intrinsic pre-dictive dispersion of the paired effect distribution. Discrepancies between these quantities distinguish regimes such as stable but weak effects, large but ambivalent effects, or low-signal effects with high dispersion (Table 4). 
+
+A.4.13 Trend Effects 
+
+Some experimental factors admit an inherent order-ing and a meaningful numeric scale (e.g., model size in billions of parameters or a discretized con-tinuous manipulation intensity). To quantify the marginal per-unit sensitivity of the composite con-struct to such a factor without imposing a paramet-ric functional form, we compute paired finite differ-ence distributions across adjacent factor levels and aggregate them into an average trend distribution. Let c ∈ C denote an ordered factor with L = Λ c
+
+levels that admit numeric values 
+
+λ(c)1 < λ (c)2 < · · · < λ (c) 
+
+> L
+
+(λ(c) 
+
+> ℓ
+
+∈ R).
+
+Adjacent spacings may be uneven. Define incre-ments 
+
+δ(c) 
+
+> ℓ
+
+= λ(c) 
+
+> ℓ+1
+
+− λ(c) 
+
+> ℓ
+
+> 0, ℓ = 1 , . . . , L − 1.
+
+22 Case P (E) E[E] SD SNR dPD A {− 25:0 .9, −20:0 .1} −24 .5 1.5 16 .3 1.00 
+
+B {1:0 .99 , 100:0 .01 } 11 .0 99 .0 0.11 1.00 
+
+C {100:0 .51 , −1:0 .49 } 50 .5 49 .5 1.02 0.51 
+
+D {5:0 .34 , −5:0 .33 , 0:0 .33 } 0.05 4.1 0.01 0.34 
+
+Table 4: Illustrative predictive effect distributions exhibiting distinct behavioral regimes. Cases A and B have identical directional consistency ( dPD = 1 ) but sharply different standardized magnitudes ( SNR ). Case C shows a large expected effect despite weak directional consistency. Case D exhibits neither directional regularity nor an appreciable standardized signal. 
+
+To respect the factorial design, we compare ad-jacent levels within each block of the remaining factors λ−c ∈ D −c. For each block and each adja-cent pair of ordered levels, define the paired local difference random variable 
+
+D(c) 
+
+> ℓ|λ−c
+
+:= S(λ(c) 
+
+> ℓ+1 ,λ−c)
+
+⊖ S(λ(c) 
+
+> ℓ,λ−c)
+
+, (86) 
+
+ℓ = 1 , . . . , L − 1, (87) where ⊖ denotes the paired comonotone difference from Def. A.8. Each PMF PD(c)
+
+> ℓ|λ−c
+
+is computed exactly via the discrete mass-matching formula in Eq. (40). We then marginalize over blocks by a uniform mixture 
+
+PD(c)
+
+> ℓ
+
+= 1
+
+|D −c|
+
+X
+
+> λ−c∈D −c
+
+PD(c)
+
+> ℓ|λ−c
+
+. (88) Intuitively, D(c) 
+
+> ℓ
+
+is the predictive distribution of the change in the composite score induced by mov-ing from λ(c) 
+
+> ℓ
+
+to λ(c)
+
+> ℓ+1
+
+, averaging uniformly over all other experimental factors while preserving a paired (within-block) comparison. Define the per-unit local slope random variable as the rescaled difference 
+
+∆(c) 
+
+> ℓ
+
+= D(c)
+
+> ℓ
+
+δ(c)
+
+> ℓ
+
+. (89) Equivalently, P∆(c)
+
+> ℓ
+
+is the pushforward of PD(c)
+
+> ℓ
+
+under the map z 7 → z/δ (c) 
+
+> ℓ
+
+; its support is rescaled by 1/δ (c) 
+
+> ℓ
+
+while probability masses are preserved. To aggregate unevenly spaced local slopes into a single per-unit trend effect, we define the per-unit trend random variable γc as the length-weighted mixture of scaled local slopes: 
+
+Pγc =
+
+> L−1
+
+X
+
+> ℓ=1
+
+w(c) 
+
+> ℓ
+
+P∆(c)
+
+> ℓ
+
+, (90) 
+
+w(c) 
+
+> ℓ
+
+= δ(c)
+
+> ℓ
+
+PL−1 
+
+> m=1
+
+δ(c)
+
+> m
+
+= δ(c)
+
+> ℓ
+
+λ(c) 
+
+> L
+
+− λ(c)1
+
+. (91) Dispersion or multimodality in Pγc indicates het-erogeneous local behavior (e.g., non-monotonic or regime-dependent trends) across adjacent factor-level transitions. 
+
+Proposition A.12 (Expectation-level secant-slope identity) . The expected per-unit trend equals the secant slope of the ordered-factor marginal mean across the observed range 
+
+E[γc] = E[Mc(λ(c) 
+
+> L
+
+)] − E[Mc(λ(c)1 )] 
+
+λ(c) 
+
+> L
+
+− λ(c)1
+
+. (92) 
+
+Proof. Fix ℓ ∈ { 1, . . . , L − 1} and a block λ−c.By Def. A.8, the paired difference preserves the mean 
+
+E
+
+h
+
+D(c)
+
+> ℓ|λ−c
+
+i
+
+= E
+
+
+
+S(λ(c)
+
+> ℓ+1 ,λ−c)
+
+
+
+− E
+
+h
+
+S(λ(c) 
+
+> ℓ,λ−c)
+
+i
+
+.
+
+Averaging uniformly over λ−c and using linearity of expectation gives 
+
+E[D(c) 
+
+> ℓ
+
+] = E[Mc(λ(c)
+
+> ℓ+1
+
+)] − E[Mc(λ(c) 
+
+> ℓ
+
+)] ,
+
+because Mc(λ(c) 
+
+> ℓ
+
+) is the uniform mixture of 
+
+S(λ(c)  
+
+> ℓ,λ−c)
+
+over λ−c (Eq. (20)), and expectations commute with finite mixtures (Theorem A.2). By definition of ∆(c) 
+
+> ℓ
+
+,
+
+E[∆ (c) 
+
+> ℓ
+
+] = E[D(c) 
+
+> ℓ
+
+]
+
+δ(c)
+
+> ℓ
+
+.
+
+Taking expectations in the mixture definition (90) yields 23 E[γc] = 
+
+> L−1
+
+X
+
+> ℓ=1
+
+w(c) 
+
+> ℓ
+
+E[∆ (c) 
+
+> ℓ
+
+] (93) 
+
+= 1
+
+PL−1 
+
+> m=1
+
+δ(c)
+
+> mL−1
+
+X
+
+> ℓ=1
+
+(94) 
+
+
+
+E[Mc(λ(c)
+
+> ℓ+1
+
+)] − E[Mc(λ(c) 
+
+> ℓ
+
+)] 
+
+
+
+, (95) which telescopes to (E[Mc(λ(c) 
+
+> L
+
+)] −
+
+E[Mc(λ(c)1 )]) /(λ(c) 
+
+> L
+
+− λ(c)1 ), proving Eq. (92). 
+
+Directional interpretation. The full predictive distribution Pγc supports directional summaries (e.g., P(γc > 0) , P(γc < 0) ) and can be sum-marized using the same quantities defined for other predictive contrasts (e.g., dPD, SD, and SNR based on SD( γc)). 
+
+A.5 Prompt template 
+
+Figure 7 shows how we form the prompt template and cross Target Country with each model. 
+
+A.6 Additional Analysis Effect of Model Size. While our primary fac-torial design treats language models as discrete categorical subjects, model capacity is inherently continuous. Prior work has shown that scaling lan-guage models can systematically alter social and behavioral tendencies, including the amplification of biased responses (Wadi and Fredette, 2025). We therefore investigate whether ethnocentric tenden-cies, as measured by the CETSCALE, exhibit a sys-tematic trend as a function of model size. Specif-ically, we ask whether increasing the number of parameters induces a consistent directional change in the latent ethnocentrism score. To address this question, we conduct a trend-effects analysis (de-rived in App. A.4.13). We form four within-family size series, each evaluated under the same T ARGET manipulation and CETSCALE instrument as in the main exper-iment. A YA (8B, 32B), G EMMA 3 (1B, 4B, 12B, 27B), M INISTRAL (3B, 8B, 14B), and Q WEN 3(0.6B, 4B, 8B, 14B, 32B, Next-80B). 5 The trend effect of model size on ethnocentrism (Table 8) is large ( E = 1 .65 , SNR = 5 .87 ) and directionally consistent ( dPD > 0.99 ) for A YA model family. This indicates steep linear scaling in ethnocentric 
+
+> 5Llama 3.3 (70B) does not form a multi-point series and is excluded from trend estimation.
+
+tendencies. For every additional billion parameters, the model’s expected ethnocentrism score increases by 1.65 points. Over the range evaluated (8B to 32B), this effectively shifts a model from the low-est observed ethnocentrism to the highest, purely by scaling. For other models, size does not have a meaningful effect (low SNR and dPD ) on ethno-centrism. 
+
+A.7 Additional tables/figures 
+
+• Table 5 shows a comparison of Multivariate Consensus versus Entropy for the country-of-origin experiment. • Figure 8 shows a comparison of the hu-man baseline with the LLMs tested on the CETSCALE. • Table 6 shows the full ANOVA decomposition (main and interaction effects) of the composite CETSCALE score. • Figure 9 shows the main effect of the Target Country on the CETSCALE. • Table 7 shows the pairwise marginal contrasts of the Target Countries. • Figure 10 shows the exact PMF of the LLMs on the composite CETSCALE. • Table 8 shows the effect of LLM size (number of parameters) on the CETSCALE. • Table 9 shows a comparison between the esti-mated effect using aggregation (baseline) com-pared with factorial decomposition (our pro-posed method). 
+
+A.8 Cost of Monte Carlo sampling 
+
+To quantify the cost of the standard Monte Carlo sampling paradigm, we treat the exact PMFs as ground truth and characterize the two distinct costs a sampling-based estimator of the compos-ite CETSCALE score would incur: (i) stochastic sampling noise from finite N , and (ii) systematic decoding bias from non-default temperature or top-
+
+p. All quantities are reported in composite-score units (the 17 –119 CETSCALE scale), directly com-parable to the effect sizes in Table 2. 24 You are a consumer in a market research study. Response format: 1–7 (1=Strongly disagree, 7=Strongly agree). Respond with ONLY the digit.           
+
+> System
+> Canadians should always buy Canadian-made products instead of imports. User Chat prompt
+> {People} should always buy {Adj}-made products instead of imports.
+> Tk
+> Target {People} {Adj} USA Americans American China the Chinese Chinese Canada Canadians Canadian France the French French
+> Target Country lexicon
+> Target = Canada
+
+Figure 7: Prompt setup: a fixed system prompt enforces the response schema, while Target Country (sample shown for Canada) deterministically instantiates item templates via a lexicon. Example shown is T1 from the CETSCALE; each CETSCALE item has its own template. 
+
+Model Country Cns Entropy Aya 32B Canada 0.941 4.945 China 0.939 5.150 France 0.937 5.010 USA 0.924 7.315 Gemma 3 27B Canada 0.959 3.565 China 0.941 4.886 France 0.940 4.944 USA 0.948 4.533 Llama 3.3 70B Canada 0.924 5.620 China 0.894 8.579 France 0.882 5.800 USA 0.947 3.929 Ministral 14B Canada 0.669 35.519 China 0.646 37.521 France 0.668 36.444 USA 0.660 35.759 Qwen3 Next 80B Canada 0.929 6.861 China 0.886 9.008 France 0.886 8.381 USA 0.935 5.950 
+
+Table 5: Consensus and Entropy of Models and Target Countries 
+
+A.8.1 Sampling Noise 
+
+Because CETSCALE items are conditionally in-dependent (Sec. A.2), a single sampled composite response has variance σ2 = PKk=1 Var( Yk), and the sample-mean estimator of the composite score has standard error SE = σ/ √N . Table 10 reports this SE across per-condition budgets N , alongside each model’s multivariate Consensus ( Cns ). We verified these analytical values against a Monte Carlo simulation ( 500 replications per cell), which matched to within-simulation error. Sampling error is non-trivial at realistic budgets. At N =100 , the SE ranges from 0.10 (Gemma) to 
+
+0.52 (Ministral) composite-score points. The latter is a meaningful fraction of several effects in Table 2. The error decays only as 1/√N , and hence each tenfold increase in N reduces SE by only ≈ 3.16 ×,and nonzero error persists even at N =10 6. More-over, the magnitude of this noise is anti-correlated Detroit Carolinas Denver Los Angeles Students (Pre) Students (Post) Aya-32b Gemma3-27b Llama33-70b Ministral-14b Qwen3-80b 40 60 80 
+
+> CETSCALE
+> Human LLM
+
+Figure 8: Comparison of CETSCALE scores for the USA target condition between human populations re-ported in Shimp and Sharma (1987) and LLMs evalu-ated in this study. Points denote expected values, and error bars indicate standard deviation. All scores are based on the 17-item CETSCALE using a 7-point Lik-ert scale. Notably, several LLMs exhibit ethnocentrism levels comparable to or exceeding those observed in highly ethnocentric human samples, while displaying substantially lower intrinsic dispersion. 
+
+with Consensus ( r = −1.00 , p < 0.001 , across the 
+
+20 MODEL ×TARGET conditions). Low-consensus item PMFs demand far more samples for the same precision, so Ministral ( Cns=0 .66 ) requires ≈ 5×
+
+the samples of Gemma ( Cns=0 .95 ) at every N
+
+(Figure 11). 
+
+A.8.2 Decoding Bias 
+
+Whereas sampling noise vanishes as N → ∞ , non-default decoding introduces a systematic bias that no amount of sampling can correct, because tem-perature and top-p reshape the target distribution itself. We quantify this deterministically. For each condition we recompute the exact expected com-posite score under a grid of temperatures T ∈{0.1, 0.5, 1.0, 1.3} and top-p ∈ {0.8, 0.9, 1.0},and measure the bias relative to the model’s na-tive ( T =1 .0, top-p=1 .0) distribution (Table 11). 25 Table 6: Main effect and interaction table for the factorial model. 
+
+PARAMETER E SD SNR dPD 
+
+μ∅ 66.25 14.21 AYA -32B 21.19 13.01 1.63 0.99 GEMMA 3-27B -11.99 13.15 0.91 0.77 LLAMA 3.3-70B 0.31 12.79 0.02 0.55 MINISTRAL -14B 5.11 9.59 0.53 0.62 QWEN 3 N EXT -80B -14.63 12.17 1.20 0.93 USA 2.84 5.43 0.52 0.55 CANADA 4.62 5.72 0.81 0.90 CHINA -6.46 6.19 1.04 0.95 FRANCE -1.00 4.72 0.21 0.54 AYA -32B × USA -1.18 3.03 0.39 0.55 AYA -32B × CANADA -3.77 2.88 1.31 0.94 AYA -32B × CHINA 5.35 4.53 1.18 0.77 AYA -32B × FRANCE -0.39 2.89 0.14 0.42 GEMMA 3-27B × USA 3.21 5.34 0.60 0.63 GEMMA 3-27B × CANADA 2.14 5.63 0.38 0.47 GEMMA 3-27B × CHINA -5.40 8.63 0.63 0.61 GEMMA 3-27B × FRANCE 0.05 5.34 0.01 0.51 LLAMA 3.3-70B × USA 2.59 5.86 0.44 0.58 LLAMA 3.3-70B × CANADA 5.20 5.49 0.95 0.77 LLAMA 3.3-70B × CHINA -4.29 9.12 0.47 0.58 LLAMA 3.3-70B × FRANCE -3.50 5.55 0.63 0.67 MINISTRAL -14B × USA -4.00 3.10 1.29 0.88 MINISTRAL -14B × CANADA -2.99 3.16 0.95 0.73 MINISTRAL -14B × CHINA 4.54 4.11 1.11 0.72 MINISTRAL -14B × FRANCE 2.45 2.98 0.82 0.87 QWEN 3 N EXT -80B × USA -0.61 2.83 0.22 0.58 QWEN 3 N EXT -80B × CANADA -0.57 2.87 0.20 0.46 QWEN 3 N EXT -80B × CHINA -0.20 5.11 0.04 0.46 QWEN 3 N EXT -80B × FRANCE 1.39 2.81 0.49 0.53 0.00 0.05 0.10    
+
+> USA Canada
+> 50 100 0.00 0.05 0.10
+> China
+> 50 100
+> France
+
+Figure 9: Main Effect of Target Country 
+
+The distortion is small for high-consensus mod-els (Gemma: 0.18 points) but substantial for low-consensus Ministral ( M|Bias | = 1 .38 , reaching up to +2 .79 points at low temperature and re-versing sign at T =1 .3; Figures 12–13), compa-rable to the effects in Table 2. As with sampling noise, the bias is strongly anti-correlated with Con-sensus ( r = −0.85 , p < 0.001 , n=20 condi-
+
+Table 7: Pairwise marginal contrasts between Target Countries. 
+
+CONTRAST E SD SNR dPD 
+
+USA - C ANADA -1.78 1.83 0.97 0.74 USA - C HINA 9.30 6.93 1.34 0.95 USA - F RANCE 3.84 4.40 0.87 0.80 CANADA - C HINA 11.08 7.60 1.46 1.00 CANADA - F RANCE 5.62 5.05 1.11 0.84 CHINA - F RANCE -5.47 3.79 1.44 0.80 
+
+tions). Intuitively, the results confirm that a sharp, high-consensus PMF has almost no dispersed mass for temperature or nucleus truncation to reshape, whereas a flat, low-consensus PMF has its mean substantially shifted. 
+
+A.9 Reliability of sampling-based estimators under ideal decoding 
+
+The exact-PMF framework eliminates sampling er-ror by construction. To quantify what a researcher stands to lose by instead adopting the standard 26 20 30 40 50 60 70 80 90 100 
+
+> CETSCALE
+> 0.00.10.20.30.40.50.6
+> P (Sm,t )
+> USA Canada China France
+
+(a) Aya Expanse 32B 20 30 40 50 60 70 80 90 100  
+
+> CETSCALE
+> 0.00.10.20.30.40.50.6
+> P (Sm,t )
+> USA Canada China France
+
+(b) Gemma 3 27B 20 30 40 50 60 70 80 90 100  
+
+> CETSCALE
+> 0.00.10.20.30.40.50.6
+> P (Sm,t )
+> USA Canada China France
+
+(c) Llama 3.3 70B 20 30 40 50 60 70 80 90 100 
+
+> CETSCALE
+> 0.00.10.20.30.40.50.6
+> P (Sm,t )
+> USA Canada China France
+
+(d) Ministral 14B 20 30 40 50 60 70 80 90 100  
+
+> CETSCALE
+> 0.00.10.20.30.40.50.6
+> P (Sm,t )
+> USA Canada China France
+
+(e) Qwen3 Next 80B 
+
+Figure 10: Distribution of CETSCALE for Model and Target Country. 
+
+Figure 11: Standard error of the sampling-based CETSCALE estimator versus per-condition sample size 
+
+N , by model. Low-consensus models (e.g., Ministral) incur substantially larger error at every budget. 
+
+Figure 12: Mean decoding bias versus temperature, colored by Consensus. Low-consensus models exhibit large, sign-changing distortions. Table 8: Trend effects for model size (billions of param-eters). 
+
+MODEL FAMILY E SD SNR dPD 
+
+AYA 1.65 0.28 5.87 1.00 GEMMA 1.12 7.21 0.16 0.70 MINISTRAL 0.87 1.12 0.78 0.56 QWEN 3 -0.00 1.79 0.00 0.89 
+
+Figure 13: Mean decoding bias versus top-p, colored by Consensus. 
+
+Monte Carlo sampling paradigm, we ask a decision-relevant question: what fraction of the causal ef-fects we report could a sampling-based study get wrong (i.e., recover with the opposite sign) purely as an artifact of finite sampling? 
+
+Setup. We treat our exact effect distributions as ground truth. For each factorial parameter (i.e., the M ODEL and T ARGET main effects and ev-27 Table 9: Aggregate versus factorial decomposition of Target-Country effects on CETSCALE ethnocentrism, computed with identical OT-coupled estimators. The aggregate benchmark (collapsing over M ODEL ) reports a single Target-Country main effect that is, by construction, uniform across models. The factorial M ODEL × TARGET 
+
+interaction isolates the country-of-origin bias that aggregation cannot represent. Bold interactions indicate a sign reversal relative to the aggregate main effect (i.e., conditions for which the aggregate view is directionally incorrect). 
+
+ISOLATED EFFECT 
+
+TARGET MODEL (O RIGIN ) E SD SNR DPD 
+
+Panel A. Aggregate benchmark (Target main effect; collapses over Model) 
+
+USA — ( ALL MODELS ) 2.84 5.43 0.52 0.55 CANADA — ( ALL MODELS ) 4.62 5.72 0.81 0.90 CHINA — ( ALL MODELS ) -6.46 6.19 1.04 0.95 FRANCE — ( ALL MODELS ) -1.00 4.72 0.21 0.54 
+
+Panel B. Factorial interaction (Model × Target; isolated country-of-origin bias) 
+
+USA LLAMA 3.3 70B (US) † 2.59 5.86 0.44 0.58 GEMMA 3 27B (US) † 3.21 5.34 0.60 0.63 AYA EXPANSE 32B (CA) -1.18 3.03 0.39 0.55 MINISTRAL 14B (FR) -4.00 3.10 1.29 0.88 QWEN 3 N EXT 80B (CN) -0.61 2.83 0.22 0.58 CANADA 
+
+LLAMA 3.3 70B (US) 5.20 5.49 0.95 0.77 GEMMA 3 27B (US) 2.14 5.63 0.38 0.47 AYA EXPANSE 32B (CA) † -3.77 2.88 1.31 0.94 MINISTRAL 14B (FR) -2.99 3.16 0.95 0.73 QWEN 3 N EXT 80B (CN) -0.57 2.87 0.20 0.46 CHINA 
+
+LLAMA 3.3 70B (US) -4.29 9.12 0.47 0.58 GEMMA 3 27B (US) -5.40 8.63 0.63 0.61 AYA EXPANSE 32B (CA) 5.35 4.53 1.18 0.77 MINISTRAL 14B (FR) 4.54 4.11 1.11 0.72 QWEN 3 N EXT 80B (CN) † -0.20 5.11 0.04 0.46 FRANCE 
+
+LLAMA 3.3 70B (US) -3.50 5.55 0.63 0.67 GEMMA 3 27B (US) 0.05 5.34 0.01 0.51 AYA EXPANSE 32B (CA) 0.39 2.89 0.14 0.42 MINISTRAL 14B (FR) † 2.45 2.98 0.82 0.87 QWEN 3 N EXT 80B (CN) 1.39 2.81 0.49 0.53 
+
+Note. All effects are isolated distributions computed via the same optimal-transport (comonotone) coupling used throughout the paper; E is the mean shift on the composite CETSCALE score, SNR = |E|/SD, and dPD is the discrete Probability of Direction. Panel A is the entire country signal an aggregate benchmark can express; it is identical across models by construction. Panel B isolates the M ODEL × TARGET interaction, which is orthogonal to both marginals and therefore identically zero under aggregation. Boldface marks interactions whose sign reverses relative to the corresponding Panel A main effect. †Ingroup cell (Target country matches the model’s country of origin). 
+
+ery M ODEL × TARGET interaction) we compute its exact effect size Eexact using the sum-to-zero contrasts consistent with Theorem 3.1. We then model a researcher who estimates the same con-trast from N sampled CETSCALE responses per condition. Because items are conditionally inde-pendent (Sec. A.2), a single composite draw has variance PKk=1 Var( Yk), so the contrast estimator is asymptotically 
+
+ˆE ∼ N Eexact , X
+
+> c
+
+α2 
+
+> c
+
+σ2 
+
+> c
+
+/N 
+
+!
+
+,where αc are the contrast coefficients and σ2 
+
+> c
+
+is the composite variance of condition c. The flip probability (Pflip ) is the probability that the sam-pling estimate carries the wrong sign, 
+
+Pflip = Φ − sign( Eexact ) E[ ˆE]SD( ˆE)
+
+!
+
+, (96) where Φ is the standard normal CDF. We eval-uate the realistic per-condition budgets N ∈{10 , 100 , 1000 } under the default decoding setting (T =1 .0, top-p=1 .0), isolating the cost of sampling noise alone. 
+
+Results. Table 12 bins parameters by their exact absolute effect size (in composite-score units on the 17 –119 CETSCALE) and reports the mean flip probability. Figure 14 shows the full relationship between effect size and Pflip .28 Table 10: Standard error (composite-score units) of a sampling-based estimator of the CETSCALE score, averaged per model, as a function of the per-condition sample size N . Models are sorted by multivariate Consensus. 
+
+MODEL Cns N =10 N =10 2 N =10 3 N =10 6
+
+GEMMA 3-27B 0.947 0.304 0.096 0.030 0.001 AYA -32B 0.935 0.358 0.113 0.036 0.001 LLAMA 3.3-70B 0.912 0.493 0.156 0.049 0.002 QWEN 3 N EXT -80B 0.909 0.517 0.164 0.052 0.002 MINISTRAL -14B 0.661 1.656 0.524 0.166 0.005 
+
+Table 11: Decoding-induced bias (composite-score units) relative to the native distribution, aggregated over the 
+
+T × top-p grid. M|Bias | is the mean absolute bias; SD Bias its standard deviation across the grid. Models sorted by Consensus. 
+
+MODEL Cns M|Bias | SD Bias 
+
+GEMMA 3-27B 0.95 0.18 0.25 AYA -32B 0.94 0.24 0.38 LLAMA 3.3-70B 0.91 0.59 0.75 QWEN 3 N EXT -80B 0.91 0.33 0.53 MINISTRAL -14B 0.66 1.38 1.39 
+
+Table 12: Mean sign-flip probability of a sampling-based estimator under default decoding ( T =1 .0, top-p=1 .0), stratified by exact effect size (composite-score units) and per-condition sample size N . Params is the share of all factorial parameters falling in each bin. 
+
+|EEXACT | PARAMS (%) N =10 N =100 N =1000 [0 , 1) 24.1 0.180 0.063 0.013 
+
+[1 , 2) 6.9 0.004 0.000 0.000 
+
+[2 , 5) 41.4 0.002 0.000 0.000 
+
+[5 , 10) 17.2 0.000 0.000 0.000 
+
+≥ 10 10.3 0.000 0.000 0.000 
+
+29 Figure 14: Sign-flip probability of a sampling-based estimator as a function of the exact absolute effect size, for per-condition budgets N ∈ { 10 , 100 , 1000 } under default decoding. Reliability degrades sharply for small effects and low sampling budgets, while large effects are recovered reliably at any N .
+
+Findings. We observe three important findings. First, large and moderate effects are robust. Every parameter with |Eexact | ≥ 2 (a cumulative 68 .9% 
+
+of all effects) has a flip probability below 0.01 even at the smallest budget N =10 . A researcher would recover the sign of these effects reliably. Second, the risk is concentrated entirely in the small-effect regime. Parameters with |Eexact | < 1, which con-stitute 24 .1% of the factorial design, flip 18% of the time at N =10 and still 6.3% of the time at the commonly used budget N =100 . In our study these small effects include several substantively interest-ing interactions (e.g., the near-null Qwen3 ×China term), precisely the subtle country-of-origin signals a controlled study aims to detect. Third, the risk decays slowly: reducing the flip rate from 18% to 
+
+1.3% requires a 100 × increase in sample size (from 
+
+N =10 to N =1000 ), reflecting the 1/√N conver-gence of the estimator. Because the exact-PMF framework attains the N → ∞ limit in a single forward pass, it removes this reliability–compute tradeoff, and guarantees that the sign and magni-tude of every reported effect are free of sampling artifacts. 
+
+A.10 Extending the Framework to Prompt Framing 
+
+A key strength of casting behavioral evaluation as a fully crossed factorial design is extensibility: any new source of variation can be introduced as an additional factor and analyzed through the identi-cal distributional-ANOVA pipeline (Theorem 3.1, Corollaries A.9–A.11). We demonstrate this by pro-moting the administration prompt to a first-class experimental factor, λPrompt . This yields a new ca-pability. Rather than treating prompt phrasing as a fixed background choice, the framework isolates its causal effect on the measured construct, quanti-fies how it interacts with each model, and recovers the latent trait with framing held under statistical control. We construct six system-prompt framings that preserve the measurement instrument exactly, namely, all retain the 1–7 scale, the agreement polarity, and the digit-only response schema, and hold every CETSCALE item verbatim. Only the surrounding framing wording varies (Table 13). We evaluate a fully crossed M ODEL × TARGET ×
+
+PROMPT design over three models spanning the consensus and ethnocentrism ranges observed in the main study (Gemma 3 27B, Aya Expanse 32B, Ministral 14B), four target countries, and the six framings, for 3 × 4 × 6 × 17 = 1 ,224 exact item-level PMFs. 
+
+Isolated effects under the three-factor design. 
+
+Table 14 reports the full decomposition: The grand-mixture baseline μ∅, the isolated main ef-fects for all three factors, and the three fami-lies of two-way interactions (M ODEL × TARGET ,MODEL × PROMPT , T ARGET × PROMPT ). Each row is an exact effect distribution summarized by mean shift ( E), predictive dispersion (SD), signal-to-noise ratio (SNR), and discrete probability of direction (dPD). Three capabilities of the framework are visible directly in Table 14. First, the country-of-origin signal is recovered with framing controlled. The TARGET main effects reproduce the pattern of the main study (Canada +4 .7, China −6.4, France 
+
+−0.4, USA +2 .1), and every T ARGET × PROMPT 
+
+interaction is small (all |E| < 1.5, SNR < 0.4,dPD near chance). Second, prompt framing is quantified as its own causal effect. The P ROMPT main effect spans roughly 13 composite-score points ( +6 .9 for v5 to −6.7 for v2), giving a direct, exact measurement of how administration framing shifts the construct level. Third, model-specific framing sensitivity be-comes measurable. The M ODEL × PROMPT block shows Gemma 3 27B interacting weakly with fram-ing (all |E| < 3.9, SNR < 0.5), whereas Aya 32B and Ministral 14B interact strongly (Aya ×v2 SNR 
+
+2.2; Ministral ×v0 SNR 1.6). Consistent with these 30 Table 13: Prompt framing variants. All preserve the 1–7 scale, agreement polarity, and digit-only response schema; every CETSCALE item is held verbatim. 
+
+Variant Framing 
+
+v0_original Consumer market-research persona; explicit 7-point scale; digit only. v1_participant Survey-participant framing; agreement scale 1–7; single digit only. v2_concise Minimal instruction; rate 1–7; output only the number. v3_instructional Task-style instruction; scale 1 (disagree) to 7 (agree); digit 1–7 only. v4_roleplay Everyday-shopper roleplay; 7 = agree, 1 = disagree; digit only. v5_original_no_whitespace v0 wording with whitespace/formatting normalized. 
+
+interactions, the prompt-controlled M ODEL main effects recover the trait ordering of the main study, with Aya 32B highest ( +9 .1), Ministral 14B inter-mediate ( +4 .0), and Gemma 3 27B lowest ( −13 .0). The reduced magnitudes relative to Table 6 reflect the three-model subset and its distinct grand mean (μ∅ = 62 .3). 31 Table 14: Full three-factor effect decomposition (Part 1 of 2: Main effects and Model × Target). Rows are isolated effect distributions summarized by mean shift ( E), predictive dispersion (SD), signal-to-noise ratio (SNR), and discrete probability of direction (dPD). 
+
+PARAMETER E SD SNR dPD 
+
+μ∅ 62.34 13.49 AYA -32B 9.08 12.67 0.72 0.76 GEMMA 3-27B -13.03 11.74 1.11 0.90 MINISTRAL -14B 3.96 9.61 0.41 0.70 CANADA 4.74 5.24 0.90 0.93 CHINA -6.38 6.08 1.05 0.97 FRANCE -0.44 4.78 0.09 0.48 USA 2.08 5.43 0.38 0.44 
+
+> V
+
+0_ ORIGINAL 6.74 10.16 0.66 0.64 
+
+> V
+
+1_ PARTICIPANT -0.17 7.22 0.02 0.58 
+
+> V
+
+2_ CONCISE -6.68 9.73 0.69 0.82 
+
+> V
+
+3_ INSTRUCTIONAL -4.08 7.76 0.53 0.62 
+
+> V
+
+4_ ROLEPLAY -2.67 6.94 0.38 0.68 
+
+> V
+
+5_ NO _WHITESPACE 6.86 9.32 0.74 0.74 AYA -32B × CANADA 0.31 2.14 0.15 0.35 AYA -32B × CHINA 0.36 4.01 0.09 0.51 AYA -32B × FRANCE 0.08 3.33 0.03 0.53 AYA -32B × USA -0.75 3.47 0.22 0.48 GEMMA 3-27B × CANADA 2.14 3.28 0.65 0.62 GEMMA 3-27B × CHINA -4.40 9.86 0.45 0.59 GEMMA 3-27B × FRANCE -1.83 5.38 0.34 0.55 GEMMA 3-27B × USA 4.09 3.47 1.18 0.88 MINISTRAL -14B × CANADA -2.45 3.08 0.80 0.77 MINISTRAL -14B × CHINA 4.04 4.52 0.89 0.82 MINISTRAL -14B × FRANCE 1.74 2.48 0.70 0.74 MINISTRAL -14B × USA -3.34 4.10 0.81 0.77 
+
+32 Table 15: Full three-factor effect decomposition (Part 2 of 2: Model × Prompt and Target × Prompt interactions). 
+
+PARAMETER E SD SNR dPD 
+
+AYA -32B × V0 9.20 14.27 0.64 0.66 AYA -32B × V1 -3.14 7.48 0.42 0.66 AYA -32B × V2 -9.64 4.36 2.21 1.00 AYA -32B × V3 -5.12 6.00 0.85 0.84 AYA -32B × V4 0.13 8.15 0.02 0.51 AYA -32B × V5 8.57 12.80 0.67 0.66 GEMMA 3-27B × V0 -0.99 5.35 0.18 0.47 GEMMA 3-27B × V1 -1.48 3.10 0.48 0.64 GEMMA 3-27B × V2 3.89 2.14 1.82 0.97 GEMMA 3-27B × V3 0.90 2.80 0.32 0.67 GEMMA 3-27B × V4 -0.11 3.41 0.03 0.44 GEMMA 3-27B × V5 -2.20 4.84 0.46 0.56 MINISTRAL -14B × V0 -8.22 5.09 1.61 1.00 MINISTRAL -14B × V1 4.62 3.39 1.36 0.99 MINISTRAL -14B × V2 5.75 3.77 1.53 0.95 MINISTRAL -14B × V3 4.23 3.80 1.11 0.96 MINISTRAL -14B × V4 -0.01 3.81 0.00 0.64 MINISTRAL -14B × V5 -6.37 4.41 1.44 0.96 CANADA × V0 -1.04 2.88 0.36 0.80 CANADA × V1 0.26 2.58 0.10 0.59 CANADA × V2 1.28 3.36 0.38 0.57 CANADA × V3 0.01 2.66 0.00 0.42 CANADA × V4 -0.22 2.27 0.10 0.36 CANADA × V5 -0.29 3.17 0.09 0.54 CHINA × V0 0.46 3.56 0.13 0.65 CHINA × V1 0.75 3.30 0.23 0.37 CHINA × V2 -1.45 4.88 0.30 0.46 CHINA × V3 -0.35 3.52 0.10 0.58 CHINA × V4 0.76 3.64 0.21 0.45 CHINA × V5 -0.17 4.16 0.04 0.56 FRANCE × V0 0.42 3.43 0.12 0.37 FRANCE × V1 -0.93 3.37 0.27 0.62 FRANCE × V2 -0.21 3.38 0.06 0.46 FRANCE × V3 1.19 4.08 0.29 0.59 FRANCE × V4 -0.55 3.44 0.16 0.41 FRANCE × V5 0.07 3.73 0.02 0.42 USA × V0 0.16 2.39 0.06 0.45 USA × V1 -0.09 2.17 0.04 0.44 USA × V2 0.38 3.14 0.12 0.46 USA × V3 -0.84 2.43 0.35 0.57 USA × V4 0.01 2.20 0.00 0.46 USA × V5 0.39 2.91 0.13 0.48 
+
+33

@@ -1,0 +1,1185 @@
+Title: Position Bias in Ordinal Classification: A Systematic Evaluation
+
+URL Source: https://arxiv.org/pdf/2608.08869v1
+
+Published Time: Tue, 11 Aug 2026 01:33:22 GMT
+
+Number of Pages: 27
+
+Markdown Content:
+# Position Bias in Ordinal Classification: A Systematic Evaluation 
+
+Yu Wang 1, Jeffrey Zhou 2, Menglin Liu 3, Ge Shi 141Cornell University, 2University of Washington, 3The Chinese University of Hong Kong, Shenzhen, 
+
+> 4
+
+University of California, Davis Large language models are increasingly used for ordinal classification, yet semantically equivalent changes to prompt organization can alter their predictions. We conduct systematic experiments to characterize positional bias from label order, demonstration order, and demonstration placement. First, we apply the three probes to ten frontier LLMs on a common ordinal-classification task; every model is sensitive to all three positional sources, showing that the problem is pervasive. Second, we vary eight prompt-, task-, and model-level factors across five datasets; accuracy and stability are often misaligned, and only lower scale cardinality consistently improves both. Third, we compare pointwise, pairwise, and listwise inference, alternative aggregation and debiasing methods, and joint configurations; the tested corrections do not provide a reliable remedy, while a comparison-based listwise formulation offers the best balance but transfers unevenly across models and bias sources. These findings show that positional robustness depends on the full system configuration rather than the model alone. Ordinal-classification systems should therefore be selected jointly for predictive performance and stability.  
+
+> Status:
+
+Preprint. 
+
+1 Introduction 
+
+Large language models are increasingly used as classifiers through in-context learning, but their predictions can change under prompt variations that should not alter the task. Prior work documents sensitivity to label or option identifiers, prompt formatting, and demonstration order (Min et al., 2022; Sclar et al., 2024; Lu et al., 2022; Kumar and Talukdar, 2021; Wei et al., 2024; Yang et al., 2025b). Position bias is one manifestation: predictions depend on option order and identifiers (Pezeshkpour and Hruschka, 2024; Zheng et al., 2024; Wei et al., 2024; Yang et al., 2025b), the arrangement of demonstrations (Lu et al., 2022; Kumar and Talukdar, 2021), or their placement relative to the query (Cobbina and Zhou, 2025). To our knowledge, most position-bias evidence for classification comes from nominal multiple-choice tasks, where labels have no inherent order (Pezeshkpour and Hruschka, 2024; Zheng et al., 2024; Wei et al., 2024; Yang et al., 2025b). Ordinal classification instead predicts along a ranked scale, as in sentiment intensity and review scoring (Gutiérrez et al., 2016). Here, distant mistakes are more consequential than adjacent ones, motivating MAE alongside accuracy, while Spearman’s correlation captures rank agreement (Baccianella et al., 2009). Positional instability can therefore distort individual labels, rankings, and scalar measurements (Licht et al., 2025). Figure 1 illustrates the simplest case: repeating the same numeric output after reversing the label mapping changes its semantic meaning. Position bias is well documented in pairwise and listwise LLM judges (Wang et al., 2024; Shi et al., 2025). Rubric-based and scalar scoring additionally exhibit order-sensitive score selection, prompt-induced scoring shifts, and numerical-output artifacts (Xu et al., 2026; Li et al., 2026; Licht et al., 2025). The most directly comparable work in ordinal classification, LAMPO (Qin et al., 2024), compares each test instance with individual demonstrations and swaps their order to reduce pairwise position bias. It does not systematically probe label-mapping order, demonstration ordering, or placement, broader prompt factors, competing pipelines, or transfer across models. We address this gap with three probes that isolate label order, demonstration order, and demonstration placement. 
+
+Pervasiveness. Across ten frontier LLMs from seven providers, all 30 model–probe combinations show significant instability under greedy decoding, with prediction flip rates (PFRs) from 8.5% to 61.5%. Under stochastic decoding, positional bias remains distinguishable from repeated-run noise for six models. 1arXiv:2608.08869v1 [cs.CL] 9 Aug 2026 Figure 1: Illustrative label-order sensitivity in SST-5. The prompts differ only in the numeric mapping and remapped demonstration labels; demonstrations are omitted. Repeating output 5 changes the prediction from very positive to very negative.  
+
+> Factors.
+
+Controlled ablations across eight prompt- and model-level factor families show that accuracy and stability are often decoupled. Natural-language labels and minimal instructions raise label-order PFR by 59.5 and 48.8 points while changing accuracy by only +1 .3 and −3.7 points; among the tested factors, reducing scale cardinality is the only intervention that consistently improves both performance and stability.  
+
+> Mitigation and transfer.
+
+PriDe (Zheng et al., 2024) and Contextual Calibration (Zhao et al., 2021) do not reduce label-order bias, while pairwise inference (Qin et al., 2024) and direct listwise inference adapted from learning-to-rank formulations (Liu, 2009; Sun et al., 2023) sacrifice performance. Our listwise-compare formulation reduces label-order PFR by 18.1 points with little accuracy loss. Joint prompt configurations selected on Qwen3 (Yang et al., 2025a) transfer unevenly and can trade one form of positional stability for another. Together, these results show that ordinal-classification prompts and pipelines should be selected as multi-objective robustness configurations rather than by accuracy under a single prompt arrangement. 
+
+2 Related Work 
+
+In-context learning is sensitive to prompt formatting, label surface forms, and the selection and order of demonstrations; even replacing demonstration labels with incorrect ones can preserve substantial performance, showing that prompt-level regularities contribute alongside task semantics (Zhao et al., 2021; Sclar et al., 2024; Lu et al., 2022; Min et al., 2022). These sensitivities motivate treating prompt design as an experimental factor rather than a fixed implementation detail. Multiple-choice question (MCQ) studies identify systematic preferences for option positions, identifiers, and symbols, with effects varying across models (Pezeshkpour and Hruschka, 2024; Zheng et al., 2024; Wei et al., 2024; Yang et al., 2025b). Related position and scoring biases occur in LLM judges (Wang et al., 2024; Shi et al., 2025; Xu et al., 2026). Ordinal classification remains comparatively underexplored: LAMPO decomposes prediction into pairwise comparisons between the test instance and individual demonstrations and swaps pair order to reduce comparison-position bias, but does not systematically probe label-mapping order, demonstration ordering, or placement (Qin et al., 2024). Proposed mitigations include contextual, domain-context, and batch calibration; position-prior correction; permutation aggregation or training; and distribution-level correction (Zhao et al., 2021; Fei et al., 2023; Zhou et al., 2024; Zheng et al., 2024; Tang et al., 2024; Liusie et al., 2024; Li et al., 2025). Most are evaluated within a particular bias source or task setting, whereas we jointly measure label order, demonstration order, and demonstration placement in ordinal ICL and compare prompt-level and pipeline-level interventions under a common framework. 
+
+3 Measuring Position Bias 
+
+This section defines the task, datasets, positional probes, and evaluation metrics used throughout the study. 2Dataset m D Domain Labels (ordinal order) SST-5 (Socher et al., 2013) 5 25 Movie reviews very negative, negative, neutral, positive, very positive Yelp-5 (Zhang et al., 2015) 5 25 Business reviews very negative, negative, neutral, positive, very positive Twitter (Rosenthal et al., 2017) 3 15 Social media negative, neutral, positive Hate (Basile et al., 2019) 2 10 Social media non-hate, hate Offensive (Zampieri et al., 2019) 2 10 Social media non-offensive, offensive 
+
+Table 1: Overview of datasets. Access and licensing details appear in Supplementary Section C.  
+
+> 3.1 Task and Datasets
+
+We study m-way ordinal classification through K-shot-per-class in-context learning, where m is the number of ordered classes and K is the number of labeled demonstrations sampled for each class. Each prompt therefore contains D = mK demonstrations, followed by one test input that the model assigns to one of the 
+
+m classes. We use five datasets spanning m ∈ { 2, 3, 5} and two task domains, summarized in Table 1. Unless the demonstration count is being ablated, we set K = 5 , giving D = 10 , 15 , or 25 demonstrations for the two-, three-, and five-way datasets, respectively. Phase 0 fixes SST-5 ( m = 5 , D = 25 ) to compare ten frontier models under a common task, whereas Phases 1 and 2 aggregate results over all applicable datasets and three demonstration seeds. Each dataset uses a fixed stratified test set of 200 instances.  
+
+> 3.2 Position Bias: Sources and Measurement
+
+Position bias occurs when changing the positional arrangement of prompt components causes a model’s prediction to change, even though the semantic content remains the same. We measure it through three independent probes, each targeting a different source of positional sensitivity. Each probe varies one positional dimension while holding the others at their base values. Probe 1 measures model sensitivity to the mapping between numeric labels and semantic classes. We run the model twice, once with each mapping. Taking SST-5 as an example, in the natural order run, labels are assigned as 1: very negative, 2: negative, 3: neutral, 4: positive, 5: very positive. In the reversed run, the mapping is flipped: 1: very positive, 2: positive, 3: neutral, 4: negative, 5: very negative. Both the label-space description in the prompt and the demonstration labels are reversed together. Predictions from the reversed run are mapped back to the original class space before comparison. Probe 2 targets the ordering of few-shot demonstrations within the prompt. We construct base, class-ascending, class-descending, and fixed-random orderings. Taking SST-5 as an example with 25 demonstrations (5 per class), the class-ascending order groups all class-1 demonstrations first, followed by class-2, and so on up to class-5. The class-descending order reverses this arrangement, while the random order shuffles the same 25 demonstrations with a fixed seed. Probe 3 targets where the demonstration block is placed relative to the test input. We run the model under three placements. In the base placement, all demonstrations appear before the test input. In the after placement, all demonstrations appear after the test input. In the split placement, the first half of the demonstrations appear before the test input and the second half after. For each experimental condition, we apply all three probes simultaneously. In some conditions, certain probes may not be applicable or require modified interpretation; we address these cases when reporting the corresponding results. Implementation details are provided in Supplementary Section E.   
+
+> 3.3 Performance and Bias Metrics Performance metrics.
+
+We report exact-match accuracy (Acc. ↑) and macro-averaged F1 (F1 ↑). To capture ordinal performance, we also report Spearman’s ρ ↑, which measures rank agreement between predicted and gold labels, and MAE ↓, which measures their average class distance. These metrics reveal ranking errors and distinguish distant mistakes from near-misses, aspects that are largely absent from position-bias evaluations centered on nominal multiple-choice tasks. We also report parse failure rate, the proportion of outputs that cannot be mapped to a valid label.  
+
+> Position-sensitivity metrics.
+
+Following prior position-consistency and flip-rate formulations (Shi et al., 2025; Labruna et al., 2025; Li et al., 2026), we report Prediction Flip Rate (PFR), the proportion of instances whose semantic prediction changes across positional conditions, whether or not the change improves accuracy. For a two-condition contrast, PFR is the complement of Position Consistency; our aggregate extension marks an 3(a) Greedy decoding (b) Stochastic decoding                                 
+
+> Model P1 P2 P3 Noise aTotal bMcNemar pSig. Claude Haiku 4.5 0.180 [0.133, 0.239] 0.240 [0.186, 0.304] 0.225 [0.173, 0.288] 0.050 [0.027, 0.090] 0.165 [0.120, 0.223] <0.001 ✓
+> Claude Sonnet 4.5 0.105 [0.070, 0.155] 0.180 [0.133, 0.239] 0.615 [0.546, 0.680] 0.000 [0.000, 0.019] 0.105 [0.070, 0.155] <0.001 ✓
+> GPT-5.4 0.085 [0.054, 0.132] 0.180 [0.133, 0.239] 0.325 [0.264, 0.393] 0.050 [0.027, 0.090] 0.100 [0.066, 0.149] 0.022 ✓
+> Gemini 3.1 Flash-Lite 0.195 [0.146, 0.255] 0.245 [0.191, 0.309] 0.200 [0.151, 0.261] 0.060 [0.035, 0.102] 0.185 [0.137, 0.245] <0.001 ✓
+> Gemini 3.1 Pro 0.140 [0.099, 0.195] 0.100 [0.066, 0.149] 0.135 [0.095, 0.189] 0.045 [0.024, 0.083] 0.130 [0.090, 0.184] 0.001 ✓
+> DeepSeek V4 Flash 0.165 [0.120, 0.223] 0.300 [0.241, 0.367] 0.275 [0.218, 0.341] 0.130 [0.090, 0.184] 0.145 [0.103, 0.201] 0.338 ×
+> DeepSeek V4 Pro 0.180 [0.133, 0.239] 0.305 [0.245, 0.372] 0.340 [0.278, 0.408] 0.160 [0.116, 0.217] 0.210 [0.159, 0.272] 0.067 ×
+> Llama 4 Maverick 0.195 [0.146, 0.255] 0.330 [0.269, 0.398] 0.394 [0.329, 0.463] 0.060 [0.035, 0.102] 0.185 [0.137, 0.245] <0.001 ✓
+> Qwen3.7-Plus 0.170 [0.124, 0.228] 0.120 [0.082, 0.172] 0.175 [0.129, 0.234] 0.135 [0.095, 0.189] 0.155 [0.111, 0.212] 0.298 ×
+> Grok 4.3 0.095 [0.062, 0.144] 0.290 [0.232, 0.356] 0.190 [0.142, 0.250] 0.075 [0.046, 0.120] 0.095 [0.062, 0.144] 0.240 ×
+
+Table 2: Position sensitivity under greedy and stochastic decoding. Read each P1–P3, Noise, and Total cell as a prediction flip rate (PFR) estimate on the unshaded line and its Wilson 95% confidence interval on the gray line. In panel (a), P1, P2, and P3 denote label order, demonstration order, and demonstration placement. Panel (b) uses temperature 0.7: Noise a compares two runs of the same prompt, while Total b
+
+compares natural and reversed label orders. Green checks indicate significance under a one-sided McNemar test at p < 0.05 ; red crosses indicate nonsignificance. instance as flipped when any condition changes its prediction. Lower values are better. P1 ↓ compares natural and reversed label mappings. P2a ↓ and P2b ↓ compare random demonstration order with class-ascending and class-descending order, while P3a ↓ and P3b ↓ compare the before-query placement with the after and split placements. Phase 0 reports the aggregate extension for P2 and P3, whereas the factor analyses report pairwise contrasts.  
+
+> 3.4 Statistical Tests
+
+In Phase 0, we use three statistical tests. The Wilson confidence interval provides reliable coverage for proportions even at extreme values or small sample sizes; we use it to test whether PFR is significantly greater than zero. McNemar’s test compares two paired binary outcomes on the same instances; we use it both to compare accuracy across the two conditions of Probe 1 and, in Phase 0b, to test whether total flip indicators exceed repeated-run noise indicators. Cochran’s Q test extends McNemar’s test to more than two related groups; we use it to test whether accuracy differs across the multiple conditions of Probes 2 and 3. All tests use a significance level of α = 0 .05 . In Phases 1 and 2, each condition is run across three demonstration seeds, and we report the mean and standard deviation. 
+
+4 Phase 0: Prevalence of Position Bias 
+
+Phase 0 evaluates ten frontier LLMs from seven providers on SST-5 using all three probes (Table 2). All models are accessed through OpenRouter; model and API details appear in Supplementary Section A. Phase 0a uses greedy decoding to isolate positional effects, while Phase 0b uses stochastic decoding to compare positional sensitivity with repeated-run noise.  
+
+> 4.1 Phase 0a: Deterministic Probing
+
+Phase 0a uses greedy decoding. Because greedy decoding is deterministic, any prediction differences across probe conditions are attributable solely to the positional manipulation. Panel (a) reports PFRs with Wilson 95% confidence intervals. All 30 intervals exclude zero, confirming universal position bias under greedy decoding. Even the smallest PFR (0.085 for GPT-5.4 on Probe 1) means roughly one in twelve predictions flips solely because the label order is reversed. 4Phase Factor Levels 1 Label format Letter, Numeric*, Natural language, Neutral ID 1 Model Qwen3-8B Base/Instruct*/Thinking, Qwen3-4B, Gemma3-12B, Ministral-3-8B, Gemma4-12B, Granite-4-8B 1 Scale cardinality 5-way*, 3-way, 2-way 1 Demo count 0, 1, 3, 5* per class 1 Prompt clarity Minimal, Explicit*, Ordinal-explicit 1 Separator Colon+space*, space, tab 1 Connector Newline*, space, newline+tab 1 Instruction mood Imperative*, interrogative, indicative 2 Inference paradigm Pointwise*, pairwise, listwise-compare, listwise 2 Debiasing strategy None*, Label averaging, Demo averaging, PriDe, Contextual Calibration 2 Aggregation method Copeland, majority vote, weighted sum*, mean score, Bradley–Terry 2 Combined Phase 1 factors Accuracy-optimal, P1-optimal, P2a-optimal, P2b-optimal 
+
+Table 3: Factor families and configurations evaluated in this study. An asterisk (*) marks the baseline level for each factor. Bias severity varies considerably across probes and models. Probe 3 (demonstration placement) shows the largest variation, with PFRs ranging from 0.135 (Gemini 3.1 Pro) to 0.615 (Claude Sonnet 4.5). Probe 2 (demonstration order) exhibits a similar pattern, with Llama 4 Maverick and both DeepSeek models exceeding 0.30, whereas Gemini 3.1 Pro and Qwen3.7-Plus remain below 0.15. Probe 1 (label order) is comparatively stable, ranging from 0.085 to 0.195. Claude Sonnet 4.5 is particularly sensitive to demonstration placement: its aggregate P3 PFR reaches 0.615, and the after-query condition reduces accuracy by 26 percentage points, the largest effect observed.  
+
+> 4.2 Phase 0b: Stochastic Decoding
+
+Phase 0a establishes position bias under deterministic decoding, but deployed LLMs typically use stochastic decoding. To distinguish positional effects from sampling noise, we compute a noise PFR by running the same prompt twice under identical settings and compare it with the total PFR (natural vs. reversed label order) using a one-sided McNemar test on the paired instance-level flip indicators. Six of the ten models show total PFR significantly exceeding noise PFR ( p < 0.05 ), indicating that position bias persists beyond sampling noise. The remaining four (DeepSeek V4 Flash, DeepSeek V4 Pro, Qwen3.7-Plus, and Grok 4.3) do not reach significance—not because they lack position bias, which Phase 0a already establishes, but because stochastic decoding introduces enough noise to obscure it. Supplementary Table 9 reports hidden-token counts. Although reasoning is disabled, most models generate hidden tokens beyond the visible one-character response. The four models without significant differences between total and noise PFR also produce the largest hidden-token counts (156–512 per instance), and three have the highest noise PFRs in the study (0.130–0.160). This association suggests that extensive hidden-token generation may raise the noise floor, although it does not establish causation because model-specific decoding behavior or other unobserved factors could drive both.  
+
+> 4.3 Summary of Phase 0
+
+Phase 0a establishes that position bias is universal under decoding, and, for most models, remains significantly larger than sampling noise under stochastic decoding. Phase 0b confirms that the four non-significant models also exhibit the largest hidden-token counts and generally higher noise PFRs, although this association is not causal. Having established the prevalence of position bias, we next examine the factors that modulate its severity. 
+
+5 Factor Ablations 
+
+We use one-factor-at-a-time ablations to isolate how prompt- and model-level choices affect positional sensitivity. Each condition changes one level relative to the starred baseline while holding all other settings fixed. Results are averaged over the applicable datasets and three demonstration seeds; the baseline and factor implementations appear in Supplementary Sections D and F. Table 3 summarizes the design. Phase 1 varies eight independently controlled factors; Phase 2 evaluates broader interventions that may change multiple pipeline components. Temperature, sampling, and label balance remain fixed, while context length changes only with demonstration count. 5Performance residuals Position-sensitivity residuals Factor Level Acc. ↑ F1 ↑ ρ ↑ MAE ↓ P1 ↓ P2a ↓ P2b ↓ P3a ↓ P3b ↓                                                                                                                                                                                                                      
+
+> Label format Letter +2 .20 +2 .71 +3 .06 −1.53 +3 .27 +1 .18 +1 .87 +4 .04 +1 .27
+> Natural language +1 .27 +0 .35 +4 .01 −1.87 +59 .54 −13 .18 −1.96 +19 .51 +4 .44
+> Neutral ID +6 .53 +8 .10 +6 .12 −7.33 +0 .50 −7.32 −7.26 −10 .87 −12 .95
+> Model Qwen3-8B Base +7 .17 +9 .09 +6 .44 −8.33 −0.73 −3.42 +12 .47 +20 .13 +26 .19
+> Qwen3-8B Thinking +3 .05 +4 .72 +2 .73 −1.66 +9 .38 −8.77 −2.11 −21 .01 −18 .32
+> Qwen3-4B +4 .17 +6 .30 +3 .45 −4.87 −4.07 −13 .25 −10 .33 +7 .48 +5 .34
+> Gemma3-12B +11 .46 +13 .79 +8 .73 −13 .16 −2.98 −13 .98 −7.93 −15 .13 −14 .96
+> Ministral-3-8B +0 .93 +0 .49 −0.22 −0.90 +0 .84 +0 .48 +0 .94 +3 .71 −0.16
+> Gemma4-12B +13 .40 +15 .49 +11 .92 −14 .80 −7.00 −20 .75 −17 .60 −17 .81 −36 .50
+> Granite-4-8B +9 .17 +10 .97 +7 .83 −10 .90 −3.33 −17 .08 −10 .29 −1.72 +11 .01
+> Scale cardinality 3-way +25 .00 +23 .84 +2 .53 −29 .42 −16 .33 −32 .37 −26 .41 −17 .22 −25 .31
+> 2-way +43 .85 +47 .47 +2 .47 −49 .34 −17 .34 −47 .41 −35 .57 −33 .07 −48 .91
+> Demo count 0-shot +7 .13 +8 .01 +6 .45 −7.37 +6 .87 ––––1-shot +4 .40 +4 .00 +5 .79 −4.83 +3 .43 −16 .78 −7.33 −6.25 −20 .16
+> 3-shot +0 .77 +0 .80 +1 .78 −1.53 −0.13 −8.72 −6.20 −14 .62 −12 .09
+> Prompt clarity Minimal −3.68 −8.06 −25 .57 +17 .50 +48 .84 −11 .89 +8 .43 −13 .50 −12 .21
+> Ordinal-explicit +2 .77 +1 .60 −2.33 −4.10 +4 .97 +3 .48 +8 .54 +3 .38 −6.89
+> Separator Space −5.50 −6.37 −5.07 +7 .95 +0 .22 +5 .38 +11 .20 +1 .72 +0 .93
+> Tab −4.37 −5.81 −6.34 +11 .43 +0 .33 +9 .56 +15 .57 −1.59 +1 .55
+> Connector Space −7.86 −8.17 −9.28 +11 .50 +0 .61 +6 .62 +15 .56 −6.23 −2.06
+> Newline+tab −3.23 −3.91 −3.43 +3 .76 +1 .68 +0 .89 +3 .05 −2.02 −6.77
+> Mood Interrogative −3.57 −5.37 −4.67 +3 .17 +3 .97 +0 .65 +20 .50 −6.14 +1 .82
+> Indicative +1 .97 +2 .42 +1 .33 −2.90 −0.17 −3.65 −3.39 +4 .59 +2 .30
+
+Table 4: Mean Phase 1 factor residuals (all values ×100 ). Each cell reports the factor-level value minus the baseline value, averaged over applicable datasets and demonstration seeds; full mean ± SD results appear in Supplementary Tables 12 and 13.  
+
+> 5.1 Phase 1: Prompt- and Model-Level Factors
+
+Table 4 reports mean percentage-point changes from the baseline. Label format most clearly separates accuracy from stability. Natural-language labels improve accuracy by only 1.3 points but increase label-order PFR by 59.5 points. Neutral identifiers instead improve accuracy by 6.5 points and reduce demonstration-order and placement PFRs by 7.3–13.0 points, while letter labels remain close to the numeric baseline. Model effects are similarly mixed. Gemma4-12B improves accuracy and F1 by 13.4 and 15.5 points and reduces one placement PFR by 36.5 points; Gemma3-12B reduces all five PFRs. In contrast, Qwen3-8B Thinking improves accuracy by 3.0 points but raises label-order PFR by 9.4 points, while the base model improves accuracy by 7.2 points but raises placement PFRs by 20.1 and 26.2 points. Thus, stronger performance does not guarantee positional stability. Scale cardinality produces the most consistent effect. Reducing the task from five classes to three or two raises accuracy by 25.0 and 43.9 points, respectively, while reducing every PFR by 16.3–48.9 points. Simpler label spaces are therefore both easier and more stable. Demonstration count shows a different trade-off. Zero- and one-shot prompts improve accuracy by 7.1 and 4.4 points but raise label-order PFR by 6.9 and 3.4 points. When demonstrations are present, fewer examples generally reduce order and placement PFRs; one-shot reductions range from 6.2 to 20.2 points. These probes are undefined for zero-shot prompts. Prompt clarity is asymmetric. Explicitly stating that labels are ordered changes accuracy by only +2.8 points and label-order PFR by +5.0 points, whereas removing the label-space description changes them by −3.7
+
+6Performance residuals Position-sensitivity residuals Model Config. Acc. ↑ F1 ↑ ρ ↑ MAE ↓ P1 ↓ P2a ↓ P2b ↓ P3a ↓ P3b ↓                                                                                                                                         
+
+> Ministral-3-8B baseline +0 .90 +0 .50 −0.30 −0.90 +0 .90 +0 .40 +0 .90 +3 .70 −0.20
+> A−7.10 −9.30 −6.20 +7 .10 +17 .10 ––––P1 −3.50 −3.00 −4.40 +5 .60 +5 .40 +0 .50 +8 .00 −1.20 −1.20
+> P2a −10 .70 −11 .70 −10 .60 +12 .30 +0 .70 +10 .30 +6 .20 −4.10 −1.20
+> P2b −3.30 −2.60 −3.30 +3 .90 −9.50 +3 .70 +3 .40 +10 .20 +3 .10
+> Gemma3-12B baseline +11 .40 +13 .80 +8 .70 −13 .20 −2.90 −14 .00 −8.00 −15 .10 −15 .00
+> A−2.30 −2.50 −0.30 +1 .10 −6.80 ––––P1 +8 .70 +10 .30 +6 .90 −9.10 +2 .90 −4.50 −1.40 +17 .80 +11 .60
+> P2a +1 .50 +1 .00 +2 .40 −2.40 +0 .40 +1 .50 −2.20 −8.00 −11 .30
+> P2b +4 .30 +4 .80 +2 .60 −4.90 −4.20 +2 .20 +1 .60 +21 .10 +9 .60
+> Granite-4-8B baseline +9 .10 +11 .00 +7 .80 −10 .90 −3.30 −17 .10 −10 .30 −1.70 +11 .00
+> A−9.60 −9.50 −15 .40 +8 .90 −3.50 ––––P1 +5 .30 +5 .90 +4 .80 −5.60 −2.80 −10 .90 −5.30 +12 .50 +16 .20
+> P2a −2.90 −5.60 −4.50 +3 .30 +2 .00 −4.20 −4.80 −6.10 +7 .40
+> P2b +1 .80 +2 .20 +1 .60 −2.00 +0 .80 +0 .30 −2.50 +10 .50 +20 .30
+
+Table 5: Cross-model Phase 2 residuals (all values ×100 ). Each cell reports the transfer-model value minus the Qwen3-8B value under the same configuration; underlying absolute mean ± SD results appear in Supplementary Table 14. and +48.8 points and also worsens ρ and MAE. Essential task information matters more than additional explanation. Low-level formatting primarily affects the second demonstration-order contrast. Replacing the separator with a space or tab lowers accuracy by 4.4–5.5 points and raises P2b by 11.2–15.6 points; a space connector has a similar effect, and an interrogative instruction raises P2b by 20.5 points. Semantically equivalent formatting can therefore substantially alter stability. Overall, scale cardinality improves performance and stability together, while most other factors trade one objective or probe against another. Prompt selection should therefore evaluate accuracy and all positional probes jointly rather than optimize a single arrangement.  
+
+> 5.2 Phase 2: Pipeline and Joint-Factor Experiments
+
+Phase 1 showed that local prompt and model choices substantially affect positional stability. Phase 2 examines whether broader interventions provide more reliable improvements. Tables 5 and 6 report two complementary experiments: the former compares transfer models against Qwen3-8B under fixed configurations, while the latter evaluates alternative inference, aggregation, and debiasing pipelines relative to the Phase 1 baseline. Across both experiments, improvements remain method-, model-, and probe-specific.  
+
+> 5.2.1 Phase 2a: Pipeline-Level Alternatives
+
+Table 6 reports pipeline residuals relative to the Phase 1 baseline. Inference paradigms and aggregation methods are averaged over the three non-binary datasets, whereas debiasing methods use all five. Because pairwise and listwise inference alter prompt structure, only label-order sensitivity is directly comparable across paradigms. Aggregation rows additionally report the positional probes derived from shared pairwise outputs. Label and demonstration averaging merge predictions across positional variants, leaving no comparable flip rate. Implementation details appear in Supplementary Section G. The four debiasing strategies lead to two different conclusions. Label averaging and demonstration averaging leave predictive performance essentially unchanged: accuracy decreases by 1.1% and 0.4%, respectively. Because these methods merge predictions across positional variants, their final outputs do not retain a comparable flip-rate measure. Among the methods for which label-order sensitivity remains measurable, neither provides an improvement. PriDe (Zheng et al., 2024) increases accuracy by 0.9% but also increases the label-order flip rate by 0.7%. Contextual Calibration (Zhao et al., 2021) lowers accuracy by 2.9% and increases the flip rate by 3.3%. Thus, averaging preserves performance, while neither calibration method reduces label-order bias. 7Performance residuals Position-sensitivity residuals Family Method Acc. ↑ F1 ↑ ρ ↑ MAE ↓ P1 ↓ P2a ↓ P2b ↓ P3a ↓ P3b ↓                                                                                                              
+
+> Inference paradigm Pairwise −8.94 −9.70 −6.23 +17 .05 +27 .83 ––––Listwise −27 .61 −35 .10 −72 .63 +52 .06 +2 .11 ––––Listwise-compare −0.67 +0 .55 +5 .81 +2 .44 −18 .11 ––––Aggregation method Majority vote −7.22 −5.46 −17 .61 +18 .39 +35 .89 −30 .58 −22 .44 −67 .43 −56 .10
+> Mean score −16 .28 −23 .18 −18 .84 +23 .83 −1.39 −44 .69 −36 .27 −67 .43 −56 .10
+> Weighted sum −8.94 −9.71 −6.27 +17 .17 +27 .22 −40 .97 −32 .05 −67 .43 −56 .10
+> Copeland −0.61 +0 .47 −2.51 +1 .89 +24 .50 −41 .25 −32 .55 −67 .43 −56 .10
+> Bradley–Terry −20 .45 −23 .46 −42 .12 +66 .00 +43 .00 −13 .97 −13 .56 −67 .43 −56 .10
+> Debiasing strategy Label averaging −1.07 −1.63 −1.04 +0 .53 –––––Demo averaging −0.42 +0 .20 −0.61 +0 .83 –––––PriDe +0 .90 +2 .11 +1 .38 −0.60 +0 .73 ––––Context. Calib. −2.87 −3.27 −1.37 +5 .13 +3 .30 ––––
+
+Table 6: Phase 2 pipeline residuals relative to the Qwen3-8B Phase 1 baseline (all values ×100 ). The table compares inference paradigms, pairwise aggregation methods, and debiasing strategies; full mean ± SD results appear in Supplementary Table 15. Changing the inference paradigm has much larger effects than applying a debiasing correction. The default pairwise pipeline worsens both goals: accuracy decreases by 8.9%, while the label-order flip rate increases by 27.8%. Changing the aggregation rule shifts this trade-off rather than removing it. Copeland preserves accuracy but still increases label-order flips by 24.5%. Mean-score aggregation reduces the flip rate slightly, but lowers accuracy by 16.3%. Bradley–Terry performs poorly on both measures, reducing accuracy by 20.4% and increasing label-order flips by 43.0%. Thus, none of the tested aggregation rules makes pairwise inference both accurate and stable. The listwise results show that the exact formulation matters more than the broad paradigm name. Direct listwise inference causes the largest performance loss: accuracy decreases by 27.6%, Spearman correlation falls by 72.6%, and MAE increases by 52.1%, while label-order sensitivity barely changes. Listwise-compare produces the opposite pattern. Accuracy remains within 0.7% of the baseline, F1 and Spearman correlation improve slightly, and the label-order flip rate falls by 18.1%. Listwise-compare is therefore a promising pipeline, but its success should not be interpreted as a general benefit of listwise prompting. Taken together, Table 6 shows that changing the pipeline is not automatically beneficial. Averaging preserves performance but leaves no directly comparable residual flip rate; PriDe and Contextual Calibration do not improve label-order stability; and the default pairwise and direct listwise pipelines sacrifice performance. Listwise-compare is the only balanced improvement in this experiment.  
+
+> 5.2.2 Phase 2b: Combining Phase 1 Factors
+
+Table 5 asks whether a configuration selected on Qwen3 produces a similar metric profile on other models. We construct four configurations using Qwen3-8B Instruct: A targets accuracy, P1 targets label-order stability, and P2a and P2b target the two demonstration-order contrasts. The complete configurations appear in Supplementary Section I. Each cell subtracts the Qwen3 value under the same configuration from the transfer-model value; positive residuals therefore indicate larger values than Qwen3, which is beneficial for accuracy, F1, and ρ but harmful for MAE and PFR. The accuracy-oriented configuration transfers unevenly. Relative to Qwen3 under A, accuracy is 7.1 points lower on Ministral, 2.3 points lower on Gemma3, and 9.6 points lower on Granite. Label-order PFR is 17.1 points higher on Ministral but 6.8 and 3.5 points lower on Gemma3 and Granite. Thus, even when the same configuration is applied, both performance and stability can shift in different directions across models. The label-order configuration shows the same lack of uniformity. Its target PFR is 5.4 points higher than Qwen3 on Ministral and 2.9 points higher on Gemma3, but 2.8 points lower on Granite. Accuracy ranges from 3.5 points below Qwen3 on Ministral to 8.7 and 5.3 points above it on Gemma3 and Granite. Optimizing the target probe on Qwen3 therefore does not define a model-independent operating point. The demonstration-order configurations remain metric-specific. Under P2a , the target P2a residual ranges from +10 .3 points on Ministral to −4.2 on Granite, while label-order PFR remains close to the already high Qwen3 value for all three transfer models. Under P2b , target residuals are smaller ( +3 .4, +1 .6, and −2.5
+
+8points), but both placement PFRs are higher than Qwen3 on every transfer model. A configuration can therefore resemble Qwen3 on its target probe while diverging sharply on another positional test. Taken together, Table 5 shows that joint configurations are model- and objective-specific. Cross-model validation should compare the complete performance and stability profile rather than assume that a Qwen-selected configuration transfers as a fixed recipe. 
+
+6 Conclusion 
+
+We measured position bias in LLM-based ordinal classification across models, prompts, and pipelines. Accuracy and consistency respond to different choices; no tested correction eliminated bias, and favorable configurations transferred unevenly. By systematically separating three positional effects from predictive performance, this study shows that robustness belongs to the full inference configuration rather than to the model alone. These findings make positional consistency essential for evaluating LLM-based ordinal classifiers. Future work will examine factor interactions, asymmetric bias, and training-time interventions. 9References 
+
+Stefano Baccianella, Andrea Esuli, and Fabrizio Sebastiani. Evaluation measures for ordinal regression. In Proceedings of the 9th IEEE International Conference on Intelligent Systems Design and Applications , pages 283–287, 2009. Valerio Basile, Cristina Bosco, Elisabetta Fersini, Debora Nozza, Viviana Patti, Francisco Manuel Rangel Pardo, Paolo Rosso, and Manuela Sanguinetti. SemEval-2019 task 5: Multilingual detection of hate speech against immigrants and women in Twitter. In Proceedings of the 13th International Workshop on Semantic Evaluation , pages 54–63. Association for Computational Linguistics, 2019. doi: 10.18653/v1/S19-2007. Kwesi Adu Cobbina and Tianyi Zhou. Where to show demos in your prompt: A positional bias of in-context learning. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 29560–29593. Association for Computational Linguistics, 2025. doi: 10.18653/v1/2025.emnlp-main.1503. Yu Fei, Yifan Hou, Zeming Chen, and Antoine Bosselut. Mitigating label biases for in-context learning. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 14014–14031, Toronto, Canada, 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.acl-long.783. 
+
+https://aclanthology.org/2023.acl-long.783/ .Pedro Antonio Gutiérrez, María Pérez-Ortiz, Javier Sánchez-Monedero, Francisco Fernández-Navarro, and César Hervás-Martínez. Ordinal regression methods: Survey and experimental study. IEEE Transactions on Knowledge and Data Engineering , 28(1):127–146, 2016. doi: 10.1109/TKDE.2015.2457911. Sawan Kumar and Partha Talukdar. Reordering examples helps during priming-based few-shot learning. In Findings of the Association for Computational Linguistics: ACL-IJCNLP 2021 , pages 4507–4518, Online, 2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.findings-acl.395. https://aclanthology.org/2021.findings-acl. 395/ .Tiziano Labruna, Simone Gallo, and Giovanni Da San Martino. Positional bias in binary question answering: How uncertainty shapes model preferences. In Proceedings of the Eleventh Italian Conference on Computational Linguistics (CLiC-it 2025) , volume 4112 of CEUR Workshop Proceedings , pages 550–560, Cagliari, Italy, 2025. 
+
+https://aclanthology.org/2025.clicit-1.53/ .Haitao Li, Junjie Chen, Qingyao Ai, Zhumin Chu, Yujia Zhou, Qian Dong, and Yiqun Liu. CalibraEval: Calibrating prediction distribution to mitigate selection bias in LLMs-as-judges. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 16537–16552, Vienna, Austria, 2025. Association for Computational Linguistics. doi: 10.18653/v1/2025.acl-long.808. https://aclanthology.org/ 2025.acl-long.808/ .Qingquan Li, Shaoyu Dou, Kailai Shao, Chao Chen, and Haixiang Hu. Evaluating scoring bias in LLM-as-a-judge. In 
+
+Proceedings of the 31st International Conference on Database Systems for Advanced Applications (DASFAA) , pages 19–34. Springer, 2026. doi: 10.1007/978-981-92-0372-7_2. Hauke Licht, Rupak Sarkar, Patrick Y. Wu, Pranav Goel, Niklas Stoehr, Elliott Ash, and Alexander Miserlis Hoyle. Measuring scalar constructs in social science with LLMs. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 32144–32171, Suzhou, China, 2025. Association for Computational Linguistics. doi: 10.18653/v1/2025.emnlp-main.1635. https://aclanthology.org/2025.emnlp-main.1635/ .Tie-Yan Liu. Learning to rank for information retrieval. Foundations and Trends in Information Retrieval , 3(3): 225–331, 2009. doi: 10.1561/1500000016. Adian Liusie, Yassir Fathullah, and Mark J. F. Gales. Teacher-student training for debiasing: General permutation debiasing for large language models. In Findings of the Association for Computational Linguistics: ACL 2024 ,pages 1376–1387, Bangkok, Thailand, 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024. findings-acl.81. https://aclanthology.org/2024.findings-acl.81/ .Yao Lu, Max Bartolo, Alastair Moore, Sebastian Riedel, and Pontus Stenetorp. Fantastically ordered prompts and where to find them: Overcoming few-shot prompt order sensitivity. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 8086–8098. Association for Computational Linguistics, 2022. doi: 10.18653/v1/2022.acl-long.556. Sewon Min, Xinxi Lyu, Ari Holtzman, Mikel Artetxe, Mike Lewis, Hannaneh Hajishirzi, and Luke Zettlemoyer. Rethinking the role of demonstrations: What makes in-context learning work? In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing , pages 11048–11064, Abu Dhabi, United Arab Emirates, 2022. Association for Computational Linguistics. doi: 10.18653/v1/2022.emnlp-main.759. https://aclanthology.org/2022. emnlp-main.759/ .Pouya Pezeshkpour and Estevam Hruschka. Large language models sensitivity to the order of options in multiple-choice questions. In Findings of the Association for Computational Linguistics: NAACL 2024 , pages 2006–2017, 2024. Zhen Qin, Junru Wu, Jiaming Shen, Tianqi Liu, and Xuanhui Wang. Lampo: Large language models as preference machines for few-shot ordinal classification. In First Conference on Language Modeling , 2024. 
+
+10 Sara Rosenthal, Noura Farra, and Preslav Nakov. SemEval-2017 task 4: Sentiment analysis in Twitter. In Proceedings of the 11th International Workshop on Semantic Evaluation (SemEval-2017) , pages 502–518. Association for Computational Linguistics, 2017. doi: 10.18653/v1/S17-2088. Melanie Sclar, Yejin Choi, Yulia Tsvetkov, and Alane Suhr. Quantifying language models’ sensitivity to spurious features in prompt design or: How i learned to start worrying about prompt formatting. In The Twelfth International Conference on Learning Representations , 2024. Lin Shi, Chiyu Ma, Wenhua Liang, Xingjian Diao, Weicheng Ma, and Soroush Vosoughi. Judging the judges: A systematic study of position bias in llm-as-a-judge. In Proceedings of the 14th International Joint Conference on Natural Language Processing and the 4th Conference of the Asia-Pacific Chapter of the Association for Computational Linguistics , pages 292–314, 2025. Richard Socher, Alex Perelygin, Jean Wu, Jason Chuang, Christopher D. Manning, Andrew Ng, and Christopher Potts. Recursive deep models for semantic compositionality over a sentiment treebank. In Proceedings of the 2013 Conference on Empirical Methods in Natural Language Processing , pages 1631–1642. Association for Computational Linguistics, 2013. Weiwei Sun, Lingyong Yan, Xinyu Ma, Shuaiqiang Wang, Pengjie Ren, Zhumin Chen, Dawei Yin, and Zhaochun Ren. Is ChatGPT good at search? investigating large language models as re-ranking agents. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , pages 14918–14937, Singapore, 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.emnlp-main.923. Raphael Tang, Crystina Zhang, Xueguang Ma, Jimmy Lin, and Ferhan Ture. Found in the middle: Permutation self-consistency improves listwise ranking in large language models. In Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 2327–2340. Association for Computational Linguistics, 2024. doi: 10.18653/v1/2024.naacl-long.129. Peiyi Wang, Lei Li, Liang Chen, Zefan Cai, Dawei Zhu, Binghuai Lin, Yunbo Cao, Lingpeng Kong, Qi Liu, Tianyu Liu, and Zhifang Sui. Large language models are not fair evaluators. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 9440–9450. Association for Computational Linguistics, 2024. doi: 10.18653/v1/2024.acl-long.511. Sheng-Lun Wei, Cheng-Kuang Wu, Hen-Hsen Huang, and Hsin-Hsi Chen. Unveiling selection biases: Exploring order and token sensitivity in large language models. In Findings of the Association for Computational Linguistics: ACL 2024 , pages 5598–5621, Bangkok, Thailand, 2024. Association for Computational Linguistics. doi: 10.18653/v1/ 2024.findings-acl.333. https://aclanthology.org/2024.findings-acl.333/ .Yuzheng Xu, Tosho Hirasawa, Tadashi Kozuno, and Yoshitaka Ushiku. Am I more pointwise or pairwise? Revealing position bias in rubric-based LLM-as-a-judge, 2026. https://arxiv.org/abs/2602.02219 .An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388 , 2025a. doi: 10.48550/arXiv.2505.09388. Zhen Yang, Ping Jian, and Chengzhi Li. Option symbol matters: Investigating and mitigating multiple-choice option symbol bias of large language models. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 1902–1917, Albuquerque, New Mexico, 2025b. Association for Computational Linguistics. ISBN 979-8-89176-189-6. doi: 10.18653/v1/2025.naacl-long.95. https://aclanthology.org/2025.naacl-long.95/ .Marcos Zampieri, Shervin Malmasi, Preslav Nakov, Sara Rosenthal, Noura Farra, and Ritesh Kumar. SemEval-2019 task 6: Identifying and categorizing offensive language in social media (OffensEval). In Proceedings of the 13th International Workshop on Semantic Evaluation , pages 75–86. Association for Computational Linguistics, 2019. doi: 10.18653/v1/S19-2010. Xiang Zhang, Junbo Zhao, and Yann LeCun. Character-level convolutional networks for text classification. In Advances in Neural Information Processing Systems , volume 28, 2015. Zihao Zhao, Eric Wallace, Shi Feng, Dan Klein, and Sameer Singh. Calibrate before use: Improving few-shot performance of language models. In Proceedings of the 38th International Conference on Machine Learning , volume 139 of Proceedings of Machine Learning Research , pages 12697–12706. PMLR, 2021. Chujie Zheng, Hao Zhou, Fandong Meng, Jie Zhou, and Minlie Huang. Large language models are not robust multiple choice selectors. In The Twelfth International Conference on Learning Representations , 2024. Han Zhou, Xingchen Wan, Lev Proleev, Diana Mincu, Jilin Chen, Katherine Heller, and Subhrajit Roy. Batch calibration: Rethinking calibration for in-context learning and prompt engineering. In The Twelfth International Conference on Learning Representations , 2024. https://openreview.net/forum?id=L3FHMoKZcS .
+
+11 Model Provider OpenRouter model ID Date (UTC) Max tokens Reasoning effort Claude Haiku 4.5 Anthropic anthropic/claude-haiku-4.5 2026-06-16 512 –Claude Sonnet 4.5 Anthropic anthropic/claude-sonnet-4.5 2026-06-16 512 –GPT-5.4 OpenAI openai/gpt-5.4 2026-06-16 512 –Gemini 3.1 Flash-Lite Google google/gemini-3.1-flash-lite 2026-06-16 512 –Gemini 3.1 Pro Preview Google google/gemini-3.1-pro-preview 2026-06-17 2048 Minimal DeepSeek V4 Flash DeepSeek deepseek/deepseek-v4-flash 2026-06-17 2048 Minimal DeepSeek V4 Pro DeepSeek deepseek/deepseek-v4-pro 2026-06-17 2048 Minimal Grok 4.3 xAI x-ai/grok-4.3 2026-06-16 512 –Llama 4 Maverick Meta meta-llama/llama-4-maverick 2026-06-16 512 –Qwen3.7-Plus Alibaba qwen/qwen3.7-plus 2026-06-16 512 –
+
+Table 7: Phase 0 OpenRouter models and per-model request overrides. 
+
+Note. Minimal denotes reasoning: {"effort": "minimal"} ; a dash indicates that no reasoning override was sent. Parameter Phase 0a Phase 0b 
+
+temperature 0 0.7 
+
+top_k 1 Not set 
+
+top_p 1.0 1.0 
+
+min_p 0.0 0.0 
+
+seed 42 Not set 
+
+repeat_penalty 1.0 1.0 
+
+Table 8: Phase 0 decoding settings. 
+
+A Phase 0 Model and API Configuration 
+
+All Phase 0 requests were sent through the OpenRouter gateway at https://openrouter.ai/api/v1 using the OpenAI-compatible chat.completions.create interface, corresponding to /api/v1/chat/completions . We did not set provider preferences or use routing suffixes such as :nitro or :floor ; provider selection and any fallback were therefore handled by OpenRouter’s default routing for each model ID. Table 7 lists the exact model identifiers, access dates, response limits, and reasoning overrides. Table 8 reports the decoding parameters. Phase 0a fixes the sampling seed and restricts decoding to the highest-probability token, whereas Phase 0b leaves the seed and top_k unset. Parameters not shown were left at the OpenRouter or provider defaults. Requests were separated by 0.5 seconds. The supplied run configuration records no custom client-side retry policy. Prompts instructed the model to return only one numeric label. Outputs were mapped to a prediction only when the parser recovered a valid label for the task; reversed-label outputs were then mapped back to the natural semantic class space, and outputs without a valid label were counted as parse failures. Phase 0b uses independently sampled stochastic runs on the same fixed 200 test instances. For each instance, we form a noise-flip indicator from two runs of the same prompt and a total-flip indicator from the natural- and reversed-label runs, then compare these paired indicators using a one-sided McNemar test. 
+
+B Hidden Reasoning Tokens 
+
+Table 9 reports hidden reasoning tokens detected in Phase 0b. All models produce a single visible character, but total output tokens vary widely, indicating substantial hidden generation for some models despite the label-only output constraint and the minimal-reasoning override used where specified above. Gemini 3.1 Pro is an exception: despite generating 126 hidden tokens, its noise PFR remains low (0.045), suggesting that its internal reasoning may operate more deterministically. Requesting minimal reasoning or a one-character visible answer therefore does not guarantee the absence of hidden tokens, and researchers should monitor the gap between total output tokens and visible response length. 
+
+C Dataset Access and Licensing 
+
+Table 10 records the official access route and stated usage terms for each dataset, as checked on July 28, 2026. We do not infer a license when the official release page does not state one. The Twitter-derived datasets may 12 Model Output tokens a Hidden tokens Noise PFR Gemini 3.1 Flash-Lite 1 0 0.060 Llama 4 Maverick 2 1 0.060 Claude Haiku 4.5 5 4 0.050 Claude Sonnet 4.5 5 4 0.000 GPT-5.4 5 4 0.050 Gemini 3.1 Pro 127 126 0.045 DeepSeek V4 Flash 157 156 0.130 DeepSeek V4 Pro 269 268 0.160 Grok 4.3 333 332 0.075 Qwen3.7-Plus 513 512 0.135 
+
+Table 9: Hidden reasoning tokens in Phase 0b.           
+
+> Note. aOutput tokens are the average total reported by OpenRouter per response. All visible responses contain a single character; hidden tokens are the remaining output tokens. Dataset Official access License or usage terms SST-5 Stanford Sentiment Treebank download page:
+> https://nlp.stanford.edu/sentiment/code.html
+> Publicly downloadable; the official dataset page does not state a separate dataset license. Users should retain the original citation and consult the current Stanford distribution terms. Yelp-5 Benchmark files from Zhang et al. (2015), derived from the Yelp Dataset Challenge 2015; current portal: https://business.yelp.com/data/ resources/open-dataset/
+> Yelp’s Dataset Terms of Use govern access and restrict the Open Dataset to academic purposes. Twitter SemEval-2017 Task 4 data portal:
+> https://alt.qcri.org/semeval2017/task4/
+> Use is subject to Twitter’s platform terms; the task organizers require users to remove tweets that are no longer public. Hate HatEval official page and linked repository:
+> https://hatespeech.di.unito.it/hateval.html
+> Creative Commons Attribution–NonCommercial 4.0 (CC BY-NC 4.0). Offensive OLID/OffensEval release page: https: //sites.google.com/site/offensevalsharedtask/olid
+> Publicly released for the shared task; the cited release materials do not state a separate dataset license. Use of tweet content remains subject to the applicable platform terms.
+
+Table 10: Dataset access and usage terms. contain sensitive or offensive user-generated content; our paper reports only aggregate results and does not reproduce usernames or tweet text. 
+
+D Baseline Configuration 
+
+Table 11 lists the baseline configuration from which all factor ablations depart. We briefly justify the key choices. We select Qwen3-8B Instruct as the base model because the Qwen3 family offers base, instruct, and thinking variants on the same architecture, enabling controlled comparisons across training paradigms in the model-choice analysis. The 8B scale is large enough to perform competitively on ordinal classification while remaining affordable to run across all conditions. We use all five datasets rather than a single one so that factor levels can be evaluated across different domains and scale cardinalities where applicable, avoiding conclusions that are artifacts of one dataset. The remaining baseline dimensions follow standard practice in the few-shot ICL literature: numeric label format, 5-shot per class, demonstrations placed before the query, explicit imperative instructions, colon-plus-space separators, newline-connected fields, and greedy decoding for deterministic outputs. Following LAMPO, we evaluate three demonstration seeds (Qin et al., 2024); our experiments use seed IDs 0, 1, and 42 with fixed 200-instance stratified test subsets. For decoding, we use 
+
+do_sample = False to ensure reproducible outputs and set a maximum response length to simplify parsing, while prompting the model to return a single-token answer. The local-model experiments in Phases 1 and 2 were run on a host equipped with a 16-core CPU, 64 GB of system memory, and an NVIDIA L40S GPU. Phase 0 used models hosted through OpenRouter; the providers’ server-side CPU, GPU, and memory configurations were not observable. 13 Dimension Base value Model Qwen3-8B Instruct (non-thinking) Datasets SST-5, Yelp-5, Twitter, Hate, Offensive Label format Numeric (1/2/3/4/5) Inference paradigm Pointwise ICL Few-shot count 5 per class Label order Natural (1 = most negative → 5 = most positive) Debiasing None Demo order Base Demo placement All before query Prompt clarity Explicit Separator Colon followed by a space Connector Newline Instruction mood Imperative Seeds (0, 1, 42) Test instances 200 per dataset (stratified) Decoding Greedy ( do_sample = False )Response Length max_new_tokens = 32 
+
+Table 11: Baseline configuration. 
+
+Note. Phase 1 and Phase 2 experiments use these settings unless a factor or pipeline explicitly replaces them. 
+
+Here, we further specify how the baseline experiment instantiates the prompt; later ablation prompts build on it:                                                                                                    
+
+> P l e a s e p e r f o r m Sentiment C l a s s i f i c a t i o n t a s k . Given t h e s e n t e n c e , a s s i g n al a b e l from [ 1 : v e r y n e g a t i v e , 2 : n e g a t i v e , 3 : n e u t r a l , 4 : p o s i t i v e , 5 : v e r y p o s i t i v e ] . Return l a b e l o n l y w i t h o u t any o t h e r t e x t . S e n t e n c e : . . . as w e e t l y a f f e c t i n g s t o r y about f o u r s i s t e r s who a r e c o p i n g ,i n one way o r a n o t h e r ,with l i f e ’ s endgame .L a b e l : 4S e n t e n c e : ‘L i k e ac h i l d with an i m p o r t a n t message t o t e l l . . . (S k i n s ’)f a u l t s a r e e a s y t o f o r g i v e b e c a u s e t h e i n t e n t i o n s a r e l o f t y .’L a b e l : 3[ Remaining 23 demos with random o r d e r and each l a b e l has 5demos t o t a l ] S e n t e n c e : Everywhere t h e camera l o o k s t h e r e i s something worth s e e i n g .L a b e l :
+
+E Probe Configuration 
+
+E.1 Label Order 
+
+For the label-order probe, we compare the natural ordinal label space with a reversed label space. In the natural setting, label 1 denotes the most negative class and label 5 denotes the most positive class. In the reversed setting, both the label descriptions and demonstration labels are reversed, so label 1 denotes the most positive class and label 5 denotes the most negative class. After parsing the model output, we map the predicted prompt position back to the original class index: natural order uses parsed - 1 , whereas reversed order uses M - parsed , where M is the number of classes. Natural label order:                
+
+> . . . a s s i g n al a b e l from [ 1 : v e r y n e g a t i v e , 2 : n e g a t i v e , 3 : n e u t r a l , 4 : p o s i t i v e , 5 : v e r y p o s i t i v e ] . . . .
+
+Reversed label order: 14 . . . a s s i g n a l a b e l from [ 1 : v e r y p o s i t i v e , 2 : p o s i t i v e , 3 : n e u t r a l , 4 : n e g a t i v e , 5 : v e r y n e g a t i v e ] . . . . 
+
+E.2 Demonstration Order 
+
+For the demonstration-order probe, the task header, label semantics, query, and demonstration set are held fixed; only the order of the demonstration blocks is changed. We evaluate the base order, ascending label order, descending label order, and a random permutation. This probe is not applied to the zero-shot setting because no demonstrations are present. Ascending demo order:                  
+
+> [ h e a d e r ] S e n t e n c e : {demo_text_1_1} L a b e l : { demo_label_1 } S e n t e n c e : {demo_text_1_2} L a b e l : { demo_label_1 } [ . . . more demos . . . ] S e n t e n c e : {demo_text_2_1} L a b e l : { demo_label_2 } S e n t e n c e : {demo_text_2_2} L a b e l : { demo_label_2 } [ . . . more demos . . . ] S e n t e n c e : {demo_text_K_N} L a b e l : {demo_label_K} S e n t e n c e : { t e s t _ t e x t } L a b e l :
+
+E.3 Demonstration Placement 
+
+For the placement probe, the header and demonstration content are again held fixed, but the demonstrations are positioned differently relative to the query. The baseline places all demonstrations before the query. The 
+
+after condition places the query immediately after the header and appends the demonstrations afterward. The 
+
+split condition places the first half of the demonstrations before the query and the remaining half after the query. Across these variants, the query text and label space remain unchanged; only the relative placement of the demonstration blocks is manipulated. Before (base):       
+
+> [ h e a d e r ] S e n t e n c e : {demo_1} L a b e l : { l a b e l _ 1 } [ . . . more demos . . . ] S e n t e n c e : { t e s t _ t e x t } L a b e l :
+
+After:   
+
+> [ h e a d e r ] S e n t e n c e : { t e s t _ t e x t } L a b e l : S e n t e n c e : {demo_1}
+
+15 L a b e l : { l a b e l _ 1 } [ . . . more demos . . . ] 
+
+Split:        
+
+> [ h e a d e r ] [ . . . more demos . . . ] S e n t e n c e : { t e s t _ t e x t } L a b e l : [ . . . more demos . . . ] . . .
+
+F Phase 1 Configuration 
+
+F.1 Label Format 
+
+Option format changes the label space in the header and each demonstration’s Label: value while preserving the overall Sentence: /Label: block structure. Numeric (base):       
+
+> [ h e a d e r ] S e n t e n c e : { demo_text } L a b e l : 3[ . . . more demos . . . ] S e n t e n c e : { t e s t _ t e x t } L a b e l :
+
+Letter: the label space runs from A (very negative) to E (very positive), and the neutral demonstration uses 
+
+Label: C .Natural language: the label space contains the class descriptions directly, and the neutral demonstration uses 
+
+Label: neutral .Neutral identifiers: the label space runs from Option_1 (very negative) to Option_5 (very positive), and the neutral demonstration uses Label: Option_3 .
+
+F.2 Scale Cardinality 
+
+The cardinality factor is evaluated on SST-5 and Yelp-5 by merging the original five classes before prompt construction. The 5-way baseline retains the original labels. In the 3-way condition, the two negative classes are merged, the neutral class is retained, and the two positive classes are merged. In the 2-way condition, the negative and positive classes are each merged and neutral examples are removed. Demonstration labels are remapped to the resulting class space. 3-way (numeric):             
+
+> Given t h e s e n t e n c e , a s s i g n al a b e l from [ 1 : n e g a t i v e , 2 : n e u t r a l , 3 : p o s i t i v e ] .
+
+2-way (numeric):           
+
+> Given t h e s e n t e n c e , a s s i g n al a b e l from [ 1 : n e g a t i v e , 2 : p o s i t i v e ] .
+
+F.3 Prompt Clarity 
+
+Prompt clarity changes only the task header; the demonstration and query formatting follow the selected option format. The minimal condition provides only a short task instruction, the explicit baseline additionally specifies the label space and output constraint, and the ordinal-explicit condition states the direction of the ordered scale. Under reversed label order, the ordinal-explicit direction is reversed accordingly. Minimal: 16 C l a s s i f y t h e s e n t i m e n t : S e n t e n c e : { demo_text } L a b e l : 3[ . . . more demos . . . ] S e n t e n c e : { t e s t _ t e x t } L a b e l : 
+
+Ordinal-explicit (natural numeric order): 
+
+C l a s s i f y t h e s e n t i m e n t i n t o one o f t h e f o l l o w i n g o r d e r e d c a t e g o r i e s , where 1 i s most n e g a t i v e and 5 i s most p o s i t i v e : Given t h e s e n t e n c e , a s s i g n a l a b e l from [ 1 : v e r y n e g a t i v e , 2 : n e g a t i v e , 3 : n e u t r a l , 4 : p o s i t i v e , 5 : v e r y p o s i t i v e ] . Return l a b e l o n l y w i t h o u t any o t h e r t e x t . S e n t e n c e : { demo_text } L a b e l : 3[ . . . more demos . . . ] S e n t e n c e : { t e s t _ t e x t } L a b e l : 
+
+F.4 Separator 
+
+The separator factor changes the punctuation or whitespace between each descriptor ( Sentence or Label )and its value. The same separator is used throughout the demonstrations and query, while the header and the connector between lines remain unchanged. The baseline uses a colon followed by a space; the alternatives use a single space or a tab. Space separator: 
+
+[ h e a d e r ] S e n t e n c e { demo_text } L a b e l 3[ . . . more demos . . . ] S e n t e n c e { t e s t _ t e x t } L a b e l 
+
+Tab separator: 
+
+[ h e a d e r ] S e n t e n c e { demo_text } L a b e l 3[ . . . more demos . . . ] S e n t e n c e { t e s t _ t e x t } L a b e l 
+
+F.5 Connector 
+
+The connector factor changes the whitespace joining the Sentence field and the Label field within each demonstration and query block. The baseline places the fields on separate lines. The alternatives place both fields on one line separated by a space or place the label on a new, tab-indented line. The header and separator remain fixed. Space connector: 17 [ h e a d e r ] S e n t e n c e : { demo_text } L a b e l : 3[ . . . more demos . . . ] S e n t e n c e : { t e s t _ t e x t } L a b e l : 
+
+Newline-tab connector:       
+
+> [ h e a d e r ] S e n t e n c e : { demo_text } L a b e l : 3[ . . . more demos . . . ] S e n t e n c e : { t e s t _ t e x t } L a b e l :
+
+F.6 Mood 
+
+The mood factor changes the grammatical form of the task instruction while holding the label space, output constraint, demonstrations, and query fixed. The imperative baseline directly instructs the model to perform the task; the interrogative condition asks the model for a label; and the indicative condition describes the model as performing the task. Interrogative:                              
+
+> What i s t h e s e n t i m e n t o f t h e f o l l o w i n g s e n t e n c e ? Which l a b e l from [ 1 : v e r y n e g a t i v e , 2 : n e g a t i v e , 3 : n e u t r a l , 4 : p o s i t i v e , 5 : v e r y p o s i t i v e ] do you a s s i g n ? Return l a b e l o n l y w i t h o u t any o t h e r t e x t .
+
+Indicative:                              
+
+> You a r e p e r f o r m i n g Sentiment C l a s s i f i c a t i o n t a s k . Given t h e s e n t e n c e , you a s s i g n al a b e l from [ 1 : v e r y n e g a t i v e , 2 : n e g a t i v e , 3 : n e u t r a l , 4 : p o s i t i v e , 5 : v e r y p o s i t i v e ] . Return l a b e l o n l y w i t h o u t any o t h e r t e x t .
+
+G Phase 2 Configuration 
+
+G.1 Inference Paradigm 
+
+Pairwise. In the pairwise setting, each test instance is scored by comparing the test sentence to every demonstration: for each of the D demos the model is asked twice—once with the test as Passage A and the demo as Passage B (forward), and once with the slots swapped (backward)—which passage is more positive (or more negative under the reversed probe). Each answer is parsed as Passage A or B; forward and backward choices are turned into a consensus score F ∈ { +1 , 0, −1}, where +1 means the test is more positive than that demo ( −1 the opposite; 0 for ties or inconsistent answers), and under the reversed probe F is flipped so it stays in the “more positive” frame. That yields D pairs (Fi, y i) with demo label yi ∈ { 1, . . . , M }. The default aggregation method is weighted sum in the form S = P 
+
+> i
+
+Fiyi, which is then mapped onto an equal-width partition of [−Smax , S max ] (where Smax = P 
+
+> i
+
+yi) into M bins to produce the final 1-based label—so for 5-class × 5-shot this is 50 LLM calls per instance, then one offline aggregation step.                                     
+
+> P l e a s e p e r f o r m Sentiment C l a s s i f i c a t i o n t a s k . Given two P a s s a g e s , compare t h e i r s e n t i m e n t s with l a b e l s from [ ’ v e r y n e g a t i v e ’ , ’ n e g a t i v e ’ , ’ n e u t r a l ’ , ’ p o s i t i v e ’ , ’ v e r y p o s i t i v e ’ ] . P a s s a g e A : { t e s t } P a s s a g e B : {demo} Which P a s s a g e i s more p o s i t i v e i n terms o f i t s s e n t i m e n t ? Output P a s s a g e Ao r P a s s a g e B :
+
+18 Listwise. Demonstrations are split into k_shot class-balanced groups, with one unlabeled demonstration per sentiment class in each group. The model sees each group ordered from most negative to most positive under the natural probe, or in the opposite direction under the reversed probe, and returns the insertion position of the test sentence in the range 1, . . . , M . The k_shot positions are aggregated by the mean, and then rounded and clipped to [1 , M ]. Under the reversed probe, the aggregated position is mapped back to the natural class index.                                
+
+> P l e a s e p e r f o r m Sentiment C l a s s i f i c a t i o n t a s k . Below a r e s e n t e n c e s o r d e r e d by s e n t i m e n t from most n e g a t i v e t o most p o s i t i v e . I n s e r t t h e new s e n t e n c e i n t o t h i s o r d e r e d s c a l e and r e t u r n o n l y i t s p o s i t i o n ( 1 - 5 ) . S e n t e n c e : { c l a s s 0 } . . . S e n t e n c e : { c l a s s 4 } S e n t e n c e : { t e s t } P o s i t i o n :
+
+Listwise-compare. The same class-balanced groups are used, but each group is presented as labeled reference passages, with one reference per class. For every group, the model is queried twice: once with the natural numeric labels, where 1 is most negative and M is most positive, and once with the reversed labels. The model selects the reference whose sentiment is closest to the test passage. The k_shot positions are aggregated separately by majority vote for each label order. The reversed-order aggregate is then mapped back to the natural class space, and P1 is computed between the two aggregated predictions.                                                               
+
+> P l e a s e p e r f o r m aSentiment C l a s s i f i c a t i o n t a s k . Given t h e s e n t e n c e , a s s i g n al a b e l from [ 1 : v e r y n e g a t i v e , 2 : n e g a t i v e , 3 : n e u t r a l , 4 : p o s i t i v e , 5 : v e r y p o s i t i v e ] . Given 5r e f e r e n c e p a s s a g e s o r d e r e d by s e n t i m e n t from v e r y n e g a t i v e t o v e r y p o s i t i v e : S e n t e n c e : {demo} L a b e l : 1. . . New p a s s a g e : { t e s t } Which r e f e r e n c e ( 1 - 5 ) i s c l o s e s t i n s e n t i m e n t t o t h e new p a s s a g e ? Answer with ONLY as i n g l e number ( 1 , 2 , 3 , 4 , o r 5 ) . No e x p l a n a t i o n .
+
+G.2 Pairwise Aggregation 
+
+For each test instance x, pairwise inference compares it with every demonstration xi, whose class label is 
+
+yi ∈ { 1, . . . , M }. Forward and backward comparisons are combined into a consensus outcome 
+
+F (x, x i) ∈ { +1 , 0, −1},
+
+where +1 indicates that the test is more positive, −1 indicates that the demonstration is more positive, and 
+
+0 represents a tie or inconsistent comparison. The five aggregation methods operate offline on the resulting 
+
+(F (x, x i), y i) pairs and therefore require no additional prompts or model calls beyond the shared pairwise comparisons. 
+
+Majority vote. 
+
+Each demonstration produces a discrete class vote that shifts its label by one position in the direction indicated by the comparison: 
+
+vi =
+
+
+
+min( yi + 1 , M ), F (x, x i) = +1 ,yi, F (x, x i) = 0 ,
+
+max( yi − 1, 1) , F (x, x i) = −1.
+
+The prediction is ˆy = mode( v1, . . . , v N ). For example, beating demonstrations with labels 1 and 3 and losing to a demonstration with label 5 produces votes {2, 4, 4}, yielding class 4. 
+
+Mean score. 
+
+19 The mean-score method uses the same shifted votes but averages them rather than taking their mode: 
+
+ˆy = clip round 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+vi
+
+!
+
+, 1, M 
+
+!
+
+.
+
+Thus, votes {2, 4, 4} have mean 3.33 and produce class 3. 
+
+> Weighted sum.
+
+The default pairwise aggregator weights each comparison by the demonstration label: 
+
+S(x) = 
+
+> N
+
+X
+
+> i=1
+
+F (x, x i)yi, Smax =
+
+> N
+
+X
+
+> i=1
+
+yi.
+
+The score lies in [−Smax , S max ], which is divided into M equal-width bins: 
+
+ˆy = clip 
+
+ S(x) + Smax 
+
+2Smax /M 
+
+
+
++ 1 , 1, M 
+
+
+
+.
+
+For SST-5 with five demonstrations per class, Smax = 75 , giving bins of width 30. This weighting makes a comparison with a label-5 demonstration contribute five times as much as a comparison with a label-1 demonstration. 
+
+> Copeland score.
+
+Copeland aggregation ignores demonstration labels and counts only net wins: 
+
+net( x) = 
+
+> N
+
+X
+
+> i=1
+
+F (x, x i) ∈ [−N, N ],
+
+followed by equal-width binning over that interval: 
+
+ˆy = clip 
+
+ net( x) + N
+
+2N/M 
+
+
+
++ 1 , 1, M 
+
+
+
+.
+
+With N = 25 and M = 5 , the bins have width 10, and wins against weak and strong demonstrations contribute equally. 
+
+> Bradley–Terry.
+
+This method treats the N demonstrations and the test instance as participants with latent positive strengths 
+
+θ, using 
+
+P (A ≻ B) = θA
+
+θA + θB
+
+.
+
+Pairwise outcomes define a win matrix, with ties assigning half a win to each participant. Strengths are iteratively updated by 
+
+θi ← wi
+
+X
+
+> j∈opp( i)
+
+1/(θi + θj ) ,
+
+and normalized to have mean one after each iteration. We use max_iter=100 and tol=1e-6 . The final prediction is the class whose demonstrations have mean strength closest to the test strength: 
+
+ˆy = arg min 
+
+> c
+
+¯θc − θtest ,
+
+where ¯θc is the mean strength of demonstrations labeled c. 
+
+> G.3 Debiasing Strategies
+
+All four debiasing methods start from the same pointwise ICL baseline, with the model, demonstrations, test instances, and seeds held fixed. Label-order and demonstration-order averaging reuse existing hard predictions and require no new prompts. PriDe retains the baseline prompt but requests output log probabilities, whereas Contextual Calibration is the only method that changes the query text. 20 Label-order averaging. 
+
+This method combines the natural- and reversed-order predictions from Probe 1. After both predictions are mapped back to the common semantic class space, the final prediction is 
+
+ˆy = round 
+
+ ynat + yrev 
+
+2
+
+
+
+.
+
+For example, ynat = 3 and yrev = 4 produce ˆy = 4 . Because the two label-order conditions are merged into one output, this method consumes the label-order axis. We evaluate the resulting averaged prediction as a single output and therefore do not report residual PFRs for this method. It requires no additional LLM calls. 
+
+> Demonstration-order averaging.
+
+This method analogously averages the class-ascending and class-descending predictions from Probe 2: 
+
+ˆy = round 
+
+ yasc + ydesc 
+
+2
+
+
+
+.
+
+It consumes the corresponding demonstration-order contrast. We evaluate the resulting averaged prediction as a single output and therefore do not report residual PFRs for this method. It requires no additional prompts or LLM calls. 
+
+> PriDe.
+
+PriDe (Zheng et al., 2024) reruns every test instance under both natural and reversed label orders while recording the top-k output log probabilities, requiring approximately 400 model calls per dataset and seed. Using 10 calibration instances evaluated under both label-order permutations, it estimates the position prior for label position k as 
+
+prior( k) = mean  
+
+> x, π
+
+P (k | x, π ),
+
+where x ranges over calibration instances and π ranges over the natural and reversed permutations. Averaging across permutations reduces the contribution of instance content and isolates the model’s preference for particular label positions. For each test instance, PriDe divides the raw probability assigned to each position by its estimated prior and renormalizes the resulting scores: 
+
+Pcorr (k) ∝ Praw (k)prior( k) , ˆy = arg max  
+
+> k
+
+Pcorr (k).
+
+This correction is applied separately to the natural- and reversed-order runs, after which reversed predictions are mapped back to the natural class space and residual PFR is computed between the two corrected predictions. The calibration set contains 10 instances, and the retained log-probability distribution contains the top 20 tokens. 
+
+> Contextual Calibration.
+
+Contextual Calibration (Zhao et al., 2021) estimates prompt-induced label bias using a content-free query. For each label order, the task header, label space, and demonstrations are kept unchanged, while the test sentence is replaced with N/A :     
+
+> [ h e a d e r and l a b e l s p a c e ] [ d e m o n s t r a t i o n s unchanged ] S e n t e n c e : N/A L a b e l :
+
+This requires one null-prompt call per label order; the test-instance log probabilities are reused from the same natural- and reversed-order runs used by PriDe. For each order, the null distribution Pnull (k) represents the probability assigned to label position k in the absence of meaningful test content. Each test distribution is corrected as 
+
+Pcorr (k) ∝ Praw (k)max( Pnull (k), 10 −10 ) .
+
+21 Performance residuals Position-sensitivity residuals Factor Level Acc. F1 ρ MAE P1 P2a P2b P3a P3b Label format Letter 
+
++2 .20 (±2.72) +2 .71 (±4.08) +3 .06 (±3.86) 
+
+−1.53 (±3.72) +3 .27 (±5.15) +1 .18 (±7.38) +1 .87 (±6.52) +4 .04 (±15 .33) +1 .27 (±5.32) 
+
+Natural language 
+
++1 .27 (±5.11) +0 .35 (±6.53) +4 .01 (±3.06) 
+
+−1.87 (±5.93) +59 .54 (±27 .81) 
+
+−13 .18 (±14 .10) 
+
+−1.96 (±4.70) +19 .51 (±24 .07) +4 .44 (±11 .41) 
+
+Neutral ID 
+
++6 .53 (±2.79) +8 .10 (±3.95) +6 .12 (±4.93) 
+
+−7.33 (±3.41) +0 .50 (±2.02) 
+
+−7.32 (±11 .69) 
+
+−7.26 (±6.94) 
+
+−10 .87 (±14 .00) 
+
+−12 .95 (±9.25) 
+
+Model Qwen3-8B Base 
+
++7 .17 (±2.06) +9 .09 (±4.65) +6 .44 (±5.44) 
+
+−8.33 (±3.33) 
+
+−0.73 (±3.90) 
+
+−3.42 (±7.82) +12 .47 (±9.96) +20 .13 (±10 .57) +26 .19 (±9.52) 
+
+Qwen3-8B Thinking 
+
++3 .05 (±1.87) +4 .72 (±2.96) +2 .73 (±5.33) 
+
+−1.66 (±3.71) +9 .38 (±4.31) 
+
+−8.77 (±13 .15) 
+
+−2.11 (±12 .78) 
+
+−21 .01 (±12 .32) 
+
+−18 .32 (±13 .72) 
+
+Qwen3-4B 
+
++4 .17 (±5.75) +6 .30 (±7.14) +3 .45 (±3.06) 
+
+−4.87 (±6.37) 
+
+−4.07 (±4.44) 
+
+−13 .25 (±12 .15) 
+
+−10 .33 (±8.35) +7 .48 (±9.91) +5 .34 (±15 .36) 
+
+Gemma3-12B 
+
++11 .46 (±3.24) +13 .79 (±5.22) +8 .73 (±3.90) 
+
+−13 .16 (±5.08) 
+
+−2.98 (±7.91) 
+
+−13 .98 (±14 .62) 
+
+−7.93 (±9.72) 
+
+−15 .13 (±20 .28) 
+
+−14 .96 (±17 .68) 
+
+Ministral-3-8B 
+
++0 .93 (±2.12) +0 .49 (±1.37) 
+
+−0.22 (±0.49) 
+
+−0.90 (±2.15) +0 .84 (±1.50) +0 .48 (±0.37) +0 .94 (±1.91) +3 .71 (±7.47) 
+
+−0.16 (±0.86) 
+
+Gemma4-12B 
+
++13 .40 (±2.46) +15 .49 (±5.24) +11 .92 (±6.04) 
+
+−14 .80 (±4.27) 
+
+−7.00 (±6.85) 
+
+−20 .75 (±16 .52) 
+
+−17 .60 (±15 .62) 
+
+−17 .81 (±21 .88) 
+
+−36 .50 (±13 .36) 
+
+Granite-4-8B 
+
++9 .17 (±4.72) +10 .97 (±5.97) +7 .83 (±3.78) 
+
+−10 .90 (±6.56) 
+
+−3.33 (±4.30) 
+
+−17 .08 (±12 .96) 
+
+−10 .29 (±8.36) 
+
+−1.72 (±7.84) +11 .01 (±17 .71) 
+
+Scale cardinality 3-way 
+
++25 .00 (±6.17) +23 .84 (±6.20) +2 .53 (±4.30) 
+
+−29 .42 (±7.08) 
+
+−16 .33 (±0.34) 
+
+−32 .37 (±9.46) 
+
+−26 .41 (±3.74) 
+
+−17 .22 (±0.45) 
+
+−25 .31 (±4.51) 
+
+2-way 
+
++43 .85 (±5.57) +47 .47 (±5.39) +2 .47 (±8.85) 
+
+−49 .34 (±6.90) 
+
+−17 .34 (±0.32) 
+
+−47 .41 (±8.21) 
+
+−35 .57 (±3.94) 
+
+−33 .07 (±3.85) 
+
+−48 .91 (±4.42) 
+
+Table 12: Full Phase 1 residuals (mean ± SD): label format, model, and scale cardinality. The corrected prediction is ˆy = arg max k Pcorr (k). The probability floor prevents numerical instability when a null probability is close to zero. Correction is applied separately to each label order, after which reversed predictions are mapped back to the natural class space and residual PFR is computed from the corrected predictions. 
+
+H Full Phase 1 and Phase 2 Results 
+
+Tables 12–15 report the complete means and standard deviations underlying the main-paper residual tables. Table 14 gives the absolute joint-factor results used to compute the main-paper cross-model residuals. Table 15 gives the full inference-paradigm, pairwise-aggregation, and debiasing results summarized in the main paper. 22 Performance residuals Position-sensitivity residuals Factor Level Acc. F1 ρ MAE P1 P2a P2b P3a P3b Demo count 0-shot 
+
++7 .13 (±3.49) +8 .01 (±6.04) +6 .45 (±4.82) 
+
+−7.37 (±4.74) +6 .87 (±4.11) 
+
+– – – –1-shot 
+
++4 .40 (±3.63) +4 .00 (±5.69) +5 .79 (±4.63) 
+
+−4.83 (±3.60) +3 .43 (±6.64) 
+
+−16 .78 (±14 .23) 
+
+−7.33 (±3.45) 
+
+−6.25 (±11 .80) 
+
+−20 .16 (±13 .06) 
+
+3-shot 
+
++0 .77 (±2.36) +0 .80 (±3.41) +1 .78 (±1.34) 
+
+−1.53 (±2.10) 
+
+−0.13 (±2.77) 
+
+−8.72 (±10 .49) 
+
+−6.20 (±5.36) 
+
+−14 .62 (±12 .19) 
+
+−12 .09 (±12 .51) 
+
+Prompt clarity Minimal 
+
+−3.68 (±17 .52) 
+
+−8.06 (±17 .81) 
+
+−25 .57 (±19 .42) +17 .50 (±32 .40) +48 .84 (±27 .54) 
+
+−11 .89 (±25 .13) +8 .43 (±22 .60) 
+
+−13 .50 (±22 .02) 
+
+−12 .21 (±14 .15) 
+
+Ordinal-explicit 
+
++2 .77 (±3.40) +1 .60 (±4.55) 
+
+−2.33 (±8.14) 
+
+−4.10 (±4.30) +4 .97 (±1.83) +3 .48 (±12 .35) +8 .54 (±11 .62) +3 .38 (±18 .35) 
+
+−6.89 (±1.69) 
+
+Separator Space 
+
+−5.50 (±6.86) 
+
+−6.37 (±8.03) 
+
+−5.07 (±8.33) +7 .95 (±11 .61) +0 .22 (±1.63) +5 .38 (±10 .47) +11 .20 (±12 .80) +1 .72 (±10 .33) +0 .93 (±22 .27) 
+
+Tab 
+
+−4.37 (±8.84) 
+
+−5.81 (±12 .29) 
+
+−6.34 (±16 .49) +11 .43 (±22 .99) +0 .33 (±5.99) +9 .56 (±18 .80) +15 .57 (±17 .49) 
+
+−1.59 (±13 .85) +1 .55 (±23 .66) 
+
+Connector Space 
+
+−7.86 (±8.53) 
+
+−8.17 (±8.10) 
+
+−9.28 (±8.27) +11 .50 (±10 .25) +0 .61 (±2.92) +6 .62 (±7.51) +15 .56 (±9.57) 
+
+−6.23 (±11 .80) 
+
+−2.06 (±12 .43) 
+
+Newline+tab 
+
+−3.23 (±2.78) 
+
+−3.91 (±2.80) 
+
+−3.43 (±3.22) +3 .76 (±2.61) +1 .68 (±2.55) +0 .89 (±0.58) +3 .05 (±2.26) 
+
+−2.02 (±6.60) 
+
+−6.77 (±4.28) 
+
+Mood Interrogative 
+
+−3.57 (±4.46) 
+
+−5.37 (±3.76) 
+
+−4.67 (±5.63) +3 .17 (±4.55) +3 .97 (±3.78) +0 .65 (±2.79) +20 .50 (±16 .07) 
+
+−6.14 (±8.57) +1 .82 (±11 .22) 
+
+Indicative 
+
++1 .97 (±1.61) +2 .42 (±2.11) +1 .33 (±1.76) 
+
+−2.90 (±2.59) 
+
+−0.17 (±2.08) 
+
+−3.65 (±4.06) 
+
+−3.39 (±4.07) +4 .59 (±3.67) +2 .30 (±1.52) 
+
+Table 13: Full Phase 1 residuals (mean ± SD): demonstration count and prompt-form factors. 23 Performance Position sensitivity Model Config. Acc. F1 ρ MAE P1 P2a P2b P3a P3b Ministral-3-8B baseline 
+
+0.565 (±0.114) 0.522 (±0.117) 0.577 (±0.220) 0.460 (±0.134) 0.136 (±0.087) 0.312 (±0.217) 0.270 (±0.155) 0.577 (±0.193) 0.484 (±0.175) 
+
+A
+
+0.533 (±0.060) 0.494 (±0.083) 0.578 (±0.264) 0.498 (±0.081) 0.450 (±0.255) 
+
+– – – –P1 
+
+0.550 (±0.087) 0.527 (±0.096) 0.567 (±0.211) 0.485 (±0.117) 0.171 (±0.095) 0.214 (±0.124) 0.269 (±0.137) 0.408 (±0.128) 0.383 (±0.139) 
+
+P2a 
+
+0.522 (±0.079) 0.486 (±0.107) 0.539 (±0.281) 0.510 (±0.104) 0.827 (±0.153) 0.227 (±0.197) 0.252 (±0.179) 0.306 (±0.183) 0.314 (±0.213) 
+
+P2b 
+
+0.590 (±0.090) 0.570 (±0.102) 0.622 (±0.230) 0.430 (±0.102) 0.083 (±0.067) 0.132 (±0.125) 0.154 (±0.089) 0.469 (±0.267) 0.377 (±0.236) 
+
+Gemma3-12B baseline 
+
+0.670 (±0.075) 0.655 (±0.065) 0.667 (±0.201) 0.337 (±0.077) 0.098 (±0.042) 0.168 (±0.074) 0.181 (±0.135) 0.389 (±0.228) 0.336 (±0.237) 
+
+A
+
+0.581 (±0.064) 0.562 (±0.080) 0.637 (±0.236) 0.438 (±0.071) 0.211 (±0.069) 
+
+– – – –P1 
+
+0.672 (±0.092) 0.660 (±0.076) 0.680 (±0.184) 0.338 (±0.099) 0.146 (±0.061) 0.164 (±0.079) 0.175 (±0.080) 0.598 (±0.158) 0.511 (±0.150) 
+
+P2a 
+
+0.644 (±0.090) 0.613 (±0.105) 0.669 (±0.205) 0.363 (±0.092) 0.824 (±0.136) 0.139 (±0.042) 0.168 (±0.044) 0.267 (±0.239) 0.213 (±0.156) 
+
+P2b 
+
+0.666 (±0.104) 0.644 (±0.112) 0.681 (±0.186) 0.342 (±0.106) 0.136 (±0.054) 0.117 (±0.059) 0.136 (±0.048) 0.578 (±0.270) 0.442 (±0.251) 
+
+Granite-4-8B baseline 
+
+0.647 (±0.090) 0.627 (±0.095) 0.658 (±0.229) 0.360 (±0.092) 0.094 (±0.060) 0.137 (±0.091) 0.158 (±0.094) 0.523 (±0.242) 0.596 (±0.145) 
+
+A
+
+0.508 (±0.059) 0.492 (±0.054) 0.486 (±0.430) 0.516 (±0.058) 0.244 (±0.194) 
+
+– – – –P1 
+
+0.638 (±0.099) 0.616 (±0.105) 0.659 (±0.227) 0.373 (±0.103) 0.089 (±0.051) 0.100 (±0.066) 0.136 (±0.087) 0.545 (±0.258) 0.557 (±0.247) 
+
+P2a 
+
+0.600 (±0.103) 0.547 (±0.140) 0.600 (±0.249) 0.420 (±0.114) 0.840 (±0.197) 0.082 (±0.074) 0.142 (±0.106) 0.286 (±0.243) 0.400 (±0.280) 
+
+P2b 
+
+0.641 (±0.098) 0.618 (±0.101) 0.671 (±0.221) 0.371 (±0.102) 0.186 (±0.168) 0.098 (±0.103) 0.095 (±0.047) 0.472 (±0.287) 0.549 (±0.280) 
+
+Qwen3-8B (ref.) baseline 
+
+0.556 (±0.096) 0.517 (±0.105) 0.580 (±0.220) 0.469 (±0.117) 0.127 (±0.087) 0.308 (±0.217) 0.261 (±0.160) 0.540 (±0.189) 0.486 (±0.178) 
+
+A
+
+0.604 (±0.116) 0.587 (±0.116) 0.640 (±0.210) 0.427 (±0.150) 0.279 (±0.126) 
+
+– – – –P1 
+
+0.585 (±0.099) 0.557 (±0.099) 0.611 (±0.210) 0.429 (±0.112) 0.117 (±0.088) 0.209 (±0.126) 0.189 (±0.109) 0.420 (±0.178) 0.395 (±0.142) 
+
+P2a 
+
+0.629 (±0.100) 0.603 (±0.098) 0.645 (±0.180) 0.387 (±0.111) 0.820 (±0.188) 0.124 (±0.109) 0.190 (±0.100) 0.347 (±0.146) 0.326 (±0.163) 
+
+P2b 
+
+0.623 (±0.103) 0.596 (±0.100) 0.655 (±0.199) 0.391 (±0.117) 0.178 (±0.126) 0.095 (±0.103) 0.120 (±0.064) 0.367 (±0.123) 0.346 (±0.200) 
+
+Table 14: Absolute Phase 2 joint-factor results (mean ± SD). 24 Performance residuals Position-sensitivity residuals Family Method Acc. F1 ρ MAE P1 P2a P2b P3a P3b Inference paradigm Pairwise 
+
+−8.94 (±2.86) 
+
+−9.70 (±3.73) 
+
+−6.23 (±3.57) +17 .05 (±2.42) +27 .83 (±12 .75) 
+
+– – – –Listwise 
+
+−27 .61 (±3.89) 
+
+−35 .10 (±4.00) 
+
+−72 .63 (±14 .13) +52 .06 (±11 .11) +2 .11 (±31 .87) 
+
+– – – –Listwise-compare 
+
+−0.67 (±7.05) +0 .55 (±5.84) +5 .81 (±3.79) +2 .44 (±9.82) 
+
+−18 .11 (±6.64) 
+
+– – – –Aggregation method Majority vote 
+
+−7.22 (±7.27) 
+
+−5.46 (±7.39) 
+
+−17 .61 (±21 .19) +18 .39 (±20 .83) +35 .89 (±12 .68) 
+
+−30 .58 (±3.96) 
+
+−22 .44 (±10 .81) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Mean score 
+
+−16 .28 (±8.46) 
+
+−23 .18 (±7.32) 
+
+−18 .84 (±9.83) +23 .83 (±14 .27) 
+
+−1.39 (±8.76) 
+
+−44 .69 (±12 .37) 
+
+−36 .27 (±9.72) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Weighted sum 
+
+−8.94 (±2.86) 
+
+−9.71 (±3.72) 
+
+−6.27 (±3.53) +17 .17 (±2.54) +27 .22 (±12 .06) 
+
+−40 .97 (±9.15) 
+
+−32 .05 (±9.52) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Copeland 
+
+−0.61 (±3.57) +0 .47 (±5.24) 
+
+−2.51 (±2.93) +1 .89 (±5.04) +24 .50 (±11 .59) 
+
+−41 .25 (±8.89) 
+
+−32 .55 (±9.41) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Bradley–Terry 
+
+−20 .45 (±1.10) 
+
+−23 .46 (±3.49) 
+
+−42 .12 (±8.21) +66 .00 (±20 .62) +43 .00 (±10 .84) 
+
+−13 .97 (±5.83) 
+
+−13 .56 (±14 .01) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Debiasing strategy Label averaging 
+
+−1.07 (±1.92) 
+
+−1.63 (±1.96) 
+
+−1.04 (±2.33) +0 .53 (±2.31) 
+
+– – – – –Demo averaging 
+
+−0.42 (±5.23) +0 .20 (±6.32) 
+
+−0.61 (±2.64) +0 .83 (±5.38) 
+
+– – – – –PriDe 
+
++0 .90 (±1.27) +2 .11 (±2.10) +1 .38 (±2.29) 
+
+−0.60 (±1.26) +0 .73 (±1.48) 
+
+– – – –Context. Calib. 
+
+−2.87 (±4.69) 
+
+−3.27 (±5.74) 
+
+−1.37 (±3.55) +5 .13 (±7.09) +3 .30 (±4.59) 
+
+– – – –
+
+Table 15: Full Phase 2 pipeline, pairwise-aggregation, and debiasing residuals (mean ± SD). 25 I Priority Configuration 
+
+Table 16 lists the fixed Phase 1 factor combinations constructed for each optimization objective. Each combination selects one level per factor and is evaluated without further tuning during the cross-model transfer analysis. 
+
+J Pairwise Aggregation Results 
+
+Table 17 reports the full aggregation-method comparison. We place these detailed results in the appendix so that the main text can focus on the pipeline-level trade-off between predictive performance and label-order stability. 26 ID Prioritization F1 F6 F13 Separator Connector Mood                                                        
+
+> AAccuracy ↑neutral_id 0ordinal_explicit base base indicative
+> P1 Probe 1 PFR ↓base (numeric )3base (explicit )base base indicative
+> P2a Probe 2 random_vs_ascending ↓natural_language 1minimal base base indicative
+> P2b Probe 2 random_vs_descending ↓neutral_id 1base (explicit )base base indicative
+> P3a Probe 3 before_vs_after ↓neutral_id 3minimal tab space interrogative
+> P3b Probe 3 before_vs_split ↓neutral_id 1minimal base newline_tab base
+
+Table 16: Objective-specific Phase 1 factor combinations used in the priority and cross-model transfer analyses. 
+
+Performance residuals Position-sensitivity residuals Factor Level Acc. F1 ρ MAE P1 P2a P2b P3a P3b Aggreg. method Majority vote 
+
+−7.22 (±7.27) 
+
+−5.46 (±7.39) 
+
+−17 .61 (±21 .19) +18 .39 (±20 .83) +35 .89 (±12 .68) 
+
+−30 .58 (±3.96) 
+
+−22 .44 (±10 .81) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Mean score 
+
+−16 .28 (±8.46) 
+
+−23 .18 (±7.32) 
+
+−18 .84 (±9.83) +23 .83 (±14 .27) 
+
+−1.39 (±8.76) 
+
+−44 .69 (±12 .37) 
+
+−36 .27 (±9.72) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Weighted sum 
+
+−8.94 (±2.86) 
+
+−9.71 (±3.72) 
+
+−6.27 (±3.53) +17 .17 (±2.54) +27 .22 (±12 .06) 
+
+−40 .97 (±9.15) 
+
+−32 .05 (±9.52) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Copeland 
+
+−0.61 (±3.57) +0 .47 (±5.24) 
+
+−2.51 (±2.93) +1 .89 (±5.04) +24 .50 (±11 .59) 
+
+−41 .25 (±8.89) 
+
+−32 .55 (±9.41) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Bradley– Terry 
+
+−20 .45 (±1.10) 
+
+−23 .46 (±3.49) 
+
+−42 .12 (±8.21) +66 .00 (±20 .62) +43 .00 (±10 .84) 
+
+−13 .97 (±5.83) 
+
+−13 .56 (±14 .01) 
+
+−67 .43 (±5.07) 
+
+−56 .10 (±16 .97) 
+
+Table 17: Pairwise aggregation residuals relative to the baseline. 
+
+Note. Values are mean ( ±SD) and are multiplied by 100. Red and blue indicate positive and negative residuals, respectively, with darker shading for larger absolute changes. Color indicates direction rather than desirability because lower values are preferable for MAE and PFR. 
+
+27

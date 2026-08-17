@@ -1,0 +1,394 @@
+Title: Local and Global Regimes of Geometric Complexity in Language Model Representations
+
+URL Source: https://arxiv.org/pdf/2608.14361v1
+
+Published Time: Mon, 17 Aug 2026 00:54:49 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+## Local and Global Regimes of Geometric Complexity in Language Model Representations 
+
+Arwa Osman 1, Marco Baroni 1,2, Iuri Macocco 11Universitat Pompeu Fabra (UPF) 
+
+> 2
+
+ICREA 
+
+Correspondence: arwa.osman@upf.edu 
+
+Abstract 
+
+Intrinsic dimensionality (ID) is widely used to probe the representational complexity of lan-guage models, but it remains unclear whether ID differences reflect properties of language itself or artefacts of how the underlying dataset was constructed. In this paper, we focus specifically on how lexical diversity, the num-ber of unique last-token items present in a dataset, affects ID estimates of that dataset. We find a scale-dependent transition between two regimes: at low lexical diversity, condi-tions with fewer unique final words produce higher ID, while at high lexical diversity, this ordering reverses, and conditions with more unique words produce higher ID. We derive an exact, parameter-free formula for the point at which this reversal occurs, which matches the observed transition point at every scale tested. On the one hand, our results highlight how care must be taken when interpreting the intrinsic dimensionality of a set of representations as a straightforward cue of their complexity. On the other hand, our discovery of the two ID regimes reveals a general principle of organisation of linguistic data in LLMs that sheds new light on their inner manifold structures. 
+
+1 Introduction 
+
+Intrinsic dimensionality (ID) is the effective num-ber of degrees of freedom needed to describe the structure of high-dimensional data (Ansuini et al., 2019; Recanatesi et al., 2019; Pope et al., 2021), and it has become a common tool in NLP for prob-ing the representational complexity of language models (Tulchinskii et al., 2023; Valeriani et al., 2023; Cheng et al., 2025): how “spread out” or con-strained hidden states are across layers or models. However, it remains poorly understood whether ID measurements reflect properties of language itself, or simply artefacts of how the underlying dataset was constructed. For example, a natural question is whether different parts of speech dif-fer in intrinsic dimensionality (Domenichelli et al., 2026). We find that they do: in a naive comparison, nouns occupy a substantially higher-ID space than prepositions across nearly every layer of a trans-former (Figure 1, left). One could be tempted to conclude that the larger semantic variety of nouns is reflected by richer geometric structure in the transformer representations. But this comparison is not as fair as it first ap-pears. In natural text, the noun class contains thou-sands of unique word types, while prepositions are drawn from a closed set of only a few dozen. When we repeat the comparison after matching the two classes in both lexical diversity and to-ken frequency, the pattern does not just weaken; it reverses: prepositions now show higher ID than nouns across the layers (Figure 1, right). What looked like a part-of-speech effect turns out to be an artefact of lexical diversity. 0 5 10 15 20 25 30 35        
+
+> Layer
+> 10 15 20 25 30 35 40
+> Intrinsic Dimensionality (ID)
+> Natural corpus (unmatched vocabulary size)
+> NOUN (natural, ~2600+ unique) ADP (natural, ~43 unique)
+> 0510 15 20 25 30 35
+> Layer
+> 510 15 20 25
+> Intrinsic Dimensionality (ID)
+> Controlled vocabulary size (25 unique types each)
+> NOUN (25 types, 400 tokens each) ADP (25 types, 400 tokens each)
+
+Figure 1: Apparent NOUN vs. ADP differences in in-trinsic dimensionality reverse once lexical diversity is controlled (GRIDE, Qwen3-8B, k = 128 ; N = 10 ,000 
+
+samples). Left: naive comparison, unmatched vocab-ulary size (NOUN: 2600+ types; ADP: ∼43 types). 
+
+Right: both classes matched to 25 types, with 400 to-kens per type (Section 3). 
+
+This example leads to the question we address in this paper: independent of syntactic category or semantic content, how does lexical diversity shape the intrinsic dimensionality of contextualised word representations? We isolate lexical diversity as a controlled experimental variable. Using a custom 1arXiv:2608.14361v1 [cs.CL] 14 Aug 2026 WikiText-derived dataset, we construct eleven con-ditions spanning from 1 to 10,000 unique contex-tualised nouns, holding total sample size fixed at 
+
+N = 10 ,000 across all conditions, and estimate ID using the generalised ratios intrinsic dimension es-timator (GRIDE), introduced by Denti et al. (2022), across the hidden states of two language models: Qwen3-8B and Meta-Llama-3-8B. Our results reveal a transition in ID that depends on how the neighbourhood scale used to estimate it compares to the number of samples available per word: when the scale is small relative to this sample count, ID reflects a word’s own contextual variability, while once the scale reaches it, ID in-stead reflects the diversity of the vocabulary as a whole. We derive the exact point at which this shift occurs and confirm it empirically across models, estimators, and word classes. Any comparison of ID across categories, whether word classes, languages, domains, or mod-els, must not rest solely on the assumption that the categories differ only in the property under study. We show this assumption can fail without any visi-ble sign: two categories can diverge in ID purely because they differ in lexical diversity, and the re-sulting curves look just as clean and reproducible as a genuine effect would. More generally, our results show how the numerical values returned by stan-dard ID estimators might, depending on scale, be based on very different views of the same broader manifold. 
+
+2 Related Work 
+
+Methods for estimating intrinsic dimensionality. 
+
+Intrinsic dimensionality (ID) refers to the mini-mal number of parameters required to describe a data representation without significant loss of in-formation (Ansuini et al., 2019), capturing the ef-fective number of degrees of freedom along the manifold on which the data resides (Pope et al., 2021). Estimating ID in high-dimensional data is a well-studied problem, with methods developed to address challenges of noise, scale, and computa-tional cost (Camastra and Vinciarelli, 2003; Levina and Bickel, 2004). Maximum Likelihood Estima-tion (MLE), proposed by Levina and Bickel (2004), models the points within a small neighbourhood of a query point as a homogeneous Poisson pro-cess, and estimates ID from the log-ratio of the distance to the k-th nearest neighbour relative to each closer neighbour; here, k directly sets the size of the local neighbourhood used to estimate the density around each point, with larger k incorporat-ing more neighbours into the estimate at the cost of a stronger assumption of locally constant density. This estimator is computationally efficient but can underestimate ID in high-dimensional or complex-manifold settings due to negative bias (Denti et al., 2022). TwoNN (Facco et al., 2017) instead relies on the ratio of distances to the first and second nearest neighbours, offering robustness to local noise but remaining sensitive to short-scale irregu-larities; a common mitigation, data decimation, re-duces this bias at the cost of statistical power (Denti et al., 2022). GRIDE (Denti et al., 2022) addresses these limitations by leveraging higher-order nearest neighbours to estimate ID across multiple neigh-bourhood scales, mitigating noise by modelling distance ratios at larger scales without the power loss associated with decimation. This multi-scale property is central to our approach, as it allows us to directly examine how ID estimates shift with neighbourhood scale k.
+
+Intrinsic dimensionality in neural network rep-resentations. ID has been used to study the ge-ometry of representations in deep networks since Ansuini et al. (2019) showed that ID follows a characteristic hump-shaped profile across layers, first expanding, probably to disentangle features in early layers, before compressing toward the output, with lower ID in the final hidden layer correlating with better generalisation. Recanatesi et al. (2019) further established that this compression, the de-gree to which a network reduces the dimensionality of its final-layer representations, is itself a strong predictor of generalisation to unseen data. Pope et al. (2021) extended this line of work by esti-mating the ID of common image datasets, finding that even high-resolution ImageNet images have an intrinsic dimensionality several orders of mag-nitude smaller than their embedding dimension, and showing that dataset ID correlates with learn-ing difficulty. More recently, Cheng et al. (2025) identified a distinct high-dimensional “abstraction phase” in transformer language models, in which ID rises sharply at intermediate layers before col-lapsing toward lower-dimensional representations near the output, interpreted as evidence that mod-els integrate abstract linguistic information before refining it in later layers. 
+
+ID as a cue of complexity in NLP settings. ID has increasingly been used as a cue of linguistic 2or representational complexity in NLP. Tulchinskii et al. (2023) used ID to detect AI-generated text, exploiting the observation that machine-generated text occupies a lower-dimensional subspace than human-written text. Yin et al. (2024) characterised model truthfulness in question answering using local intrinsic dimension, showing that halluci-nated model outputs occupy higher-dimensional activation manifolds than correct ground-truth an-swers. Valeriani et al. (2023) examined the geom-etry of hidden representations across transformer layers to probe representational complexity more broadly. More directly relevant to our concerns, Domenichelli et al. (2026) find that open-class words occupy more isotropic, higher-dimensional subspaces than closed-class words across both en-coder and decoder architectures, and note that the two groups also differ in lexical and syntactic di-versity, without isolating diversity as a controlled variable. Similarly, Baroni et al. (2026) trace how ID varies across a range of linguistic phenomena to draw conclusions about their relative complexity. These studies illustrate exactly the kind of infer-ence our work cautions against: attributing ID dif-ferences to a linguistic property of interest without ruling out differences in the underlying richness of the compared categories. 
+
+Confounds in ID estimation. A separate line of work has questioned whether ID estimates on neu-ral representations reliably track the quantity they are assumed to measure. Schulte and Rügamer (2026) show both theoretically and empirically that common ID estimators do not track the true under-lying ID of a representation, and investigate which factors actually drive commonly reported ID results in the literature. Taken together, the current literature has estab-lished ID as a valuable probe of representational complexity in both vision and language models. Yet, input diversity remains an overlooked source of variation in ID estimates. To our knowledge, no prior work isolates lexical diversity as an experi-mental variable in its own right. We address this gap directly. 
+
+3 Experimental Setup 
+
+3.1 Dataset Sample Construction. We use WikiText-103 (Merity et al., 2017), a large-scale English corpus derived from verified Wikipedia articles, which we part-of-speech tag using spaCy (Honnibal and Montani, 2017). From the tagged corpus, we con-struct approximately 84 million samples, each con-sisting of four consecutive non-overlapping sen-tences, with a target word randomly selected from the fourth sentence and its POS tag recorded; plac-ing the target in the fourth sentence ensures that its representation is conditioned on three complete sentences of preceding context. Each sample is truncated at the target word, making it the final token the model processes. We focus on nouns as target words, since their large natural vocabulary allows us to construct con-ditions spanning a wide range of lexical diversity, from a single repeated noun to thousands of unique types. To ensure POS purity and avoid tagging noise, we retain only words tagged as a noun in at least 80% of their occurrences and appearing at least 300 times in our corpus, yielding a contextu-alised noun pool from which our dataset conditions are constructed. We additionally construct a POS-diversified variant of this dataset, sampling target words across multiple POS categories rather than nouns only; details are given in Appendix A. 
+
+Dataset Conditions. From this contextualised noun pool, we construct eleven datasets at different lexical diversity levels, each fixed at N = 10 ,000 
+
+samples, by sampling n unique nouns with m =
+
+N/n samples per noun. Critically, lexical diver-sity here refers only to the target noun’s identity, not its context: the preceding sentences still differ across samples regardless of diversity level, drawn independently from the corpus, so our conditions isolate the target word’s diversity alone. To assess robustness, for each lexical diversity level we con-struct five independent partitions, each with the same set of unique nouns but different randomly drawn samples. The eleven conditions are sum-marised in Table 1.             
+
+> Unique Nouns Samples per Noun
+> 110,000 25 400 50 200 100 100 250 40 500 20 1,000 10 1,250 82,500 45,000 210,000 1
+> Table 1: Lexical diversity conditions.
+
+33.2 Models 
+
+We use Qwen3-8B (Yang et al., 2025) (36 layers, hidden size 4096) as our primary model. We addi-tionally use Meta-Llama-3-8B (Meta AI, 2024) for cross-architecture validation (Section 7.2). 
+
+3.3 ID Estimation 
+
+For each sample, we extract the hidden state at the final token position from every layer of the model. We then estimate the intrinsic dimensionality (ID) of these representations using GRIDE. Formally, for a point i with n1-th and n2-th nearest-neighbour distances ri,n 1 and ri,n 2 , GRIDE estimates the in-trinsic dimension d by maximum likelihood from the distribution of the ratio μi = ri,n 2 /r i,n 1 , whose density depends on d (Denti et al., 2022). We fol-low the n2 = 2 n1 convention recommended by Denti et al. (2022) as a robust trade-off between scale coverage and computational cost, and refer to k (via n2) as the neighbourhood scale used by GRIDE at each estimate. Intuitively, k sets how far into the representation space the estimator looks when comparing distances: small k captures the local geometry immediately surrounding a point, while larger k captures how that point’s neighbour-hood relates to increasingly distant regions of rep-resentation space. We run GRIDE at six scales 
+
+k ∈ { 16 , 32 , 64 , 128 , 256 , 512 }.Estimation is performed using the DADApy li-brary (Glielmo et al., 2022). ID is estimated inde-pendently for each of the five partitions per condi-tion, and we report the mean and standard deviation of these estimates across partitions. This variance is typically extremely low, so the standard deviation is often not visible in the plots. 
+
+4 A Scale-Dependent Transition in ID 
+
+Figure 2 shows ID across layers for Qwen3-8B at six scales. At every scale, conditions separate into two regimes that hold across all layers: low-diversity conditions remain in a low-ID regime throughout the network, while high-diversity con-ditions remain in a high-ID regime throughout. In the low-ID regime, the relationship between lex-ical variety and ID is inverse: conditions with 
+
+fewer unique nouns have higher ID. In the high-ID regime, the relationship becomes direct: more 
+
+unique nouns lead to higher ID, up to a level at which the ID estimate tends to stabilise across datasets. Between these two regimes lies a single condi-tion, a “transition point”, whose curve (displayed with a thicker line in the figure) does not stay in either regime: it starts near the low-ID cluster in early layers and rises across layers to join the high-ID cluster by the final layers. This transition point shifts systematically with scale: as k increases, it occurs at progressively lower lexical diversity. A complementary view of the same phe-nomenon, organised by lexical diversity level rather than scale, is given in Appendix B (Figure 6). 0 10 20 30 010 20 30 40 50                
+
+> Scale 16 Transition point: n=1000 nouns
+> 010 20 30
+> Scale 32 Transition point: n=500 nouns
+> 010 20 30 010 20 30 40 50
+> Scale 64 Transition point: n=250 nouns
+> 010 20 30
+> Scale 128 Transition point: n=100 nouns
+> 010 20 30
+> Layer
+> 010 20 30 40 50
+> Scale 256 Transition point: n=50 nouns
+> 010 20 30
+> Layer
+> Scale 512 Transition point: n=25 nouns
+> Intrinsic Dimensionality (ID)
+> Unique nouns 1 nouns 25 nouns 50 nouns 100 nouns 250 nouns 500 nouns 1000 nouns 1250 nouns 2500 nouns 5000 nouns 10000 nouns
+
+Figure 2: ID curves across layers for all considered scales and lexical-diversity conditions on Qwen3-8B. The “transition point” curve is shown with a thicker line. 
+
+4.1 Local and Global Regimes 
+
+We now explain why these two regimes exist, and why the transition between them occurs where it does. Since GRIDE is a nearest-neighbour esti-mator, the transition in ID must ultimately be ex-plained by a change in the nearest-neighbour struc-ture of the data. We build on prior evidence that, despite being context-sensitive, representations of the same word in different contexts remain more similar to one another than representations of differ-4ent words (Ethayarajh, 2019), and assume that this holds strongly enough for different contextualised representations of the same word to cluster closer together than representations of different words. Given this assumption, a neighbourhood of size 
+
+k falls into one of two cases: either all k nearest neighbours belong to the same word type, the lo-cal regime, or at least one neighbour belongs to a different word type, the global regime (Figure 3). In the local regime, the estimator samples en-tirely within a single word’s representation cloud, measuring how the model varies representations of the same word across different contexts. In the global regime, the neighbourhood extends beyond the word cloud, and the estimator instead measures the geometry of the broader noun space. small large Scales Low lexical variety High lexical variety 
+
+Figure 3: Schematic illustration of the local and global regimes. Left: at low lexical diversity, a small neigh-bourhood scale (blue) stays within the same word’s clus-ter (local regime), while a large scale (orange) already extends into a different word’s cluster (global regime). 
+
+Right: at high lexical variety, clusters are smaller and more numerous, so even a small scale can extend be-yond the target word’s own cluster. 
+
+4.2 Deriving the Transition Point 
+
+Let n be the number of unique nouns, m = N/n 
+
+the number of samples per noun, and k the GRIDE scale. For any query point, there are at most m − 1
+
+other samples ending with the same word. There-fore, if k < m , the entire neighbourhood can in principle be filled with same-word samples, and the local regime is geometrically possible. At k = m,at least one neighbour must come from a differ-ent word type, marking the boundary at which the global regime is forced. The transition therefore occurs when: 
+
+m = k =⇒ Nn = k =⇒ ntransition = Nk . (1) The minimum fraction of the k neighbours that must come from different word types, which we call the global ratio , is: 
+
+ρmin (n, k ) = max 
+
+
+
+0, 1 − m − 1
+
+k
+
+
+
+. (2) 
+
+4.3 Confirming the Transition Across Scales 
+
+Our derivation implies that the transition point should depend only on the ratio k/m , rather than on k and m individually. If this holds, curves mea-sured at very different scales ( k = 16 to k = 512 )should collapse onto the same trajectory when plot-ted against this ratio, each crossing through the transition at k/m = 1 .Figure 4 tests this prediction. Each panel shows one layer of Qwen3-8B, with one line per scale 
+
+k. Despite this wide range of raw k values, all six lines collapse onto a single trajectory once plotted against k/m , and all of them rise through the pre-dicted transition point (dashed red line), with no fitted parameters. This holds consistently across early, middle, and late layers (5, 21, 30, and 36), indicating that a single rule, governed entirely by the neighbourhood-counting argument above, ex-plains the transition regardless of scale or network depth. We note that layer 36, the final layer, shows a somewhat noisier collapse than earlier layers, likely reflecting a broader reshuffling of neighbour-hood structure at the output layer that is not specific to the local-global transition itself. 10 3 10 2 10 1 10 0 10 1 10 2                                     
+
+> k / m [local 1global]
+> 010 20 30 40
+> ID
+> Layer 5
+> 10 310 210 110 010 110 2
+> k / m [local 1global]
+> 10 15 20 25 30 35 40 45
+> Layer 21
+> 10 310 210 110 010 110 2
+> k / m [local 1global]
+> 10 15 20 25 30 35 40 45
+> ID
+> Layer 30
+> 10 310 210 110 010 110 2
+> k / m [local 1global]
+> 12.5 15.0 17.5 20.0 22.5 25.0 27.5 30.0 Layer 36
+> k=16 k=32 k=64 k=128 k=256 k=512 theoretical transition (n = N/k)
+
+Figure 4: ID as a function of k/m across four layers of Qwen3-8B (layers 5, 21, 30, and 36). 
+
+55 Empirical Verification 
+
+The theoretical derivation in Section 4.2 assumes that representations of the same word type form local clusters in the embedding space. We test this assumption by measuring the same-word fraction :for each token, the proportion of its k nearest neigh-bours that share the same word type, evaluated at 
+
+k = m − 1 for each lexical diversity condition, and averaged across all datapoints. Figure 5 shows this fraction across layers for each condition (excluding n = 1 , where the frac-tion is 1, and n = 10 ,000 , where m − 1 = 0 makes the diagnostic undefined). In early and middle lay-ers, the same-word fraction remains close to 1 for all conditions, confirming that same-word tokens al-most entirely fill the neighbourhood, exactly as as-sumed. In later layers, this fraction declines, most noticeably for high-diversity conditions, falling to around 0.2–0.4 by the final layers. This behaviour is also reflected in the thick transition ID curves in Figure 2, where indeed the last layers display a pronounced peak that is not present otherwise. The shape of these curves and their final decline show that the local-cloud assumption is not strictly layer-independent: same-word tokens do not re-main perfectly segregated from other word types throughout the network. However, even at its low-est point in later layers, the same-word fraction remains far above the no-clustering baseline shown by the dashed lines in Figure 5. If representations were not clustered by word type, a token’s neighbours would be drawn uni-formly from the n word types, giving an expected same-word fraction of approximately 1/n —three orders of magnitude below the fractions observed even in late layers for the most diverse conditions. 0 5 10 15 20 25 30 35 
+
+> Layer
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Same-word fraction
+> 25 nouns 50 nouns 100 nouns 250 nouns 500 nouns 1000 nouns 1250 nouns 2500 nouns 5000 nouns
+
+Figure 5: Same-word fraction across layers, evaluated at k = m − 1 for each lexical diversity condition. 
+
+6 Geometric Properties of the Two Regimes 
+
+Having established that the transition is real and ge-ometrically driven, we characterise how ID behaves within each regime. Two consistent observations emerge across all scales. 
+
+Curve ordering reverses at the transition. In the local regime, conditions with fewer unique nouns produce higher ID. With fewer unique nouns, more samples per noun are available. We conjec-ture that, in this setup, the estimator is “exploring” to a greater extent the word’s contextual variation across all geometric directions. The larger the clus-ter of same-token points around each target word (fewer unique types with more tokens each), the richer this local geometry will be. Hence, we ob-serve ID decreasing with higher lexical diversity. In the global regime, on the other hand, the order-ing inverts: conditions with more unique nouns produce higher ID. We hypothesise that, as neigh-bours are now instances of different nouns that will occupy more independent geometric directions in representational space, the larger the set of noun types in the sample, the more accurately we can es-timate the overall size of the global noun manifold by looking at a wider set of independent dimen-sions. This reversal is visible across all scales in Figure 2. 
+
+ID saturates in the global regime. Within the global regime, ID increases with lexical diversity, but with strongly diminishing returns. As n grows large, ρ → 1 asymptotically: the neighbourhood is already almost entirely filled with different-word tokens, so adding more unique nouns changes its composition only marginally. At scale 512, for in-stance, the difference in global ratio between 2,500 nouns (99.4%) and 5,000 nouns (99.8%) is only 0.4%, and their ID curves are nearly indistinguish-able across all layers, suggesting that, at these sizes, we are reaching a stable estimate of the ID of noun representations. 
+
+Do scale effects affect ID profiles? Arguments about deep net geometry are often cast in terms of the profile of ID increase or decrease across network layers. For example, both Valeriani et al. (2023) and Cheng et al. (2025) reported the pres-ence of an ID “peak” in the central layers of LLMs and other models. By looking at the profiles in Figure 2, we see that the central peak pattern is rel-atively stable across scales and datasets, suggesting 6that it is a genuine property of how the geomet-ric organisation of representations evolves across network layers. From this perspective, it is indeed interesting that the peak emerges in both regimes, suggesting that it is a property that characterises how representations are organised by the network both within tight, clustered neighbourhoods (lo-cal regime), and when considering a wide sample of unrelated points spanning a large space (in our case, the nominal domain, as explored in the global regime). However, note that at the transition point (thicker lines in the same plot), we also observe a second, sharper peak. It would be tempting to interpret this second peak as another substantive property of how models distribute representations in their space, but actually our analysis suggests that it is simply an artefact of the transition from the local to the global regime in the later layers. 
+
+7 Cross-Validation 
+
+To test whether the transition reflects a general geometric property of lexical diversity, rather than an artefact of our specific estimator, model, or word class, we replicate our main analysis along three independent axes: estimator, model architecture, and part-of-speech composition. Full results for each are given in Appendix C. 
+
+7.1 MLE Replication 
+
+We repeat the analysis using the Maximum Like-lihood Estimator (MLE) of Levina and Bickel (2004), as implemented in the skdim library (Bac et al., 2021), in place of GRIDE. The same tran-sition pattern emerges at every scale k: the condi-tion at n = N/k nouns separates from the cluster, matching the GRIDE results exactly (Appendix C, Figure 7). This indicates the transition is a property of the underlying representations rather than a char-acteristic of GRIDE-based ID estimation specifi-cally. 
+
+7.2 Cross-Architecture Validation 
+
+We repeat the analysis on Meta-Llama-3-8B (Meta AI, 2024). At all six scales tested, the transition occurs at the predicted level ntransition = N/k (Ap-pendix C, Figure 8), indicating that the transition point is governed by dataset construction rather than by architecture-specific properties of any sin-gle model. 
+
+7.3 POS-diversified Dataset 
+
+Finally, we test whether the transition depends on nouns specifically, or reflects lexical diversity more generally. We construct a POS-diversified dataset, sampling words across nouns, verbs, adjectives, ad-verbs, and proper nouns, with adverbs excluded at the highest diversity levels due to data availability (Appendix A). The transition pattern is preserved across all six scales (Appendix C, Figure 9), indi-cating that the effect is driven by lexical diversity itself rather than any property specific to nouns. 
+
+8 Discussion and Conclusion 
+
+The central finding of this work is that neighbourhood-based ID estimators applied to LLM contextualised word representations operate in two qualitatively distinct modes depending on the relationship between lexical diversity, sample size, and scale. In the local regime, they measure the contextual variation of individual lexical items. In the global regime, they measure how the model distributes different word types relative to one an-other. These are meaningful geometric quantities, but they are not the same quantity, and comparing ID values across the two regimes is not straightfor-ward. This point is illustrated directly by our own re-sults. The naive noun-versus-preposition compar-ison in Figure 1 involved two word classes that differ substantially in lexical diversity, and, once they were matched on lexical diversity, the result of the comparison reversed. This suggests that the original difference was driven by how the under-lying dataset was constructed rather than by any intrinsic property of the syntactic categories them-selves. The relationship between lexical diversity and ID likewise differs between the two regimes. Below the transition, lexical diversity and ID are nega-tively related: more unique nouns mean fewer sam-ples per noun, sparser cloud sampling, and lower ID. Above the transition, they are positively re-lated: more unique nouns mean more word clouds, a richer inter-word geometry, and higher ID. At the transition point, spurious ID effects might appear, such as a second “peak” in the ID profile that is due to the transition and a more pronounced neigh-bourhood reorganisation. We also observed, within the global regime, a ceiling beyond which increasing lexical diversity yields no additional geometric information. This 7ceiling is determined by the global ratio approach-ing 1 and can be predicted in advance from Equa-tion 2. On a positive note, the fact that we observe this ceiling suggests that the sample sizes we are considering are sufficient to come up with a stable estimate of global-regime ID. More broadly, our findings suggest that ID dif-ferences attributed to a linguistic or task-relevant property may in some cases reflect uncontrolled dif-ferences in dataset construction between the com-pared categories, rather than the property itself. Any study using ID to compare word representa-tions across conditions with different lexical diver-sity must verify which regime each condition falls into. The formula ntransition = N/k and the same-word fraction diagnostic introduced in Section 5 provide the tools to do this. Conditions in the same regime can be compared directly; conditions in different regimes measure different aspects of the geometry and require careful interpretation. Note that we have focused on lexical diversity because it is an easy-to-control property with a predictable effect on neighbourhood structure, but other prop-erties, whose effect might be more difficult to mea-sure, might also affect how data are clustered and, consequently, the ID regime we are in. For ex-ample, when comparing a generic text to a highly specialised one (e.g., in a technical domain), it is possible that samples from the latter will form a tighter cluster than samples from the former. Fu-ture work should assess the impact of such fuzzier factors on ID. It is interesting and relevant to underline that ID can be used as a probe of the structure of both local neighbourhoods, where the space surrounding a point is occupied by very similar representations, and global neighbourhoods, such as the large space spanned by a random selection of unrelated nouns. It is remarkable that, while other properties change with scale, certain basic features of ID profiles, such as the presence of a mid-layer peak or bump (Valeriani et al., 2023; Cheng et al., 2025), appear in both regimes, suggesting a “fractal-like” struc-ture where the same patterns emerge at narrower and wider sections of the same manifold. Future work should seek to understand why such patterns emerge. 
+
+Limitations 
+
+Our study has several limitations. First, our dataset is derived entirely from WikiText-103, an English-language corpus of Wikipedia articles. Whether the transition formula ntransition = N/k generalises to other languages, genres, or domains with different distributional properties remains untested. Second, our models are limited to the 8B parameter scale. While we validate our findings across two archi-tectures (Qwen3-8B and Meta-Llama-3-8B), it is unclear whether the same relationship holds at sub-stantially smaller or larger model scales, or whether the transition point itself depends on model size. Third, our theoretical derivation and the same-word fraction diagnostic in Section 5 rely on the assumption that contextualised representations of the same word type cluster more closely together than representations of different words. We find that this assumption holds strongly in early and middle layers, but weakens in later layers, where the same-word fraction declines substantially for high-diversity conditions. Although this decline does not prevent the transition point from match-ing our predictions even in late layers, it indicates that same-word tokens are not perfectly segregated from other word types at every layer: same-word neighbours dominate far more often than chance would predict, but not with absolute certainty, and the reasons for this late-layer weakening are not fully understood. 
+
+Acknowledgments 
+
+MB and IM received funding from the Euro-pean Research Council (ERC) under the European Union’s Horizon 2020 research and innovation pro-gram (grant agreement No. 101019291). We also thank the COLT: Computational Linguistics and Linguistic Theory group for their valuable feedback and discussions. 
+
+References    
+
+> Alessio Ansuini, Alessandro Laio, Jakob H Macke, and Davide Zoccolan. 2019. Intrinsic dimension of data representations in deep neural networks. In Advances in Neural Information Processing Systems 32: An-nual Conference on Neural Information Processing Systems 2019, NeurIPS 2019, December 8-14, 2019, Vancouver, BC, Canada .Jonathan Bac, Evgeny M. Mirkes, Alexander N. Gorban, Ivan Tyukin, and Andrei Zinovyev. 2021. Scikit-dimension: A Python package for intrinsic dimension estimation. Entropy , 23(10):1368. Marco Baroni, Emily Cheng, Iria de Dios-Flores, and Francesca Franzon. 2026. Tracing the complexity profiles of different linguistic phenomena through the
+
+8intrinsic dimension of llm representations. Preprint ,arXiv:2601.03779. Francesco Camastra and Alessandro Vinciarelli. 2003. Data dimensionality estimation methods: a survey. 
+
+Pattern Recognit. , 36(12):2945–2954. Emily Cheng, Diego Doimo, Corentin Kervadec, Iuri Macocco, Jade Yu, Alessandro Laio, and Marco Ba-roni. 2025. Emergence of a high-dimensional ab-straction phase in language transformers. In The Thir-teenth International Conference on Learning Repre-sentations, ICLR 2025, Singapore, April 24-28, 2025 .Francesco Denti, Diego Doimo, Alessandro Laio, and Antonietta Mira. 2022. The generalized ratios in-trinsic dimension estimator. Scientific Reports ,12(1):20005. Lucia Domenichelli, Dominique Brunato, and Felice Dell’Orletta. 2026. Linguistic profiling of trans-former embedding geometry. In Proceedings of the 30th Conference on Computational Natural Lan-guage Learning , pages 145–164. Association for Computational Linguistics. Kawin Ethayarajh. 2019. How contextual are contextu-alized word representations? Comparing the geom-etry of BERT, ELMo, and GPT-2 embeddings. In 
+
+Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Lan-guage Processing (EMNLP-IJCNLP) , pages 55–65, Hong Kong, China. Association for Computational Linguistics. Elena Facco, Maria d’Errico, Alex Rodriguez, and Alessandro Laio. 2017. Estimating the intrinsic di-mension of datasets by a minimal neighborhood in-formation. Scientific reports , 7(1):12140. Aldo Glielmo, Iuri Macocco, Diego Doimo, Matteo Carli, Claudio Zeni, Romina Wild, Maria d’Errico, Alex Rodriguez, and Alessandro Laio. 2022. Dadapy: Distance-based analysis of data-manifolds in python. 
+
+Patterns , 3(10):100589. Matthew Honnibal and Ines Montani. 2017. spaCy 2: Natural language understanding with bloom embed-dings, convolutional neural networks and incremental parsing. Elizaveta Levina and Peter J. Bickel. 2004. Maximum likelihood estimation of intrinsic dimension. In Ad-vances in Neural Information Processing Systems 17 [Neural Information Processing Systems, NIPS 2004, December 13-18, 2004, Vancouver, British Columbia, Canada] , pages 777–784. Stephen Merity, Caiming Xiong, James Bradbury, and Richard Socher. 2017. Pointer sentinel mixture mod-els. In 5th International Conference on Learning Representations, ICLR 2017, Toulon, France, April 24-26, 2017, Conference Track Proceedings .Meta AI. 2024. Introducing meta llama 3: The most capable openly available llm to date. Phillip Pope, Chen Zhu, Ahmed Abdelkader, Micah Goldblum, and Tom Goldstein. 2021. The intrinsic dimension of images and its impact on learning. In 
+
+9th International Conference on Learning Represen-tations, ICLR 2021, Virtual Event, Austria, May 3-7, 2021 .Stefano Recanatesi, Megan Farrell, Madhu S Advani, Subhaneil Lahiri, and Surya Ganguli. 2019. Dimen-sionality compression and expansion in deep neural networks. Preprint , arXiv:1906.00443. Rickmer Schulte and David Rügamer. 2026. Rethink-ing intrinsic dimension estimation in neural repre-sentations. In International Conference on Artificial Intelligence and Statistics (AISTATS) .Eduard Tulchinskii, Kristian Kuznetsov, Kushnareva Laida, Daniil Cherniavskii, Sergey Nikolenko, Evgeny Burnaev, Serguei Barannikov, and Irina Pi-ontkovskaya. 2023. Intrinsic dimension estimation for robust detection of ai-generated texts. In Thirty-seventh Conference on Neural Information Process-ing Systems .Lucrezia Valeriani, Diego Doimo, Francesca Cuturello, Alessandro Laio, Alessio Ansuini, and Alberto Caz-zaniga. 2023. The geometry of hidden representa-tions of large transformer models. In Advances in Neural Information Processing Systems , volume 36, pages 51234–51252. Curran Associates, Inc. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Dayi-heng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, and 41 oth-ers. 2025. Qwen3 technical report. arXiv preprint arXiv:2505.09388 .Fan Yin, Jayanth Srinivasa, and Kai-Wei Chang. 2024. Characterizing truthfulness in large language model generations with local intrinsic dimension. In Pro-ceedings of ICML , pages 57069–57084, Vienna, Aus-tria. 
+
+A POS-Diversified Dataset 
+
+In addition to the noun-only dataset described in Section 3, we construct a POS-diversified variant in which target words are sampled across multi-ple part-of-speech categories. The dataset follows the same construction procedure and lexical diver-sity levels as the main dataset, with N = 10 ,000 
+
+samples per condition. For n ≤ 1,250 unique words, target words are sampled uniformly across five POS categories: 
+
+> NOUN
+
+, VERB , ADJ , ADV , and PROPN . For n ≥
+
+2,500 , adverbs are excluded and sampling is re-stricted to four categories: NOUN , VERB , ADJ , and 9PROPN . This adjustment is necessary because ad-verbs occur with insufficient frequency in the cor-pus to satisfy the minimum sample requirements at high lexical diversity levels. The same POS purity and minimum frequency filters applied to the noun-only dataset are applied independently to each POS category. 
+
+B Transition Point by Lexical Diversity 
+
+Figure 6 presents the same data as Figure 2, reor-ganised to allow a complementary reading: each panel now corresponds to a fixed lexical diversity level n, with one line per scale k, rather than a fixed scale with one line per n. Within each panel, the bolded line marks the scale k at which that lexical diversity level serves as the transition point between the local and global regimes. 0 10 20 30 010 20 30 40 50 1 nouns                                    
+
+> 010 20 30
+> 25 nouns
+> 010 20 30 010 20 30 40 50 50 nouns
+> 010 20 30
+> 100 nouns
+> 010 20 30 010 20 30 40 50 250 nouns
+> 010 20 30
+> 500 nouns
+> 010 20 30 010 20 30 40 50 1000 nouns
+> 010 20 30
+> 1250 nouns
+> 010 20 30 010 20 30 40 50 2500 nouns
+> 010 20 30
+> 5000 nouns
+> 010 20 30
+> Layer
+> 010 20 30 40 50 10000 nouns
+> Scale (k) k=16 k=32 k=64 k=128 k=256 k=512
+> Intrinsic Dimensionality (ID)
+
+Figure 6: ID curves across layers for each lexical diver-sity level n, with one line per scale k. The bold line marks the transition scale. 
+
+C Cross-Validation Results 
+
+This appendix presents the full figures support-ing the robustness checks described in Section 7: replication with an alternative ID estimator (MLE), replication across model architectures, and replica-tion on a part-of-speech-diversified dataset. 10 C.1 MLE Replication 
+
+Figure 7 shows ID curves across all layers of Qwen3-8B at all six scales, estimated using the Maximum Likelihood Estimator (MLE) of Levina and Bickel (2004) in place of GRIDE. The transi-tion pattern matches the GRIDE results in Figure 2 exactly, with the condition at n = N/k nouns sep-arating from the cluster at every scale. 0 10 20 30 010 20 30 40 50 60             
+
+> Scale 16 Transition point: n=1000 nouns
+> 010 20 30
+> Scale 32 Transition point: n=500 nouns
+> 010 20 30 010 20 30 40 50 60
+> Scale 64 Transition point: n=250 nouns
+> 010 20 30
+> Scale 128 Transition point: n=100 nouns
+> 010 20 30
+
+Layer    
+
+> 010 20 30 40 50 60
+> Scale 256 Transition point: n=50 nouns
+> 010 20 30
+
+Layer 
+
+> Scale 512 Transition point: n=25 nouns
+> Intrinsic Dimensionality (ID)
+
+MLE ID Across Layers Qwen3-8B 
+
+> Unique nouns 1 nouns 25 nouns 50 nouns 100 nouns 250 nouns 500 nouns 1000 nouns 1250 nouns 2500 nouns 5000 nouns 10000 nouns
+
+Figure 7: MLE ID curves across layers for all scales on Qwen3-8B. The transition pattern observed with GRIDE (Figure 2) is reproduced at every scale k.
+
+C.2 Cross-Architecture Validation 
+
+Figure 8 shows ID curves across all layers and all six scales for Meta-Llama-3-8B. The transition occurs at the predicted level ntransition = N/k 
+
+at every scale, matching the pattern observed on Qwen3-8B. 
+
+C.3 POS-diversified Dataset 
+
+Figure 9 shows ID curves across layers and all six scales for Qwen3-8B, computed on the POS-diversified dataset described in Appendix A. The 0 5 10 15 20 25 30 010 20 30 40 50 60                         
+
+> Scale 16 Transition point: n=1000 nouns
+> 0510 15 20 25 30
+> Scale 32 Transition point: n=500 nouns
+> 0510 15 20 25 30 010 20 30 40 50 60
+> Scale 64 Transition point: n=250 nouns
+> 0510 15 20 25 30
+> Scale 128 Transition point: n=100 nouns
+> 0510 15 20 25 30
+
+Layer       
+
+> 010 20 30 40 50 60
+> Scale 256 Transition point: n=50 nouns
+> 0510 15 20 25 30
+
+Layer 
+
+> Scale 512 Transition point: n=25 nouns
+> Intrinsic Dimensionality (ID)
+
+GRIDE ID Across Layers Llama-3-8B 
+
+> Unique nouns 1 nouns 25 nouns 50 nouns 100 nouns 250 nouns 500 nouns 1000 nouns 1250 nouns 2500 nouns 5000 nouns 10000 nouns
+
+Figure 8: ID curves across layers for all scales on Meta-Llama-3-8B. The transition occurs at n = N/k nouns at every scale, matching the pattern observed on Qwen3-8B (Figure 2). 
+
+transition pattern is preserved at every scale, indi-cating that the effect is driven by lexical diversity itself rather than by any property specific to nouns. 
+
+D Licenses 
+
+URLs and licenses of the used assets are provided in the following list: 
+
+WikiText-103 https://huggingface.co/ datasets/Salesforce/wikitext ; license: CC BY-SA 4.0 
+
+spaCy https://spacy.io ; license: MIT 
+
+Qwen3-8B https://huggingface.co/Qwen/ Qwen3-8B ; license: apache-2.0 
+
+Llama https://huggingface.co/meta-llama/ Meta-Llama-3-8B ; license: llama3 
+
+DADApy https://github.com/ sissa-data-science/DADApy ; license: apache-2.0 11 0 10 20 30 010 20 30 40 50 
+
+Scale 16 Transition point: n=1000 words    
+
+> 010 20 30
+
+Scale 32 Transition point: n=500 words    
+
+> 010 20 30 010 20 30 40 50
+
+Scale 64 Transition point: n=250 words    
+
+> 010 20 30
+
+Scale 128 Transition point: n=100 words    
+
+> 010 20 30
+
+Layer 
+
+> 010 20 30 40 50
+
+Scale 256 Transition point: n=50 words    
+
+> 010 20 30
+
+Layer 
+
+Scale 512 Transition point: n=25 words 
+
+> Intrinsic Dimensionality (ID)
+
+GRIDE ID Across Layers Qwen3-8B 
+
+(Balanced dataset: NOUN+VERB+ADJ+ADV/PROPN pooled) 
+
+Unique words 1 words 25 words 50 words 100 words 250 words 500 words 1000 words 1250 words 2500 words 5000 words Figure 9: ID curves across layers for all scales on Qwen3-8B, computed on the POS-diversified dataset (Appendix A). The transition pattern is preserved at each scale k, matching the noun-only results in Figure 2. 
+
+skdim https://github.com/ scikit-learn-contrib/scikit-dimension ;license: BSD-3-Clause 12
