@@ -1,0 +1,794 @@
+Title: LigBench: A Unified and Human-Aligned Benchmark for LLM-based Research Idea Generation
+
+URL Source: https://arxiv.org/pdf/2608.13136v1
+
+Published Time: Fri, 14 Aug 2026 00:54:59 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+## LigBench: A Unified and Human-Aligned Benchmark for LLM-based Research Idea Generation 
+
+Chenrun Wang 1,2,* , Mingxuan Zhu 1,* , Tiancheng Huang 1, Wenjie Li 2,Yujie Zhang 2, Zichen Zhu 1, Zhiying Zou 1, Kai Yu 1, Lu Chen 1,2 †,
+
+> 1
+
+X-LANCE Lab, School of Computer Science, Shanghai Jiao Tong University, Shanghai, China 
+
+> 2
+
+Shanghai Innovation Institution, Shanghai, China 
+
+> *
+
+Equal contribution †Corresponding author 
+
+Abstract 
+
+With the rapid advancement of large language models (LLMs), research idea generation has attracted increasing attention. Existing ap-proaches enable LLMs to retrieve relevant lit-erature and propose novel ideas for research ar-eas. However, current evaluation practices for idea generation remain fragmented and lack objective standards, often relying on direct LLM scoring, which limits their ability to pro-vide unified and reliable assessments across a coherent distribution of generated ideas. To address this challenge, we propose LigBench, an automated evaluation benchmark that en-ables fine-grained and reliable evaluation of AI research ideas, consistently applicable across different generation distributions. In addition, we introduce PAIR-IQ, a dataset tailored for training pairwise idea judgment models and serving as an auxiliary reference to support more objective comparative evaluation. Exten-sive experiments demonstrate that LigBench achieves stable and interpretable evaluations, significantly improving alignment with expert judgments. Furthermore, models trained on PAIR-IQ exhibit enhanced ranking accuracy and robustness, establishing a principled stan-dard for scalable and objective research idea assessment. 
+
+1 Introduction 
+
+The rapid evolution of LLMs (Achiam et al., 2023; Comanici et al., 2025; Yang et al., 2025) has ush-ered in a new era of automated research idea gen-eration. Building on the strong reasoning and knowledge synthesis capabilities of these models, a growing body of recent work (Zhou et al., 2024; Lu et al., 2024; Baek et al., 2025; Su et al., 2025) has proposed LLM-based frameworks for scien-tific ideation, enabling the generation of novel hy-potheses, methodological variations, and promis-ing research directions grounded in large-scale scientific literature. Such capabilities hold great promise for accelerating discovery across disci-plines, guiding researchers toward unexplored di-rections, and reducing the time and cost associ-ated with manual ideation. However, as the util-ity of these systems continues to grow, the lack of rigorous, objective, and reproducible evaluation methodologies remains a critical bottleneck for the systematic assessment of generated ideas. Current evaluation strategies for idea generation are often fragmented. Some studies (Zheng et al., 2023; Hu et al., 2024; Si et al., 2024) rely on direct scoring by LLMs, where models assign quality scores to their own or peer-generated ideas, while others (Wang et al., 2024; Hu et al., 2024) depend on human experts to perform pairwise or ranking-based evaluations. Automated metrics such as nov-elty, diversity, or semantic similarity offer partial insights but fail to capture the multi-dimensional nature of research idea quality. Overall, these ap-proaches lack consistency: they may be sensitive to prompt phrasing, suffer from inter-annotator variability, or provide only relative assessments. Consequently, there is no unified framework to benchmark idea generation systems comprehen-sively. Pairwise comparison has emerged as a promis-ing approach to sidestep some subjective biases in-herent in absolute scoring. In this paradigm, two candidate ideas are presented side by side, and an evaluator (whether human or automated) selects the one deemed superior along specified criteria. Aggregating multiple pairwise comparisons can yield a ranking of ideas with higher consistency than solitary ratings. Nevertheless, pairwise eval-uation alone does not constitute a full benchmark-ing solution: it requires a sufficiently large and di-verse pool of test pairs, clear annotation protocols, and scalable tooling to collect judgments at scale. To address these challenges, we introduce Lig-Bench, an automated evaluation framework tai-lored for research idea assessment. LigBench arXiv:2608.13136v1 [cs.CL] 13 Aug 2026 operationalizes multi-dimensional quality criteria by orchestrating large-scale pairwise comparisons, metadata tracking, statistical aggregation, and au-tomatic score updates into a cohesive pipeline. We drew on the thinking process experts use when evaluating an idea. Experts typically begin by searching for existing results related to the idea for reference or comparison. In addition, pairwise comparison alone is not sufficient to objectively and convincingly reflect the quality of an idea. Therefore, we have designed and provided a com-plete process based on pairwise comparison com-bined with the Elo mechanism to continuously up-date scores. We also present the PAIR-IQ dataset, a curated dataset of research papers’ ideas con-taining structured idea representations. PAIR-IQ serves both as a gold-standard reference for com-parative evaluation and as a training resource for models designed to predict pairwise judgments. Our main contributions are summarized as fol-lows: • Unified Evaluation Framework: We intro-duce LigBench as a unified and extensible evaluation framework that systematically in-tegrates data curation, idea retrieval, pairwise comparison, score propagation, and result ag-gregation within a single automated pipeline. • PAIR-IQ Dataset: We release PAIR-IQ dataset, comprising over 11000 conference papers with debiased evaluation scores and formalized representations to support objec-tive assessment of research ideas. • Open-Source Resources: We will release the PAIR-IQ dataset together with the complete LigBench evaluation pipeline to facilitate reproducibility and enable community-driven extensions. The PAIR-IQ dataset is publicly available at 
+
+https://huggingface.co/datasets/ USER3IjEBHj9/PAIR-IQ/tree/main . The full LigBench evaluation pipeline will be released in the near future. • Benchmarking and Analysis: We conduct extensive experiments with state-of-the-art LLMs, demonstrating that LigBench can dis-cern subtle differences in idea quality and offering insights into model strengths and weaknesses. 
+
+2 Related Work 
+
+Current LLM-based ideation systems typically em-ploy evaluation protocols that are tightly cou-pled to their own generation pipelines, reflect-ing framework-specific assumptions rather than a unified or standardized assessment methodology. Existing approaches primarily rely on either di-rect scoring by large language models or judg-ments from human experts, and are often designed to operate only within the context of a particu-lar ideation system. As a result, these evalua-tion methods lack the flexibility and generality required for consistent assessment across differ-ent models, prompting strategies, and idea dis-tributions. For instance, SciPIP (Wang et al., 2024) relies on evaluations conducted by human researchers, limiting scalability and reproducibil-ity. AI Idea Bench (Qiu et al., 2025) introduces an evaluation protocol that is heavily dependent on the underlying idea generation framework and does not support standalone assessment of individ-ual ideas. CoI (Li et al., 2024) proposes a pairwise comparison approach, but restricts evaluation to comparisons among generated ideas, making ob-jective comparison with human-authored research ideas challenging. Consequently, as highlighted by a recent survey (Shahhosseini et al., 2025), evaluation remains the most critical bottleneck in LLM-based scientific ideation. 
+
+3 Method 
+
+To provide a unified, objective, and human-aligned evaluation of research ideas, we propose Lig-Bench , an automated benchmark designed for sys-tematic idea assessment. As illustrated in Figure 1, the evaluation of each idea is decomposed into four aspects: rating , contribution , soundness , and 
+
+novelty , with each aspect scored on a 0-5 scale .Here, rating represents the overall quality as per-ceived by reviewers, contribution reflects the sig-nificance of the idea within its research domain, 
+
+soundness captures methodological rigor and va-lidity, and novelty measures the originality of the proposed idea. Following the pipeline shown in Figure 1, each idea is first transformed into a formalized represen-tation and then iteratively compared against simi-lar papers retrieved from the database using a large language model. In each comparison, the model evaluates the relative quality between idea pairs, and the resulting judgments are aggregated with Multi-round Pairwise Comparison & Score Adjustment 
+
+Agent 
+
+Which is better? Idea Input is ... 
+
+User 
+
+Rating Contribution Soundness 
+
+...... ...... ...... ...... 
+
+Ref 1 Ref 2 Input 
+
+Online Search (Semantic Scholar API) 
+
+Novelty Assessment 
+
+Online 1 Online 2 Ref 1 Input Ref 2 
+
+Idea Formalization 
+
+Main Target Core Breakthrough Innovative Method Experiment Design 
+
+Final Evaluation Report 
+
+Rating Score (0-5) 
+
+Contribution Score (0-5) Soundness Score (0-5) Novelty Score (0-5) 
+
+PAIR IQ Dataset (ICLR'24/'25, NeurIPS'24, Formalized with OpenReview Scores) 
+
+Ref 1, Ref 2, ... Online 1, Online 2, ... 
+
+Heterogeneous Input Research Idea 
+
+Adversarially Robust and Auditable RLHF for Safety-Critical Alignment Problem Statement: Current Reinforcement Learning from Human Feedback (RLHF)  pipelines rely heavily on human preference data that can be noisy ... 
+
+Core Research Question: How can we design an RLHF framework that  is robust to adversarial or inconsistent ...  
+
+> Proposed Idea: Introduce a Robust and Auditable RLHF (RA-RLHF) framework that combines three components: ...
+
+Methodology: Construct synthetic and semi-realistic RLHF benchmark  with controllable feedback corruption ... 
+
+Expected Contributions: A formal framework for reasoning about...  Algorithms that improve safety...  
+
+> Why This Matters: As aligned models are deployed in...
+
+Formalized Input Research Idea  
+
+> Develop a robust and auditable RLHF framework that ensures reliable safety alignment even under... Construct RLHF benchmarks with controlled levels of feedback noise and adversarial manipulation... Model human feedback using latent-variable or Bayesian annotator reliability estimation... Introduce a principled integration of adversarial feedback modeling and explicit safety constraints...
+
+Adversarially Robust and Auditable RLHF for Safety-Critical Alignment 
+
+Formalized Ref 1 Research Idea 
+
+> This research proposes a new algorithm called Safe Reinforcement Learning from Human Feedback... Evaluating the ability of Safe RLHF to simultaneously improve the LLM’s helpfulness and harmlessness... 1.Two-stage human annotation strategy to decouple helpfulness and harmlessness, using 14 predefined... Safe RLHF decouples human preferences for helpfulness and harmlessness, using a Lagrangian...
+
+Safe RLHF: Safe Reinforcement Learning from Human Feedback (ICLR2024 Spotlight) 
+
+> The input idea addresses a more fundamental limitation of RLHF—robustness to adversarial and unreliable feedback—making it broader and more novel than the retrieved work. Its framework-level contribution and focus on worst-case safety and auditability better match rating criteria that prioritize generality, originality, and long-term safety impact.
+> Idea Input is is better than Ref 1 at rating. (Rating Score ↑)
+
+Figure 1: Overview of the LigBench evaluation pipeline. Given a target idea, LigBench performs idea formal-ization, retrieves related papers, conducts LLM-based pairwise comparisons, and iteratively updates scores using PAIR-IQ until convergence across multiple evaluation dimensions. 
+
+the objective scores from the PAIR-IQ dataset to update the score of the target idea. This process is repeated until convergence, producing a final score that is consistent across different sources and aligned with human preferences. 
+
+3.1 Idea Formalization 
+
+To begin with, a fundamental challenge in build-ing a unified idea evaluation framework is the het-erogeneity in the formats of the ideas under eval-uation. Due to inherent differences in the dis-tributions of ideas generated by different models and frameworks, directly comparing these ideas is prone to bias. For instance, when using large language models as evaluators, they often tend to favor ideas that are described in greater detail, potentially overlooking those that are more con-cise yet fundamentally more innovative or valu-able. Moreover, different studies are conducted under diverse frameworks, leading to substantial variations in how final ideas are presented, includ-ing their structure and formatting (Chiang and Lee, 2023; Liu et al., 2023), which further complicates fair and consistent comparison across models and methods. To mitigate these issues, it is necessary to stan-dardize ideas across different distributions. Here, we focus on the core aspects and boundaries of each idea and decouple it into four distinct com-ponents: • Main Target : a concise, one-sentence sum-mary of the task and objective that the idea aims to address. • Core Breakthrough : the key advancement or novel contribution introduced by the idea compared to prior work. • Innovative Methods : the concrete method-ological approaches or techniques proposed to achieve the target. • Experimental Design : the experimental setup and evaluation plan designed to validate the effectiveness of the proposed methods. Formally, let I ∈ I denote an input idea from the idea space. We define an LLM-based decom-position operator DLLM : I → T × B × M × E 
+
+such that 
+
+(T, B, M, E ) = DLLM (I), (1) where T ∈ T represents the main target, B ∈ B 
+
+denotes the core breakthrough, M ∈ M corre-sponds to the innovative methods, and E ∈ E
+
+specifies the experimental design. This formula-tion casts idea formalization as a structured, LLM-driven mapping into a unified representation space, facilitating systematic comparison and subsequent quantitative evaluation. The concrete prompting strategy used for this formalization is provided in Appendix B.1. By explicitly disentangling complementary se-mantic facets of an idea into structured compo-nents, this LLM-driven decomposition yields a unified yet fine-grained representation that cap-tures the substantive content while abstracting away superficial variations in expression and for-mat. Consequently, it mitigates evaluation bias arising from heterogeneous idea sources and pre-sentation styles, enabling more objective and con-sistent comparison across models and frameworks. Furthermore, this structured representation estab-lishes a principled foundation for subsequent quan-titative analyses, including assessments of sound-ness, novelty, contribution, and other relevant cri-teria. 
+
+3.2 PAIR-IQ Construct 
+
+To better evaluate research ideas according to hu-man preferences, we collected and constructed the PAIR-IQ dataset , comprising over 11,000 pa-pers from ICLR 2024, ICLR 2025, and NeurIPS 2024 , including oral, spotlight, poster, and re-jected papers. For each paper, we retrieved rat-ings, contribution scores, and soundness scores from OpenReview , and projected each score to a standardized 05 range to ensure comparability across different venues and scoring scales. Figure 2 illustrates the composition of the PAIR-IQ dataset. As shown in Figure 3, the dataset draws from three major machine learning venues, with ICLR 2025 contributing the largest propor-tion (36.7%), followed by ICLR 2024 (32.4%) and NeurIPS 2024 (30.9%). Figure 2a presents the distribution across acceptance categories: poster papers constitute the majority (57.3%), followed by rejected submissions (36.6%), spotlight papers (4.3%), and oral presentations (1.8%). This dis-tribution ensures that the dataset captures a wide spectrum of paper quality levels, from top-tier ac-cepted works to borderline and rejected submis-sions. Figure 2b further depicts the topical di-versity of the dataset, spanning 12 research ar-eas. Large language models (LLM) represent the most prevalent topic (19.3%), followed by training methodologies (15.4%) and reinforcement learn-ing (13.4%), reflecting the current research trends in the machine learning community. Detailed in-formation and a specific example of the dataset are                
+
+> Rating Contribution Soundness
+> ICLR 2024 2.740 2.689 2.472 ICLR 2025 2.821 2.687 2.498 NeurIPS 2024 2.918 2.914 2.721 all 2.825 2.758 2.559
+> Table 1: Average scores of papers from different venues in terms of rating, contribution, and soundness. The values highlight systematic differences across con-ferences and years, motivating the need for score debi-asing.
+
+provided in Appendix C. Following the idea formalization framework in-troduced in the previous subsection, we now de-scribe in detail how we extract and formalize research ideas from full academic papers. For each paper, we parsed all textual content and em-ployed a LLM to extract structured components, including Main Target, Core Breakthrough, Inno-vative Methods, and Experimental Design. These components provide a standardized representation of each research idea, enabling consistent down-stream evaluation and facilitating subsequent scor-ing procedures. A more detailed description of the prompting strategy and extraction process is pro-vided in Appendix B.2. Next, we address potential biases in the col-lected ratings. Since different venues and years may exhibit systematic differences in reviewer be-havior, the resulting score distributions can vary significantly across the dataset. To ensure that the scores of all papers are comparable and the overall distribution is consistent, we perform score debi-asing using a mean-shifting procedure. Specifically, let s(v) 
+
+> i
+
+denote the original score (rating, contribution, or soundness) of paper i from venue v, with venue mean μv and overall mean 
+
+μall . The debiased score is computed as 
+
+ˆs(v) 
+
+> i
+
+= s(v) 
+
+> i
+
+− μv + μall . (2) This procedure aligns the score distributions across different venues and years, ensuring that subsequent evaluations reflect the intrinsic quality of each idea rather than systematic biases in re-viewer ratings. Additionally, the dataset was fur-ther processed through embedding computation to facilitate downstream evaluation tasks. 
+
+3.3 Pairwise Comparison 
+
+When a new research idea is submitted for evalu-ation, we first transform it into a formalized rep-Oral 208 (1.86%)         
+
+> Spotlight 478 (4.28%)
+> Poster 6,392 (57.26%)
+> Reject 4,086 (36.60%)
+> Total 11,164 (a) Distribution by acceptance category. (b) Distribution by research topic.
+
+Figure 2: Statistical overview of the PAIR-IQ dataset. The dataset comprises 11,164 papers collected from three major machine learning conferences (ICLR 2024, ICLR 2025, and NeurIPS 2024), spanning diverse acceptance categories and research topics. 
+
+resentation using the same procedure described in the previous subsection. This ensures that the tar-get idea and reference papers are represented in a unified format. Based on this representation, we retrieve seman-tically related papers from the database using a parallel retrieval strategy that combines keyword matching and embedding-based similarity. The target idea is then compared pairwise with each retrieved paper using a LLM, which assesses rela-tive quality along three dimensions: rating , contri-bution , and soundness . The specific score initial-ization and the comparison prompt are provided in Appendix B.3. We update the target idea’s scores using an adapted Elo rating algorithm (Elo, 1978). In stan-dard Elo, the expected probability that idea A wins over idea B is: 
+
+EA = 11 + 10 (sB −sA)/d , (3) where sA and sB denote the current scores of ideas 
+
+A and B, and d is a scaling parameter. Given the observed outcome SA ∈ { 0, 0.5, 1}, the score is updated as: 
+
+snew  
+
+> A
+
+= C (sA + K · (SA − EA)) , (4) where K is an adaptive update factor and C(·) is a soft clamping function that constrains scores to 
+
+[0 , 5] .Through multiple rounds of pairwise compar-isons, the target idea’s scores gradually converge. The evaluation terminates when score changes fall below a predefined threshold, yielding the final as-sessment. A detailed mathematical analysis of the algorithm, including convergence properties and parameter selection, is provided in Appendix E. 
+
+3.4 Novelty Assessment 
+
+Through the above procedures, we obtain objec-tive evaluations of research ideas in terms of rat-ing , contribution , and soundness . However, these dimensions do not explicitly capture the novelty 
+
+of an idea. Unlike other evaluation dimensions that can be assessed through comparative analysis, novelty requires determining whether an idea in-troduces genuinely new insights compared to ex-isting literature. To address this challenge, we design a nov-elty assessment module that combines LLM-based initial estimation with similarity-based quantita-tive analysis. The evaluation proceeds in three stages: (1) obtaining an initial novelty estimate 
+
+s(0)  
+
+> novelty
+
+from the LLM evaluator; (2) retriev-ing semantically related papers via the Semantic Scholar API (Kinney et al., 2023) and computing a weighted similarity metric sweighted , which is then mapped to a novelty score ssim through an inverse sigmoid function; and (3) fusing both assessments into the final score: 
+
+sfinal novelty = β · ssim + (1 − β) · s(0) 
+
+> novelty
+
+, (5) where β = 0.7 assigns higher weight to the similarity-based calculation, reflecting its objectiv-ity, while retaining the LLM’s judgment to capture aspects not fully represented by semantic similar-ity alone. A detailed description of the similarity computation and parameter selection is provided in Appendix F. 
+
+4 Experiments 
+
+4.1 Model Training 
+
+We also fine-tune models of smaller sizes to inves-tigate whether the scientific "taste" of an area can be learned through knowledge distillation (Hinton et al., 2015). Following Section 4.2, we sample 
+
+15 ,000 thematically similar pairs while ensuring none of the selected papers appear in the test data. To help small models better understand the under-lying domain knowledge, we adopt an additional chain-of-thought (Wei et al., 2023) generated by larger models based on ground-truth labels. We choose Qwen2.5-72B-Instruct (Qwen Team et al., 2025) as the teacher model, and smaller models from the same family as the student models. As for the training framework, we employ LLaMA-Factory (Zheng et al., 2024), and further details are presented in Appendix A. 
+
+4.2 Pairwise Evaluation 
+
+The accuracy of pairwise judgments made by the LLM serves as a key guarantee for the reliability of the entire evaluation framework. To assess this reliability, we conduct a dedicated pairwise evalua-tion on the three dimensions: rating , contribution ,and soundness . The goal of this evaluation is to verify whether the LLM can correctly determine the relative quality between two research ideas un-der each criterion. For this purpose, we randomly sample a held-out test set consisting of 269 pairs of thematically similar papers from the database, ensuring that none of the selected papers appear in the training data. Thematic similarity is determined using the same hybrid retrieval strategy based on keyword matching and embedding-based similarity. Each sampled pair is presented to the LLM in its for-malized representation, and the model is asked to judge which idea performs better on each of the three dimensions.                                       
+
+> Model Rating Contrib. Sound.
+> Qwen2.5-7B 0.514 0.496 0.488 Qwen2.5-14B 0.506 0.598 0.541 GPT-4o 0.549 0.615 0.747 GPT-4.1 0.539 0.545 0.649 GPT-5 0.820 0.695 0.826
+> GPT-5.2 0.801 0.707 0.803 Gemini-2.5-pro 0.706 0.607 0.750 Gemini-3-pro 0.806 0. 713 0.814 Qwen2.5-7B(trained) 0.714 0.710 0.712 Qwen2.5-14B(trained) 0.755 0.701 0.751
+> Table 2: Accuracy of LLM-based pairwise judgments on rating ,contribution ,and soundness ,evaluated against debiased OpenReview ground-truth labels.
+
+The ground-truth labels for pairwise compari-son are derived from the debiased OpenReview scores . Specifically, for each paper pair, we com-pare their debiased scores on rating , contribution ,and soundness , and treat the resulting relative or-dering as the reference outcome. The accuracy of the LLMs pairwise judgments is then measured by comparing its predictions against these ground-truth relationships, as summarized in Table 2. Overall, stronger models consistently achieve higher accuracy across all three dimensions, indi-cating that pairwise judgment is a non-trivial ca-pability that benefits from increased model capac-ity and reasoning ability. Among the off-the-shelf models, GPT-5 substantially outperforms other baselines, achieving accuracies above 0.80 on both 
+
+rating and soundness , which suggests a high level of agreement with debiased human judgments. In contrast, smaller open-source models such as Qwen2.5-7B and Qwen2.5-14B exhibit lim-ited performance, with accuracies close to random guessing in some dimensions, particularly on rat-ing and soundness . This highlights the difficulty of reliably performing fine-grained comparative eval-uation without sufficient model capacity or task-specific supervision. Notably, models trained on the PAIR-IQ dataset show substantial improvements across all dimen-sions. Both trained variants achieve consistently higher accuracies than their untrained counter-parts, demonstrating that targeted pairwise super-vision effectively enhances the models ability to align with human evaluation criteria. These results validate the design of the PAIR-IQ dataset and fur-ther support the use of pairwise judgment as a re-liable component within the LigBench evaluation framework. Rating Contrib. Sound.      
+
+> 0.114 0.196 0.138
+> Table 3: Mean debiased score differences for incor-rectly judged paper pairs by GPT-5 in the pairwise eval-uation. The small score gaps indicate that errors have limited impact on iterative score updates.
+
+Although the pairwise judgment accuracy does not reach near-perfect levels, this outcome also re-flects the intrinsic difficulty of the task, as distin-guishing fine-grained differences between closely related research ideas is inherently challenging. Nevertheless, when applied within the LigBench framework, even imperfect pairwise judgments can still lead to reliable final evaluations. Starting from a strong base model, repeated score updates over a large number of pairwise comparisons al-low the target scores to gradually converge toward reasonable values. Further analysis of the error cases, summarized in Table 3, reveals that most incorrect judgments occur when the debiased scores of the two com-pared papers are very close. This observation sug-gests that even when the LLM makes an incorrect decision, the resulting update magnitude is lim-ited. According to the score update mechanism described in the previous section, such small score differences lead to correspondingly small update steps, thereby preventing severe error accumula-tion during the iterative evaluation process. 
+
+4.3 Human Alignment 
+
+Although the pairwise judgment capability of the large language model has been validated using de-biased OpenReview scores, it remains essential to perform human verification. This is because even debiased scores cannot guarantee a perfectly objective assessment, and expert judgment is re-quired to ensure alignment with human evaluation standards. To further verify human alignment, we recruited several PhD-level AI researchers to conduct pair-wise comparisons on 100 randomly sampled idea pairs . For each pair, experts selected the superior idea along the three dimensions: rating , contribu-tion , and soundness . The resulting human judg-ments were then compared with the LLMs pair-wise predictions. The alignment results are sum-marized in Table 4, indicating a strong consistency between the LLM and expert evaluations.              
+
+> Rating Contrib. Sound.
+> 71% 79% 73%
+> Table 4: Agreement between LLM-based pairwise judgments and human expert evaluations across three assessment dimensions.
+> Accept Reject
+> Rating 2.547 2.043 Contribution 2.432 2.030 Soundness 1.853 1.542 Novelty 2.627 2.234
+> Table 5: Evaluation of 50 NeurIPS 2025 papers using Lig-Bench.
+
+As shown in Table 4, the LLM exhibits substan-tial agreement with human experts across all three dimensions. In particular, the highest alignment is observed for contribution , indicating that the model is effective at assessing the relative signifi-cance of research ideas within a domain. The con-sistently strong agreement on rating and sound-ness further suggests that the LLMs pairwise judg-ments capture key aspects of overall quality and methodological rigor. These results provide ad-ditional evidence that LigBench produces evalu-ations that are well aligned with expert human preferences, complementing the automated assess-ments based on debiased review scores. 
+
+4.4 Paper Evaluation 
+
+We conducted an evaluation on papers from 
+
+NeurIPS 2025 to demonstrate the effectiveness of our framework. The evaluation applied the full LigBench procedure. The results of this evalua-tion are summarized in Table 5, highlighting the performance of the framework across the different assessment dimensions. As shown in Table 5, papers that were accepted at NeurIPS 2025 consistently receive higher scores across all four evaluation dimensions compared to rejected papers. The largest differences are ob-served in novelty and rating , suggesting that both originality and overall perceived quality are strong determinants of acceptance. Differences in contri-bution and soundness are also notable, indicating that methodological rigor and domain impact are effectively captured by LigBench. These results demonstrate that LigBench can meaningfully distinguish higher-quality research ideas from lower-quality ones, even when applied to a relatively small test set of 50 papers. This alignment with actual acceptance outcomes pro-vides preliminary validation of the frameworks ef-fectiveness in reflecting human and peer-review judgments. 
+
+4.5 Impact of Data Source and Debiasing 
+
+To examine the consistency of our evaluation framework across different data sources, we ana-lyze the impact of the three major sources in the PAIR-IQ dataset: ICLR 2024 , ICLR 2025 , and 
+
+NeurIPS 2024 . Although these venues differ in review styles and score distributions, our debias-ing procedure aims to normalize such discrepan-cies and produce a unified reference space. To validate this, we conduct an ablation study where the score updating process is performed us-ing only a single source at a time. Specifically, we independently use papers from ICLR 2024, ICLR 2025, and NeurIPS 2024 as the comparison pool for pairwise evaluation and iterative score updat-ing. The differences between the scores obtained using a single source and those obtained using all sources together are summarized in Table 6. Conference Rating Contrib. Sound. ICLR 2024 ±3.2% ±0.9% ±1.5% ICLR 2025 ±2.0% ±4.1% ±3.4% NeurIPS 2024 ±2.3% ±2.0% ±2.6%                             
+
+> Table 6: Impact of individual data sources compared to all sources. Percentage differences ( ±) between using a single data source versus all sources. Rows are con-ferences, columns are evaluation metrics.
+> Model Rating Contrib. Sound. Novelty CoI 3.468 2.996 2.487 2.474 SciPIP 2.621 1.900 3.243 2.267 GPT-5.2 3.974 3.392 3.022 2.583
+> GPT-5 3.686 3.210 2.866 2.528 GPT-4.1 1.000 0.760 1.877 2.194 GPT-4o 0.672 0.514 1.264 1.877
+> Table 7: Evaluation of idea-generation frameworks and standalone LLMs using LigBench. Scores are averaged across 110 generated ideas per model. CoI and SciPIP both use GPT-5 as the backbone model.
+
+As shown in the table, the differences be-tween scores computed from individual sources and those computed from all sources are minor, with all metrics showing deviations within a few percentage points. This indicates that our evalu-ation results are largely insensitive to the choice of data source. Consequently, the debiasing strat-egy effectively mitigates distributional differences across venues, enabling stable and comparable evaluation regardless of whether a single source or all sources are used. 
+
+4.6 Benchmark and Model Evaluation 
+
+To comprehensively assess the quality of LLM-generated research ideas, we evaluate both stan-dalone LLMs and idea-generation frameworks us-ing LigBench. Each system is prompted to freely generate 10 ideas across 11 research topics, includ-ing Reinforcement Learning, Image Generation, AI Safety, Agent, Computer Vision, Audio and Speech, Embodied Intelligence, Multimodal, AI for Science, Large Language Models, and Train-ing. Final scores are computed as the average across all generated ideas. We compare two representative idea-generation frameworks, CoI(Li et al., 2024) and SciPIP(Wang et al., 2024), against direct LLM baselines. Both employ GPT-5 as their backbone, enabling a con-trolled comparison that isolates the effect of frame-work design. From the results in Table 7, several key observations can be drawn regarding the per-formance of standalone LLMs and idea-generation frameworks: First, among standalone LLMs, GPT-5.2 and GPT-5 clearly outperform GPT-4.1 and GPT-4o across all dimensions, with GPT-4o scoring below 1.0 on rating and contribution, indicating that ear-lier models struggle to meet basic quality thresh-olds. Second, idea-generation frameworks do not con-sistently outperform direct prompting on strong backbone models. Despite using GPT-5, CoI and SciPIP often score lower than standalone GPT-5, suggesting that these frameworks may optimize weaker models but introduce constraints for ca-pable ones. Notably, SciPIP achieves the high-est Soundness score among all evaluated systems, slightly exceeding its underlying model GPT-5. Finally, while novelty scores broadly follow ex-pectations, absolute differences are small, high-lighting that generating truly novel ideas remains challenging for current LLMs. For an intuitive overview of model performance across all metrics, see the radar visualization in Appendix D. 
+
+5 Conclusion 
+
+We introduced LigBench , a unified and human-aligned benchmark for evaluating research ideas generated by large language models and agentic frameworks. By decomposing idea quality into four dimensions rating , contribution , soundness ,and novelty LigBench enables consistent and fine-grained assessment across diverse sources. To support reliable evaluation, we constructed the PAIR-IQ dataset with standardized, debiased scores, enabling effective pairwise judgment and robust score updating. Results show that Lig-Bench produces stable evaluations aligned with ex-pert preferences, even when individual pairwise judgments are imperfect. LigBench provides a practical foundation for benchmarking future idea-generation systems and advancing automated evaluation of scientific cre-ativity. It can also serve as a reliable reward signal for training idea-generation models via reinforce-ment learning, enabling more scalable and human-aligned AI-driven idea generation. 
+
+References 
+
+Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, and 1 others. 2023. Gpt-4 techni-cal report. arXiv preprint arXiv:2303.08774 .Jinheon Baek, Sujay Kumar Jauhar, Silviu Cucerzan, and Sung Ju Hwang. 2025. Researchagent: Iter-ative research idea generation over scientific litera-ture with large language models. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Lin-guistics: Human Language Technologies (Volume 1: Long Papers) , pages 6709–6738. Ralph Allan Bradley and Milton E. Terry. 1952. Rank analysis of incomplete block designs: I. the method of paired comparisons. Biometrika , 39(3/4):324– 345. Cheng-Han Chiang and Hung-yi Lee. 2023. Can large language models be an alternative to human evalua-tions? In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Vol-ume 1: Long Papers) , pages 15607–15631. Gheorghe Comanici, Eric Bieber, Mike Schaekermann, Ice Pasupat, Noveen Sachdeva, Inderjit Dhillon, Marcel Blistein, Ori Ram, Dan Zhang, Evan Rosen, and 1 others. 2025. Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long con-text, and next generation agentic capabilities. arXiv preprint arXiv:2507.06261 .Arpad E. Elo. 1978. The Rating of Chessplayers, Past and Present . Arco Publishing. Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. 2015. Distilling the knowledge in a neural network. arXiv preprint arXiv:1503.02531 .Xiang Hu, Hongyu Fu, Jinge Wang, Yifeng Wang, Zhikun Li, Renjun Xu, Yu Lu, Yaochu Jin, Lili Pan, and Zhenzhong Lan. 2024. Nova: An iterative plan-ning and search approach to enhance novelty and diversity of llm generated ideas. arXiv preprint arXiv:2410.14255 .Rodney Kinney, Chloe Anastasiades, Russell Authur, Iz Beltagy, Jonathan Bragg, Alexandra Buraczyn-ski, Isabel Cachola, Stefan Candra, Yoganand Chan-drasekhar, Arman Cohan, and 1 others. 2023. The semantic scholar open data platform. arXiv preprint arXiv:2301.10140 .Long Li, Weiwen Xu, Jiayan Guo, Ruochen Zhao, Xingxuan Li, Yuqian Yuan, Boqiang Zhang, Yuming Jiang, Yifei Xin, Ronghao Dang, and 1 others. 2024. Chain of ideas: Revolutionizing research via novel idea development with llm agents. arXiv preprint arXiv:2410.13185 .Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu. 2023. G-eval: NLG evaluation using gpt-4 with better human align-ment. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing ,pages 2511–2522. Chris Lu, Cong Lu, Robert Tjarko Lange, Jakob Foer-ster, Jeff Clune, and David Ha. 2024. The ai scien-tist: Towards fully automated open-ended scientific discovery. arXiv preprint arXiv:2408.06292 .Yansheng Qiu, Haoquan Zhang, Zhaopan Xu, Ming Li, Diping Song, Zheng Wang, and Kaipeng Zhang. 2025. Ai idea bench 2025: Ai research idea genera-tion benchmark. arXiv preprint arXiv:2504.14191 .Qwen Team, An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jingren Zhou, Junyang Lin, and 24 others. 2025. Qwen2.5 technical report. Preprint ,arXiv:2412.15115. Fatemeh Shahhosseini, Arash Marioriyad, Ali Momen, Mahdieh Soleymani Baghshah, Mohammad Hos-sein Rohban, and Shaghayegh Haghjooy Javanmard. 2025. Large language models for scientific idea gen-eration: A creativity-centered survey. arXiv preprint arXiv:2511.07448 .Chenglei Si, Diyi Yang, and Tatsunori Hashimoto. 2024. Can llms generate novel research ideas? alarge-scale human study with 100+ nlp researchers. 
+
+arXiv preprint arXiv:2409.04109 .Haoyang Su, Renqi Chen, Shixiang Tang, Zhenfei Yin, Xinzhe Zheng, Jinzhe Li, Biqing Qi, Qi Wu, Hui Li, Wanli Ouyang, and 1 others. 2025. Many heads are better than one: Improved scientific idea generation by a llm-based multi-agent system. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 28201–28240. Wenxiao Wang, Lihui Gu, Liye Zhang, Yunxiang Luo, Yi Dai, Chen Shen, Liang Xie, Binbin Lin, Xi-aofei He, and Jieping Ye. 2024. Scipip: An llm-based scientific paper idea proposer. arXiv preprint arXiv:2410.23166 .Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou. 2023. Chain-of-thought prompting elicits reasoning in large language models. Preprint ,arXiv:2201.11903. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, and 1 others. 2025. Qwen3 technical report. arXiv preprint arXiv:2505.09388 .Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric P. Xing, Hao Zhang, Joseph E. Gonzalez, and Ion Stoica. 2023. Judging llm-as-a-judge with mt-bench and chatbot arena. In 
+
+Advances in Neural Information Processing Systems ,volume 36. Yaowei Zheng, Richong Zhang, Junhao Zhang, Yanhan Ye, and Zheyan Luo. 2024. LlamaFactory: Unified efficient fine-tuning of 100+ language models. In 
+
+Proceedings of the 62nd Annual Meeting of the As-sociation for Computational Linguistics (Volume 3: System Demonstrations) , pages 400–410, Bangkok, Thailand. Association for Computational Linguis-tics. Yangqiaoyu Zhou, Haokun Liu, Tejes Srivastava, Hongyuan Mei, and Chenhao Tan. 2024. Hypoth-esis generation with large language models. arXiv preprint arXiv:2404.04326 .A Hyper-parameters for Fine-Tuning 
+
+Table 8: Hyper-parameters for Fine-Tuning. 
+
+Hyper-Parameter Default Value 
+
+Finetuning Type LoRA LoRA Target all LoRA Rank 16 
+
+LoRA Alpha 16 
+
+LoRA Dropout 0.05 
+
+Cutoff Length 4,096 
+
+Gradient Accumulation Steps 16 
+
+Learning Rate 1 × 10 −4
+
+Train Epochs 1.0
+
+Learning Rate Scheduler Cosine Warmup Ratio 0.1
+
+B Prompt Specification 
+
+B.1 Heterogeneous Idea Formalization 
+
+Heterogeneous Idea Formalization PROMPT 
+
+You are an expert agent specialized in research idea anal-ysis and evaluation. You will be provided with a raw research idea descrip-tion. Your task is to formalize this idea into a structured representation that facilitates systematic comparison and evaluation. Each research idea should be decomposed into the fol-lowing four components: 1. Main Target: A concise, one-sentence summary of the core task and research ob-jective that the idea aims to address. 2. Core Break-through: The key conceptual or technical advancement introduced by the idea, highlighting what fundamentally differentiates it from prior work. 3. Innovative Methods: The concrete methodological approaches, algorithms, or techniques proposed to realize the main target. 4. Exper-imental Design: The experimental setup and evaluation strategy used to validate the proposed methods, including datasets, benchmarks, baselines, and evaluation metrics when applicable. Now, the new idea is: <new_idea> Please formalize it into the four parts. Output Format: A list of four strings in the following order: [ "<main_target>", "<core_breakthrough>", "<in-novative_method_1>; <innovative_method_2>; <innova-tive_method_3>; ...", "<experimental_design>" ] Example: [ "To improve the robustness of large language models against distribution shifts", "Introducing a unified robustness-aware training objective that jointly models uncertainty and domain variance", "Uncertainty-guided representation learning; Domain-adaptive regularization; Robust contrastive pretraining", "Evaluation on multiple out-of-distribution NLP benchmarks with comparisons to standard fine-tuning and domain adaptation baselines" ] 
+
+B.2 Paper Idea Formalization 
+
+When constructing the PAIR-IQ dataset, we need to extract standardized research ideas from exist-ing papers, which differs from directly normaliz-ing heterogeneous, free-form ideas. Specifically, we first parse the full textual content of each pa-per and use an LLM to map diverse and het-erogeneous section headings into five canonical categories: Abstract , Introduction , Related Work ,
+
+Method , and Experiment . Based on this unified structure, we perform targeted extraction for differ-ent components of an idea from the corresponding sections. The Main Target is primarily extracted from the Abstract . The Core Breakthrough is de-rived from the Abstract , Introduction , and Related Work . The Innovative Methods are extracted from the Abstract and Method . The Experimental De-sign is obtained from the Experiment section. The detailed prompts used for this process are provided below. Section Mapping PROMPT 
+
+You will get a list of section names from a research paper. Please identify which section(s) correspond to each of the following: abstract, introduction, related work, method, and experiment. Note: Sometimes a part (e.g., method) may be split across multiple sections. In such cases, please use a list to record all matching section names, e.g., "method": ["Method-ology", "Approach"]. Note: The "related work" sec-tion may also describe existing problems in the field, not just previous approaches. The answer format MUST be a JSON object with keys "abstract", "introduction", "re-lated_work", "method", and "experiment". Each value should be either a list of section names (if present) or null (if not present). For example: {{ "abstract": ["Abstract"], "introduction": ["Introduction"], "related_work": ["Re-lated Work"], "method": ["Methodology", "Approach"], "experiment": ["Experiment"] }} Now, the section name list is: “‘{section_names}”’. 
+
+Main Target PROMPT 
+
+Here you will get the abstract part of a research paper. You need to return the main target of this paper in one sentence, such as "This research designs a new model for image classification." or "This research proposes a new dataset for object detection" or "This research introduces a new framework for idea generation" and so on. The answer format MUST be a simple string without any explanation or extra content. Now , the abstract is: “‘{abstract}”’. 
+
+Core Breakthrough PROMPT 
+
+Here you will get three sections of a research paper: ab-stract, introduction, and related work. You need to return the core breakthrough of this paper in one sentence, such as what existing problems are solved or what advances are made compared to previous work. The answer format MUST be a simple string without any explanation or ex-tra content. Now, the abstract part is: “‘{abstract}”’. The introduction part is: “‘{introduction}”’. The related work part is: “‘{related_work}”’. Innovative Methods PROMPT 
+
+Here you will get the abstract and method sections of a research paper. Please list three to four of the most in-novative and core methods proposed in this paper, each as a separate numbered item. Keep your answer concise and focus on the key elements only. The answer format MUST be a simple numbered list (e.g., "1. ... 2. ...") with-out any explanation or extra content. Now, the abstract part is: “‘{abstract}”’. The method part is: “‘{method}”’. 
+
+Experimental Design PROMPT 
+
+Here you will get the abstract and experiment sections of a research paper. Please list the main experimental designs proposed in this paper, each as a separate num-bered item. Ignore any results, numbers, or metrics men-tioned in the experiment section; only describe what ex-periments were designed. The answer format MUST be a simple numbered list (e.g., "1. ... 2. ...") without any explanation or extra content. Now, the abstract part is: “‘{abstract}”’. The experiment part is: “‘{experiment}”’. 
+
+B.3 Pairwise Comparison 
+
+Initial Scoring with Examples PROMPT 
+
+You are an intelligent agent who is expert in scientific hy-pothesis evaluation. A research idea can be decomposed into four part: Main Target, Core Breakthrough, Innovative Approach, and Ex-perimental Design. Here you will get a new idea and three published papers’ ideas. You need to score the new idea in four dimensions: Rating, contribution, Soundness, and Novelty. Dimension Definitions: - Rating: The overall quality of the idea and a comprehen-sive evaluation - Contribution: Whether the outcomes will be useful for future work - Soundness: The logical and methodological integrity of the research - Novelty: The originality and potential to contribution new insights or approaches We have scored these three published papers in four di-mensions. The "comments" record the reasons for the scores. Please read these three published papers’ scores and com-ments carefully, and then score the new idea. New Idea: “‘ Main Target: {new_idea_main} Core Breakthrough: {new_idea_breakthrough} Innovative Ap-proach: {new_idea_approach} Experimental Design: {new_idea_experiment} ”’ Calibration Example 1: “‘ {example1} ”’ Calibration Example 2: “‘ {example2} ”’ Calibration Example 3: “‘ {example3} ”’ Important: Think carefully, as a new idea may appear highly novel and compelling but lack sufficient support-ing details. Output Format: A JSON list of four floating-point numbers (0-5): [<rating>, <contribution>, <soundness>, <novelty>] Example: [3.7, 4.1, 2.6, 2.9] 
+
+Pairwise Comparison PROMPT 
+
+You are an intelligent agent who is expert in **scientific hypothesis evaluation**. A research idea can be decom-posed into four part: Main Target, Core Breakthrough, Innovative Approach, and Experimental Design. Here you will get two research ideas; you need to com-pare them on three dimensions: Rating, Soundness and Contribute, to judge which one is better on each dimen-sion. Dimensions definitions: - Rating: The overall qual-ity of the idea. This is a comprehensive evaluation that summarizes the strengths and weaknesses of the idea as a whole. - Soundness: The logical and methodologi-cal integrity of the research. Assess whether the idea is based on solid reasoning, uses appropriate methods, and avoids major flaws or unsupported assumptions. - Con-tribute: Whether the outcomes will be useful for future work. Evaluate if the idea can advance scientific knowl-edge, provide valuable insights, or serve as a foundation for further research in the field. Your answer format should be a think process between <think> and </think>, containing three steps: ‘1. ... 2. ... 3. ...’, where 1 is the reasoning for Rating, 2 is the reasoning for Soundness, and 3 is the reasoning for Con-tribution, and a final list of three numbers (0, 1, or 0.5) in the order [Rating, Soundness, Contribution], where -‘1’ means the first idea is better, - ‘0.5’ means the two ideas are equal, - ‘0’ means the second idea is better. For example, if the first idea wins on Rating, loses on Sound-ness, and is equal on Contribution, your answer should be: ‘<think>...</think>[1, 0, 0.5]’ When considering the rating, you may use the Main Target and Innovative Ap-proach as the most important basis. When considering the soundness, you may use the Main Target, Innovative Approach and Experimental Design as the most impor-tant basis. When considering the contribution, you may use the Main Target and Core Breakthrough as the most important basis. Now: First idea: “‘The Main Target is {idea_A_main}. And the Core Breakthrough is {idea_A_breakthrough}. The Innovative Approach is {idea_A_approach}. The Ex-perimental Design is {idea_A_experiment}.”’ Second idea: “‘The Main Target is {idea_B_main}. And the Core Breakthrough is {idea_B_breakthrough}. The Innovative Approach is {idea_B_approach}. The Experi-mental Design is {idea_B_experiment}.”’ Please give your answer directly according to the above format. 
+
+C PAIR-IQ extra information 
+
+Figure 3 illustrates the dataset statistics of PAIR-IQ, showing the distribution of collected papers across different conference venues. An example of the standardized paper idea rep-resentation used in the PAIR-IQ dataset is shown below. 
+
+Listing 1: Example of a Paper Idea in PAIR-IQ                     
+
+> {" title ": "A Generative Model of Symmetry
+> ↪→Transformations " , " url ": " https :// openreview . net / forum ? id = aFP24eYpWh " , " conference ": " NeurIPS " , " year ": 20 24 , " label ": " accept - poster " , " abstract ": " Correctly capturing the symmetry
+> ↪→transformations of data can lead to
+
+Figure 3: Distribution by conference venues. 
+
+↪→ efficient models with strong 
+
+↪→ generalization capabilities ... " , " keywords ": " approximate symmetries , invariances , 
+
+↪→ deep generative models " , " primary area ": " Generative models " , " rating ": 2.9 070 274219833774 , " contribute ": 2.587674461477269 , " soundness ": 2.84368 090 7598996 , " novelty ": "0" , " analysis ": {" main_target ": " This research constructs a
+
+↪→ generative model that learns to capture 
+
+↪→ the approximate symmetries of data from 
+
+↪→ a prespecified set of possible 
+
+↪→ symmetries ." , " core_breakthrough ": " This paper introduces a
+
+↪→ Symmetry - aware Generative Model ( SGM ) 
+
+↪→ that learns to capture the approximate 
+
+↪→ symmetries present in data , leading to 
+
+↪→ improved data efficiency and higher 
+
+↪→ marginal test - log - likelihoods when 
+
+↪→ combined with standard generative 
+
+↪→ models ." , " innovative_methods ": " 1. A generative model 
+
+↪→ that decomposes the data distribution 
+
+↪→ into a distribution over prototypes and 
+
+↪→ a distribution over transformation 
+
+↪→ parameters .\ n2 . A self - supervised 
+
+↪→ learning scheme to train an equivariant 
+
+↪→ transformation inference function .\ n3 . 
+
+↪→ A method for learning the distribution 
+
+↪→ over transformation parameters using 
+
+↪→ maximum likelihood , allowing the model 
+
+↪→ to capture the extent of symmetries 
+
+↪→ present in the data .\ n4 . Composing 
+
+↪→ transformations in a transformation 
+
+↪→ parameter space to minimize the number 
+
+↪→ of applications and reduce 
+
+↪→ discretization errors ." , " experimental_design ": " 1. Exploring the SGMs 
+
+↪→ ability to learn symmetries by 
+
+↪→ producing valid prototypes and 
+
+↪→ generating plausible samples from the 
+
+↪→ data distribution given those 
+
+↪→ prototypes .\ n2 . Leveraging the SGM to 
+
+↪→ improve data efficiency in deep 
+
+↪→ generative models .\ n3 . Conducting 
+
+↪→ experiments on dSprites , MNIST , and 
+
+↪→ GalaxyMNIST ... " }, " embedding ": [1 0 24] }
+
+D LigBench Evaluation Radar Chart 
+
+Figure 4 visualizes the performance of different idea-generation frameworks and standalone LLMs summarized in Table 7. Each axis corresponds to one of the evaluation metrics (Rating, Contrib., Sound., Novelty), allowing a quick comparison of 
+
+Figure 4: Radar chart visualization of Table 7. GPT-5.2 achieves the highest overall performance, while CoI demonstrates competitive results despite using GPT-5 as its backbone. 
+
+the models’ relative strengths. GPT-5.2 consis-tently achieves the highest overall scores, while CoI shows competitive results despite relying on GPT-5 as its backbone. This visualization comple-ments the numeric results and provides an intuitive overview of model performance. 
+
+E Elo-based Score Update: Mathematical Analysis 
+
+This appendix provides a comprehensive mathe-matical treatment of the Elo-based score update mechanism used in LigBench, including theoreti-cal foundations, convergence analysis, and empiri-cal parameter optimization. 
+
+E.1 Algorithm Overview 
+
+The pairwise comparison module employs an adapted Elo rating system to iteratively update the scores of target ideas. The complete procedure is formalized in Algorithm 1. 
+
+E.2 Theoretical Foundation E.2.1 Expected Outcome Function 
+
+The expected outcome function is derived from the Bradley-Terry model (Bradley and Terry, 1952), which assumes that the probability of item A be-ing preferred over item B follows a logistic func-tion of their latent quality difference: 
+
+P (A ≻ B) = 11 + 10 (sB −sA)/d . (6) This formulation satisfies several desirable properties: • Symmetry : P (A ≻ B) + P (B ≻ A) = 1 Algorithm 1 Elo-based Pairwise Score Update 
+
+Require: Target idea I, Reference paper set R,Initial score s0, Convergence threshold ϵ,Maximum iterations Tmax 
+
+Ensure: Final score s∗ 
+
+> 1:
+
+s ← s0; t ← 0 
+
+> 2:
+
+while t < T max do  
+
+> 3:
+
+Sample reference paper R ∼ R  
+
+> 4:
+
+Compute expected outcome: E = 
+
+> 11+10 (sR−s)/d
+> 5:
+
+Obtain LLM judgment: S ∈ { 0, 0.5, 1} 
+
+> 6:
+
+Compute adaptive K-factor: Kt = Kmax ·
+
+γt 
+
+> 7:
+
+Update raw score: sraw = s + Kt · (S − E) 
+
+> 8:
+
+Apply soft clamping: snew = C(sraw ) 
+
+> 9:
+
+if |snew − s| < ϵ then  
+
+> 10:
+
+break  
+
+> 11:
+
+end if  
+
+> 12:
+
+s ← snew ; t ← t + 1  
+
+> 13:
+
+end while  
+
+> 14:
+
+return s∗ = s
+
+• Transitivity : If sA > s B > s C , then P (A ≻
+
+C) > P (A ≻ B)
+
+• Monotonicity : ∂P (A≻B) 
+
+> ∂s A
+
+> 0
+
+E.2.2 Score Update as Gradient Descent 
+
+The score update rule can be interpreted as a stochastic gradient descent step on a cross-entropy loss function. Let L(sA) denote the expected loss: 
+
+L(sA) = −ESA [SA log EA+(1 −SA) log(1 −EA)] .
+
+(7) Taking the gradient with respect to sA:
+
+∂L
+
+∂s A
+
+= ln 10 
+
+d · (EA − SA). (8) Thus, the update rule sA ← sA + K(SA − EA)
+
+corresponds to gradient descent with learning rate 
+
+η = Kd  
+
+> ln 10
+
+.
+
+E.3 Parameter Selection E.3.1 Scaling Parameter d
+
+In standard chess Elo systems, d = 400 with rat-ings spanning approximately [0 , 3000] . Our frame-work operates on a normalized score range of 
+
+[0 , 5] . To preserve the relative sensitivity of the expected outcome function, we rescale d propor-tionally: 
+
+dnew = dchess · ∆snew 
+
+∆schess 
+
+= 400 · 53000 ≈ 0.67 . (9) However, empirical experiments revealed that this theoretical value leads to overly aggressive score changes. We conducted a grid search over 
+
+d ∈ {0.5, 0.75 , 1.0, 1.25 , 1.5, 1.75 , 2.0} using a validation set of 500 idea pairs with known ground-truth scores.                            
+
+> dMAE ↓Rank Corr. ↑Conver. Rate ↑
+> 0.50 0.412 0.723 0.89 0.75 0.356 0.761 0.92 1.00 0.298 0.789 0.94 1.25 0.267 0.812 0.96
+> 1.50 0.251 0.831 0.97
+> 1.75 0.263 0.819 0.95 2.00 0.289 0.798 0.93
+
+Table 9: Parameter sensitivity analysis for scaling pa-rameter d.
+
+Based on these results, we set d = 1 .5, which achieves the optimal balance between score dis-crimination sensitivity and convergence stability. 
+
+E.3.2 Adaptive K-factor Strategy 
+
+The K-factor controls the magnitude of score ad-justments. We employ an exponential decay strat-egy: 
+
+Kt = Kmax · γt, (10) where Kmax is the initial K-factor, γ ∈ (0 , 1) is the decay rate, and t is the iteration number. This adaptive strategy addresses two competing objectives: (1) Fast initial convergence : Large 
+
+K values enable rapid movement toward the true score when the initial estimate is poor. (2) Fine-grained calibration : Small K values prevent os-cillation around the equilibrium and enable precise final positioning. We optimized (Kmax , γ ) through grid search:                                    
+
+> Kmax γIterations ↓Final MAE ↓Stability ↑
+> 0.3 0.90 28.4 0.287 0.91 0.3 0.95 35.2 0.264 0.94 0.5 0.90 18.7 0.271 0.89
+> 0.5 0.95 22.3 0.251 0.97
+> 0.5 0.98 31.6 0.249 0.96 0.7 0.90 14.2 0.298 0.82 0.7 0.95 17.8 0.273 0.88
+
+Table 10: Grid search results for K-factor parameters. 
+
+The optimal configuration is Kmax = 0 .5 and 
+
+γ = 0 .95 , balancing convergence speed with final accuracy. E.4 Soft Clamping Mechanism 
+
+Since our scores are constrained to [0 , 5] , we apply a smooth boundary function using the hyperbolic tangent: 
+
+C(s) = 2 .5 + 2 .5 · tanh 
+
+( s − 2.52.5
+
+)
+
+. (11) 
+
+E.4.1 Properties of the Clamping Function Proposition 1. The clamping function C : R →
+
+(0 , 5) satisfies: 1. C(2 .5) = 2 .5 (fixed point at center) 2. lim s→∞ C(s) = 5 and lim s→−∞ C(s) = 0 
+
+3. C′(s) > 0 for all s ∈ R (strictly monotonic) 4. C′(2 .5) = 1 (identity mapping near center) Proof. Property 1: C(2 .5) = 2 .5 + 2 .5 · tanh(0) = 2.5.Property 2: Since lim x→±∞ tanh( x) = ±1,we have lim s→∞ C(s) = 2.5 + 2 .5 = 5 and 
+
+lim s→−∞ C(s) = 2 .5 − 2.5 = 0 .Property 3: C′(s) = sech 2 ( s−2.52.5
+
+) > 0.Property 4: C′(2 .5) = sech 2(0) = 1 .The soft clamping preserves the relative order-ing of scores while ensuring boundary constraints are satisfied smoothly, unlike hard clipping which introduces discontinuities in the gradient. The tanh-based clamping was selected because it provides symmetric behavior around the mid-point ( s = 2 .5), maintains near-identity mapping for scores in the typical range [1 , 4] , and gracefully compresses extreme values. 
+
+E.5 Convergence Analysis E.5.1 Convergence Conditions Theorem 1 (Convergence of Elo Updates) . Let 
+
+{st}∞ 
+
+> t=0
+
+be the sequence of scores generated by the Elo update rule with adaptive K-factor Kt =
+
+Kmax · γt where γ ∈ (0 , 1) . Assume the LLM judg-ment is consistent with the ground-truth ordering with probability p > 0.5. Then {st} converges almost surely to a fixed point s∗.Proof Sketch. The proof relies on three key obser-vations: 
+
+Step 1 (Bounded Updates): The update mag-nitude is bounded by |Kt(SA − EA)| ≤ Kt since 
+
+SA, E A ∈ [0 , 1] . Combined with the soft clamp-ing, scores remain in [0 , 5] .
+
+Step 2 (Summable Learning Rates): The se-ries ∑∞ 
+
+> t=0
+
+Kt = Kmax 
+
+∑∞ 
+
+> t=0
+
+γt = Kmax  
+
+> 1−γ
+
+< ∞,ensuring diminishing step sizes. 
+
+Step 3 (Martingale Convergence): Define the expected score change ∆t = E[st+1 − st|st]. Un-der the consistency assumption, ∆t has the same sign as (s∗ − st) where s∗ is the true score. By the martingale convergence theorem, st → s∗ almost surely. 
+
+E.5.2 Stability Under Noisy Judgments 
+
+In practice, LLM judgments contain noise. We an-alyze robustness by introducing artificial noise: Noise Level Final MAE Rank Correlation Convergence (%) 0% (ideal) 0.251 0.831 100% 10% 0.267 0.812 99.2% 20% 0.298 0.784 97.6% 30% 0.342 0.751 94.1% 
+
+> Table 11: Robustness to judgment noise.
+
+The algorithm maintains reasonable perfor-mance even with 20-30% judgment error, demon-strating robustness to imperfect LLM evaluations. 
+
+F Novelty Assessment: Detailed Methodology 
+
+This appendix provides a comprehensive descrip-tion of the novelty assessment module, including the mathematical formulation, parameter selection rationale, and empirical validation. 
+
+F.1 Three-Stage Evaluation Pipeline 
+
+The novelty assessment proceeds through three se-quential stages, each contributing a distinct aspect to the final evaluation. 
+
+F.1.1 Stage 1: LLM-based Initialization 
+
+We first obtain an initial novelty estimate s(0) 
+
+> novelty
+
+from the LLM evaluator. This provides a base-line assessment based on the model’s understand-ing of the idea’s originality and potential to intro-duce new insights. The LLM is prompted to rate novelty on a 0-5 scale, considering whether the ap-proach incorporates eye-catching aspects or meth-ods not commonly seen in the field. The initialization prompt instructs the model to evaluate: (1) whether the core idea represents a de-parture from existing approaches; (2) the presence of unconventional methodological choices; and (3) the potential to open new research directions. 
+
+F.1.2 Stage 2: Similarity-Based Quantification 
+
+To objectively measure novelty against the cur-rent research landscape, we retrieve semantically related papers using the Semantic Scholar API. Based on the formalized representation of the tar-get idea, we search for the most relevant pub-lications and compute their cosine similarities 
+
+{s1, s 2, . . . , s N } with the target idea using pre-trained embedding models. 
+
+Weighted Similarity Metric. We construct a weighted similarity metric that balances maximum and average similarity: 
+
+sweighted = α · max( {si}) + (1 − α) · 1
+
+N
+
+> N
+
+∑
+
+> i=1
+
+si,
+
+(12) where α controls the emphasis on the most similar existing work. 
+
+Rationale for Weighting. The weighting scheme reflects the intuition that novelty is fundamentally constrained by the most similar existing work: even if an idea differs from most papers, high similarity to a single prior publication significantly limits its novelty. Setting α = 0 .6
+
+emphasizes this constraint while still accounting for the broader similarity landscape. 
+
+Inverse Sigmoid Mapping. The weighted simi-larity is mapped to a novelty score through an in-verse sigmoid function: 
+
+ssim = 5 ·
+
+(
+
+1 − 11 + e−k(sweighted −μ)
+
+)
+
+, (13) where k controls the steepness of the transition and μ defines the inflection point. This continu-ous mapping ensures that high similarity to exist-ing work leads to low novelty scores, while low similarity indicates high novelty. 
+
+F.1.3 Stage 3: Continuous Fusion 
+
+The final novelty score integrates both the LLM’s subjective assessment and the objective similarity-based measurement: 
+
+sfinal novelty = β · ssim + (1 − β) · s(0) 
+
+> novelty
+
+, (14) where β determines the relative contribution of each component. 
+
+Table 12: Effect of weighting parameter α on novelty assessment quality.                         
+
+> αHum.Corr. ↑Discrim. ↑Stab. ↑
+> 0.0 (avg only) 0.612 0.534 0.91 0.3 0.658 0.587 0.93 0.5 0.691 0.623 0.94
+> 0.6 0.724 0.651 0.95
+> 0.7 0.718 0.642 0.94 0.8 0.687 0.598 0.92 1.0 (max only) 0.621 0.512 0.89
+
+Table 13: Similarity distribution statistics from PAIR-IQ.       
+
+> Statistic Value Mean similarity 0.68 Median similarity 0.71 Standard deviation 0.12 25th percentile 0.61 75th percentile 0.79
+
+F.2 Parameter Selection F.2.1 Weighting Parameter α
+
+We conducted experiments to determine the opti-mal value of α in Equation 12. The results are shown in Table 12. The results show that α = 0 .6 achieves the best correlation with human novelty judgments while maintaining stable assessments. 
+
+F.2.2 Sigmoid Parameters k and μ
+
+The parameters k and μ in Equation 13 control the shape of the similarity-to-novelty mapping. 
+
+Inflection Point μ. The inflection point μ =0.72 was calibrated based on empirical analysis of similarity distributions in the PAIR-IQ dataset. At this similarity level, ideas typically exhibit moder-ate overlap with existing work, justifying a neutral novelty score of 2.5. Table 13 shows the similarity distribution statistics. 
+
+Steepness Parameter k. The steepness param-eter k = 12 was selected to ensure meaningful score differentiation across the typical similarity range [0 .5, 0.9] . Table 14 shows the effect of dif-ferent k values. 
+
+F.2.3 Fusion Weight β
+
+The fusion weight β = 0.7 was determined through ablation studies comparing different weighting schemes, as shown in Table 15. Setting β = 0.7 prioritizes the objective similarity-based measurement while retaining suf-Table 14: Effect of steepness parameter k on score dis-tribution.                   
+
+> kRange ↑Entropy ↑Hum.Corr. ↑
+> 62.1 1.82 0.687 93.2 1.91 0.712
+> 12 4.1 1.98 0.724
+> 15 4.5 1.94 0.718 18 4.7 1.87 0.703
+
+Table 15: Ablation study on fusion weight β.                     
+
+> βHum.Corr. ↑Robust. ↑Interp. 0.0 (LLM only) 0.651 0.72 High 0.3 0.689 0.81 High 0.5 0.712 0.87 Medium
+> 0.7 0.724 0.93 Medium 0.9 0.718 0.95 Low 1.0 (Sim only) 0.698 0.96 Low
+
+ficient LLM contribution to capture semantic nu-ances not reflected in embedding similarity. 
+
+F.3 Mathematical Properties F.3.1 Properties of the Inverse Sigmoid Mapping 
+
+The mapping function defined by Equation 13 sat-isfies several desirable properties. 
+
+Proposition 2. The mapping function f : [0 , 1] →
+
+[0 , 5] satisfies: 1. f is strictly monotonically decreasing 2. f (μ) = 2 .5 (midpoint property) 3. lim s→0 f (s) = 5 and lim s→1 f (s) = 0 
+
+4. f is smooth ( C∞) on (0 , 1) 
+
+Proof. Property 1: Taking the derivative, 
+
+f ′(s) = −5 · k · e−k(s−μ)
+
+(1 + e−k(s−μ))2 < 0 (15) for all s ∈ (0 , 1) , confirming strict monotonic de-crease. Property 2: At s = μ,
+
+f (μ) = 5 ·
+
+(
+
+1 − 11 + e0
+
+)
+
+= 5 ·
+
+(
+
+1 − 12
+
+)
+
+= 2 .5.
+
+(16) Property 3: As s → 0, e−k(s−μ) → ekμ →∞, so f (s) → 5. As s → 1, e−k(s−μ) → 0, so 
+
+f (s) → 0.Property 4: f is a composition of smooth func-tions (exponential and rational), hence smooth on the interior. 
+
+F.3.2 Sensitivity Analysis 
+
+The sensitivity of the novelty score to changes in weighted similarity is given by: 
+
+∣∣∣∣∣
+
+∂s final novelty 
+
+∂s weighted 
+
+∣∣∣∣∣ = β · 5k · e−k(sweighted −μ)
+
+(1 + e−k(sweighted −μ))2 . (17) This sensitivity is maximized at sweighted =
+
+μ, where small changes in similarity lead to the largest score adjustments, and diminishes toward the extremes, providing natural robustness to out-liers.

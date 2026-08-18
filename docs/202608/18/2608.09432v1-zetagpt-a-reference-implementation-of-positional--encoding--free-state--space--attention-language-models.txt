@@ -1,0 +1,291 @@
+Title: ZetaGPT: A Reference Implementation of Positional–Encoding–Free State–Space–Attention Language Models
+
+URL Source: https://arxiv.org/pdf/2608.09432v1
+
+Published Time: Tue, 11 Aug 2026 02:42:38 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt 
+
+# ZetaGPT: A Reference Implementation of Positional–Encoding–Free State–Space–Attention Language Models 
+
+Róisín Luo ∗
+
+University of Galway, Ireland 
+
+https://github.com/roisincrtai/zetagpt 
+
+Abstract. Transformer-based language models rely on self-attention, whose computation is permutation-equivariant and therefore lacks an intrinsic mechanism for representing token order. Existing architectures address this limitation by explicitly incorporating positional information through learned positional embeddings or hand-crafted positional encodings, such as rotary positional encoding (RoPE), treating positional information as an architecturally acquired capability rather than an inherent property of the model. Motivated by the pursuit of positional-encoding-free architectures, this work explores a language model architecture that integrates causal state-space equations to implicitly encode positional information before attention computation. Specifically, each model block applies a causal state-space equation before self-attention, allowing recurrent state dynamics to encode sequential information into token representations. Consequently, subsequent attention layers operate on position-aware representations without requiring explicit positional encodings while retaining the expressive modeling capacity of self-attention. We present ZetaGPT , a compact hybrid language model designed for research, rapid prototyping, algorithm verification, and educational applications. In addition to the proposed architecture, 
+
+ZetaGPT provides a fully open-source, end-to-end training pipeline encompassing dataset construction, tokenizer training, pretraining, supervised fine-tuning, reinforcement learning from human feedback (RLHF), and chain-of-thought (CoT) reasoning via pure reinforcement learning. To the best of our knowledge, ZetaGPT is the first open-source small language model without explicit positional encoding and establishes a compact, reproducible reference implementation for the development and empirical study of positional-encoding-free language models. 
+
+Keywords: positional-encoding-free large language model; state-space model; state-space transformer; long context; pretraining; reinforcement learning from human feedback; direct preference optimization; large language model 
+
+1. Introduction 
+
+Large language models (LLMs) based on the Transformer architecture (Vaswani et al., 2017) have demonstrated remarkable capabilities across a broad range of natural language processing tasks, including language understanding, reasoning, question answering, and code generation. Since GPT-2 (Radford et al., 2019), the dominant paradigm has remained largely unchanged: a stack of Transformer blocks composed of multi-head self-attention and feed-forward networks, pretrained by next-token prediction on large-scale text corpora and subsequently adapted through supervised fine-tuning and alignment. Despite rapid advances in model scale and training methodology, the fundamental architecture of self-attention remains the backbone of modern LLMs. A fundamental property of self-attention is permutation equivariance: applying any permutation π to an input sequence results in the same permutation of the output representations. Formally, for an input sequence 
+
+> ∗
+
+Corresponding to roisincrtai@gmail.com 
+
+1 of 14 arXiv:2608.09432v1 [cs.CL] 10 Aug 2026 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt proj. proj. proj. conv SiLU SiLU State-Space Module (SSM) proj. layer norm layer norm FFN K proj. Q proj. V proj. gated mha. layer norm SSA Transformer (layer 1) SSA Transformer (layer 0) SSA Transformer (layer )TinyXGPT Causal State-Space-Attention (SSA) Transformer 
+
+Figure 1: Model Architecture. ZetaGPT consists of a stack of State–Space–Attention (SSA) Transformer blocks (right). Each SSA Transformer block (middle) comprises three pre-normalized residual sub-layers: a causal state-space module (SSM), a gated multi-head self-attention layer, and a feed-forward network (FFN). The SSM precedes self-attention to produce position-aware representations through recurrent state evolution, allowing the subsequent attention layer to operate without explicit positional encodings. The left panel illustrates the internal architecture of the SSM, including the input-dependent state transition, recurrent state update, output gating, and output projection. 
+
+x = ( x1, x 2, . . . , x T ) of length T ,Attn( π(x)) = π(Attn( x)) , (1) where Attn( ·) denotes the self-attention operation and π is an arbitrary permutation of the input sequence. Consequently, self-attention preserves the permutation structure of its inputs, fails to carry positional information in representations, and therefore has no intrinsic mechanism for representing token order. Existing Transformer architectures therefore explicitly inject positional information through mechanisms such as sinusoidal positional encoding (Vaswani et al., 2017), learned positional embeddings (Devlin et al., 2019), rotary positional encoding (RoPE) (Su et al., 2024), and their long-context extensions such as YaRN (Peng et al., 2024). While these approaches effectively break permutation equivariance and enable sequential modeling, positional information remains an externally introduced architectural component. Consequently, extending context lengths beyond those encountered during training typically requires additional adaptations to the positional encoding mechanism, rather than arising naturally from the architecture itself. Although explicit positional encodings have been extended to longer contexts through interpolation and scaling techniques, such as position interpolation (Dong et al., 2024), LongRoPE (Ding et al., 2024), and YaRN (Peng et al., 2024), these approaches continue to rely on explicit positional encodings and adapt the encoding mechanism itself rather than the underlying architecture. This challenge has motivated a recent design philosophy shift toward positional-encoding-free architectures, in which positional information is 
+
+2 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt                                 
+
+> Configuration Layers Heads dmodel dhMLP Embedding Blocks Parameters
+> ZetaGPT -S (default) 68384 48 4×19 .3M 15 .1M 34 .4M
+> ZetaGPT -M 12 12 768 64 4×38 .6M 120 .6M 159 .2M
+> ZetaGPT -L 24 16 1024 64 4×51 .5M 428 .4M 479 .9M
+
+Table 1: ZetaGPT Configuration Scheme. Every configuration scheme adopts the same State–Space–Attention architecture comprising a causal state-space module, gated multi-head self-attention, a feed-forward network, and no explicit positional encoding. Parameter counts assume the induced vocabulary size V = 50 ,259, where the embedding parameters equal V d model and the block parameters equal L(17 d2model + 25 dmodel ). Context length is a training configuration rather than an architectural constraint, since the model contains no explicit positional encoding. 
+
+represented implicitly through the computational dynamics of the architecture instead of being injected as an explicit prior. For example, Kimi Linear (Team et al., 2025b) eliminates explicit positional encodings by interleaving Kimi Delta Attention with full attention, allowing sequential information to emerge from the recurrent dynamics of the linear-attention module. This design philosophy motivates this research, we incorporate causal state-space equations into Transformer blocks to produce position-aware representations through recurrent state evolution prior to self-attention. Consequently, positional information is provided implicitly by the recurrent dynamics, while self-attention retains its expressive capacity for modeling long-range token interactions. Formally, following selective state-space models (Gu and Dao, 2024), given an input sequence {xt}Tt=1 , the recurrent state evolution is defined as 
+
+ht = A(xt)ht−1 + B(xt)xt, (2) 
+
+yt = C(xt)ht + D(xt)xt, (3) where ht denotes the hidden state at step t, yt is the output representation, and A(·), B(·), C(·), and D(·)denote the input-dependent state transition, input, output, and direct feed-through operators, respectively. Since the hidden state recursively summarizes the causal prefix {x1, . . . , x t}, the resulting representations are inherently position-aware and are subsequently processed by the self-attention layer without requiring explicit positional encodings. Since the hidden state recursively summarizes the causal prefix {x1, . . . , x t}, the resulting representations are inherently position-aware and are subsequently processed by the self-attention layer without requiring explicit positional encodings. We present ZetaGPT , a compact positional-encoding-free language model designed for research, rapid prototyping, algorithm verification, and educational applications. Beyond the proposed State–Space–Attention architecture, ZetaGPT provides a fully open-source, end-to-end training pipeline spanning dataset construc-tion, tokenizer training, pretraining, supervised fine-tuning, reinforcement learning from human feedback (RLHF) (Ouyang et al., 2022), and chain-of-thought (CoT) reasoning (Wei et al., 2022) via pure reinforcement learning (Guo et al., 2025). To the best of our knowledge, ZetaGPT is the first open-source small language model without explicit positional encoding, establishing a compact and reproducible reference implementation for the development and empirical study of positional-encoding-free language models. The contributions of this work are summarized as follows: 1. Positional–Encoding–Free State–Space–Attention Language Model . We present ZetaGPT ,a compact positional-encoding-free State-Space–Attention language model in which causal state-space equations precede self-attention within every Transformer block. The recurrent state evolution produces position-aware representations prior to self-attention, enabling positional information to be represented implicitly through architectural dynamics rather than explicit positional encodings. 2. Reference Implementation for Positional-Encoding-Free Language Models . We present 
+
+ZetaGPT as a compact, fully open-source reference implementation for the development and empirical study of positional-encoding-free language models. To the best of our knowledge, it is the first open-source small language model without explicit positional encoding. 
+
+> 3 of 14
+
+ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt                                                                                              
+
+> Model Reference Params Vocab. Architecture Positional Encoding Pretrain Context
+> Positional-Encoding-Dependent Language Models
+> TinyStories -1M Eldan and Li (2023) 3.7M †50 ,257 Transformer Learned 512 Baby GPT (Character) Karpathy (2022) 10 .8M †65 Transformer Learned 256
+> TinyStories -8M Eldan and Li (2023) 19 .7M †50 ,257 Transformer Learned 512
+> TinyStories -33M Eldan and Li (2023) 68 .5M †50 ,257 Transformer Learned 512 Pythia-70M Biderman et al. (2023) 70 .4M 50 ,304 Transformer RoPE 2048 GPT-2 Small Radford et al. (2019) 124M 50 ,257 Transformer Learned 1024 SmolLM2-135M allal et al. (2025) 134 .5M 49 ,152 Transformer RoPE 8192 Gemma 3 270M Google DeepMind (2025) 268 .1M 262 ,144 Transformer RoPE 32768 nanochat d20 Karpathy (2025) ∼560M 65 ,536 Transformer RoPE 1024 Qwen3-0.6B Yang et al. (2025) ∼0.6B 151 ,936 Transformer RoPE 32768
+> TinyLlama Zhang et al. (2024) ∼1.1B 32 ,000 Transformer RoPE 2048
+> Ours: Positional-Encoding-Free Language Models
+> ZetaGPT -S (default) —34 .4M 50 ,259 State–Space–Attention None 256
+> ZetaGPT -M —159 .2M 50 ,259 State–Space–Attention None 512
+> ZetaGPT -L —479 .9M 50 ,259 State–Space–Attention None 1024
+
+Table 2: ZetaGPT’s Niche Among Compact Language Models. Parameter counts are reported from the corresponding papers, repositories, or official model cards; † denotes values derived from released configurations when an explicit parameter count was not reported. Architecture 
+
+indicates the underlying model architecture, while Positional Encoding specifies the mechanism used to represent token order. ZetaGPT occupies a distinct position as the only compact State–Space– Attention language model without explicit positional encoding, providing a reference implementation for positional-encoding-free language modeling. 
+
+3. End-to-End LLM Pipeline . We present, to the best of our knowledge, the first end-to-end pipeline for building modern small LLMs, encompassing every major stage from dataset construction, tokenizer training, pretraining, supervised fine-tuning, reinforcement learning from human feedback (RLHF), to chain-of-thought (CoT) reasoning via pure reinforcement learning. The pipeline provides a complete and reproducible recipe for research, rapid prototyping, algorithm verification, and education. 
+
+2. Landscape of Small Language Models 
+
+Table 2 positions ZetaGPT among representative compact and sub-billion language models. Existing small language models are almost exclusively based on the Transformer architecture and represent token order through explicit positional encoding, either using learned positional embeddings, as in GPT-2 (Radford et al., 2019) and the TinyStories family (Eldan and Li, 2023), or rotary positional encoding (RoPE), as adopted by more recent models including Pythia (Biderman et al., 2023), SmolLM2 (allal et al., 2025), Gemma 3 (Google DeepMind, 2025; Team et al., 2025a), Qwen3 (Yang et al., 2025), and TinyLlama (Zhang et al., 2024). Although these models differ substantially in scale and training objectives, they all rely on explicit positional representations as an architectural component. In contrast, ZetaGPT adopts a hybrid State–Space–Attention Transformer architecture without explicit positional encoding. Instead of injecting positional information into token representations, sequential information is represented implicitly through recurrent state evolution before self-attention. To the best of our knowledge, ZetaGPT is the first open-source small language model that combines a positional-encoding-free State–Space–Attention architecture with a complete end-to-end training pipeline. This positions 
+
+ZetaGPT as a compact reference implementation for the development, evaluation, and empirical study of positional-encoding-free language models. 
+
+3. Model 
+
+As shown in Figure 1, ZetaGPT adopts a hybrid State–Space–Attention architecture in which a causal state-space module precedes self-attention within every Transformer block. The state-space module first encodes sequential information through recurrent state evolution, producing position-aware representations 
+
+4 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt 0 1 2 3 4 5iteration ×10 4               
+
+> 10 3
+> 10 4
+> 10 5
+> 10 6
+> 10 7
+> corpus count of the merged pair
+> Merged-pair frequency
+> 012345iteration ×10 4
+> 0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 pairs available to merge (M)
+> Distinct candidate pairs
+> 012345iteration ×10 4
+> 12345bytes / token
+> Compression
+> corpus length
+> 510 15 20 bytes in the merged symbol 10 1
+> 10 2
+> 10 3
+> 10 4
+> symbols
+> Learned symbol lengths
+> 100 200 300 400 500 corpus length (M tokens)
+
+Figure 2: Dynamics of BPE Tokenizer. This shows the dynamics of BPE tokenizer over 50 ,000 merge iterations on the full 546 MB Wikitext-103 corpus, one merge per iteration. Left: the corpus frequency of the pair being merged falls from 1 .2 × 10 7 to 205, almost five orders of magnitude (note the logarithmic axis), so late merges are learned from very little evidence. Centre-left: the number of distinct adjacent pairs available to merge rises by a factor of 365, from 9 ,497 to 3 .47M, reaching 90% of its final value by iteration ∼6,700: merging creates more adjacencies than it consumes, which is why the candidate set has to be maintained incrementally rather than recounted. 
+
+Centre-right: compression rises monotonically from 1 .02 to 5 .16 bytes per token and the corpus falls from 535M to 106M tokens, but with sharply diminishing returns — the first 1 ,000 iterations buy +1 .63 bytes/token, the next 9 ,000 buy +1 .51, and the final 40 ,000 only +1 .00. Right: the byte length of the symbol each merge creates, over the whole run; the mean rises from 2 .35 bytes in the first hundred iterations to 7 .19 in the last thirty thousand, with the longest at 19 bytes. 
+
+that are subsequently processed by self-attention without requiring explicit positional encodings. Each block consists of three pre-normalized residual sub-layers, 
+
+x ← x + SSM (LN( x)), x ← x + Attn (LN( x)), x ← x + MLP (LN( x)), (4) where the state-space module models sequential dynamics, the attention layer captures global token interac-tions, and the feed-forward network performs nonlinear feature transformation. Table 1 summarizes the three model configurations. ZetaGPT -S is the default configuration used throughout this work, comprising 6 State–Space–Attention Transformer blocks with 8 attention heads, a model dimension of 384, a head dimension of 48, a 4 × feed-forward expansion, and 34.4M parameters. ZetaGPT -M scales the architecture to 12 layers, 12 attention heads, a model dimension of 768, and 159.2M parameters. ZetaGPT -L further scales the architecture to 24 layers, 16 attention heads, a model dimension of 1024, and 479.9M parameters. All three configurations share the same architectural design and differ only in model depth and width. 
+
+3.1. Tokenizer 
+
+ZetaGPT employs a byte-level byte-pair encoding (BPE) tokenizer (Sennrich et al., 2016), following the tokenization paradigm adopted by GPT-2 (Radford et al., 2019). Starting from the 256-byte vocabulary, the tokenizer iteratively merges the most frequent adjacent symbol pairs learned from the training corpus, producing a subword vocabulary that balances compression efficiency and lexical coverage. Let M denote the set of learned merge rules. The resulting vocabulary size is 
+
+V = 259 + |M| , (5) where the additional three symbols correspond to the special tokens {⟨ pad ⟩, ⟨eos ⟩, ⟨unk ⟩} . Since the base alphabet consists of raw bytes rather than words or Unicode characters, every input string admits a valid encoding without out-of-vocabulary failures. A single tokenizer is trained over the pretraining corpus. Unless otherwise specified, the merge budget is fixed to |M| = 50 ,000, resulting in a vocabulary size of V = 50 ,259, which is used by all model configurations 
+
+5 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt 0.0 0.2 0.4 0.6 0.8 1.0 1.2 step ×10 4                                        
+
+> 4.5 5.0 5.5 6.0 6.5 7.0 7.5 8.0 tokens
+> Memory horizon (median)
+> layer 0 layer 1 layer 2 layer 3 layer 4 layer 5 mean over layers
+> 0.0 0.2 0.4 0.6 0.8 1.0 1.2 step ×10 4
+> 0.02 0.04 0.06 0.08 0.10 0.12
+> Selectivity: std tof the decay
+> 0.0 0.2 0.4 0.6 0.8 1.0 1.2 step ×10 4
+> 0.005 0.010 0.015 0.020 0.025 0.030 0.035
+> ‖y‖/‖x‖
+> Residual write ratio
+> 0.0 0.2 0.4 0.6 0.8 1.0 1.2 step ×10 4
+> 7.6 × 10 −1
+> 7.8 × 10 −1
+> 8 × 10 −1
+> 8.2 × 10 −1
+> 8.4 × 10 −1
+> 8.6 × 10 −1
+> 8.8 × 10 −1
+> Mean decay a
+> 0.0 0.2 0.4 0.6 0.8 1.0 1.2 step ×10 4
+> 10 −6
+> 10 −5
+> 10 −4
+> 10 −3
+> fraction
+> Long-memory channels ( a> 0.99 )
+> 0.0 0.2 0.4 0.6 0.8 1.0 1.2 step ×10 4
+> 10 −5
+> 10 −4
+> 10 −3
+> 10 −2
+> 10 −1
+> fraction
+> Local channels ( a< 0.5 )
+
+Figure 3: Per-Layer Dynamics of the State-Space Modules. Training dynamics of the state-space modules, profiled every 200 optimization steps for each Transformer block. Curves are shown from shallow (light) to deep (dark), with the dashed curve indicating the mean across all blocks. The learned dynamics progressively become more selective: the memory horizon shortens, the input-dependent decay becomes increasingly adaptive, and the contribution of the state-space module to the residual stream grows throughout training. The bottom row further shows the evolution of the decay distribution, illustrating the emergence of both long-memory and short-memory channels. 
+
+Together, these dynamics demonstrate that the recurrent state evolution learns multiple memory timescales, providing the mechanism through which sequential information is represented implicitly before self-attention. 
+
+reported in this work. Figure 2 illustrates the tokenizer learning dynamics throughout the byte-pair merging process, including the evolution of merge frequency, vocabulary compression, and corpus tokenization efficiency. 
+
+3.2. State-Space Module 
+
+Discrete state-space equations define the input–output dynamics of sequential data through latent hidden variables whose evolution is governed recursively across discrete sequence steps. This discrete dynamical evolution inherently carries sequential order: the hidden state at step t depends on the state propagated from preceding steps and therefore represents the causal history associated with its position in the sequence. Accordingly, state-space dynamics provide an architectural mechanism for encoding positional information without introducing an explicit positional representation. Following state-space and selective state-space formulations (Gu et al., 2022; Gu and Dao, 2024), the dynamics are written as 
+
+ht = A(xt)ht−1 + B(xt)xt, (6) 
+
+yt = C(xt)ht + D(xt)xt, (7) where xt is the input at step t, ht is the latent state, yt is the output representation, and A(·), B(·), C(·), and D(·) denote the state-transition, input, output, and direct feed-through operators, respectively. In the selective formulation, these operators may depend on the current input, allowing the state dynamics to adapt to the sequence content. 
+
+ZetaGPT instantiates this formulation as a selective diagonal state-space module. The state-transition 
+
+6 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt 
+
+operator is defined as 
+
+A(xt) = diag( at), at = exp( − softplus( Waxt + ba)) , (8) where at ∈ (0 , 1) d is an input-dependent per-channel decay. The input path first constructs a value representation through a learned projection, depthwise causal convolution, and nonlinearity, 
+
+ut = Wv xt + bv , (9) 
+
+vt = SiLU(Conv causal (u)t) , (10) while a parallel projection produces the output gate 
+
+gt = Wg xt + bg . (11) The operators in (7) are then instantiated as 
+
+A(xt)ht−1 ≡ at ⊙ ht−1, (12) 
+
+B(xt)xt ≡ (1 − at) ⊙ vt, (13) 
+
+C(xt)ht ≡ Wo(ht ⊙ SiLU( gt)) + bo, (14) 
+
+D(xt)xt ≡ 0, (15) where ⊙ denotes element-wise multiplication. Substitution into the general state-space equations yields the instantiated recurrence 
+
+ht = at ⊙ ht−1 + (1 − at) ⊙ vt, (16) 
+
+yt = Wo(ht ⊙ SiLU( gt)) + bo. (17) Because ht is obtained recursively from ht−1, the representation at each step is conditioned on the or-dered causal prefix rather than solely on the current token. The state-space module therefore transforms position-agnostic token representations into position-aware representations before self-attention, providing the sequential information required by the subsequent attention computation without explicit positional encoding. 
+
+Observed State-Space Dynamics. The state-space equations are introduced in ZetaGPT to represent positional information implicitly through recurrent dynamics without explicit positional encodings. Figure 3 reports the evolution of the state-space dynamics during the first 12 ,800 pretraining steps, corresponding to 19 .7% of the total optimization budget, over which the training loss decreases from 10 .90 to 6 .05 nats per token. The reported quantities are proxy measurements of the learned recurrent dynamics and characterize how positional information is represented across layers throughout optimization. Collectively, the dynamics progressively develop multiple memory timescales, allowing different channels to specialize to distinct temporal ranges and thereby enabling the state-space module to encode sequential information before self-attention. Four consistent observations support this interpretation. • Emergence of Multi-Scale Memory Horizons. The median memory horizon, defined as 
+
+τ = −(ln at)−1, where at ∈ (0 , 1) is the input-dependent state decay coefficient of the state-space module, decreases from approximately 7 .9 to 5 .7 tokens before stabilizing near the end of the observation window. More importantly, memory horizons progressively differentiate across layers rather than converging to a common value. The shallowest layers consistently retain the longest memory horizons, the intermediate layers develop the shortest horizons, and the deepest layers converge to intermediate horizons. This layer-wise specialization indicates that different state-space modules become sensitive to sequential dependencies over distinct temporal ranges, thereby forming a hierarchy of memory horizons across the network.   
+
+> 7 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt
+
+• Growth of Input Selectivity. Selectivity, measured as the standard deviation of the input-dependent decay across token positions, increases from 0 .037 to 0 .094, indicating that the state-space dynamics become progressively more input-dependent throughout optimization. Rather than converging toward a fixed exponential filter, different tokens increasingly induce distinct decay coefficients, allowing the memory horizon to adapt to the local input context. The strongest selectivity is consistently observed in the intermediate layers, coinciding with the greatest reduction in memory horizon. • Increasing Contribution to the Residual Stream. The residual write ratio, defined as 
+
+∥f (x)∥F /∥x∥F , where x is the normalized input presented to the state-space module and f (x)denotes the state-space output prior to residual addition, both norms being computed over the full activation tensor of a training batch, increases by approximately a factor of six, from 0 .004 to 0 .021. This trend indicates that the network progressively relies more heavily on the state-space module during optimization. The increase is also layer-dependent, with deeper blocks exhibiting substantially larger write ratios than shallower ones. Although the state-space branch contributes only a modest fraction of the residual activation, its contribution continues to increase throughout the observation window without clear evidence of convergence, suggesting that the learned state-space representations become increasingly important to the overall model computation. • Emergence of Multiple Memory Timescales. The distribution of decay coefficients evolves from a narrow initialization into a heterogeneous population containing both short-memory and long-memory channels. Long-memory channels ( a > 0.99) gradually emerge after approximately 2 × 10 3 optimization steps, whereas short-memory channels ( a < 0.5) appear much earlier and eventually constitute several percent of the channel population. This heterogeneous distribution is learned rather than prescribed by the architecture, demonstrating that the state-space modules automatically organize into multiple memory timescales. Together with the layer-wise specialization of memory horizons, increased input selectivity, and growing contribution to the residual stream, these observations indicate that the state-space dynamics progressively learn a hierarchy of temporal representations, providing the architectural mechanism through which positional information is represented implicitly before self-attention. 
+
+3.3. Gated Multi-Head Attention 
+
+Attention sink, in which disproportionate attention is assigned to a small number of semantically unin-formative tokens, is a widely observed phenomenon in autoregressive Transformer language models (Gu et al., 2025). Recent studies further suggest that attention sink and related attention-head behaviors are closely associated with hallucination and that improving attention allocation can substantially mitigate hallucinated generations (Yuan et al., 2024; Chuang et al., 2024). Gating the attention output has been shown to improve attention selectivity while mitigating attention-sink and activation-collapse phenomena in pre-layer-normalized Transformers (Qiu et al., 2025). Accordingly, ZetaGPT adopts the gated multi-head attention mechanism proposed by Qiu et al. (Qiu et al., 2025) while retaining the standard causal Transformer attention formulation (Vaswani et al., 2017). Given an input sequence x ∈ RT ×dmodel , the query, key, and value representations are computed as 
+
+Q = xW Q, K = xW K , V = xW V , (18) where WQ, WK , and WV denote the learnable query, key, and value projection matrices, respectively. The projected representations are partitioned into H attention heads with head dimension dh = dmodel /H . For each attention head, 
+
+A(h) = softmax 
+
+( Q(h)K(h)⊤
+
+√dh
+
++ M
+
+)
+
+, (19) 
+
+O(h) = A(h)V (h), (20) where M denotes the causal attention mask. The outputs from all attention heads are concatenated to form 
+
+O = [ O(1) , O (2) , . . . , O (H) ]. (21)     
+
+> 8 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt Data Curation Pre-training SFT RLHF Instruction Following Tuning RLHF Reward Model Training Chain-of-Through via GRPO Instruction Tuning Chain-of-Thought Reasoning BPE Tokenizer
+
+Figure 4: End-to-End Training Pipeline. The pipeline begins with data curation and tokenizer training, followed by language-model pretraining on the pretraining corpus. The pretrained model is subsequently aligned through supervised fine-tuning (SFT) on instruction-following data. A reward model is then initialized from the SFT model by replacing the language modeling head with a scalar reward head and trained on preference data for reinforcement learning from human feedback (RLHF). Finally, chain-of-thought (CoT) reasoning is further developed through reinforcement learning using Group Relative Policy Optimization (GRPO), reproducing the emergent “ aha moment ” observed in recent reasoning language models (Guo et al., 2025). 
+
+Instead of directly projecting the concatenated attention output, the gated attention mechanism introduces an input-dependent gate, Attn( x) = ( O ⊙ σ(xW G)) WO , (22) where WG and WO denote the gating and output projection matrices, respectively, and σ(·) is the sigmoid activation. The gating mechanism adaptively modulates the contribution of each attention channel according to the current token representation, introducing a nonlinear interaction between the attention output and the residual stream. As demonstrated by Qiu et al. (Qiu et al., 2025), such input-dependent gating improves attention selectivity while mitigating attention-sink and activation-collapse phenomena in pre-layer-normalized Transformers. 
+
+4. Pipeline & Data 
+
+End-to-End Training Pipeline. Figure 4 illustrates the complete end-to-end training pipeline of 
+
+ZetaGPT . Starting from raw corpora, the pipeline sequentially performs tokenizer training, language-model pretraining, supervised fine-tuning (SFT), reward model training, reinforcement learning from human feedback (RLHF), and chain-of-thought (CoT) reasoning through reinforcement learning. Each stage is independently executable while remaining fully compatible with the subsequent stages, providing a unified and reproducible workflow for constructing modern small language models. 
+
+Pretraining Data. Language-model pretraining is performed on the WikiText-103 corpus (Merity et al., 2017), a large-scale English language modeling benchmark comprising long-form Wikipedia articles. The corpus provides a clean and coherent pretraining source for learning general language modeling capabilities. 
+
+Instruction-Tuning Data. Supervised instruction tuning is performed using the Alpaca-GPT4 instruction-following dataset (Peng et al., 2023), which consists of GPT-4-generated instruction–response pairs spanning a broad range of general-purpose tasks. The same instruction corpus is subsequently reused   
+
+> 9 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt
+
+for reward model training and reinforcement learning from human feedback (RLHF), providing a unified supervision source throughout the alignment pipeline. 
+
+Chain-of-Thought Reasoning Data. Chain-of-thought (CoT) reasoning is developed through rein-forcement learning using the GSM8K mathematical reasoning benchmark (Cobbe et al., 2021). Following recent reasoning language models, optimization is performed using Group Relative Policy Optimization (GRPO) (Shao et al., 2024), enabling reasoning capability to emerge directly through reinforcement learning without supervised chain-of-thought demonstrations. 
+
+5. Training Protocol 
+
+All training stages are optimized using AdamW with decoupled weight decay (Loshchilov and Hutter, 2019), momentum coefficients β = (0 .9, 0.999), ε = 10 −8, gradient clipping with a maximum global norm of 1 .0, and a cosine annealing learning-rate schedule with the minimum learning rate fixed to one tenth of the peak learning rate. Language-model pretraining is performed with a learning rate of 2 × 10 −5 for 64 ,840 optimization steps, followed by supervised fine-tuning (SFT) using a learning rate of 1 × 10 −6 for 2 ,342 steps. Reward model training adopts a learning rate of 1 × 10 −5 for 2 ,500 steps, while reinforcement learning from human feedback (RLHF) and chain-of-thought (CoT) reasoning through Group Relative Policy Optimization (GRPO) are optimized using a learning rate of 1 × 10 −6 for 3 ,251 and 1 ,400 optimization steps, respectively. Model checkpoints, training statistics, and state-space diagnostics are recorded every 200 optimization steps. Unless otherwise specified, all stages use a batch size of 16 sequences (or preference pairs), and the context length follows the pretraining configuration of the corresponding model. 
+
+6. Limitations 
+
+The limitations of ZetaGPT primarily arise from the computational resources available for this work rather than from the proposed architecture itself. First, the pretraining corpus is intentionally modest in scale and therefore cannot provide the linguistic diversity, world knowledge, and task coverage of contemporary large language models trained on trillions of tokens. Second, the model is deliberately compact, with the default configuration containing only 34 .4M parameters. Although this scale is well suited to research, rapid prototyping, algorithm verification, and education, conclusions drawn from experiments at this scale may not directly transfer to substantially larger language models whose optimization dynamics and emergent capabilities differ qualitatively. Third, computational constraints limit pretraining to relatively short context lengths (256, 512, and 1024 tokens for the three model configurations), preventing a comprehensive empirical evaluation of long-context modeling and context-length extrapolation. Evaluating the proposed positional-encoding-free architecture under substantially longer training contexts remains an important direction for future work. 
+
+7. Conclusion 
+
+This work presented ZetaGPT , a compact positional-encoding-free State–Space–Attention language model in which positional information is represented implicitly through state-space dynamics rather than explicit positional encodings. By placing a causal state-space module before self-attention within every Transformer block, ZetaGPT enables position-aware representations to emerge through learned state-space dynamics while preserving the expressive modeling capability of self-attention. Beyond the proposed architecture, ZetaGPT 
+
+provides a complete end-to-end language model development pipeline spanning dataset construction, tokenizer training, pretraining, supervised fine-tuning, reward model training, reinforcement learning from human feedback (RLHF), and chain-of-thought (CoT) reasoning through reinforcement learning. To the best of our knowledge, ZetaGPT is the first open-source small language model without explicit positional encoding, establishing a compact and reproducible reference implementation for the development, evaluation, and empirical study of positional-encoding-free language models. 
+
+References   
+
+> 10 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt
+
+Loubna Ben allal, Anton Lozhkov, Elie Bakouch, Gabriel Martin Blazquez, Guilherme Penedo, Lewis Tunstall, Andrés Marafioti, Agustín Piqueres Lajarín, Hynek Kydlíček, Vaibhav Srivastav, Joshua Lochner, Caleb Fahlgren, Xuan Son NGUYEN, Ben Burtenshaw, Clémentine Fourrier, Haojun Zhao, Hugo Larcher, Mathieu Morlon, Cyril Zakka, Colin Raffel, Leandro Von Werra, and Thomas Wolf. SmolLM2: When smol goes big — data-centric training of a fully open small language model. In Second Conference on Language Modeling , 2025. URL https://openreview.net/forum?id=3JiCl2A14H .Stella Biderman, Hailey Schoelkopf, Quentin Anthony, Herbie Bradley, Kyle O’Brien, Eric Hallahan, Mo-hammad Aflah Khan, Shivanshu Purohit, USVSN Sai Prashanth, Edward Raff, Aviya Skowron, Lintang Sutawika, and Oskar Van Der Wal. Pythia: a suite for analyzing large language models across training and scaling. In Proceedings of the 40th International Conference on Machine Learning , ICML’23. JMLR.org, 2023. Yung-Sung Chuang, Linlu Qiu, Cheng-Yu Hsieh, Ranjay Krishna, Yoon Kim, and James R. Glass. Lookback lens: Detecting and mitigating contextual hallucinations in large language models using only attention maps. In Yaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen, editors, Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , pages 1419–1436, Miami, Florida, USA, November 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.emnlp-main.84. URL https: //aclanthology.org/2024.emnlp-main.84/ .Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. Training verifiers to solve math word problems, 2021. URL https://arxiv.org/abs/2110.14168 .Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. BERT: Pre-training of deep bidirec-tional transformers for language understanding. In Jill Burstein, Christy Doran, and Thamar Solorio, editors, Proceedings of the 2019 Conference of the North American Chapter of the Association for Compu-tational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers) , pages 4171–4186, Minneapolis, Minnesota, June 2019. Association for Computational Linguistics. doi: 10.18653/v1/N19-1423. URL https://aclanthology.org/N19-1423/ .Yiran Ding, Li Lyna Zhang, Chengruidong Zhang, Yuanyuan Xu, Ning Shang, Jiahang Xu, Fan Yang, and Mao Yang. Longrope: extending llm context window beyond 2 million tokens. In Proceedings of the 41st International Conference on Machine Learning , ICML’24. JMLR.org, 2024. Zican Dong, Junyi Li, Xin Men, Wayne Xin Zhao, Bingning Wang, Zhen Tian, Weipeng Chen, and Ji-Rong Wen. Exploring context window of large language models via decomposed positional vectors. In Proceedings of the 38th International Conference on Neural Information Processing Systems , NIPS ’24, Red Hook, NY, USA, 2024. Curran Associates Inc. ISBN 9798331314385. Ronen Eldan and Yuanzhi Li. Tinystories: How small can language models be and still speak coherent english?, 2023. URL https://arxiv.org/abs/2305.07759 .Google DeepMind. Gemma 3 270m. https://huggingface.co/google/gemma-3-270m , 2025. Model card; released after the Gemma 3 technical report. Albert Gu and Tri Dao. Mamba: Linear-time sequence modeling with selective state spaces. In First Conference on Language Modeling , 2024. URL https://openreview.net/forum?id=tEYskw1VY2 .Albert Gu, Karan Goel, and Christopher Re. Efficiently modeling long sequences with structured state spaces. In International Conference on Learning Representations , 2022. URL https://openreview.net/forum? id=uYLFoz1vlAC .Xiangming Gu, Tianyu Pang, Chao Du, Qian Liu, Fengzhuo Zhang, Cunxiao Du, Ye Wang, and Min Lin. When attention sink emerges in language models: An empirical view. In The Thirteenth International Conference on Learning Representations , 2025. URL https://openreview.net/forum?id=78Nn4QJTEN .  
+
+> 11 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt
+
+Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu Zhang, Shirong Ma, Xiao Bi, Xiaokang Zhang, Xingkai Yu, Yu Wu, Z. F. Wu, Zhibin Gou, Zhihong Shao, Zhuoshu Li, Ziyi Gao, Aixin Liu, Bing Xue, Bingxuan Wang, Bochao Wu, Bei Feng, Chengda Lu, Chenggang Zhao, Chengqi Deng, Chong Ruan, Damai Dai, Deli Chen, Dongjie Ji, Erhang Li, Fangyun Lin, Fucong Dai, Fuli Luo, Guangbo Hao, Guanting Chen, Guowei Li, H. Zhang, Hanwei Xu, Honghui Ding, Huazuo Gao, Hui Qu, Hui Li, Jianzhong Guo, Jiashi Li, Jingchang Chen, Jingyang Yuan, Jinhao Tu, Junjie Qiu, Junlong Li, J. L. Cai, Jiaqi Ni, Jian Liang, Jin Chen, Kai Dong, Kai Hu, Kaichao You, Kaige Gao, Kang Guan, Kexin Huang, Kuai Yu, Lean Wang, Lecong Zhang, Liang Zhao, Litong Wang, Liyue Zhang, Lei Xu, Leyi Xia, Mingchuan Zhang, Minghua Zhang, Minghui Tang, Mingxu Zhou, Meng Li, Miaojun Wang, Mingming Li, Ning Tian, Panpan Huang, Peng Zhang, Qiancheng Wang, Qinyu Chen, Qiushi Du, Ruiqi Ge, Ruisong Zhang, Ruizhe Pan, Runji Wang, R. J. Chen, R. L. Jin, Ruyi Chen, Shanghao Lu, Shangyan Zhou, Shanhuang Chen, Shengfeng Ye, Shiyu Wang, Shuiping Yu, Shunfeng Zhou, Shuting Pan, S. S. Li, Shuang Zhou, Shaoqing Wu, Tao Yun, Tian Pei, Tianyu Sun, T. Wang, Wangding Zeng, Wen Liu, Wenfeng Liang, Wenjun Gao, Wenqin Yu, Wentao Zhang, W. L. Xiao, Wei An, Xiaodong Liu, Xiaohan Wang, Xiaokang Chen, Xiaotao Nie, Xin Cheng, Xin Liu, Xin Xie, Xingchao Liu, Xinyu Yang, Xinyuan Li, Xuecheng Su, Xuheng Lin, X. Q. Li, Xiangyue Jin, Xiaojin Shen, Xiaosha Chen, Xiaowen Sun, Xiaoxiang Wang, Xinnan Song, Xinyi Zhou, Xianzu Wang, Xinxia Shan, Y. K. Li, Y. Q. Wang, Y. X. Wei, Yang Zhang, Yanhong Xu, Yao Li, Yao Zhao, Yaofeng Sun, Yaohui Wang, Yi Yu, Yichao Zhang, Yifan Shi, Yiliang Xiong, Ying He, Yishi Piao, Yisong Wang, Yixuan Tan, Yiyang Ma, Yiyuan Liu, Yongqiang Guo, Yuan Ou, Yuduan Wang, Yue Gong, Yuheng Zou, Yujia He, Yunfan Xiong, Yuxiang Luo, Yuxiang You, Yuxuan Liu, Yuyang Zhou, Y. X. Zhu, Yanping Huang, Yaohui Li, Yi Zheng, Yuchen Zhu, Yunxian Ma, Ying Tang, Yukun Zha, Yuting Yan, Z. Z. Ren, Zehui Ren, Zhangli Sha, Zhe Fu, Zhean Xu, Zhenda Xie, Zhengyan Zhang, Zhewen Hao, Zhicheng Ma, Zhigang Yan, Zhiyu Wu, Zihui Gu, Zijia Zhu, Zijun Liu, Zilin Li, Ziwei Xie, Ziyang Song, Zizheng Pan, Zhen Huang, Zhipeng Xu, Zhongyu Zhang, and Zhen Zhang. Deepseek-r1 incentivizes reasoning in llms through reinforcement learning. Nature , 645(8081):633–638, 2025. doi: 10.1038/s41586-025-09422-z. URL https://doi.org/10.1038/s41586-025-09422-z .Andrej Karpathy. nanogpt: The simplest, fastest repository for training/finetuning medium-sized gpts, 2022. URL https://github.com/karpathy/nanogpt .Andrej Karpathy. nanochat: The best chatgpt that $100 can buy, 2025. URL https://github.com/ karpathy/nanochat .Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. In International Conference on Learning Representations , 2019. URL https://openreview.net/forum?id=Bkg6RiCqY7 .Stephen Merity, Caiming Xiong, James Bradbury, and Richard Socher. Pointer sentinel mixture models. In 
+
+International Conference on Learning Representations , 2017. URL https://openreview.net/forum?id= Byj72udxe .Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Carroll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schulman, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul Christiano, Jan Leike, and Ryan Lowe. Training language models to follow instructions with human feedback. In Proceedings of the 36th International Conference on Neural Information Processing Systems , NIPS ’22, Red Hook, NY, USA, 2022. Curran Associates Inc. ISBN 9781713871088. Baolin Peng, Chunyuan Li, Pengcheng He, Michel Galley, and Jianfeng Gao. Instruction tuning with gpt-4, 2023. URL https://arxiv.org/abs/2304.03277 .Bowen Peng, Jeffrey Quesnelle, Honglu Fan, and Enrico Shippole. YaRN: Efficient context window extension of large language models. In The Twelfth International Conference on Learning Representations , 2024. URL https://openreview.net/forum?id=wHBfxhZu1u .Zihan Qiu, Zekun Wang, Bo Zheng, Zeyu Huang, Kaiyue Wen, Songlin Yang, Rui Men, Le Yu, Fei Huang, Suozhi Huang, Dayiheng Liu, Jingren Zhou, and Junyang Lin. Gated attention for large language   
+
+> 12 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt
+
+models: Non-linearity, sparsity, and attention-sink-free. In The Thirty-ninth Annual Conference on Neural Information Processing Systems , 2025. URL https://openreview.net/forum?id=1b7whO4SfY .Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, and Ilya Sutskever. Language models are unsupervised multitask learners. OpenAI Technical Report , 2019. Rico Sennrich, Barry Haddow, and Alexandra Birch. Neural machine translation of rare words with subword units. In Katrin Erk and Noah A. Smith, editors, Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 1715–1725, Berlin, Germany, August 2016. Association for Computational Linguistics. doi: 10.18653/v1/P16-1162. URL 
+
+https://aclanthology.org/P16-1162/ .Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, Y. K. Li, Y. Wu, and Daya Guo. Deepseekmath: Pushing the limits of mathematical reasoning in open language models, 2024. URL https://arxiv.org/abs/2402.03300 .Jianlin Su, Murtadha Ahmed, Yu Lu, Shengfeng Pan, Wen Bo, and Yunfeng Liu. Roformer: Enhanced transformer with rotary position embedding. Neurocomput. , 568(C), February 2024. ISSN 0925-2312. doi: 10.1016/j.neucom.2023.127063. URL https://doi.org/10.1016/j.neucom.2023.127063 .Gemma Team, Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin, Tatiana Matejovicova, Alexandre Ramé, Morgane Rivière, Louis Rouillard, Thomas Mesnard, Geoffrey Cideron, Jean bastien Grill, Sabela Ramos, Edouard Yvinec, Michelle Casbon, Etienne Pot, Ivo Penchev, Gaël Liu, Francesco Visin, Kathleen Kenealy, Lucas Beyer, Xiaohai Zhai, Anton Tsitsulin, Robert Busa-Fekete, Alex Feng, Noveen Sachdeva, Benjamin Coleman, Yi Gao, Basil Mustafa, Iain Barr, Emilio Parisotto, David Tian, Matan Eyal, Colin Cherry, Jan-Thorsten Peter, Danila Sinopalnikov, Surya Bhupatiraju, Rishabh Agarwal, Mehran Kazemi, Dan Malkin, Ravin Kumar, David Vilar, Idan Brusilovsky, Jiaming Luo, Andreas Steiner, Abe Friesen, Abhanshu Sharma, Abheesht Sharma, Adi Mayrav Gilady, Adrian Goedeckemeyer, Alaa Saade, Alex Feng, Alexander Kolesnikov, Alexei Bendebury, Alvin Abdagic, Amit Vadi, András György, André Susano Pinto, Anil Das, Ankur Bapna, Antoine Miech, Antoine Yang, Antonia Paterson, Ashish Shenoy, Ayan Chakrabarti, Bilal Piot, Bo Wu, Bobak Shahriari, Bryce Petrini, Charlie Chen, Charline Le Lan, Christopher A. Choquette-Choo, CJ Carey, Cormac Brick, Daniel Deutsch, Danielle Eisenbud, Dee Cattle, Derek Cheng, Dimitris Paparas, Divyashree Shivakumar Sreepathihalli, Doug Reid, Dustin Tran, Dustin Zelle, Eric Noland, Erwin Huizenga, Eugene Kharitonov, Frederick Liu, Gagik Amirkhanyan, Glenn Cameron, Hadi Hashemi, Hanna Klimczak-Plucińska, Harman Singh, Harsh Mehta, Harshal Tushar Lehri, Hussein Hazimeh, Ian Ballantyne, Idan Szpektor, Ivan Nardini, Jean Pouget-Abadie, Jetha Chan, Joe Stanton, John Wieting, Jonathan Lai, Jordi Orbay, Joseph Fernandez, Josh Newlan, Ju yeong Ji, Jyotinder Singh, Kat Black, Kathy Yu, Kevin Hui, Kiran Vodrahalli, Klaus Greff, Linhai Qiu, Marcella Valentine, Marina Coelho, Marvin Ritter, Matt Hoffman, Matthew Watson, Mayank Chaturvedi, Michael Moynihan, Min Ma, Nabila Babar, Natasha Noy, Nathan Byrd, Nick Roy, Nikola Momchev, Nilay Chauhan, Noveen Sachdeva, Oskar Bunyan, Pankil Botarda, Paul Caron, Paul Kishan Rubenstein, Phil Culliton, Philipp Schmid, Pier Giuseppe Sessa, Pingmei Xu, Piotr Stanczyk, Pouya Tafti, Rakesh Shivanna, Renjie Wu, Renke Pan, Reza Rokni, Rob Willoughby, Rohith Vallu, Ryan Mullins, Sammy Jerome, Sara Smoot, Sertan Girgin, Shariq Iqbal, Shashir Reddy, Shruti Sheth, Siim Põder, Sijal Bhatnagar, Sindhu Raghuram Panyam, Sivan Eiger, Susan Zhang, Tianqi Liu, Trevor Yacovone, Tyler Liechty, Uday Kalra, Utku Evci, Vedant Misra, Vincent Roseberry, Vlad Feinberg, Vlad Kolesnikov, Woohyun Han, Woosuk Kwon, Xi Chen, Yinlam Chow, Yuvein Zhu, Zichuan Wei, Zoltan Egyed, Victor Cotruta, Minh Giang, Phoebe Kirk, Anand Rao, Kat Black, Nabila Babar, Jessica Lo, Erica Moreira, Luiz Gustavo Martins, Omar Sanseviero, Lucas Gonzalez, Zach Gleicher, Tris Warkentin, Vahab Mirrokni, Evan Senter, Eli Collins, Joelle Barral, Zoubin Ghahramani, Raia Hadsell, Yossi Matias, D. Sculley, Slav Petrov, Noah Fiedel, Noam Shazeer, Oriol Vinyals, Jeff Dean, Demis Hassabis, Koray Kavukcuoglu, Clement Farabet, Elena Buchatskaya, Jean-Baptiste Alayrac, Rohan Anil, Dmitry, Lepikhin, Sebastian Borgeaud, Olivier Bachem, Armand Joulin, Alek Andreev, Cassidy Hardin, Robert Dadashi, and Léonard Hussenot. Gemma 3 technical report, 2025a. URL https://arxiv.org/abs/2503.19786 .  
+
+> 13 of 14 ZetaGPT Technical Report https://github.com/roisincrtai/zetagpt
+
+Kimi Team, Yu Zhang, Zongyu Lin, Xingcheng Yao, Jiaxi Hu, Fanqing Meng, Chengyin Liu, Xin Men, Songlin Yang, Zhiyuan Li, Wentao Li, Enzhe Lu, Weizhou Liu, Yanru Chen, Weixin Xu, Longhui Yu, Yejie Wang, Yu Fan, Longguang Zhong, Enming Yuan, Dehao Zhang, Yizhi Zhang, T. Y. Liu, Haiming Wang, Shengjun Fang, Weiran He, Shaowei Liu, Yiwei Li, Jianlin Su, Jiezhong Qiu, Bo Pang, Junjie Yan, Zhejun Jiang, Weixiao Huang, Bohong Yin, Jiacheng You, Chu Wei, Zhengtao Wang, Chao Hong, Yutian Chen, Guanduo Chen, Yucheng Wang, Huabin Zheng, Feng Wang, Yibo Liu, Mengnan Dong, Zheng Zhang, Siyuan Pan, Wenhao Wu, Yuhao Wu, Longyu Guan, Jiawen Tao, Guohong Fu, Xinran Xu, Yuzhi Wang, Guokun Lai, Yuxin Wu, Xinyu Zhou, Zhilin Yang, and Yulun Du. Kimi linear: An expressive, efficient attention architecture, 2025b. URL https://arxiv.org/abs/2510.26692 .Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, and Illia Polosukhin. Attention is all you need. In Proceedings of the 31st International Conference on Neural Information Processing Systems , NIPS’17, page 6000–6010, Red Hook, NY, USA, 2017. Curran Associates Inc. ISBN 9781510860964. Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed H. Chi, Quoc V. Le, and Denny Zhou. Chain-of-thought prompting elicits reasoning in large language models. In Proceedings of the 36th International Conference on Neural Information Processing Systems , NIPS ’22, Red Hook, NY, USA, 2022. Curran Associates Inc. ISBN 9781713871088. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Dayiheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jing Zhou, Jingren Zhou, Junyang Lin, Kai Dang, Keqin Bao, Kexin Yang, Le Yu, Lianghao Deng, Mei Li, Mingfeng Xue, Mingze Li, Pei Zhang, Peng Wang, Qin Zhu, Rui Men, Ruize Gao, Shixuan Liu, Shuang Luo, Tianhao Li, Tianyi Tang, Wenbiao Yin, Xingzhang Ren, Xinyu Wang, Xinyu Zhang, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yinger Zhang, Yu Wan, Yuqiong Liu, Zekun Wang, Zeyu Cui, Zhenru Zhang, Zhipeng Zhou, and Zihan Qiu. Qwen3 technical report, 2025. URL https://arxiv.org/abs/2505.09388 .Hongbang Yuan, Pengfei Cao, Zhuoran Jin, Yubo Chen, Daojian Zeng, Kang Liu, and Jun Zhao. Whispers that shake foundations: Analyzing and mitigating false premise hallucinations in large language models. In Yaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen, editors, Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , pages 2670–2683, Miami, Florida, USA, November 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.emnlp-main.155. URL https: //aclanthology.org/2024.emnlp-main.155/ .Peiyuan Zhang, Guangtao Zeng, Tianduo Wang, and Wei Lu. Tinyllama: An open-source small language model, 2024. URL https://arxiv.org/abs/2401.02385 .

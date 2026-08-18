@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-17</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-18</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 12 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 18 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>7</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>9</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-17 21:06:34 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-18 20:37:49 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读5篇、速读7篇，共12篇论文，重点关注语言模型表示与分类任务中的偏差问题。最值得看的是《Local and Global Regimes of Geometric Complexity》揭示表示几何复杂度规律，以及《Position Bias in Ordinal Classification》系统评估位置偏差影响。建议普通读者优先精读这两篇高分论文，再结合速读列表中的ReconSpan扩展理解。</p>
+<p>今日精读聚焦多语言与跨模态对齐：日英双语小模型的文化语用推理，以及多语言多模态模型的模态异步纠偏；速读覆盖无位置编码注意力、研究想法基准与LLM教学替代性。最值得关注的是两项9分研究：跨语言可解释对齐揭示文化推理差异，模态异步问题则警示“视觉非万能桥梁”。下一步建议普通读者优先精读这两篇，并顺带浏览ZetaGPT的无位置编码思路作为扩展。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Local and Global Regimes of Geometric Complexity in Language Model Representations">Local and Global Regimes of Geometric Complexity in Language Model Representations</span></li><li><span class="dpr-home-dashboard-paper-title" title="Position Bias in Ordinal Classification: A Systematic Evaluation">Position Bias in Ordinal Classification: A Systematic Evaluation</span></li><li><span class="dpr-home-dashboard-paper-title" title="One Adapter Pair per Model: A Universal Activation Interface for Language Models">One Adapter Pair per Model: A Universal Activation Interface for Language Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Interpretable Cross-Lingual Alignment in Small Language Models: Probing Cultural and Pragmatic Reasoning in Japanese-English Bilingual LLMs">Interpretable Cross-Lingual Alignment in Small Language Models: Probing Cultural and Pragmatic Reasoning in Japanese-English Bilingual LLMs</span></li><li><span class="dpr-home-dashboard-paper-title" title="Why Vision Fails as a Universal Bridge: Rectifying Modality Asynchrony in Multilingual MLLMs">Why Vision Fails as a Universal Bridge: Rectifying Modality Asynchrony in Multilingual MLLMs</span></li><li><span class="dpr-home-dashboard-paper-title" title="A Declarative-Procedural Perspective on Expert Routing in Bilingual Mixture-of-Experts Language Models">A Declarative-Procedural Perspective on Expert Routing in Bilingual Mixture-of-Experts Language Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>3</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>3</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="ReconSpan: Reconstruction-Guided Adaptive Latent Tokenization">ReconSpan: Reconstruction-Guided Adaptive Latent Tokenization</span></li><li><span class="dpr-home-dashboard-paper-title" title="UNMASK: Discovering and Causally Verifying Spurious Shortcuts in Text Classifiers">UNMASK: Discovering and Causally Verifying Spurious Shortcuts in Text Classifiers</span></li><li><span class="dpr-home-dashboard-paper-title" title="Position Encoding in Transformers: From Absolute and Relative Methods to Rotary Position Embeddings and Long-Context Scaling">Position Encoding in Transformers: From Absolute and Relative Methods to Rotary Position Embeddings and Long-Context Scaling</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="ZetaGPT: A Reference Implementation of Positional--Encoding--Free State--Space--Attention Language Models">ZetaGPT: A Reference Implementation of Positional--Encoding--Free State--Space--Attention Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="LigBench: A Unified and Human-Aligned Benchmark for LLM-based Research Idea Generation">LigBench: A Unified and Human-Aligned Benchmark for LLM-based Research Idea Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Clause Encounters of the Third Kind: Can LLMs Replace Language Teachers?">Clause Encounters of the Third Kind: Can LLMs Replace Language Teachers?</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>4</strong></span></div>
 </section>
 </div>
 
