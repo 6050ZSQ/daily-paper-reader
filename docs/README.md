@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-18</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-23</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 18 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 21 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>9</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>9</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>8</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>13</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-18 20:37:49 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-23 20:52:05 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读聚焦多语言与跨模态对齐：日英双语小模型的文化语用推理，以及多语言多模态模型的模态异步纠偏；速读覆盖无位置编码注意力、研究想法基准与LLM教学替代性。最值得关注的是两项9分研究：跨语言可解释对齐揭示文化推理差异，模态异步问题则警示“视觉非万能桥梁”。下一步建议普通读者优先精读这两篇，并顺带浏览ZetaGPT的无位置编码思路作为扩展。</p>
+<p>今日精读8篇、速读13篇，重点关注大模型长上下文拓扑压缩与跨语言语法电路的可解释性发现；其中两篇9分精读分别揭示LLM对上下文流形的结构压缩规律，以及共享语法电路在不同语言间追踪主谓一致的能力。速读中关于多语言嵌入空间结构、tokenizer联合优化与评估的工作也值得快速浏览。建议普通读者优先精读两篇9分论文，速读可聚焦tokenizer相关的三篇以理解模型底层设计差异。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -71,12 +71,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">9 篇</strong>
+    <strong class="dpr-home-dashboard-count">8 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Interpretable Cross-Lingual Alignment in Small Language Models: Probing Cultural and Pragmatic Reasoning in Japanese-English Bilingual LLMs">Interpretable Cross-Lingual Alignment in Small Language Models: Probing Cultural and Pragmatic Reasoning in Japanese-English Bilingual LLMs</span></li><li><span class="dpr-home-dashboard-paper-title" title="Why Vision Fails as a Universal Bridge: Rectifying Modality Asynchrony in Multilingual MLLMs">Why Vision Fails as a Universal Bridge: Rectifying Modality Asynchrony in Multilingual MLLMs</span></li><li><span class="dpr-home-dashboard-paper-title" title="A Declarative-Procedural Perspective on Expert Routing in Bilingual Mixture-of-Experts Language Models">A Declarative-Procedural Perspective on Expert Routing in Bilingual Mixture-of-Experts Language Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Do Large Language Models Play Six Degrees of Separation? Measuring Topological Compression in Long-Context Manifolds">Do Large Language Models Play Six Degrees of Separation? Measuring Topological Compression in Long-Context Manifolds</span></li><li><span class="dpr-home-dashboard-paper-title" title="Shared Circuits for Shared Grammar: Tracing Subject-Verb Agreement Across Languages">Shared Circuits for Shared Grammar: Tracing Subject-Verb Agreement Across Languages</span></li><li><span class="dpr-home-dashboard-paper-title" title="Assessing Quality of Experience in Natural Language Generation of German Text">Assessing Quality of Experience in Natural Language Generation of German Text</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>3</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>4</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>4</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">9 篇</strong>
+    <strong class="dpr-home-dashboard-count">13 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="ZetaGPT: A Reference Implementation of Positional--Encoding--Free State--Space--Attention Language Models">ZetaGPT: A Reference Implementation of Positional--Encoding--Free State--Space--Attention Language Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="LigBench: A Unified and Human-Aligned Benchmark for LLM-based Research Idea Generation">LigBench: A Unified and Human-Aligned Benchmark for LLM-based Research Idea Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Clause Encounters of the Third Kind: Can LLMs Replace Language Teachers?">Clause Encounters of the Third Kind: Can LLMs Replace Language Teachers?</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="There is No Theoretical Curse of Multilinguality For Embedding Space Structure">There is No Theoretical Curse of Multilinguality For Embedding Space Structure</span></li><li><span class="dpr-home-dashboard-paper-title" title="What Tokens are Learned when Tokenization is Optimized Jointly with Language Modeling?">What Tokens are Learned when Tokenization is Optimized Jointly with Language Modeling?</span></li><li><span class="dpr-home-dashboard-paper-title" title="TokEval: A Tokenizer Evaluation Suite">TokEval: A Tokenizer Evaluation Suite</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>9</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>4</strong></span></div>
 </section>
 </div>
 

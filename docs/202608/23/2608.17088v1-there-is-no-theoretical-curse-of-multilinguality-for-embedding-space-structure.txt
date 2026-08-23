@@ -1,0 +1,906 @@
+Title: There is No Theoretical Curse of Multilinguality For Embedding Space Structure
+
+URL Source: https://arxiv.org/pdf/2608.17088v1
+
+Published Time: Wed, 19 Aug 2026 00:10:09 GMT
+
+Number of Pages: 23
+
+Markdown Content:
+# THERE IS NO THEORETICAL CURSE OF MULTILIN -
+
+# GUALITY FOR EMBEDDING SPACE STRUCTURE 
+
+Niyati Bafna 1 Neha Verma 1 Vil´ em Zouhar 2 Philipp Koehn 1 David Yarowsky 11Johns Hopkins University, Center for Language and Speech Processing 2ETH Z¨ urich 
+
+nbafna1@jhu.edu 
+
+## ABSTRACT 
+
+A central goal of multilingual NLP is to achieve high monolingual performance per language and cross-lingual alignment for large-scale language coverage with a multilingual model. The curse of multilinguality describes the phenomenon of degradation in multilingual model performance as we increase language coverage, posing a threat to the above goal. This paper asks whether multilingual embed-ding spaces are inherently incapable of achieving perfect multilinguality without a prohibitive increase in required capacity. We first formalize the goal of “perfect multilinguality”, embodied in two multilinguality conditions . We then prove that the minimum dimensionality required for perfect multilinguality grows only log-arithmically, as Θ(log L), in the number of languages L. That is, we show that there is no theoretical curse of multilinguality for embedding space structure. This suggests that the empirical curse of multilinguality is a result of real world data and training conditions. We back this understanding with a small-scale empiri-cal study. Our paper provides the first theoretical and intrinsic perspective on the curse of multilinguality, with implications for the scientific understanding of this phenomenon. 1
+
+## 1 INTRODUCTION 
+
+The ideal multilingual model exhibits high monolingual performance on individual languages as well as perfect cross-lingual structure, or semantic sharing across languages, for arbitrary language coverage. The well-known curse of multilinguality (COM , Conneau et al., 2020), also sometimes termed negative interference (Shaham et al., 2023), describes the phenomenon of observed degra-dation of multilingual performance as we train a fixed-capacity model on increasingly more lan-guages. Folk wisdom generally understands fixed capacity to be an inherent bottleneck (Gurgurov et al., 2024), resulting in “less space” for each language, indicating that perfect multilinguality as described above may not be achievable. Several previous works have demonstrated the COM from the perspective of extrinsic task performance (Conneau et al., 2020; Aharoni et al., 2019), and while other works have explored strategies to mitigate this issue (Wang et al., 2020a; Pfeiffer et al., 2022), it remains a serious challenge. This gives rise to a fundamental question: is it inherently impossi-ble to accommodate increasing language coverage in a limited-capacity model while maintaining desired monolingual and cross-lingual performance on all languages? We provide a theoretical and intrinsic perspective on the COM . Specifically, we study the curse of multilinguality for embedding space structure ( COM-EMB ), and show that multilingual representations can exhibit intrinsic quality while accommodating more languages without a prohibitive increase in capacity. First, we formulate two intrinsic requirements for a perfect multilingual embedding space, drawing from consensus in the field (Chang et al., 2024; H¨ ammerl et al., 2024), and term them multilingual-ity conditions : (a) the space exhibits high-quality shared monolingual semantics for each language, and (b) the space exhibits cross-lingual alignment, meaning that translation equivalents across lan-guages are “close” to each other in the space. This is important for applications such as cross-lingual information retrieval (Sasaki et al., 2018; Roy et al., 2020). In the context of embedding spaces, “ca-pacity” can be understood as dimensionality. Then, our theoretical result shows that the minimum 
+
+> 1
+
+The code for our experiments is at github.com/niyatibafna/curse-of-multilinguality. 
+
+1arXiv:2608.17088v1 [cs.CL] 17 Aug 2026 dimensionality of a perfect multilingual space encoding L languages grows as Θ(log L). Specifi-cally, we assume a base D-dimensional concept space and show that the minimum sufficient extra dimensionality to accommodate L languages while maintaining the multilinguality conditions grows as O(log L), and that the dimensionality of any such space grows at least as Ω(log L). This result shows that multilinguality is not entirely free: it requires an additional capacity cost depending on L.However, given that the number of languages in the world is finite and usually estimated at around 
+
+∼6700, the log dependence of the cost indicates only a small multilinguality tax as we increase lan-guage coverage, provably as small as 30 extra dimensions for 7000 languages. Thus, we show that there is no theoretical curse of multilinguality for embedding space structure. The above finding suggests that any empirical curse of multilinguality for embedding space structure is a consequence of real-world conditions such as data and compute constraints, among other things. We characterize the empirical COM-EMB via a controlled study of the empirical degradation of the multilinguality conditions with increasing language coverage in Transformer-based models, in eight different configurations varying compute constraints, sampling conditions, and the set of languages being evaluated. We show that while we do observe “cursed” behaviour in line with general wisdom, this behaviour depends on these configurations and is mitigated in favourable conditions. Our paper contributes the first theoretical and intrinsic grounding to the curse of multilinguality. In showing that perfect intrinsic multilinguality is theoretically achievable at an arbitrary language scale, we set the bar for empirical multilingual spaces, and promote future work in exploring and closing the gap. 
+
+## 2 BACKGROUND 
+
+Curse of multilinguality The “curse of multilinguality” or phenomenon of “negative interfer-ence” is understood as the observed degradation in multilingual model performance as the number of training languages is increased for a fixed capacity model, commonly described in terms of capacity dilution over languages (Aharoni et al., 2019; Pfeiffer et al., 2022). While multilinguality provides benefits up to a point especially for low-resource languages via cross-lingual transfer from other language training data, high-resource language performance usually suffers; further, after a point, all language performance suffers from including more training languages, constituting a “transfer-dilution” tradeoff (Arivazhagan et al., 2019; Chang et al., 2024; Gurgurov et al., 2024). Shaham et al. (2023) show that the proportion of the target language with respect to total training data is an important factor, and that increasing model size helps, raising the question of the minimum model size required to accommodate a given language coverage. Longpre et al. (2026) develop empirical scaling laws for model and data size while increasing language coverage. There are several works that attempt to mitigate the phenomenon of degradation, including strate-gies for better data sampling (Wang et al., 2020a; Kreutzer et al., 2021; Foroutan et al., 2025), architectural innovations such as mixture-of-expert models (Pfeiffer et al., 2022), and optimization techniques such as Gradient Vaccine (Wang et al., 2020b). The above works explore the curse of multilinguality from a purely empirical lens. To the best of our knowledge, we are the first to provide a theoretical lens on the curse of multilinguality. 
+
+Intrinsic characterization of embedding spaces Previous works in the curse of multilinguality study embedding space quality only indirectly by measuring extrinsic performance on tasks such as XNLI (Conneau et al., 2018) and machine translation (Aharoni et al., 2019). However, there is broad general interest in investigating the structure of multilingual spaces, including assessing cross-lingual overlap and alignment as studied by Xu et al. (2023); Wen-Yi & Mimno (2023); Shah et al. (2023); Mousi et al. (2024); H¨ ammerl et al. (2024), among others, and the encoding of language versus semantic information (Chang et al., 2022; Xie et al., 2022b). Tasks such as monolingual and cross-lingual retrieval and bitext mining depend directly on representation structure (Roy et al., 2020; Enevoldsen et al., 2025), and inspire the formulation of our multilinguality conditions (Sec-tion 3) and metrics (Appendix B.1). However, to the best of our knowledge, no previous work seeks to understand the curse of multilinguality from the intrinsic perspective of its impact on embedding space structure. 23 MULTILINGUALITY CONDITIONS FOR PERFECT MULTILINGUAL SPACES 
+
+In this section, we formulate conditions necessary for perfect multilinguality, given a reference high-quality monolingual concept space. 
+
+Preliminaries We begin by defining key structures relevant to our argument. Let C be a global set of concepts, and let L be a set of languages. Let Z be the reference concept space, where 
+
+c ∈ C is embedded as zc with high-quality semantic relationships. For the multilingual embedding space XL encoding L = |L| languages, let xc,ℓ represent the embedding for concept c ∈ C in language ℓ ∈ L . Let XLℓ ⊂ XL denote the monolingual subspace of language ℓ ∈ L . We use 
+
+cos( ·, ·) to refer to the cosine similarity operator. Finally, we use γ to refer to the resolution scale of Z by which any two distinct points are minimally separated: i.e. we have γ < 1 such that 
+
+∀c, c ′ ∈ C , c ̸ = c′, cos( zc, z c′ ) < γ .
+
+Monolingual structure A perfect multilingual space should encode high-quality shared monolin-gual relationships for each encoded language. We use the high-quality concept space Z as reference. Then, perfect monolingual structure requires that for each language ℓ represented in space XL, its monolingual structure XLℓ exactly mimics Z.2
+
+Monolingual structure can be understood in terms of relative similarity judgments between pairs of concepts. Thus, perfect monolingual structure can be understood as the monolingual subspace of each language exhibiting identical similarity rankings as the reference concept space, resulting in high-quality and shared semantics across languages. 
+
+Definition 1 (Monolingual Structure) . A multilingual space XL satisfies the monolingual structure condition if each encoded monolingual subspace in it is identical in terms of similarity rankings (∼R) to a high-quality concept space Z, i.e. ∀ℓ ∈ L , X Lℓ ∼R Z. This condition requires that 
+
+∀ℓ ∈ L and c, c ′, d, d ′ ∈ C , cos( zc, z c′ ) ≤ cos( zd, z d′ ) ⇐⇒ cos( xc,ℓ , x c′,ℓ ) ≤ cos( xd,ℓ , x d′,ℓ ).Cat Hund Katze Bellen Dog Bark Hund Katze Bellen Cat Dog Bark 
+
+Figure 1: Illustration of Definition 1. Dog=Hund , Cat=Katze ,
+
+Bark=Bellen . The concept space is depicted in English. The German space on the left exhibits identical ordering of neigh-bours with the concept space while the German space on the right does not, because the nearest neighbour of Katze(=Cat) 
+
+is Bellen(=Bark) and not Hund(=Dog) .
+
+Cross-lingual alignment A perfect multilingual space displays cross-lingual alignment, under-stood as the property that language variants of a given concept are close together, and farther from other concepts. Past literature distinguishes a “strong” and “weak” view of this idea (Roy et al., 2020; H¨ ammerl et al., 2024). In the “strong” view, we require a concept in language ℓ to be closer to its translation equivalent in language ℓ′ than any different concept in any language, including other concepts in ℓ, whereas in the weak view, it is only required to be closer than any other ℓ′-language points. We use the strong view, which also trivially implies the weak one. 
+
+Definition 2 (Cross-lingual alignment) . A multilingual space XL satisfies the cross-lingual align-ment condition if a concept encoding in a given language is closer to the encoding of the same concept expressed in any other language than to the encoding of any other concept in any lan-guage. That is, this condition requires that for all concepts c, c ′ ∈ C where c̸ = c′ and languages 
+
+ℓ, m, n ∈ L , cos( xc,ℓ , x c,m ) > cos( xc,ℓ , x c′,n ).
+
+> 2In practice, we do not know what perfect concept relationships are. However, we can consider the mono-lingual space of a high-resource language (e.g. English) as a reference space, making the monolingual structure condition equivalent to requiring parity for monolingual quality and shared semantics across languages.
+
+3Bark Bark Bellen Bellen Katze Cat Dog Hund Katze Cat Dog Hund Figure 2: Illustration of Definition 2, with two languages. In the left space, Hund(=Dog) is closer to Dog than any different-concept word, but in the right space, the different-concept word 
+
+Cat is closer to Dog than Hund=(Dog) .
+
+Non-degeneracy. A multilingual space can place all concept translation equivalents as co-incident at the same point in the reference high-quality monolingual space, and thus trivially exhibit monolin-gual structure as well as cross-lingual alignment. However, this violates common practical assump-tions of embedding spaces where an embedding space must be capable of distinguishing between any two embedded points with some fixed scale of resolution (Weller et al., 2026). Thus, we require that our multilingual space have a resolution scale, or a maximum cosine similarity γX < 1 such that for any distinct (c, ℓ ), (d, m ) ∈ C × L , cos( xc,ℓ , x d,m ) < γ X .
+
+## 4 THEORETICAL CURSE OF MULTILINGUALITY FOR EMBEDDING SPACE 
+
+## STRUCTURE 
+
+4.1 DEFINING THE CURSE OF MULTILINGUALITY 
+
+The COM is described in the field for empirical spaces as the degradation of desired properties – usually, extrinsic task performance for some set of languages – with an increasing number of en-coded languages, given fixed model capacity. For the COM with respect to embedding space structure (COM-EMB ), “desired properties” correspond to perfect multilinguality, and “capacity” corresponds to dimensionality. We formulate the COM-EMB as the inability of a multilingual embedding space to maintain perfect multilinguality given an increasing number of encoded languages L
+
+without a prohibitive increase in dimensionality. 
+
+4.2 THEOREM 
+
+In this section, we answer the following question: how much dimensionality does a perfect mul-tilingual space accommodating L languages theoretically require in terms of L? If the required dimensionality grows prohibitively with the number of languages, e.g. linearly or exponentially, then this can be termed a theoretical COM-EMB .
+
+Theorem 1. The minimum dimensionality of a perfect multilingual space encoding L languages grows as Θ(log L).
+
+We prove this in two parts. First, we upper-bound the minimum sufficient dimensionality of a perfect multilingual space in terms of the number of encoded languages and the dimensionality of a fixed target concept space, in line with our setup in Section 3. 
+
+Theorem 1.1. Let DZ be the dimensionality of the reference concept space Z. Then there ex-ists a perfect multilingual space XL encoding L languages with minimum sufficient dimensionality 
+
+DXL = DZ + O(log L).
+
+Next, we lower-bound the dimensionality of the space, i.e. show the necessary dimensionality of a perfect multilingual space. 
+
+Theorem 1.2. Any perfect multilingual space XL encoding L languages must have dimensionality 
+
+DXL = Ω(log L).
+
+Since DZ is independent of L, Theorem 1.1 and Theorem 1.2 together establish Theorem 1. The following proofs make a fixed unit norm assumption for Z and XL. This is standard in the use of text embeddings for applications such as retrieval (Weller et al., 2026). Our proofs are also extendable to the case of variable norm as sketched in Appendix A.4. 44.3 PROOF OF THEOREM 1.1 We proceed constructively. Given Z and L, we describe a multilingual space XL and show that (a) it maintains the multilinguality conditions, and that (b) its dimensionality follows the required bound. 
+
+Multilingual space construction Recall that for a concept c, we have its embedding zc in the concept space Z, with the resolution scale γ, and dimensionality DZ .We now define a space U of language offsets . This space uses DL new dimensions, and is populated with L language offset vectors uℓ ∈ RDL , with a fixed norm ∥uℓ∥ = r, and with a maximum similarity ρ < 1 between any two language offsets. That is, we have cos( uℓ, u m) < ρ for all 
+
+ℓ, m ∈ L where ℓ̸ = m.We then define our multilingual space XL, by a direct sum construction of the concept space and the language offsets. That is, ∀c ∈ C , ℓ ∈ L , x c,ℓ := 1√1+ r2 zc ⊕ uℓ, where ⊕ refers to vector concatenation. As a result, xc,ℓ ∈ XL has dimensionality DXL = DZ + DL. Note the norm term  
+
+> 1√1+ r2
+
+. Since ∥zc∥ = 1 and ∥uℓ∥ = r, and zc and uℓ are orthogonal when embedded in XL, we now have XL as a unit norm space with ∥xc,ℓ ∥ = 1 for all c, ℓ and dimensionality DXL .
+
+Similarity bounds on offset vectors We construct the language offset vectors in the DL-dimensional space U with fixed norm r such that their minimum and maximum cosine similarity lies in the following interval, guaranteed to be non-empty by a choosing r ≥ 1 and a suitable choice of ρ:
+
+1 − 1 − γr2 < cos( uℓ, u m) < ρ < 1 for all ℓ̸ = m. (1) 
+
+Similarity decomposition Given that XL and Z are unit-norm, we have the following relation-ship: cos( xc,ℓ , x d,m ) = ⟨xc,ℓ , x d,m ⟩; analogously for Z. Since zc and uℓ are orthogonal when embedded in XL, we make the following useful inner-product decomposition for points in XL,used throughout our proof: 
+
+⟨xc,ℓ , x d,m ⟩ =
+
+ zc ⊕ uℓ
+
+√1 + r2 , zd ⊕ um
+
+√1 + r2
+
+
+
+= 11 + r2 ⟨zc ⊕ uℓ, z d ⊕ um⟩ = ⟨zc, z d⟩ + ⟨uℓ, u m⟩
+
+1 + r2 (2) 
+
+Lemma 1. The space XL satisfies the monolingual structure condition (Definition 1). Proof. We will show that for every language ℓ, XLℓ ∼R Z, i.e. each language subspace is identical to Z under point similarity ranking. Using Equation 2 for points in XLℓ , we have 
+
+cos( xc,ℓ , x c′,ℓ ) = ⟨xc,ℓ , x c′,ℓ ⟩ = ⟨zc, z c′ ⟩ + ⟨uℓ, u ℓ⟩
+
+1 + r2 = ⟨zc, z c′ ⟩ + r2
+
+1 + r2 = cos( zc, z c′ ) + r2
+
+1 + r2
+
+= a cos( zc, z c′ ) + b
+
+for fixed and global a and b depending only r. Note that this automatically gives us, for any two languages ℓ, m ,
+
+cos( xc,ℓ , x c′,ℓ ) = a · cos( zc, z c′ ) + b = cos( xc,m , x c′,m )
+
+Given this affine behavior, and the language agnosticity of the result, it follows that the similarity ranking behavior is identical in all languages ℓ ∈ L with respect to Z, i.e. ∀ℓ ∈ L , X Lℓ ∼R Z.Hence, XL satisfies the monolingual structure condition. 
+
+Lemma 2. The space XL satisfies the cross-lingual alignment condition (Definition 2). Proof. We show that for every c, c ′ ∈ C where c̸ = c′ and all languages ℓ, m, n ∈ L,
+
+cos( xc,ℓ , x c,m ) > cos( xc,ℓ , x c′,n ). Recall that points in Z have resolution scale γ and points in 
+
+U have norm r. From the similarity decomposition (Equation 2), we can simplify and bound the two similarity expressions as follows for any c̸ = c′, ℓ, m, n :5cos( xc,ℓ , x c,m ) = ⟨zc, z c⟩ + ⟨uℓ, u m⟩
+
+1 + r2 = 1 + ⟨uℓ, u m⟩
+
+1 + r2
+
+cos( xc,ℓ , x c′,n ) = ⟨zc, z c′ ⟩ + ⟨uℓ, u n⟩
+
+1 + r2 < γ + r2
+
+1 + r2 .
+
+Now it suffices to show that 
+
+1 + ⟨uℓ, u m⟩ > γ + r2.
+
+Since ⟨uℓ, u m⟩ = r2 cos( uℓ, u m), the above expression is equivalent to 
+
+cos( uℓ, u m) > 1 − 1 − γr2 .
+
+which is guaranteed by our construction in Equation 1. Thus, XL satisfies the cross-lingual align-ment condition. 
+
+Lemma 3. The space XL is non-denegerate. Proof. The cosine similarity between any two distinct points in XL is given by Equation 2. We bound the maximum similarity between any two points based on the three cases: same concept with different language, different concept with same language, and different concept with different language. If c = c′ and ℓ̸ = m, then cos( xc,ℓ , x c,m ) < 1+ r2ρ 
+
+> 1+ r2
+
+. If c̸ = c′ and ℓ = m, then 
+
+cos( xc,ℓ , x c′,ℓ ) < γ+r2 
+
+> 1+ r2
+
+. If both c̸ = c′ and ℓ̸ = m, then 
+
+cos( xc,ℓ , x c′,m ) = ⟨zc, z c′ ⟩ + ⟨uℓ, u m⟩
+
+1 + r2 < γ + r2ρ
+
+1 + r2 < γ X := max 
+
+ γ + r2
+
+1 + r2 , 1 + r2ρ
+
+1 + r2
+
+
+
+.
+
+Note that γX < 1, since γ < 1 and ρ < 1. γX is independent of L and only depends on the constants 
+
+γ, ρ and r; thus, XL maintains a fixed cosine scale independent of the number of languages encoded. Thus, XL satisfies the non-degeneracy condition at fixed resolution scale γX < 1.
+
+Lemma 4. The minimum sufficient dimensionality of XL is O(log L).Proof. Recall that DXL = DZ + DL. We will bound DL, the dimensionality of the language offset space U .
+
+U is constructed by placing L fixed-norm language offsets in U such that each point pair has cosine similarity in the non-empty interval defined in Equation 1. Bounding DL therefore reduces to the following question: how many dimensions DL are sufficient to pack L points on a sphere in a 
+
+DL-dimensional with specified maximum and minimum cosine similarity? Using standard spherical cap packing bounds, we can show that the number of points that can be placed on a sphere in a DL-dimensional space following these constraints grows exponentially in 
+
+DL.3 This is shown in detail in Appendix A.1. Briefly, the maximum similarity constraint imposes an angular region within which all points must lie, and for a maximal packing, caps with angu-lar radius equal to the minimum angular separation centered at the packed points must cover this containing region. This allows us to lower-bound the number of points in a maximal packing by a ratio of spherical cap measures, which grows exponentially with the dimensionality of the sphere. Therefore, to represent L language offsets, it is possible to choose some constant C > 0 indepen-dent of L such that a sphere in a DL-dimensional space with DL =  1 
+
+> C
+
+log L fits exp( CD L) ≥ L
+
+such points. Therefore, the minimum sufficient dimension to pack L points maintaining the required constraints is DL = O(log L). Since DZ is constant in terms of L, XL has the minimum sufficient dimension 
+
+DXL = DZ + DL = DZ + O(log L) = ⇒ DXL = O(log L)
+
+Note that it suffices to exhibit a single perfect multilingual space with the above scaling to upper-bound the minimum sufficient dimensionality for perfect multilinguality. By the existence of XL,we establish the minimum sufficient dimension for perfect multilinguality grows as O(log L).      
+
+> 3This comes with the constraint on a choice of ρ. For r= 1 , this is arccos( ρ)<arccos( γ)/2.
+
+6Fitting 7000 languages in 30 dimensions For practical purposes, the constant involved in the 
+
+O(log L) bound may be of concern. In Appendix A.3, we prove that it is theoretically possible to fit L = 7000 language offset unit vectors into DL = 30 dimensions while satisfying all required constraints on minimum and maximum similarity required for our constructive solution, with a realistic choice of γ. Briefly, we show that a random construction of L points in a DL-dimensional space has a non-zero probability of satisfying our required constraints, proving existence. Thus, our theoretical scaling factor is of minor practical concern given the typical dimensionality scale of representation spaces. 4.4 PROOF OF THEOREM 1.2 
+
+Proof. Fix any concept c. Then the L language variants of this concept, xc, 1, . . . , x c,L , are all distinct fixed-norm vectors, or distinct points on a sphere. Since XL is non-degenerate as we assume it is perfectly multilingual, any two distinct points in it must remain separated at some fixed cosine resolution scale γX < 1, equivalent to a fixed angular separation θX := arccos( γX ), independent of L.4 Thus, XL contains at least L points on a multidimensional sphere with a fixed angular separation, and its necessary dimensionality is lower bounded by the number of dimensions needed to place points in such a way. We now apply a standard spherical cap bound. For any fixed angular separation θX > 0, the maximum number of vectors that can be placed on a DXL -dimensional sphere in with pairwise angular separation at least θX grows at most exponentially in DXL . We show this in detail in Appendix A.2. Briefly, the minimum angular separation means that if we place a spherical cap with half the required angular separation around each point then these caps must be disjoint. Their total measure cannot exceed that of the sphere. This upper-bounds the number of points by the reciprocal of a spherical cap measure, which grows at most exponentially with the dimensionality of the sphere. That is, there exists a constant AθX > 0, depending only on θX , such that 
+
+L ≤ exp( AθX DXL ) ⇒ log L ≤ AθX DXL ⇒ DXL ≥ 1
+
+AθX
+
+log L ⇒ DXL = Ω(log L)
+
+Thus, the dimensionality of any non-degenerate multilingual space encoding L languages has a log-arithmic dependence on L. Note that if the original monolingual concept space “fully” requires DZ
+
+dimensions to represent concept semantics, then these Ω(log L) dimensions required to construct language directions are additional to these DZ dimensions. Under this minimality assumption on the base concept space, the additional cost can be understood as a multilinguality tax: 5
+
+DXL = DZ + Ω(log L)
+
+In general, the dimension DXL of any perfect multilingual space XL encoding L languages must grow at least as Ω(log L).
+
+## 5 EMPIRICAL CURSE OF MULTILINGUALITY FOR EMBEDDING SPACES 
+
+While our theorem shows that a multilingual space is theoretically capable of exhibiting perfect multilinguality under language scaling without a prohibitive cost, there may still exist an empirical 
+
+COM-EMB for real-world multilingual models. In this section, we formulate metrics for monolin-gual structure and cross-lingual alignment, and provide a small-scale controlled study showing the empirical curse of multilinguality for embedding space structure under eight configurations mim-icking various real-world conditions. Specifically, we train multilingual models from scratch on an increasing number of languages and evaluate embedding space structure under language scaling, in different training and evaluation configurations. 6 We provide precise metric definitions and extra experimental details and results in Appendix B.       
+
+> 4Fixing the resolution scale across the family of spaces XLallows us to study the asymptotic behaviour of the necessary dimensionality of XLwith increasing Lin a meaningful manner. If we allow the resolution scale to shrink with increasing language coverage, our result may not hold.
+> 5In general, real embedding spaces may not use their ambient dimensionality (Ansuini et al., 2019). Instead, this can be understood as placing pressure on true or effective dimensionality of such a space.
+> 6Our characterization of the theoretical curse of multilinguality for embedding space structure allows for a small growth based on number of languages, while in our experiments, we keep the dimensionality fixed
+
+7Note on previous work Previous works studying the COM and related concepts generally differ with respect to their experimental conditions and assumptions. Differences include (i) whether token compute is fixed (Shaham et al., 2023) or increases with more training languages (Aharoni et al., 2019), (ii) whether the training data distribution is uniform over languages (Shaham et al., 2023) or follows a real-world distribution (Aharoni et al., 2019; Conneau et al., 2020), and (iii) whether performance metrics are tracked over all training languages (Conneau et al., 2020) or a fixed group such as high-resource languages (Arivazhagan et al., 2019), among other variables. 
+
+Configurations We study the empirical COM-EMB under eight configurations con-sisting of all combinations of the three above dimensions: (i) {fixed-compute, increasing-compute }, (ii) {uniform-sampling, realistic-sampling }, and (iii) {aggregate-all, aggregate-fixed }.
+
+Metrics Our metrics are inspired from the multilinguality conditions. We consider a “concept” to be a text, and compute the following using a fixed concept set across all target languages obtained from multiway parallel data. We evaluate monolingual structure against a strong reference space, by measuring, for each con-cept, the overlap of the monolingual neighbourhood of that concept in each target language with the gold neighbourhood of that concept in a strong monolingual reference space. We report this metric (k-nearest-neighbour overlap ( MS-NNO )) as a percentage of k = 20 , averaged over concepts and languages. We also look at language mean over token-normalized masked language modeling loss 
+
+on a monolingual test set per language ( MS-MLM) as an indirect measure of monolingual structure quality. We evaluate cross-lingual alignment by checking for each language ℓ1, whether, for each concept and each language ℓ2, the ℓ2 equivalent of that concept is closer to the ℓ1 equivalent than other ℓ2
+
+concepts (weak view; similar trends for strong view shown in Appendix B.3). This metric ( CLA-WV )is reported as a percentage of the concept set, averaged over language pairs in the target set. We also check for non-degeneracy by checking for looking at the minimum, maximum, and mean cosine similarity over all point pairs in the space as a function of increasing language coverage. We do not see evidence of degeneracy in any configuration (shown in Appendix B.3). 
+
+Experimental setup We study a 4-layer Transformer-based BERT encoder architecture with a masked-language modeling training objective (Devlin et al., 2019). We use the MADLAD-400 cor-pus (Kudugunta et al., 2023) for monolingual training data, and FLORES+ (Goyal et al., 2022; Team et al., 2024), BOUQuET (Andrews et al., 2025; Team et al., 2026), and WMT24++ (Deutsch et al., 2025) as multiway parallel data for evaluation. We use the English concept space from 
+
+e5-large-v2 (Wang et al., 2024) as a strong reference space for MS-NNO . We create nine lan-guage groups with incrementally more languages added in descending order of resourcedness, with the largest language group containing 100 languages. 7 The token count per language depends on the token-compute and sampling settings: fixed-compute experiments are trained on a total budget of 500M tokens, and increasing-compute with uniform-sampling uses 50M to-kens per language. The realistic-sampling setting uses 500M as the maximum language token count, with other language token count proportionate to resource level in our training corpus. Each model run consists of 5 seeds, with each seed sampling different data up to the budget, and random initialization of model. The tokenizer is trained on a subset of the training corpus. For the 
+
+aggregate-all setting, we evaluate all training languages covered by each evaluation dataset. For aggregate-fixed , the smallest language group is 10, and we evaluate these 10 fixed lan-guages across all language groups. We use the [CLS] token embedding as a text embedding for our trained models.    
+
+> with language scale. This is for simplicity, since it is difficult to estimate the permissible numerical inflation given its dependence on embedding space characteristics such as γas well as packing constants. In prac-tice, trained embedding spaces use very little of the ambient dimensionality (Ethayarajh, 2019; Ansuini et al., 2019), and logarithmic growth for around a hundred languages indicates a small extra constant as discussed in Appendix A.3.
+> 7This is realistic in terms of how language coverage is expanded in the real world; we are also driven by data requirement constraints since initial smaller language groups require more data per language for some configurations.
+
+8210 30 50 75 100 10% 12% 14% 16% 18%                               
+
+> Cursed settings
+> MS-NNO ↑
+> 210 30 50 75 100 567
+> MS-MLM ↓
+> 210 30 50 75 100 2.5% 5.0% 7.5% 10.0% 12.5%
+> CLA-WV ↑
+> 210 30 50 75 100
+> Number of training languages
+> 10% 12% 14% 16% 18%
+> Non-cursed settings
+> 210 30 50 75 100
+> Number of training languages
+> 567
+> 210 30 50 75 100
+> Number of training languages
+> 2.5% 5.0% 7.5% 10.0% 12.5%
+> Fixed / realistic Fixed / uniform Increasing / uniform Increasing / realistic Fixed / realistic Fixed / uniform Increasing / uniform Increasing / realistic All training languages Fixed 10-language subset
+
+Figure 3: MS-NNO , MS-MLM , and CLA-WV on BOUQuET for encoder models with as the number of training languages increases, in eight configurations. The top and bottom rows show cursed and non-cursed configurations respectively. Arrows indicate whether higher or lower metric values are better. Error bars show standard deviation over five model seeds. 
+
+Results and discussion If all metrics exhibit deterioration for a configuration, we term it a “cursed” configuration. Figure 3 shows results for all eight configurations with BOUQuET , sep-arating cursed from non-cursed configurations. 8 We observe four cursed configurations of eight, showing consistent degradation of monolingual structure and cross-lingual alignment. Therefore, we observe an empirical curse of multilinguality for embedding space structure, parallelling previous work in the COM .
+
+In the other four non-cursed configurations, we observe stability or improvements in one or more metrics. We find that these are the configurations that generally maintain high token count for the target languages of interest as a consequence of compute and sampling choices. For exam-ple, with increasing-compute , realistic-sampling , and aggregate-fixed ( ), token count for the 10 high-resource target languages remains high and unchanged with more training languages, and metrics stay roughly stable. We also see that metrics may actually show some improvements with more languages up to a point, e.g. with increasing-compute and 
+
+uniform-sampling ( ), which indicates that total token count and cross-lingual transfer may also play a role. In general, our findings suggest that the empirical curse of multilinguality for embedding space structure is sensitive to training and evaluation configurations and is mitigated in favourable conditions. Recommendation regarding empirical studies The above finding regarding the COM-EMB par-allels the fact that various previous empirical studies of the extrinsic COM differ in their characteri-zation of the phenomenon. These often operate in different configurations based on their application of interest, overloading the catchall term “curse of multilinguality” and related concepts. Given our findings, we recommend that future work make their configuration of interest explicit to promote scientific clarity regarding the COM .
+
+## 6 CONCLUSION 
+
+The curse of multilinguality describes the phenomenon of performance degradation in fixed capac-ity multilingual models with increasing language scale. Our work provides the first theoretical and 
+
+> 8
+
+We see similar trends for the other two evaluation datasets and show them in Appendix B.3. 
+
+9intrinsic grounding to this phenomenon. Specifically, we look at whether multilingual representa-tion spaces can theoretically can be scaled in language coverage while maintaining their quality. We formulate the notion of perfect multilinguality for embedding spaces, embodied by two multi-linguality conditions . Our main contribution is a theoretical result that shows it is necessary and sufficient to scale representation space capacity only logarithmically in the number of languages while maintaining perfect multilinguality. This shows that there is no theoretical curse of multilin-guality for embedding space structure. We also demonstrate the empirical curse of multilinguality for embedding space structure for the first time, and show that it is sensitive to data, compute, and evaluation conditions. Our findings contribute to better formulating and understanding the curse of multilinguality, and raise questions regarding bridging the gap between theory and practice. 
+
+## LIMITATIONS 
+
+Perfect multilinguality Our formulation of perfect multilinguality for multilingual representation spaces is most directly relevant for applications such as embedding-based retrieval. Different multi-lingual representation spaces, such as intermediate representations of decoder models, may require adaptation based on needs from different downstream application scenarios. Further, this conception uses a simplified scenario consisting of a global concept set with global semantics across languages. This allows the cost of concept semantics to stay constant as language coverage grows in theory. In practice, different languages may introduce language-specific concepts, or have differing semantic relationships between concepts, introducing language-specific needs and additional dimensionality costs. We leave this to future work to incorporate into a theoretical model. 
+
+Model scale Our empirical studies are for small encoder models given the controlled nature and language scale of our study. We leave it to future work to study the impact of model scaling and different architectures on the curse of multilinguality for embedding space structure. AI USE STATEMENT 
+
+In this work, we used generative AI tools as a soundboard for mathematical ideas, for ironing out details of and checking for errors in proofs, and for generating the idea for the proof in Appendix A.3. All mathematical arguments in this paper have been written and verified by the authors. We used AI-assisted literature search tools in combination with manual search for discovering previous work, following by a manual review of relevance. We used coding assistants for our experiments, with human review. AI was used for typesetting of mathematical expressions, refining phrasing, and formatting scientific figures in the writing of this paper, and all AI-generated phrasing has been checked by authors. We take responsibility for the final content of this work, including text, claims or artifacts produced with the aid of generative AI. 
+
+## REFERENCES 
+
+Roee Aharoni, Melvin Johnson, and Orhan Firat. Massively Multilingual Neural Machine Transla-tion. In Jill Burstein, Christy Doran, and Thamar Solorio (eds.), Proceedings of the 2019 Confer-ence of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers) , pp. 3874–3884, Minneapolis, Min-nesota, jun 2019. Association for Computational Linguistics. doi: 10.18653/v1/N19-1388. URL 
+
+https://aclanthology.org/N19-1388/ .Pierre Andrews, Mikel Artetxe, Mariano Coria Meglioli, Marta R. Costa-juss` a, Joe Chuang, David Dale, Mark Duppenthaler, Nathanial Paul Ekberg, Cynthia Gao, Daniel Edward Licht, Jean Maillard, Alexandre Mourachko, Christophe Ropers, Safiyyah Saleem, Eduardo S´ anchez, Ioannis Tsiamas, Arina Turkatenko, Albert Ventayol-Boada, and Shireen Yates. Bouquet : dataset, benchmark and open initiative for universal quality evaluation in translation. In Christos Christodoulopoulos, Tanmoy Chakraborty, Carolyn Rose, and Violet Peng (eds.), Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pp. 27515–27535, Suzhou, China, nov 2025. Association for Computational Linguistics. ISBN 979-8-89176-332-6. doi: 10.18653/v1/2025.emnlp-main.1400. URL https://aclanthology.org/2025. emnlp-main.1400/ .10 Alessio Ansuini, Alessandro Laio, Jakob H Macke, and Davide Zoccolan. Intrinsic dimension of data representations in deep neural networks. Advances in Neural Information Processing Sys-tems , 32, 2019. URL https://proceedings.neurips.cc/paper_files/paper/ 2019/hash/cfcce0621b49c983991ead4c3d4d3b6b-Abstract.html .Naveen Arivazhagan, Ankur Bapna, Orhan Firat, Dmitry Lepikhin, Melvin Johnson, Maxim Krikun, Mia Xu Chen, Yuan Cao, George Foster, Colin Cherry, Wolfgang Macherey, Zhifeng Chen, and Yonghui Wu. Massively Multilingual Neural Machine Translation in the Wild: Findings and Challenges, jul 2019. URL http://arxiv.org/abs/1907.05019 .Sambartha Ray Barman, Andrey Starenky, Sophia Bodnar, Nikhil Narasimhan, and Ashwin Gopinath. The Geometry of Forgetting, mar 2026. URL http://arxiv.org/abs/2604. 06222 .K´ aroly B¨ or¨ oczky Jr and Gergely Wintsche. Covering the sphere by equal spherical balls. In Discrete and Computational Geometry: The Goodman-Pollack Festschrift , pp. 235– 251. Springer, 2003. URL https://link.springer.com/content/pdf/10.1007/ 978-3-642-55566-4.pdf#page=242 .Tyler A. Chang, Zhuowen Tu, and Benjamin K. Bergen. The Geometry of Multilingual Lan-guage Model Representations. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing , pp. 119–136, Abu Dhabi, United Arab Emirates, 2022. As-sociation for Computational Linguistics. doi: 10.18653/v1/2022.emnlp-main.9. URL https: //aclanthology.org/2022.emnlp-main.9 .Tyler A. Chang, Catherine Arnett, Zhuowen Tu, and Benjamin K. Bergen. When Is Multilin-guality a Curse? Language Modeling for 250 High- and Low-Resource Languages. In Yaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen (eds.), Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , pp. 4074–4096, Miami, Florida, USA, nov 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.emnlp-main.236. URL 
+
+https://aclanthology.org/2024.emnlp-main.236/ .Alexis Conneau, Ruty Rinott, Guillaume Lample, Adina Williams, Samuel R Bowman, Holger Schwenk, and Veselin Stoyanov. Xnli: Evaluating cross-lingual sentence representations. In 
+
+Proceedings of the 2018 conference on empirical methods in natural language processing , pp. 2475–2485, 2018. URL https://aclanthology.org/D18-1269/ .Alexis Conneau, Kartikay Khandelwal, Naman Goyal, Vishrav Chaudhary, Guillaume Wenzek, Francisco Guzm´ an, Edouard Grave, Myle Ott, Luke Zettlemoyer, and Veselin Stoyanov. Un-supervised Cross-lingual Representation Learning at Scale. In Dan Jurafsky, Joyce Chai, Natalie Schluter, and Joel Tetreault (eds.), Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pp. 8440–8451, Online, jul 2020. Association for Computational Linguistics. doi: 10.18653/v1/2020.acl-main.747. URL https://aclanthology.org/ 2020.acl-main.747/ .Daniel Deutsch, Eleftheria Briakou, Isaac Caswell, Mara Finkelstein, Rebecca Galor, Juraj Juraska, Geza Kovacs, Alison Lui, Ricardo Rei, Jason Riesa, Shruti Rijhwani, Parker Riley, Elizabeth Salesky, Firas Trabelsi, Stephanie Winkler, Biao Zhang, and Markus Freitag. Wmt24++: Ex-panding the language coverage of wmt24 to 55 languages and dialects, 2025. URL https: //arxiv.org/abs/2502.12404 .Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. Bert: Pre-training of deep bidirectional transformers for language understanding. In Proceedings of the 2019 con-ference of the North American chapter of the association for computational linguistics: hu-man language technologies, volume 1 (long and short papers) , pp. 4171–4186, 2019. URL 
+
+https://aclanthology.org/N19-1423/ .Kenneth Enevoldsen, Isaac Chung, Imene Kerboua, M´ arton Kardos, Ashwin Mathur, David Stap, Jay Gala, Wissam Siblini, Dominik Krzemi´ nski, Genta Indra Winata, et al. Mmteb: Massive multilingual text embedding benchmark. arXiv preprint arXiv:2502.13595 ,2025. URL https://proceedings.iclr.cc/paper_files/paper/2025/hash/ fc0e3f908a2116ba529ad0a1530a3675-Abstract-Conference.html .11 Kawin Ethayarajh. How contextual are contextualized word representations? comparing the ge-ometry of BERT, ELMo, and GPT-2 embeddings. In Kentaro Inui, Jing Jiang, Vincent Ng, and Xiaojun Wan (eds.), Proceedings of the 2019 Conference on Empirical Methods in Natural Lan-guage Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP) , pp. 55–65, Hong Kong, China, nov 2019. Association for Computational Lin-guistics. doi: 10.18653/v1/D19-1006. URL https://aclanthology.org/D19-1006/ .Negar Foroutan, Paul Teiletche, Ayush Kumar Tarun, and Antoine Bosselut. Revisiting Multilingual Data Mixtures in Language Model Pretraining, oct 2025. URL http://arxiv.org/abs/ 2510.25947 .Naman Goyal, Cynthia Gao, Vishrav Chaudhary, Peng-Jen Chen, Guillaume Wenzek, Da Ju, San-jana Krishnan, Marc’Aurelio Ranzato, Francisco Guzm´ an, and Angela Fan. The flores-101 eval-uation benchmark for low-resource and multilingual machine translation. Transactions of the As-sociation for Computational Linguistics , 10:522–538, 2022. URL https://direct.mit. edu/tacl/article-abstract/doi/10.1162/tacl_a_00474/110993 .Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, et al. The llama 3 herd of models, 2024. URL https: //arxiv.org/abs/2407.21783 .Daniil Gurgurov, Tanja B¨ aumel, and Tatiana Anikina. Multilingual Large Language Models and Curse of Multilinguality. 2024. doi: 10.48550/arXiv.2406.10602. URL http://arxiv. org/abs/2406.10602 .Katharina H¨ ammerl, Jindˇ rich Libovick´ y, and Alexander Fraser. Understanding Cross-Lingual Alignment—A Survey. In Lun-Wei Ku, Andre Martins, and Vivek Srikumar (eds.), Findings of the Association for Computational Linguistics: ACL 2024 , pp. 10922–10943, Bangkok, Thailand, aug 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.findings-acl.649. URL https://aclanthology.org/2024.findings-acl.649/ .William B Johnson, Joram Lindenstrauss, et al. Extensions of lipschitz mappings into a hilbert space. Contemporary mathematics , 26(189-206):1, 1984. URL 
+
+https://d1wqtxts1xzle7.cloudfront.net/99288805/JL-Johnson-libre. pdf?1677690739=&response-content-disposition=inline%3B+filename% 3DExtensions_of_Lipschitz_mappings_into_a.pdf .Julia Kreutzer, David Vilar, and Artem Sokolov. Bandits Don’t Follow Rules: Balancing Multi-Facet Machine Translation with Multi-Armed Bandits. In Marie-Francine Moens, Xuanjing Huang, Lucia Specia, and Scott Wen-tau Yih (eds.), Findings of the Association for Computa-tional Linguistics: EMNLP 2021 , pp. 3190–3204, Punta Cana, Dominican Republic, nov 2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.findings-emnlp.274. URL 
+
+https://aclanthology.org/2021.findings-emnlp.274/ .Sneha Kudugunta, Isaac Caswell, Biao Zhang, Xavier Garcia, Derrick Xin, Aditya Kusupati, Romi Stella, Ankur Bapna, and Orhan Firat. Madlad-400: A multilingual and document-level large audited dataset. Advances in Neural Information Processing Systems , 36:67284–67296, 2023. URL https://proceedings.neurips.cc/paper_files/paper/2023/ hash/d49042a5d49818711c401d34172f9900-Abstract-Datasets_and_ Benchmarks.html .Shayne Longpre, Sneha Kudugunta, Niklas Muennighoff, I.-Hung Hsu, Isaac Caswell, Alex Pent-land, Sercan Arik, Chen-Yu Lee, and Sayna Ebrahimi. ATLAS: Adaptive Transfer Scaling Laws for Multilingual Pretraining, Finetuning, and Decoding the Curse of Multilinguality, feb 2026. URL http://arxiv.org/abs/2510.22037 .Basel Mousi, Nadir Durrani, Fahim Dalvi, Majd Hawasly, and Ahmed Abdelali. Exploring Align-ment in Shared Cross-lingual Spaces. In Lun-Wei Ku, Andre Martins, and Vivek Srikumar (eds.), 
+
+Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Vol-ume 1: Long Papers) , pp. 6326–6348, Bangkok, Thailand, aug 2024. Association for Compu-tational Linguistics. doi: 10.18653/v1/2024.acl-long.344. URL https://aclanthology. org/2024.acl-long.344/ .12 M´ arton Nasz´ odi. On some covering problems in geometry. Proceedings of the American Mathemat-ical Society , 144(8):3555–3562, 2016. URL https://pubs.ams.org/journals/proc/ 2016-144-08/S0002-9939-2016-12992-4 .Kiho Park, Yo Joong Choe, and Victor Veitch. The linear representation hypothesis and the geometry of large language models. arXiv preprint arXiv:2311.03658 , 2023. URL https://arxiv. org/abs/2311.03658 .Jonas Pfeiffer, Naman Goyal, Xi Victoria Lin, Xian Li, James Cross, Sebastian Riedel, and Mikel Artetxe. Lifting the Curse of Multilinguality by Pre-training Modular Transformers. In Ma-rine Carpuat, Marie-Catherine de Marneffe, and Ivan Vladimir Meza Ruiz (eds.), Proceed-ings of the 2022 Conference of the North American Chapter of the Association for Computa-tional Linguistics: Human Language Technologies , pp. 3479–3495, Seattle, United States, jul 2022. Association for Computational Linguistics. doi: 10.18653/v1/2022.naacl-main.255. URL 
+
+https://aclanthology.org/2022.naacl-main.255/ .Uma Roy, Noah Constant, Rami Al-Rfou, Aditya Barua, Aaron Phillips, and Yinfei Yang. LAReQA: Language-Agnostic Answer Retrieval from a Multilingual Pool. In Bonnie Webber, Trevor Cohn, Yulan He, and Yang Liu (eds.), Proceedings of the 2020 Conference on Empirical Meth-ods in Natural Language Processing (EMNLP) , pp. 5919–5930, Online, nov 2020. Associa-tion for Computational Linguistics. doi: 10.18653/v1/2020.emnlp-main.477. URL https: //aclanthology.org/2020.emnlp-main.477/ .Shota Sasaki, Shuo Sun, Shigehiko Schamoni, Kevin Duh, and Kentaro Inui. Cross-lingual learning-to-rank with shared representations. In Marilyn Walker, Heng Ji, and Amanda Stent (eds.), Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 2 (Short Papers) , pp. 458–463, New Orleans, Louisiana, June 2018. Association for Computational Linguistics. doi: 10.18653/v1/N18-2073. URL https://aclanthology.org/N18-2073/ .Cheril Shah, Yashashree Chandak, and Manan Suri. The Geometry of Multilingual Language Mod-els: An Equality Lens, may 2023. URL http://arxiv.org/abs/2305.07839 .Uri Shaham, Maha Elbayad, Vedanuj Goswami, Omer Levy, and Shruti Bhosale. Causes and Cures for Interference in Multilingual Translation, may 2023. URL http://arxiv.org/abs/ 2212.07530 .NLLB Team, Marta R. Costa-juss` a, James Cross, Onur C ¸ elebi, Maha Elbayad, Kenneth Heafield, Kevin Heffernan, Elahe Kalbassi, Janice Lam, Daniel Licht, Jean Maillard, Anna Sun, Skyler Wang, Guillaume Wenzek, Al Youngblood, Bapi Akula, Loic Barrault, Gabriel Mejia Gonza-lez, Prangthip Hansanti, John Hoffman, Semarley Jarrett, Kaushik Ram Sadagopan, Dirk Rowe, Shannon Spruit, Chau Tran, Pierre Andrews, Necip Fazil Ayan, Shruti Bhosale, Sergey Edunov, Angela Fan, Cynthia Gao, Vedanuj Goswami, Francisco Guzm´ an, Philipp Koehn, Alexandre Mourachko, Christophe Ropers, Safiyyah Saleem, Holger Schwenk, and Jeff Wang. Scal-ing neural machine translation to 200 languages. Nature , 630(8018):841–846, 2024. URL 
+
+https://doi.org/10.1038/s41586-024-07335-x .The Omnilingual MT Team, Belen Alastruey, Niyati Bafna, Andrea Caciolai, Kevin Heffernan, Artyom Kozhevnikov, Christophe Ropers, Eduardo S´ anchez, Charles-Eric Saint-James, Ioannis Tsiamas, Chierh Cheng, Joe Chuang, Paul-Ambroise Duquenne, Mark Duppenthaler, Nate Ek-berg, Cynthia Gao, Pere Llu´ ıs Huguet Cabot, Jo˜ ao Maria Janeiro, Jean Maillard, Gabriel Mejia Gonzalez, Holger Schwenk, Edan Toledo, Arina Turkatenko, Albert Ventayol-Boada, Rashel Moritz, Alexandre Mourachko, Surya Parimi, Mary Williamson, Shireen Yates, David Dale, and Marta R. Costa-juss` a. Omnilingual MT: Machine translation for 1,600 languages, 2026. URL 
+
+https://arxiv.org/abs/2603.16309 .Liang Wang, Nan Yang, Xiaolong Huang, Binxing Jiao, Linjun Yang, Daxin Jiang, Rangan Ma-jumder, and Furu Wei. Text embeddings by weakly-supervised contrastive pre-training, 2024. URL https://arxiv.org/abs/2212.03533 .Xinyi Wang, Yulia Tsvetkov, and Graham Neubig. Balancing Training for Multilingual Neural Machine Translation. In Dan Jurafsky, Joyce Chai, Natalie Schluter, and Joel Tetreault (eds.), 13 Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pp. 8526–8537, Online, jul 2020a. Association for Computational Linguistics. doi: 10.18653/v1/ 2020.acl-main.754. URL https://aclanthology.org/2020.acl-main.754/ .Zirui Wang, Yulia Tsvetkov, Orhan Firat, and Yuan Cao. Gradient Vaccine: Investigating and Im-proving Multi-task Optimization in Massively Multilingual Models, oct 2020b. URL http: //arxiv.org/abs/2010.05874 .Orion Weller, Michael Boratko, Iftekhar Naim, and Jinhyuk Lee. On the theoretical limitations of embedding-based retrieval. In The Fourteenth International Conference on Learning Representa-tions , 2026. URL https://openreview.net/forum?id=k9CzIvzfaA .Andrea W Wen-Yi and David Mimno. Hyperpolyglot LLMs: Cross-lingual interpretability in token embeddings. In Houda Bouamor, Juan Pino, and Kalika Bali (eds.), Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing , pp. 1124–1131, Singapore, December 2023. Association for Computational Linguistics. doi: 10.18653/v1/2023.emnlp-main. 71. URL https://aclanthology.org/2023.emnlp-main.71/ .Zhihui Xie, Handong Zhao, Tong Yu, and Shuai Li. Discovering Low-rank Subspaces for Language-agnostic Multilingual Representations. In Yoav Goldberg, Zornitsa Kozareva, and Yue Zhang (eds.), Proceedings of the 2022 Conference on Empirical Methods in Natural Language Process-ing , pp. 5617–5633, Abu Dhabi, United Arab Emirates, dec 2022a. Association for Computational Linguistics. doi: 10.18653/v1/2022.emnlp-main.379. URL https://aclanthology.org/ 2022.emnlp-main.379/ .Zhihui Xie, Handong Zhao, Tong Yu, and Shuai Li. Discovering low-rank subspaces for language-agnostic multilingual representations. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing , pp. 5617–5633, 2022b. URL https: //aclanthology.org/2022.emnlp-main.379/ .Ningyu Xu, Qi Zhang, Jingting Ye, Menghan Zhang, and Xuanjing Huang. Are structural con-cepts universal in transformer language models? towards interpretable cross-lingual general-ization. In Houda Bouamor, Juan Pino, and Kalika Bali (eds.), Findings of the Association for Computational Linguistics: EMNLP 2023 , pp. 13951–13976, Singapore, dec 2023. As-sociation for Computational Linguistics. doi: 10.18653/v1/2023.findings-emnlp.931. URL 
+
+https://aclanthology.org/2023.findings-emnlp.931/ .14 A PROOF DETAILS 
+
+A.1 SPHERICAL CAP BOUND FOR MINIMUM SUFFICIENT DIMENSIONALITY 
+
+In this section, we describe and prove the result necessary for the proof in Section 4.3. Specifically, we will show that the number of points that can be placed on a DL-dimensional sphere with radius r
+
+given a minimum and maximum cosine similarity following Equation 1, and given a suitable choice of ρ, grows exponentially in DL.Recall that γ < 1 is the maximum allowed similarity in the non-degenerate space Z, given to us. We can assume that γ > 0; if observed maximum cosine similarity is negative, the non-degeneracy condition would still hold for a larger γ.We will use r = 1 in our construction for simplicity and without loss of generality. Equation 1 simplifies to 
+
+γ < cos( uℓ, u m) < ρ < 1
+
+We will choose ρ such that γ < ρ < 1 and arccos( ρ) < arccos( γ)/2.Now, we will show the following. 
+
+Lemma 5. Fix constants 0 < γ < ρ < 1, such that arccos( ρ) < arccos( γ)/2. Then d dimensions are sufficient to pack exp(Ω( d)) points on the unit sphere Sd−1 with maximum cosine similarity ρ
+
+and minimum cosine similarity γ. That is, there exists a set M ⊂ Sd−1 such that for all distinct 
+
+u, u ′ ∈ M , γ < ⟨u, u ′⟩ < ρ , and |M| = exp(Ω( d)) .
+
+Proof sketch We will place points on a cap on a multi-dimensional sphere bounded with some angular radius. Since all points are within this cap, the maximum cosine similarity is bounded, letting us satisfy the maximum similarity constraint. Now we will fit points on this cap such that any two points have a minimum angular radius from each other. Imagine each such point making a small cap around itself with angular radius as the minimum required angular separation. Now, consider the maximal set of fitting points in the big cap. The union of the area of the small caps must cover the area of the big cap, since, if there was an uncovered point, that would mean that it was not within the minimum required separation of any other point, and we would be able to add in to our maximal set. Since we can express the union of the area of the small caps in terms of the number of points, we therefore get a lower bound on the maximum number of fitting points in terms of the areas of the two caps. By standard spherical cap results, the area of a spherical cap grows exponentially in the dimension of the sphere. Thus, as long as the angular radius of the big cap is large enough relative to that of the small cap, guaranteed by our choice of ρ, the maximum number of points we can fit that satisfy the above constraints also grow exponentially in the dimension of the sphere, giving us the required result that the sufficient dimension to fit L points is logarithmic in L.
+
+Proof. Let θmin := arccos( ρ) and θmax := arccos( γ). Since arccos( ρ) < arccos( γ)/2, and γ > 0,we have θmin < θ max /2 < π/ 4.Choose β such that θmin < β < θmax  
+
+> 2
+
+< π/ 4. Fix a direction v ∈ Sd−1 and define the spherical cap around v:
+
+Cβ (v) := {u ∈ Sd−1 : ∠(u, v ) < β }.
+
+This means that any two points in this cap u and u′ can have angular distance at most 2β < θ max 
+
+(since each has angular distance at most β from v). Now consider a set of points Q inside Cβ (v) such that every pair in this set has angular distance greater than θmin . Equivalently, ⟨u, u ′⟩ < ρ . Thus, for any distinct u, u ′ ∈ Q , we will have 
+
+θmin < ∠(u, u ′) < 2β < θ max 
+
+=⇒ cos( θmax ) < ⟨u, u ′⟩ < cos( θmin )=⇒ γ < ⟨u, u ′⟩ < ρ 
+
+Thus, the set Q satisfies our required angular constraints. In order to prove our lemma, it is enough to show that the maximal size of Q grows exponentially with d; in other words, that d dimensions are enough to pack some set of points M with size growing exponentially in d.15 Let M = {u1, . . . , u M } ⊂ C β (v) with size M = |M| be a maximal set satisfying ∠(ui, u j ) >θmin for all i̸ = j.Now, any point in Cβ (v) must be within angular distance θmin of some point in M; otherwise this point could be added to M. Therefore, Cβ (v) is a subset of the union of spherical caps created by defining a minimum angle radius around each point in M. In other words: 
+
+Cβ (v) ⊆
+
+> M
+
+[
+
+> i=1
+
+Cθmin (ui).
+
+Now we will consider the surface area on the sphere. Taking normalized spherical measure σ, and since σ only depends on angular radius, 
+
+σ(Cβ (v)) ≤
+
+> M
+
+X
+
+> i=1
+
+σ(Cθmin (ui)) = M σ (Cθmin )=⇒ M ≥ σ(Cβ )
+
+σ(Cθmin ) .
+
+For fixed angular radii, spherical cap measure scales exponentially in d as per standard cap measure results (Nasz´ odi, 2016). Specifically, for 0 < α < π/ 2, the normalized measure of a spherical cap of angular radius α in Sd−1 given by Nasz´ odi (2016, Lemma 3.4, Eq. (7)), attributed to B¨ or¨ oczky Jr & Wintsche (2003), satisfies 
+
+σ(Cα) = Θ α
+
+sin d−1(α)
+
+√d
+
+!
+
+Applying this with α = β < π/ 2 and α = θmin < π/ 2 gives 
+
+M ≥ σ(Cβ )
+
+σ(Cθmin ) = Ω 
+
+ sin β
+
+sin θmin 
+
+d−1!
+
+,
+
+Since β > θ min , we have sin β > sin θmin . Since β and θmin are fixed, there exists a constant 
+
+CM > 0, independent of d, such that 
+
+M ≥ exp( CM d) = ⇒ M = exp(Ω( d)) 
+
+That is, there exists some set M containing exp(Ω( d)) points whose pairwise cosine similarities lie between γ and ρ, on a d-dimensional sphere. In other words, the minimum sufficient dimension to fit L points whose pairwise cosine similarities lie between γ and ρ on Sd−1 ⊂ Rd is d = O(log L).A.2 SPHERICAL CAP BOUND FOR NECESSARY DIMENSIONALITY 
+
+In this section, we describe and prove the result necessary for the proof in Section 4.4. Specifically, we will show that the dimensionality required to place L fixed-norm points on a DXL -dimensional sphere with some minimum angular separation grows at least logarithmically in L.Given γ < 1 as the maximum allowed cosine similarity, we will use minimum angular separation 
+
+θ = arccos( γ), with 0 < θ < π . Now, we will show the following: 
+
+Lemma 6. Fix a constant 0 < θ < π . Suppose M ⊂ Sd−1 is a set of M = |M| points on a unit sphere with pairwise angular separation greater than θ. That is, for all distinct u, u ′ ∈ M ,
+
+∠(u, u ′) > θ . Then there exists a constant Aθ > 0, independent of M and d, such that M ≤
+
+exp( Aθ d). Equivalently, any such packing of M points requires d = Ω(log M ).
+
+Proof sketch We will place M points on a multidimensional sphere. Think of each point in M
+
+forming a spherical cap on the sphere with angular radius as half of the minimum required angular separation. Since each pair of points must have the required angular separation, these spherical caps 16 must be disjoint: if a point on the sphere belonged to caps associated with two points in M, those two points would not satisfy the criterion by triangle inequality. Thus, the surface area of the whole sphere must be larger than the union of the surface area of the spherical caps. Since we have M
+
+spherical caps and can express the union of the surface area of the spherical caps in terms of M , we get an upper bound on M in terms of an inverse spherical cap measure, which scales exponentially in the dimension of the sphere. Thus, we get that the minimum dimension that can fit M points is at least logarithmic in M .
+
+Proof. Let M = {u1, . . . , u M } ⊂ Sd−1 satisfy ∠(ui, u j ) > θ for all i̸ = j.Around each point ui, place a spherical cap of angular radius θ/ 2:
+
+Cθ/ 2(ui) := {u ∈ Sd−1 : ∠(u, u i) ≤ θ/ 2}.
+
+These caps are disjoint, since if some point w belonged to both Cθ/ 2(ui) and Cθ/ 2(uj ), then by the triangle inequality, ∠(ui, u j ) ≤ ∠(ui, w ) + ∠(w, u j ) ≤ θ, contradicting the separation constraint. Taking normalized spherical measure σ, we have 
+
+> M
+
+X
+
+> i=1
+
+σ(Cθ/ 2(ui)) ≤ σ(Sd−1) = 1 
+
+Since σ only depends on angular radius, 
+
+M σ (Cθ/ 2) ≤ 1 = ⇒ M ≤ 1
+
+σ(Cθ/ 2) .
+
+For fixed angular radius, spherical cap measures are at least exponentially small in d. More con-cretely, for 0 < α < π/ 2, the normalized measure of a spherical cap of angular radius α in Sd−1, as given by Nasz´ odi (2016, Lemma 3.4, Eq. (7)), attributed to B¨ or¨ oczky Jr & Wintsche (2003) satisfies 
+
+σ(Cα) ≥ 1
+
+√2πd sin d−1(α).
+
+Applying this with α = θ/ 2 < π/ 2 gives 
+
+M ≤ 1
+
+σ(Cθ/ 2) ≤ √2πd 
+
+ 1sin( θ/ 2) 
+
+d−1
+
+=⇒ log M ≤ 12 log(2 πd ) + ( d − 1) log 
+
+ 1sin( θ/ 2) 
+
+
+
+Since θ is fixed, sin( θ/ 2) is a fixed constant in (0 , 1) . Since log(2 πd ) = o(d), there exists a constant 
+
+Aθ > 0 depending only on θ, such that 
+
+log M ≤ Aθ d =⇒ d ≥ 1
+
+Aθ
+
+log M =⇒ d = Ω(log M )
+
+Therefore any set of L points on Sd−1 ⊂ Rd with fixed pairwise cosine separation γ requires 
+
+d = Ω(log L).A.3 FITTING 7000 LANGUAGES IN 30 EXTRA DIMENSIONS 
+
+Our constructive proof in Section 4 and Appendix A.1 constructs a language offset space U with dimensionality DL, and shows that that DL = O(log L) dimensions are sufficient to fit L points on a DL-dimensional unit sphere given minimum cosine similarity γ and maximum cosine similarity 
+
+ρ.However, this bounds hides a constant which may be of concern for practical considerations. In this section, we prove the following: 17 Lemma 7. It is possible to fit L = 7000 points on a 30 -dimensional sphere with minimum pairwise cosine similarity γ = 0 .9 and maximum cosine similarity ρ = 0 .99 .
+
+γ is set based on the choice of 0.1 as a standard scale of cosine separation for text embedding models (Weller et al., 2026). Note that our proof requires arccos( ρ) < arccos( γ)/2 which holds for this choice of ρ.
+
+Sketch of proof We will construct each point having 1 shared dimension with an appropriate length, which will guarantee minimum similarity. We will use the remaining 29 dimensions to guar-antee difference, i.e. ensure that any two points have atmost the maximum similarity. In particular, we will prove this statement using an existence argument: if we choose 7000 points at random on a sphere in 29 dimensions, the probability that no pair of points crosses a particular threshold of similarity is non-zero. The existence of such a configuration gives us the above result. 
+
+Proof. Consider the space R30 = span (e0) ⊕ R29 , where e0 is a unit vector orthogonal to R29 . Now, construct 
+
+xi = √0.945 e0 + √0.055 yi, yi ∈ S28 ⊂ R29 .
+
+Then ∥xi∥2 = 1 and since all vectors have unit norm, cosine similarity is equal to the inner product. Now, we consider the similarity between any two vectors xi and xj :
+
+⟨xi, x j ⟩ = 0 .945 + 0 .055 ⟨yi, y j ⟩.
+
+Therefore, if |⟨ yi, y j ⟩| ≤ 911 , for all i̸ = j, then 
+
+⟨xi, x j ⟩ ∈ 
+
+
+
+0.945 − 0.055 · 911 , 0.945 + 0 .055 · 911 
+
+
+
+= [0 .9, 0.99] .
+
+It remains to show that such y1, . . . , y 7000 exist. Suppose that 
+
+y1, . . . , y 7000 i.i.d.
+
+∼ Unif( S28 ).
+
+Fix any pair i̸ = j. Since the distribution on the sphere is rotationally invariant, we may fix one point Y = e1 = [1 , 0, 0, ... ] and choose only the second point Z ∼ Unif( S28 ). The distribution of the inner product is unchanged. Thus, the dot product of Y and Z is distributed identically to just the first coordinate of Z:
+
+⟨Y, Z ⟩ d
+
+= Z1,Z1 is the first coordinate of a uniformly random point on S28 . The distribution of the coordinate’s value can be expressed in terms of a Beta distribution, as follows, 9
+
+⟨Y, Z ⟩2 ∼ Beta 
+
+ 12 , 14 
+
+
+
+.
+
+Therefore, for any fixed pair, 
+
+p := Pr |⟨ Y, Z ⟩| 2 >
+
+ 911 
+
+2!
+
+(3) 
+
+= I40 /121 
+
+
+
+14 , 12
+
+
+
+≈ 3.3465 × 10 −8, (4) where Ix(a, b ) denotes the regularized incomplete beta function.                         
+
+> 9Briefly, this is because of the following: we generate a random point by choosing 29 dimensions inde-pendently and normalizing all coordinates to result in unit norm. The first coordinate can then be expressed as Z21∼AA+Bwhere A∼χ21and B∼χ228 and Aand Bare independent. This standardly gives us
+> Z21∼Beta  12,14 .
+
+18 There are  7000 2
+
+ pairs. By the union bound, 
+
+Pr 
+
+
+
+∃ i < j : |⟨ yi, y j ⟩| > 911 
+
+
+
+≤
+
+7000 2
+
+
+
+p
+
+≈ 0.8198 < 1.
+
+Hence, 
+
+Pr 
+
+
+
+|⟨ yi, y j ⟩| ≤ 911 for all i̸ = j
+
+
+
+> 0.
+
+Therefore, there exists a realization y1, . . . , y 7000 satisfying the required bound, and the correspond-ing vectors x1, . . . , x 7000 ∈ R30 have pairwise cosine similarities in [0 .9, 0.99] . That is, it is possible to fit 7000 points, or language offsets, satisfying the constraints from our proof such that the resulting space would maintain the multilinguality conditions, in 30 additional dimensions. A.4 FIXED VERSUS VARIABLE NORM ASSUMPTIONS 
+
+Our proof of Theorem 1 assumes a fixed-norm concept space Z and multilingual space XL. This proof is extendable to the variable norm case with a bounded norm. We provide a brief sketch of the extension below. 
+
+Extending Theorem 1.1 We will still use fixed-norm U in our construction, resulting in variable-norm XL constructed as xc,ℓ = zc ⊕ ∥ zc∥uℓ. Since ∥uℓ∥ = r, we have ∥xc,ℓ ∥ = ∥zc∥√1 + r2, and therefore the similarity decomposition in Equation 2 still works out as 
+
+cos( xc,ℓ , x d,m ) = ⟨zc, z d⟩ + ∥zc∥ · ∥ zd∥⟨ uℓ, u m⟩∥zc∥ · ∥ zd∥(1 + r2)= cos( zc, z d) + ⟨uℓ, u m⟩
+
+1 + r2
+
+Now, our proofs showing that XL upholds the multilinguality conditions and is non-degenerate fol-low as before. The proof of the upper-bound on the sufficient dimensionality of U in Appendix A.1 also works as-is, since we used fixed-norm U .
+
+Extending Theorem 1.2 If XL is variable-norm, bounded by some maximum norm, then we must now place L points inside a sphere rather than on a sphere for this proof. It can be shown that this also requires necessary dimensionality logarithmic in L. Analogously to the proof in Appendix A.2: instead of fitting disjoint caps on a sphere, we will fit balls inside a sphere. Since volume measures are also exponential in the sphere dimensionality, this gives us a similarly logarithmic bound for the necessary dimensionality as per sphere packing arguments (Johnson et al., 1984; Weller et al., 2026). 
+
+## B ADDITIONAL DETAILS AND RESULTS FOR THE EMPIRICAL CURSE 
+
+B.1 METRICS FOR MULTILINGUALITY CONDITIONS 
+
+We provide more details here on metrics used in Section 5. The concept set is identical across languages given multiparallel data 
+
+Monolingual structure As per Definition 1, the monolingual structure condition is concerned with the quality of monolingual relationships for a given language, and uses a theoretical ideal con-cept space as reference. Given a reference space Z and target space X, we use k-nearest-neighbour overlap ( MS-NNO ) to measure the quality of monolingual neighbourhoods in the subspace Xt ⊂ X,for each language t. Given T is the set of target languages, C is the set of language-agnostic con-cepts, N tX (c, k ) is the neighbourhood of k closest concepts for c in language t in space X, and 
+
+NZ (c, k ) is the reference concept neighbourhood, 
+
+NNO( X, Z, k ) = 1
+
+|T | · |C| · k
+
+X
+
+> t∈T
+
+X
+
+> c∈C
+
+X 
+
+> nt∈N Z(c,k )
+
+1[nt ∈ N tX (c, k )] 
+
+19 We consider the English concept space from a strong reference model as our theoretical ideal space 
+
+Z and use mappings from multiparallel data to check set membership as in above. Note that monolingual text embedding quality in the field of retrieval is measured by recall@k 
+
+among other metrics, given query and relevance judgments. Our evaluation is an adjustment given the lack of multiparallel retrieval datasets and relevance judgments at our required language scale, and therefore treating monolingual neighbourhoods from a strong model as the gold target set. We use k = 20 for reporting results, and observe similar trends for varying k = 5 , 10 , 20 , 50 .We also look at language mean over normalized masked language modeling loss on a monolingual test set per language ( MS-MLM) as an indirect measure of monolingual structure quality. 
+
+Cross-lingual alignment Drawing from Definition 2, and similar to previous work (Roy et al., 2020; H¨ ammerl et al., 2024), we measure cross-lingual alignment in embedding space structure by checking for each language ℓ1, whether, for each concept and each language ℓ2, the ℓ2 equivalent of that concept is closer to the ℓ1 equivalent than other ℓ2 concepts (weak view; CLA-WV ) or any any other concepts regardless of language (strong view; CLA-SV ). Given the set of target languages T ,
+
+ℓs, ℓ t ∈ T , and G as the comparison group depending on strong or weak view, 
+
+CLA = 1
+
+|C| · |T | (|T | − 1) 
+
+X
+
+> ℓs
+
+X 
+
+> ℓt̸=ℓs
+
+X
+
+> c
+
+1[argmax x′∈G(cos( xc,ℓ s , x ′)) = xc,ℓ t ] .
+
+where G = {xc′,ℓ t |c′̸ = c}∪{ xc,ℓ t } in the weak view and G = {xc′,ℓ m |c′̸ = c, ℓ m ∈ T }∪{ xc,ℓ t } for the strong view. We study both the weak view and strong view in our experiments and find similar trends. We report the former. Note that this evaluation is equivalent to measuring performance on a parallel text mining task. B.2 FURTHER EXPERIMENTAL DETAILS 
+
+Models For the reference model used for monolingual structure metric, we use astrong English text embedding model: e5-large-v2 10 (Wang et al., 2024), and 
+
+Llama-3.1-8B-Instruct 11 (Grattafiori et al., 2024) with last token pooling. We obtain con-sistent trends. Reported results use the former. 
+
+Languages Training languages were chosen in priority of token availability in the MADLAD-400 
+
+corpus, as well as availability in evaluation datasets. We evaluate on all languages covered in the training language group: FLORES+ (90 languages) (Goyal et al., 2022; Team et al., 2024), 
+
+BOUQuET (90 languages) (Andrews et al., 2025; Team et al., 2026), and WMT24++ (55 languages) (Deutsch et al., 2025). B.3 ADDITIONAL RESULTS 
+
+Other datasets We show results for two other multiparallel datasets in Figure 4 and Figure 5. We also show CLA-SV , which shows similar trends for WMT24++ , but is generally too low for 
+
+FLORES+ and BOUQuET to show meaningful trends. These show similar trends as shown in Figure 3. 
+
+Non-degeneracy We plot the mean and standard deviation of pairwise cosine similarity across models for BOUQuET in Figure 6 (similar for other datasets). This is stable, although generally high, which is evidence of high anisotropy in the space. 
+
+Maintaining token count In Section 5, we discussed that the four settings in which metrics stay stable or improve are generally the settings that maintain token count for the target languages of interest . We elaborate on this here. 
+
+> 10 huggingface.co/intfloat/e5-large-v2
+> 11 huggingface.co/meta-llama/Llama-3.1-8B-Instruct
+
+20 2 10 30 50 75 100 4% 6% 8% 10% 
+
+> Cursed settings
+
+MS-NNO ↑    
+
+> 2 10 30 50 75 100 567
+
+MS-MLM ↓    
+
+> 2 10 30 50 75 100 0.0% 1.0% 2.0% 3.0% 4.0% 5.0%
+
+CLA-WV ↑    
+
+> 2 10 30 50 75 100 0.0% 0.5% 1.0% 1.5%
+
+CLA-SV ↑                
+
+> 2 10 30 50 75 100
+> Number of training languages
+> 4% 6% 8% 10%
+> Non-cursed settings
+> 2 10 30 50 75 100
+> Number of training languages
+> 567
+> 2 10 30 50 75 100
+> Number of training languages
+> 0.0% 1.0% 2.0% 3.0% 4.0% 5.0%
+> 2 10 30 50 75 100
+> Number of training languages
+> 0.0% 0.5% 1.0% 1.5%
+
+Fixed / realistic Fixed / uniform Increasing / uniform Increasing / realistic Fixed / realistic Fixed / uniform Increasing / uniform Increasing / realistic All training languages Fixed 10-language subset Figure 4: MS-NNO , MS-MLM , and CLA on FLORES+ for encoder models with as the number of training languages increases, in eight configurations. The top and bottom rows show cursed and non-cursed configurations respectively. Arrows indicate whether higher or lower metric values are better. Error bars show standard deviation over five model seeds. 210 30 50 75 100 10% 12% 14% 16% 
+
+> Cursed settings
+
+MS-NNO ↑    
+
+> 210 30 50 75 100 567
+
+MS-MLM ↓    
+
+> 210 30 50 75 100 5.0% 10.0% 15.0%
+
+CLA-WV ↑    
+
+> 210 30 50 75 100 4.0% 6.0% 8.0%
+
+CLA-SV ↑                
+
+> 210 30 50 75 100
+> Number of training languages
+> 10% 12% 14% 16%
+> Non-cursed settings
+> 210 30 50 75 100
+> Number of training languages
+> 567
+> 210 30 50 75 100
+> Number of training languages
+> 5.0% 10.0% 15.0%
+> 210 30 50 75 100
+> Number of training languages
+> 4.0% 6.0% 8.0%
+
+Fixed / realistic Fixed / uniform Increasing / uniform Increasing / realistic Fixed / realistic Fixed / uniform Increasing / uniform Increasing / realistic All training languages Fixed 10-language subset 
+
+Figure 5: MS-NNO , MS-MLM , and CLA on WMT24++ for encoder models with as the number of training languages increases, in eight configurations. The top and bottom rows show cursed and non-cursed configurations respectively. Arrows indicate whether higher or lower metric values are better. Error bars show standard deviation over five model seeds. With fixed-compute , the token count for each language decreases as we add more lan-guages; thus, mean conditions deteriorate with aggregate-all for both types of sam-pling. However, when we have fixed-compute and only look at high-resource languages in 
+
+aggregate-fixed with realistic-sampling , this effect is somewhat softened since sub-sequent LRLs consume a smaller part of token budget. With increasing-compute , token count for target languages remains unchanged with more training languages with uniform-sampling ,and metrics stay stable for both types of aggregation. With increasing-compute and 
+
+realistic-sampling , similar to above, HRLs are able to maintain token count, al-lowing metrics to stay stable for aggregate-fixed , whereas aggregate-all over 21 2 10 30 50 75 100 
+
+> Number of training languages
+> 0.6 0.7 0.8 0.9
+> cosine similarity
+> Non-degeneracy Training setting
+> Fixed / realistic Fixed / uniform Increasing / uniform Increasing / realistic
+> Evaluation setting
+> All training languages Fixed 10-language subset
+
+Figure 6: Mean pairwise similarity on BOUQuET across training and evaluation settings. Error bars show standard deviation over five seeds. 
+
+realistic-sampling means that that performance means are driven down by low-resource languages. COM-EMB trends may potentially also be affected by other things such as model scale, optimization strategies, and data quality, the impact of which we leave to future work to investigate. B.4 ADDITIONAL EXPLORATION OF LANGUAGE SUBSPACE USE AND DIMENSIONALITY 
+
+Our construction achieving perfect multilinguality in Section 4.3 uses compact language offsets that are reused across concepts. This idea of low-dimensional and reusable language feature representa-tions is of interest to several works (Park et al., 2023; Xie et al., 2022a; Chang et al., 2022) We want to investigate whether, similarly to our constructive solution, language identity is compactly and reusably represented in our trained models that maintain the multilinguality conditions, and whether this differs by language scale. 
+
+Defining language subspace efficiency We quantify the efficiency of the model regarding lan-guage information as the effective dimensionality of the language subspace , or the space of the language offsets or language-expressing directions. 
+
+Constructing the language subspace The language subspace is constructed as the space spanned by the difference vectors between pairs of translation equivalents, i.e. points expressing an identical concept in two different languages Formally, 
+
+U := span {xc,l − xc,l ′ |c ∈ C , l, l ′ ∈ L , l ̸ = l′}
+
+Here, xc,l is unit-normalized. We are now interested in the effective dimensionality of U .
+
+Computing effective dimensionality We use participation ratio as a measure of effective dimen-sionality, in line with previous work (Barman et al., 2026). Let M stack the language offsets 
+
+xc,l − xc,l ′ for all c and unordered pairs (l, l ′), and let si be the singular values of M after row-centering. We use 
+
+dlang = (P 
+
+> i
+
+si)2
+
+P 
+
+> i
+
+s2
+
+> i
+
+.
+
+This behaves like a soft dimension count. Intuitively, if all singular values of active directions are equal, it returns the number of active directions. Instead, if the spectrum is dominated by a few directions, it returns a smaller value. We then report effdim lang := dlang  
+
+> D
+
+∈ (0 , 1] , where D is the ambient dimensionality of the space. 
+
+Trends We are interested in effdim lang for models that maintain the multilinguality condi-tions. We construct the language subspace over all training languages, and so we only look at 
+
+aggregate-all non-cursed configurations. There is only one such configuration. See Figure 7 for trend of effdim lang on BOUQuET (similar for other datasets) on this configuration. We find that the model consumes considerably more effective dimensionality to represent language information with higher language count, going up to 50% of ambient dimensionality. 22 2 10 30 50 75 100 
+
+> # training languages
+> 0.1 0.2 0.3 0.4 0.5
+> Language-subspace effective dimension
+
+Figure 7: Effective dimensionality of the language subspace of all train-ing languages on BOUQuET for non-cursed training setting. Error bars show standard deviation over five seeds. 2 10 30 50 75 100 
+
+> Number of training languages
+> 0.2
+> 0.0 0.2 0.4 0.6 0.8
+> Overlap between concept and language subspace Training setting
+> Fixed / realistic Fixed / uniform Increasing / uniform Increasing / realistic
+> Evaluation setting
+> All training languages Fixed 10-language subset
+
+Figure 8: Overlap between concept and language sub-space, using BOUQuET .
+
+Interaction between language and concept subspace The above experiment raises a natural next point of comparison with our constructive solution. Namely: is the language subspace orthogonal to the concept subspace, or are semantic and language directions entangled? Note that in our con-structive solution, the concept and language subspaces are orthogonal by construction. We construct the language subspace as above, and analogously construct a concept subspace using same-language different-concept pairs. We then consider the minimal orthonormal bases of both subspaces that capture k = 20% of energy with dimensionality dc and dl, and quantify the overlap between these directions using principal angle between the subspaces, adjusted for random overlap. Given m = min( dc, d l), we formulate this as: 
+
+OCL =
+
+> 1
+> m
+
+Pmi=1 σ2 
+
+> i
+
+− max( dc,d l)
+
+> D
+
+1 − max( dc,d l)
+
+> D
+
+.
+
+where OCL ≤ 1 and higher values mean more overlap. Motivating this briefly: it can be shown that if Vconcept ∈ RD×dc and Vlang ∈ RD×dl are the orthonormal bases capturing k proportion of energy, then, σi = svd( V ⊤
+
+> concept
+
+Vlang )i = cos θi, where θi are principal angles between Vconcept 
+
+and Vlang . It can also be shown that the expected overlap between two subspaces with randomly chosen dimensions given a total dimensionality D is: 
+
+E
+
+"
+
+1
+
+m
+
+> m
+
+X
+
+> i=1
+
+cos 2 θi
+
+#
+
+= max( dc, d l)
+
+D
+
+So our metric OCL is a measure of the squared cosines of principal angles between the two subspaces of interest, adjusted for random. We plot this metric for all settings, shown in Figure 8. We observe that the overlap is generally high across settings and number of training languages, including non-cursed settings. This is in contrast to the ideal constructive solution, where the concept and language subspace are orthogonal, with zero overlap. In general, our preliminary experiments indicate that empirical embedding spaces at our small scale do not behave similar to our ideal constructive solution even in non-cursed conditions. We leave it to future work to explore the underlying mechanisms of the (non-)curse of multilinguality for embedding space structure in conducive settings and at scale, for various architectures and training configurations. 23
