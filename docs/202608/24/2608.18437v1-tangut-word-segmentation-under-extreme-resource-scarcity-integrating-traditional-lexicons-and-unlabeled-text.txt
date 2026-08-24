@@ -1,0 +1,646 @@
+Title: Tangut Word Segmentation under Extreme Resource Scarcity: Integrating Traditional Lexicons and Unlabeled Text
+
+URL Source: https://arxiv.org/pdf/2608.18437v1
+
+Published Time: Thu, 20 Aug 2026 00:20:47 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# Tangut Word Segmentation under Extreme Resource Scarcity: Integrating Traditional Lexicons and Unlabeled Text 
+
+Lifan Deng 1,2 *, Yongwei Zhang 1,3 †, Sen Sun 1,3 , Bojun Sun 4, Jingsong Yu 5
+
+> 1
+
+Key Laboratory of Linguistics, Chinese Academy of Social Sciences (University of Chinese Academy of Social Sciences), Beijing 
+
+> 2
+
+Rixin College, Tsinghua University, Beijing 
+
+> 3
+
+Institute of Linguistics, Chinese Academy of Social Sciences, Beijing 
+
+> 4
+
+Institute of Ethnology and Anthropology, Chinese Academy of Social Sciences, Beijing 
+
+> 5
+
+School of Software and Microelectronics, Peking University, Beijing 
+
+zhangyw@cass.org.cn 
+
+Abstract 
+
+Tangut is an extinct language whose script does not explicitly mark word boundaries. We present the first systematic study of Tangut word segmentation using 2,750 expert-annotated segments 1 (31,893 tokens), tradi-tional lexicons, and unlabeled text. Our frame-work combines a reliability-calibrated lexicon-lattice representation, explicit distributional statistics, and a lightweight character encoder pretrained with MLM. Segment-level five-fold cross-validation shows that lexical and statis-tical features raise CRF F 1 to approximately 0.91. The full TangutEncoder reaches the high-est mean F 1 (0.911) and improves recall beyond the labeled training vocabulary. These results demonstrate generalization beyond the limited supervised vocabulary across thematically di-verse held-out passages, while document-level transfer remains to be evaluated. You can access our project at https://github.com/ jiangli-va/TangutSeg .
+
+1 Introduction 
+
+Created in the 1030s under Li Yuanhao, the Tangut script was used to record the Tangut language and served as the official script of the Xixia. Although Tangut later became extinct, its surviving texts re-main essential sources for studying the language, history, and culture of this dynasty. Tangut information processing has progressed from character encoding and digital fonts (Naka-jima et al., 1996; West et al., 2014) to optical character recognition (Liu, 2012; Zhang and Han, 2017; Ma et al., 2022) and machine translation (Zheng and Yu, 2025; Zheng et al., 2025). How-ever, automatic word segmentation remains largely 
+
+> *Work completed during the internship at the Key Labo-ratory of Linguistics, Chinese Academy of Social Sciences (University of Chinese Academy of Social Sciences).
+> †Corresponding author.
+> 1The segments here are not sentences in the linguistic sense; for details, see Appendix A.1.
+
+Figure 1: Surviving fragment of Mah¯ aratnak¯ ut .a-s¯ utra ,Scroll 68. 
+
+unexplored. Because Tangut does not explicitly mark word boundaries, OCR and transcription pro-duce unsegmented character sequences. Identify-ing words is therefore a prerequisite for lexical retrieval, frequency analysis, POS tagging, align-ment, and translation. Tangut word segmentation is constrained by a high annotation barrier. With no native speakers, word boundaries require specialists to jointly con-sider context, phonological reconstruction, trans-lations, and traditional dictionaries. Our expert-annotated corpus contains 2,750 textual segments and 31,893 word tokens from a Buddhist scripture and the secular encyclopaedic work Leilin . Al-though limited to two works, Leilin covers diverse narratives and lexical domains, providing substan-tial variation for within-source evaluation. We address these challenges by integrating three sources of knowledge. Expert annotation pro-vides BIES supervision; an aggregated lexicon-lattice representation preserves overlapping dic-tionary candidates and calibrates their reliability; and unlabeled text is exploited through explicit corpus statistics, static character embeddings, and masked-language-model (MLM) pretraining. The 1arXiv:2608.18437v1 [cs.CL] 19 Aug 2026 resulting lightweight TangutEncoder learns con-textual character representations without assuming word boundaries in advance. Under segment-level five-fold cross-validation, both complete systems exceed 0.90 F 1, with TangutEncoder attaining the highest mean score and OOV recall. Our contributions are threefold: • Task and evaluation. To our knowledge, we present the first systematic study of auto-matic Tangut word segmentation and es-tablish initial within-source evaluation base-lines on expert-annotated Buddhist and secu-lar texts. • Reliability-aware lexicon integration. We propose an aggregated lexicon-lattice repre-sentation that preserves overlapping dictio-nary candidates and calibrates their reliabil-ity through out-of-fold estimation, preventing each training instance from contributing its own gold-boundary statistics. • Learning from unlabeled Tangut text. We systematically compare explicit corpus statis-tics, static character representations, and con-textual MLM pretraining, and develop a lightweight TangutEncoder. Our results clar-ify their different contributions to overall, in-vocabulary, and labeled-training-OOV perfor-mance. Together, these contributions provide a word-level foundation for Tangut text retrieval, POS tag-ging, alignment, machine translation, and related digital research. 
+
+2 Related Work 
+
+Word Segmentation without Explicit Delimiters. 
+
+Segmentation for scripts without consistent word delimiters is commonly formulated as character- or syllable-level sequence prediction. Chinese work established BIES-style position tagging and CRF segmentation (Xue, 2003; Peng et al., 2004); re-lated formulations use syllable-level CRFs for Ti-betan (Liu et al., 2011) and longest matching for Myanmar (Htay and Murthy, 2008). Neural models subsequently learned candidate and segmentation-history representations (Cai and Zhao, 2016), con-volutional character–word features (Wang and Xu, 2017), and optimized BiLSTM taggers (Ma et al., 2018). Yet OOV words remain difficult, and seg-mentation accuracy depends strongly on ortho-graphic cues and resource availability (Shao et al., 2018; Brown, 2024). These studies motivate se-quence labeling for Tangut but do not address its extreme resource scarcity. 
+
+Lexicon-Enhanced Segmentation. Lexicons have been encoded as CRF features (Peng et al., 2004), converted into partial annotations for do-main adaptation (Liu et al., 2014), and combined with limited manual segmentation for language documentation (Okabe et al., 2022). Neural seg-menters incorporate lexical information through BiLSTMs (Zhang et al., 2018), attention over over-lapping candidates (Higashiyama et al., 2019), aux-iliary BIES prediction from unlabeled text (Hi-gashiyama et al., 2020), or character–word graphs (Huang et al., 2021). These methods preserve in-creasingly rich candidate information, but rarely calibrate individual entries whose units may con-flict with corpus boundaries—a central problem for historical lexicons. 
+
+Low-Resource and Historical-Language Seg-mentation. Low-resource NLP lacks not only an-notation but often raw text, tools, pretrained mod-els, and sustained support (Nigatu et al., 2024), limitations pronounced for Sino-Tibetan languages (Liu and Best, 2025). Dictionary-based weak super-vision can partly compensate for scarce segmenta-tion annotation (Okabe et al., 2022). For historical languages, prior work compares rule-based, lexical, statistical, and learned segmentation for Akkadian (Homburg and Chiarcos, 2016), or uses phonologi-cal priors for ancient scripts (Luo et al., 2021). San-skrit research combines expert lexical resources, character models, and latent-candidate Transform-ers (Krishna et al., 2017; Hellwig and Nehrdich, 2018; Sandhan et al., 2022). Ancient Chinese stud-ies similarly explore BiLSTM–CRF analysis and historical pretraining (Cheng et al., 2020; Chang et al., 2022), while EvaHan identifies blind-text and OOV degradation (Li et al., 2022). Tangut intensi-fies these challenges, motivating data-efficient inte-gration of expert, lexical, and unlabeled resources. 
+
+Tangut information processing. Tangut com-putation has focused mainly on digital infrastruc-ture: fonts, character analysis, Web processing, and historical-font databases (Nakajima et al., 1996; Liu and Du, 2008; Liu, 2010), followed by UCS standardization (West et al., 2014). Later work developed document recognition and character databases (Liu, 2012; Zhang and Han, 2017; Ma et al., 2022), manuscript text analysis (Shu et al., 2025), and Tangut–Chinese translation using par-allel data, dictionaries, and large language models 2(Zheng and Yu, 2025; Zheng et al., 2025). Au-tomatic word-boundary identification and contex-tual representation remain largely unexplored (Sun, 2026); we address this gap using expert annotation, traditional lexicons, and unlabeled text. 
+
+3 Task Definition and Data 
+
+3.1 Task Formulation 
+
+Given a line of n Tangut characters x =(c1, c 2, . . . , c n), the goal of Tangut word segmen-tation is to identify its word boundaries. We for-mulate the task as character-level BIES sequence labeling, where B, I, and E denote the begin-ning, inside, and end of a multi-character word, respectively, and S denotes a single-character word. The model assigns each character a label yi ∈{B, I, E, S } and predicts the highest-scoring valid sequence: 
+
+ˆy = arg max  
+
+> y∈Y (x)
+
+pθ(y | x),
+
+where Y(x) is the set of valid BIES sequences. The predicted labels are then converted into non-overlapping word spans. Evaluation is span-based: a predicted word is considered correct only when its boundaries exactly match the expert annotation. 
+
+3.2 Data Resources and Distribution 
+
+Multiple Tangut specialists from the Chinese Academy of Social Sciences independently seg-mented and labeled the texts using context, recon-structed readings, translations, and traditional lex-icons. Their analyzes were compared and jointly reviewed to produce the reference annotation. The corpus contains two genres: Buddhist scripture and secular writing. Buddhist scripture selected from Mah¯ aratnak¯ ut .a-s¯ utra , and the latter is drawn from the encyclopedic Leilin , which covers diverse topics and linguistic styles. The genres differ sub-stantially in size and lexical distribution (Table 1). 2.The total number of word types is calculated after deduplication across the two categories. Secular documents account for approximately 91.5% of all segments, resulting in a substantial domain imbal-ance. The structured lexicon contains word forms, pronunciations, definitions, and entry-level meta-data. We strip whitespace, discard single-character entries from the lattice, and collapse duplicate             
+
+> 2Further details about corpus appear in Appendix A.1.
+> Category Segments Tokens Types
+> Buddhist scriptures 234 3,717 769 Secular documents 2,516 28,176 4,046 Total 2,750 31,893 4,433
+> Table 1: Statistics of the expert-annotated Tangut cor-pus.
+
+forms, yielding 19,290 multi-character candidates, of which 17,082 are two-character words (88.6%). The lexicon has high coverage of the annotated corpus: 83.1% of corpus word types and 95.9% of word tokens are recorded in it. From the lexicon side, however, only 14.2% of entries exactly match an annotated word, while 23.3% occur as substrings in the corpus; the remaining 76.7% never occur. This asymmetry indicates that the lexicon covers most corpus tokens but contains many entries that cannot be verified using the available annotation. Therefore, it should be treated as uncertain lexical evidence rather than a direct source of deterministic boundaries. The unlabeled data are extracted from the Tangut lines of four-line aligned materials. Organized by manuscript image, the collection contains 663 records, 46 title-level units, and approximately 318,000 Tangut characters. Although both collec-tions contain the Mah¯ aratnak¯ ut .a-s¯ utra , the anno-tated material is from fascicle 68, which is absent from the unlabeled collection. A normalized over-lap audit finds no duplicated annotated segment of three or more characters and only limited short-
+
+n-gram overlap (Appendix A.2). The Tangut se-quences are only used for distributional statistics and pretraining. 
+
+4 Layered Framework and Setup 
+
+We organize Tangut word segmentation around supervised, lexical, and distributional knowledge. The supervised layer learns word boundaries; the lexical layer encodes overlapping dictionary can-didates; and the distributional layer exploits unla-beled text through corpus statistics, static charac-ter embeddings, or contextual pretraining. Except for dictionary-matching baselines, all models use character-level BIES tagging with CRF decoding. 
+
+4.1 Unified Formulation 
+
+Given a character sequence x = ( c1, . . . , c n), a model first computes an emission score vector si
+
+over the four BIES labels at each position i. The 3score of a label sequence y is Score (x, y) = 
+
+> n
+
+X
+
+> i=1
+
+si(yi) + 
+
+> n
+
+X
+
+> i=2
+
+Ayi−1,y i ,
+
+where A is the transition matrix learned by the CRF. Decoding selects the highest-scoring valid sequence: 
+
+ˆy = arg max  
+
+> y∈Y (x)
+
+Score (x, y),
+
+where Y(x) denotes the set of valid BIES se-quences. The models differ primarily in how they com-pute the emission scores. In the linear CRF, these scores are linear combinations of discrete character features and real-valued external features. Neural models first derive a character representation hi
+
+and then combine it with lexical features zlex  
+
+> i
+
+and distributional features zdist  
+
+> i
+
+:
+
+si = gθ
+
+
+
+hi, zlex  
+
+> i
+
+, zdist 
+
+> i
+
+
+
+.
+
+This shared formulation isolates two sources of variation across models: how characters are repre-sented and how external knowledge is incorporated. 
+
+4.2 Supervised Segmentation Layer Dictionary matching. As a non-parametric base-line, we apply maximum matching to determine word boundaries directly. We construct matching lexicons from the training vocabulary, the external dictionary, and their union, and compare them by bidirectional maximum matching (BMM). These baselines provide a reference for how far lexical coverage alone can support segmentation. The linear CRF uses the current character, a two-character context window on each side, adja-cent character bigrams, character-type indicators for digits, letters, and punctuation, and whether the current character occurs as a single-character word in the training data. It serves both as our pri-mary supervised baseline and as the basic model for evaluating the data efficiency of explicit external knowledge. The BiLSTM–CRF maps each character to a trainable embedding and encodes its left and right contexts with a bidirectional LSTM. A linear layer then produces BIES emission scores, followed by CRF decoding. Lexicon-lattice and corpus-statistical features can be concatenated with the character embeddings at the encoder input. To separate the effect of the Transformer archi-tecture from that of unlabeled-text pretraining, we include a randomly initialized Transformer–CRF .It uses the same encoder architecture as TangutEn-coder but receives no masked-language-model pre-training; all parameters are learned solely from the annotated segmentation data. 
+
+4.3 Lexical Knowledge Layer 
+
+Multiple dictionary entries may overlap at the same character position. Maximum matching resolves this ambiguity prematurely by retaining only one candidate. We instead preserve all matched spans in an aggregated lexicon-lattice representation. For each character, we derive 11 binary features according to its position in a candidate and the can-didate length: B2, B 3, B 4, B 5+; I3, I 4, I 5+ and 
+
+E2, E 3, E 4, E 5+ . Here, B, I, and E indicate that the character occurs at the beginning, inside, or at the end of a candidate. Entries of length five or greater are grouped into the 5+ category. The I2
+
+feature is omitted because a two-character word has no internal position. Single-character entries are handled by the basic character features. Dictionary entries do not necessarily conform to the segmentation standard of the annotated cor-pus. We therefore estimate entry-specific reliabil-ity . For an entry w, occ( w) denotes the number of times it occurs as a substring in the training corpus, while hit( w) counts occurrences whose spans ex-actly match gold words. Reliability is estimated using a length-group prior: 
+
+r(w) = hit( w) + κp g(w)
+
+occ( w) + κ ,
+
+where κ = 5 controls the smoothing strength and 
+
+pg(w) is the prior reliability of the length group containing w:
+
+pg =
+
+P 
+
+> w∈g
+
+hit( w) + 1 
+
+P 
+
+> w∈g
+
+occ( w) + 2 .
+
+Observed entries use r(w), whereas entries unseen in the training corpus fall back to pg. At each char-acter position, we take the maximum reliability among candidates in which the character occurs at a beginning, internal, or ending position. This pro-duces three reliability features for observed entries and three prior features for unseen entries. We additionally derive three binary metadata features from the dictionary: whether any candi-date covering the current character has a semantic-gloss entry ( has_yi ), a phonetic entry ( has_yin ), 4or a book-title label ( has_book_title ). Each fea-ture is aggregated by logical OR: it is set to 1 if at least one covering candidate has the correspond-ing attribute. These features distinguish different sources of lexicographic evidence: including se-mantically glossed entries, phonetic or transliter-ated forms, and multi-character titles , without treat-ing any of them as a deterministic boundary. Therefore, the complete representation of the dictionary contains 20 dimensions: 11 lattice in-dicators, 3 observed-entry reliability features, 3 unseen-entry prior features, and 3 lexicographic metadata features, as summarized in Table 2.             
+
+> Symbol Feature group Dim. BIE Lexicon-lattice indicators 11
+> RReliability of observed entries 3
+> PPrior for unseen entries 3
+> MLexicographic metadata 3
+> Dict all Full lexicon representation 20
+> Table 2: Composition of the 20-dimensional lexicon representation.
+
+Because reliability estimation uses gold bound-aries, computing it directly on the training instances would cause information leakage. We therefore generate training features out of fold. Within the training portion of each outer fold, an additional five-fold split is performed, and reliability for each inner fold is estimated using only the other four folds. Validation and test features use statistics estimated from the complete outer training por-tion. Consequently, no line contributes its own gold boundaries to its reliability features. The three metadata features require no such treatment be-cause they are intrinsic dictionary attributes and do not depend on the annotated corpus. 
+
+4.4 Distributional Knowledge Layer 
+
+We exploit unlabeled Tangut text from the four-line parallel materials in three ways: explicit distribu-tional features, static character embeddings, and contextual pretraining. 
+
+4.4.1 Explicit Distributional Features 
+
+For each gap between adjacent characters a and b,we compute four types of statistics: log bigram fre-quency, character association strength, the right-neighbor entropy of a, and the left-neighbor en-tropy of b. Bigram frequency is defined as Freq (a, b ) = log (1 + count (a, b )) .
+
+We use discounted pointwise mutual information (dPMI) as the association measure: dPMI (a, b ) = max 
+
+
+
+0, log f (a, b ) − 0.5
+
+f (a) · f (b) + log N
+
+
+
+,
+
+where N is the total number of adjacent character pairs. Alternative association measures are dis-cussed in the Appendix C. Neighbor entropy measures the diversity of a character’s local contexts. The right-neighbor en-tropy of a is 
+
+Hright (a) = − X
+
+> b
+
+p(b | a) log p(b | a),
+
+with left-neighbor entropy defined analogously. For a character at position i, features are extracted from both its left gap (ci−1, c i) and right gap (ci, c i+1 ).Each gap contributes one frequency feature, one association feature, and two entropy features, yield-ing an eight-dimensional representation in total. (Table 3)           
+
+> Symbol Feature group Dim. Freq Bigram frequency 2
+> Coo Character association 2
+> Ent Neighbor entropy 4
+> Dist all Full distributional representation 8
+> Table 3: Explicit distributional features extracted from unlabeled text.
+
+Unattested bigrams receive zero frequency and association values, and characters absent from the unlabeled corpus receive zero entropy. 
+
+4.4.2 Static Char2Vec Representations 
+
+We train a Skip-gram model on the unlabeled Tangut text, treating each character as a basic unit. We refer to this model as Char2Vec to distin-guish this character-level training from word-level Word2Vec. The learned vectors initialize the char-acter embeddings of the Transformer and remain trainable during segmentation. Char2Vec provides each character with a distributional initialization, but this representation is context independent. 
+
+4.4.3 Contextual Pretraining with TangutEncoder 
+
+To learn context-dependent character representa-tions, we develop TangutEncoder (TEnc) , a com-pact character-level BERT-style encoder tailored to the Tangut writing system and the limited scale of the available unlabeled corpus. Each Tangut character is treated as a single token, avoiding any 5prerequisite word segmentation. The model uses a Tangut-specific character vocabulary and consists of character and positional embeddings followed by three Transformer encoder layers, with approx-imately 2.5 million parameters. Full architectural details are provided in Appendix B. TangutEncoder is pretrained with character-level masked language modeling that combines single-character and contiguous-span masking. Approx-imately 15% of character positions are selected using a mixture of single-character masking and contiguous spans of two to four characters. 80% of selected positions are replaced with the mask to-ken, 10% with random characters, and 10% remain unchanged. 
+
+4.5 Knowledge Fusion 
+
+External knowledge is incorporated at different stages according to the structure of each model. In the linear CRF , lexicon-lattice and corpus-statistical features are added directly as real-valued feature functions alongside the basic character fea-tures. In the BiLSTM–CRF , external features are concatenated with character embeddings at the en-coder input and jointly contextualized by the BiL-STM. During training, lexicon features are ran-domly dropped. In TangutEncoder , external fea-tures are incorporated after contextual encoding. Lexicon and corpus-statistical features can be trans-formed into a task-specific representation through a linear layer, ReLU activation, and dropout, and then concatenated with the Transformer output. The combined representation is passed through another dropout layer and a linear projection to produce BIES emission scores. 
+
+4.6 Experimental Protocol Data splits. We conduct line-level five-fold cross-validation stratified by genre. In each round, one fold is held out for testing, while one ninth of the remaining data is used for validation. Because both works occur across folds, this protocol evaluates within-source generalization to held-out, themati-cally diverse passages rather than transfer to unseen documents. Reliability features are generated by an additional five-fold out-of-fold procedure within each training partition. 
+
+Evaluation metrics. Segmentation is evaluated by exact word-span matching. Let P be the set of predicted spans and G the set of gold spans. A word is counted as correct only when both of its boundaries exactly match a gold word. Precision, recall, and F 1 are defined as Precision = |P ∩ G||P | , Recall = |P ∩ G||G| ,F1 = 2 · Precision · Recall Precision + Recall .
+
+We define a gold test word as out of vocabulary (OOV) when its surface form is absent from the labeled training partition of the current fold; all other words are in vocabulary (IV). An OOV word may still occur in the external lexicon or unlabeled corpus. Thus, OOV recall measures generalization beyond the labeled training vocabulary rather than to forms unseen by every system component: OOV-R = correctly segmented OOV words gold OOV words ,
+
+IV-R = correctly segmented IV words gold IV words .
+
+Across the five held-out folds, 53.0% of labeled-training OOV tokens are covered by the external lexicon and 34.8% occur in the unlabeled corpus; these sets overlap, while 24.8% occur in neither resource (Appendix A.2). In addition to aggregate results, we report perfor-mance separately on religious and secular texts. All metrics are summarized as the mean and standard deviation across the five outer folds. 
+
+Training and model selection. The linear CRF is optimized with L-BFGS and L1/L2 regulariza-tion. For the BiLSTM–CRF and Transformer–CRF models, the learning rate is reduced when valida-tion loss stops improving, and the checkpoint with the lowest validation loss is restored after early stopping. Downstream training of TangutEncoder proceeds in two stages. We first freeze the encoder and train only the feature projections, segmentation head and CRF. Then we unfreeze the encoder and jointly fine-tune all parameters. All experiments use fixed random seeds and de-terministic CuDNN settings within each training environment. Models are compared under identical data splits, lexical resources, and evaluation proce-dures. Full settings are provided in Appendix B. 
+
+5 Results 
+
+Table 4 summarizes the five research questions. The OOV rate is approximately 0.087 across folds and is therefore omitted. Table 5 reports genre-specific results for representative systems; full 6Model P R F1 OOV-R IV-R 
+
+Supervised baselines (RQ1) 
+
+Dict-corpus 0.845 ±0.005 0.890 ±0.003 0.867 ±0.004 0.219 ±0.014 0.954 ±0.002 
+
+CRF 0.880 ±0.004 0.888 ±0.003 0.884 ±0.003 0.415 ±0.026 0.933 ±0.003 
+
+BiLSTM–CRF 0.862 ±0.008 0.873 ±0.008 0.868 ±0.008 0.472 ±0.014 0.912 ±0.006 
+
+Transformer-Random 0.848 ±0.008 0.863 ±0.010 0.855 ±0.009 0.519 ±0.020 0.896 ±0.010 
+
+Lexicon-lattice ablation (RQ2) 
+
+CRF+BIE 0.898 ±0.004 0.897 ±0.002 0.897 ±0.003 0.489 ±0.015 0.936 ±0.002 
+
++ BIE + R 0.902 ±0.005 0.898 ±0.003 0.900 ±0.004 0.473 ±0.021 0.939 ±0.002 
+
++ BIE + R + P 0.900 ±0.003 0.900 ±0.005 0.900 ±0.004 0.463 ±0.020 0.941 ±0.003 
+
++ Dict all 0.903 ±0.005 0.902 ±0.003 0.902 ±0.004 0.467 ±0.021 0.944 ±0.002 
+
+Explicit distributional features (RQ3) 
+
+CRF+ Dict all + Freq 0.905 ±0.003 0.904 ±0.003 0.904 ±0.003 0.483 ±0.011 0.944 ±0.002 
+
++ Dict all + Freq + Coo 0.906 ±0.003 0.905 ±0.003 0.905 ±0.003 0.486 ±0.009 0.945 ±0.001 
+
++ Dict all + Dist all 0.907 ±0.004 0.906 ±0.004 0.907 ±0.004 0.491 ±0.016 0.947 ±0.002 
+
+Representation learning and fusion (RQ4–RQ5) 
+
+Transformer-Char2Vec 0.844 ±0.005 0.860 ±0.012 0.852 ±0.008 0.491 ±0.010 0.895 ±0.012 
+
+TangutEncoder 0.881 ±0.004 0.885 ±0.002 0.883 ±0.003 0.570 ±0.011 0.915 ±0.004 
+
+TangutEncoder + Dict all 0.902 ±0.003 0.913 ±0.006 0.907 ±0.004 0.606 ±0.014 0.942 ±0.005 
+
+TangutEncoder + Dict all + Dist all 0.905 ±0.003 0.916 ±0.004 0.911 ±0.003 0.608 ±0.014 0.946 ±0.003 
+
+Table 4: Overall segmentation results under five-fold cross-validation. 
+
+Secular Religious Model F1 OOV-R IV-R F1 OOV-R IV-R Dict-corpus 0.869 ±0.004 0.229 ±0.017 0.956 ±0.003 0.855 ±0.019 0.132 ±0.028 0.936 ±0.010 
+
+CRF 0.887 ±0.010 0.430 ±0.035 0.934 ±0.007 0.839 ±0.011 0.262 ±0.067 0.909 ±0.009 
+
+BiLSTM–CRF 0.875 ±0.007 0.498 ±0.016 0.917 ±0.006 0.810 ±0.021 0.244 ±0.028 0.875 ±0.021 
+
+Transformer-Random 0.868 ±0.008 0.545 ±0.018 0.906 ±0.010 0.760 ±0.014 0.280 ±0.060 0.816 ±0.017 
+
+CRF+Dict all 0.904 ±0.005 0.481 ±0.024 0.942 ±0.004 0.872 ±0.004 0.301 ±0.058 0.938 ±0.008 
+
+CRF+Dict all + Dist all 0.910 ±0.005 0.506 ±0.022 0.947 ±0.002 0.881 ±0.005 0.355 ±0.060 0.939 ±0.008 
+
+Transformer-Char2Vec 0.866 ±0.008 0.514 ±0.011 0.908 ±0.012 0.749 ±0.016 0.284 ±0.033 0.800 ±0.022 
+
+TEnc 0.892 ±0.002 0.587 ±0.016 0.922 ±0.004 0.817 ±0.016 0.422 ±0.039 0.863 ±0.015 
+
+TEnc + Dict all 0.915 ±0.004 0.633 ±0.023 0.946 ±0.006 0.849 ±0.018 0.362 ±0.065 0.908 ±0.007 
+
+TEnc + Dict all + Dist all 0.917 ±0.003 0.634 ±0.022 0.949 ±0.004 0.863 ±0.015 0.385 ±0.058 0.920 ±0.010 
+
+Table 5: Mean performance by document genre. 
+
+genre-level ablations are provided in Appendix C. Standard deviations reflect variation across data folds rather than repeated random initializations; differences of a few thousandths are therefore treated as descriptive trends, not as established sig-nificance. 
+
+5.1 Supervised Baselines under Limited Annotation RQ1: How do basic segmenters perform with limited annotation? The linear CRF is the strongest supervised baseline overall. Corpus-dictionary matching recognizes IV words well but generalizes poorly beyond the labeled vocabulary. Neural models improve OOV recall; the random Transformer gives the highest OOV recall but the lowest overall F 1. Thus, explicit local features re-main more data-efficient for overall segmentation. All learned baselines perform worse on religious than on secular texts, consistent with the substantial imbalance between the two genres. 
+
+5.2 Reliability-Calibrated Lexicon Features RQ2: Do lexicon-lattice features and reliability calibration help? BIE lattice features provide the largest lexical gain, confirming that overlap-ping dictionary candidates supply useful bound-ary evidence. Reliability estimates for observed entries further improve precision and IV recogni-tion, although OOV recall decreases slightly. Priors for unseen entries maintain the overall improve-ment. Completing the representation with dictio-nary metadata yields the strongest lexicon-only CRF, suggesting that distinguishing semantically glossed, phonetic, and book-title entries helps the model assess heterogeneous candidates. Overall, the lattice provides coverage, while reliability and metadata help control mismatches between dictio-7nary entries and corpus boundaries. 
+
+5.3 Explicit Distributional Features RQ3: How does unlabeled text help the linear CRF? Statistics extracted from unlabeled text provide additional gains beyond the complete 20-dimensional lexicon representation. Bigram fre-quency contributes the largest initial improvement, while character association and neighbor entropy add complementary evidence about local cohesion and potential boundaries. The gains extend to both IV and OOV recognition and are particularly vis-ible for religious texts. Thus, dictionary evidence and corpus distribution capture complementary as-pects of lexical structure. 
+
+5.4 Static versus Contextual Representations RQ4: How do static and contextual representa-tions differ? Char2Vec does not improve consis-tently over random initialization; its slightly lower mean lies within cross-fold variation. In contrast, MLM pretraining substantially improves F 1, OOV recall, and religious-text performance by training the entire contextual encoder rather than only pro-viding static character embeddings. 
+
+5.5 Comparison of Knowledge-Fusion Strategies RQ5: Are lexical and distributional knowl-edge complementary? Adding the complete lex-icon representation to TangutEncoder markedly im-proves both IV and OOV recognition, showing that explicit lexical knowledge remains valuable after contextual pretraining. Injecting corpus statistics provides a smaller additional numerical gain, indi-cating that MLM captures much, but not all, of the available local distributional information. The complete systems remain complementary. TangutEncoder has the highest overall and secular-text F 1 and OOV recall, whereas the CRF retains slightly higher overall IV recall and performs better on religious texts. Contextual pretraining therefore chiefly improves generalization beyond the labeled vocabulary; explicit features remain stable in the smallest genre. 
+
+6 Preliminary Extension to POS Tagging 
+
+We conduct a preliminary experiment on joint word segmentation and part-of-speech tagging by replac-ing the four BIES labels with joint boundary–POS labels, such as B-NOUN and E-NOUN . We apply this formulation to both the linear CRF and BiLSTM– CRF, with and without the full lexical features in-troduced above. The predicted joint sequence is first converted into word spans and then into POS labels. POS accuracy is calculated only over words whose predicted spans exactly match the gold seg-mentation, thereby separating tagging errors from boundary errors. The joint CRF reaches approximately 0.88 condi-tional POS accuracy on correctly segmented words. Lexical features improve segmentation, but their contribution to POS is less stable, suggesting that dictionary evidence is more directly informative about boundaries than grammatical categories. Be-cause the POS inventory remains under revision (Appendix A), these results are preliminary. 
+
+7 Conclusion and Future Work 
+
+This study presents the first systematic investiga-tion of automatic Tangut word segmentation. We combine expert annotation, traditional dictionar-ies, and unlabeled text within a unified BIES–CRF framework. Lexicon-lattice features and corpus statistics provide data-efficient boundary evidence, while contextual MLM pretraining outperforms random and Char2Vec initialization. Under within-source line-level evaluation, the full TangutEncoder obtains the highest mean F 1 (0.911) and OOV re-call, while the CRF remains stronger on religious texts. Future work will expand expert annotation to cover more documents, genres, and historical peri-ods, while improving genre balance and adopting document-level evaluation. We will refine the POS inventory, develop clearer annotation guidelines, and conduct additional expert consistency checks. We also plan to seek institutional permission to re-lease a larger portion of the annotated corpus or pro-vide controlled access, together with code, models, and preprocessing resources. Finally, larger digi-tized and parallel corpora will be explored for pre-training and weak supervision, followed by multi-seed significance analyses and downstream evalu-ation in retrieval, lexical analysis, alignment, and translation. 
+
+Limitations 
+
+The corpus remains small, genre-imbalanced, and limited to two works. Although Leilin is themat-ically diverse, the evaluation does not establish transfer to unseen documents. Fascicle 68 is ab-8sent from the unlabeled collection and long-string overlap is minimal, but shorter formulaic expres-sions remain shared across Buddhist texts. OOV denotes absence from labeled training only, and small model differences lack multi-seed or signifi-cance testing. Finally, data-use restrictions prevent full corpus release, and the POS inventory remains under revision. 
+
+Acknowledgments 
+
+This work was supported by the Discipline Devel-opment “Peak-Climbing Strategy” Funding Pro-gram of the Chinese Academy of Social Sciences (Project No. DF2023TS05) and the Key Labora-tory of Linguistics, Chinese Academy of Social Sciences (Project No. 2024SYZH001). 
+
+Ethical Considerations 
+
+This study uses expert-annotated Tangut texts and digitized historical materials for research purposes. The full annotated corpus cannot be publicly re-leased because of institutional and data-use restric-tions. Where permitted, the release will include code, deterministic split generation and fold iden-tifiers, normalization and feature scripts, model configurations, a lexicon-processing manifest and checksum, annotation guidelines and examples, source-location metadata, trained models, and de-rived statistics. The data contain historical texts rather than personal or sensitive information. Nev-ertheless, segmentation errors may propagate to retrieval, lexical analysis, and translation, particu-larly for underrepresented document genres. The resulting models should therefore be regarded as re-search aids rather than substitutes for expert philo-logical interpretation. More broadly, this work is intended to support the preservation, retrieval, and linguistic analysis of Tangut cultural heritage. 
+
+References 
+
+Collin J. Brown. 2024. Improved neural word segmenta-tion for standard Tibetan. In Proceedings of the 2nd Workshop on Resources and Technologies for Indige-nous, Endangered and Lesser-resourced Languages in Eurasia (EURALI) @ LREC-COLING 2024 , pages 12–17, Torino, Italia. ELRA and ICCL. Deng Cai and Hai Zhao. 2016. Neural word segmenta-tion learning for Chinese. In Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 409–420, Berlin, Germany. Association for Computational Lin-guistics. Yu Chang, Peng Zhu, Chaoping Wang, and Chaofan Wang. 2022. Automatic word segmentation and part-of-speech tagging of Ancient Chinese based on BERT model. In Proceedings of the Second Workshop on Language Technologies for Historical and Ancient Languages , pages 141–145, Marseille, France. Euro-pean Language Resources Association. Ning Cheng, Bin Li, Liming Xiao, Changwei Xu, Sijia Ge, Xingyue Hao, and Minxuan Feng. 2020. Integra-tion of automatic sentence segmentation and lexical analysis of Ancient Chinese based on BiLSTM-CRF model. In Proceedings of LT4HALA 2020 - 1st Work-shop on Language Technologies for Historical and Ancient Languages , pages 52–58, Marseille, France. European Language Resources Association (ELRA). Oliver Hellwig and Sebastian Nehrdich. 2018. San-skrit word segmentation using character-level recur-rent and convolutional neural networks. In Proceed-ings of the 2018 Conference on Empirical Methods in Natural Language Processing , pages 2754–2763, Brussels, Belgium. Association for Computational Linguistics. Shohei Higashiyama, Masao Utiyama, Yuji Matsumoto, Taro Watanabe, and Eiichiro Sumita. 2020. Auxiliary lexicon word prediction for cross-domain word seg-mentation. Journal of Natural Language Processing ,27(3):573–598. Shohei Higashiyama, Masao Utiyama, Eiichiro Sumita, Masao Ideuchi, Yoshiaki Oida, Yohei Sakamoto, and Isaac Okada. 2019. Incorporating word attention into character-based word segmentation. In Proceedings of the 2019 Conference of the North American Chap-ter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers) , pages 2699–2709, Minneapolis, Min-nesota. Association for Computational Linguistics. Timo Homburg and Christian Chiarcos. 2016. Word segmentation for Akkadian cuneiform. In Proceed-ings of the Tenth International Conference on Lan-guage Resources and Evaluation (LREC’16) , pages 4067–4074, Portorož, Slovenia. European Language Resources Association (ELRA). Hla Hla Htay and Kavi Narayana Murthy. 2008. Myan-mar word segmentation using syllable level longest matching. In Proceedings of the 6th Workshop on Asian Language Resources .Kaiyu Huang, Hao Yu, Junpeng Liu, Wei Liu, Jingxiang Cao, and Degen Huang. 2021. Lexicon-based graph convolutional network for Chinese word segmenta-tion. In Findings of the Association for Computa-tional Linguistics: EMNLP 2021 , pages 2908–2917, Punta Cana, Dominican Republic. Association for Computational Linguistics. Amrith Krishna, Pavan Kumar Satuluri, and Pawan Goyal. 2017. A dataset for Sanskrit word segmenta-tion. In Proceedings of the Joint SIGHUM Workshop on Computational Linguistics for Cultural Heritage, 
+
+9Social Sciences, Humanities and Literature , pages 105–114, Vancouver, Canada. Association for Com-putational Linguistics. Bin Li, Yiguo Yuan, Jingya Lu, Minxuan Feng, Chao Xu, Weiguang Qu, and Dongbo Wang. 2022. The first international Ancient Chinese word segmenta-tion and POS tagging bakeoff: Overview of the Eva-Han 2022 evaluation campaign. In Proceedings of the Second Workshop on Language Technologies for Historical and Ancient Languages , pages 135–140, Marseille, France. European Language Resources Association. Changqing Liu. 2010. Research on constructing a font database for historical Tangut documents. In Tangut Studies, Volume 6: Special Issue of the First Inter-national Forum on Tangut Studies, Part II , pages 197–203. Tangut Studies Research Institute, Ningxia University. In Chinese. Changqing Liu. 2012. On Tangut historical documents recognition. Physics Procedia , 33:1212–1216. Changqing Liu and Jianlu Du. 2008. Web-based pro-cessing of the Tangut script and Tangut documents. 
+
+Ningxia Social Sciences , (5):113–115. In Chinese. Huidan Liu, Minghua Nuo, Longlong Ma, Jian Wu, and Yeping He. 2011. Tibetan word segmentation as syllable tagging using conditional random field. In 
+
+Proceedings of the 25th Pacific Asia Conference on Language, Information and Computation , pages 168– 177, Singapore. Institute of Digital Enhancement of Cognitive Processing, Waseda University. Shuheng Liu and Michael Best. 2025. A survey of NLP progress in Sino-Tibetan low-resource languages. In 
+
+Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Com-putational Linguistics: Human Language Technolo-gies (Volume 1: Long Papers) , pages 7804–7825, Albuquerque, New Mexico. Association for Compu-tational Linguistics. Yijia Liu, Yue Zhang, Wanxiang Che, Ting Liu, and Fan Wu. 2014. Domain adaptation for CRF-based Chinese word segmentation using free annotations. In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing (EMNLP) ,pages 864–874, Doha, Qatar. Association for Com-putational Linguistics. Jiaming Luo, Frederik Hartmann, Enrico Santus, Regina Barzilay, and Yuan Cao. 2021. Deciphering un-dersegmented ancient scripts using phonetic prior. 
+
+Transactions of the Association for Computational Linguistics , 9:69–81. Ji Ma, Kuzman Ganchev, and David Weiss. 2018. State-of-the-art Chinese word segmentation with Bi-LSTMs. In Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing ,pages 4902–4908, Brussels, Belgium. Association for Computational Linguistics. Jinlin Ma, Yunrui Cao, Ziping Ma, Lin Wei, and Chaohua Hao. 2022. End-to-end Tangut character database building and recognition method. IET Im-age Processing , 16(8):2087–2100. Motoki Nakajima, Kenji Imai, and Mariyo Takahashi. 1996. Toward the Computational Analysis of the Tangut Script: 1996 Edition . Research Institute for Languages and Cultures of Asia and Africa, Tokyo University of Foreign Studies, Tokyo, Japan. In Japanese. Hellina Hailu Nigatu, Atnafu Lambebo Tonja, Benjamin Rosman, Thamar Solorio, and Monojit Choudhury. 2024. The Zeno’s paradox of ‘low-resource’ lan-guages. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing ,pages 17753–17774, Miami, Florida, USA. Associa-tion for Computational Linguistics. Shu Okabe, Laurent Besacier, and François Yvon. 2022. Weakly supervised word segmentation for compu-tational language documentation. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 7385–7398, Dublin, Ireland. Association for Computational Linguistics. Fuchun Peng, Fangfang Feng, and Andrew McCallum. 2004. Chinese segmentation and new word detection using conditional random fields. In COLING 2004: Proceedings of the 20th International Conference on Computational Linguistics , pages 562–568, Geneva, Switzerland. COLING. Jivnesh Sandhan, Rathin Singha, Narein Rao, Suvendu Samanta, Laxmidhar Behera, and Pawan Goyal. 2022. TransLIST: A transformer-based linguistically in-formed Sanskrit tokenizer. In Findings of the As-sociation for Computational Linguistics: EMNLP 2022 , pages 6902–6912, Abu Dhabi, United Arab Emirates. Association for Computational Linguistics. Yan Shao, Christian Hardmeier, and Joakim Nivre. 2018. Universal word segmentation: Implementation and interpretation. Transactions of the Association for Computational Linguistics , 6:421–435. Xihong Shu, Dandan Fan, and Yang Wang. 2025. Textual analysis of excavated Tangut documents in british and french collections from a digital human-ities perspective. Journal of Dunhuang Studies ,(2):115–130. In Chinese. Sen Sun. 2026. The Process of Digitizing the Tangut Script. Corpus Linguistics , (1):130–139. In Chinese. Chunqi Wang and Bo Xu. 2017. Convolutional neural network with word embeddings for Chinese word segmentation. In Proceedings of the Eighth Interna-tional Joint Conference on Natural Language Pro-cessing (Volume 1: Long Papers) , pages 163–172, Taipei, Taiwan. Asian Federation of Natural Lan-guage Processing. 
+
+10 Andrew West, Michael Everson, Xiaomang Han, Changye Jia, Yongshi Jing, and Viacheslav Zaytsev. 2014. Proposal to encode the Tangut script in the UCS. Technical Report N4522, ISO/IEC JTC 1/SC 2/WG 2. Unicode document L2/14-023. Nianwen Xue. 2003. Chinese word segmentation as character tagging. In International Journal of Com-putational Linguistics & Chinese Language Process-ing, Volume 8, Number 1, February 2003: Special Issue on Word Formation and Chinese Language Pro-cessing , pages 29–48. Guangwei Zhang and Xiaomang Han. 2017. Deep learn-ing based Tangut character recognition. In Proceed-ings of the 4th International Conference on Systems and Informatics , pages 437–441. IEEE. Qi Zhang, Xiaoyu Liu, and Jinlan Fu. 2018. Neural networks incorporating dictionaries for chinese word segmentation. Proceedings of the AAAI Conference on Artificial Intelligence , 32(1). Yuxi Zheng and Jingsong Yu. 2025. Incorporating lexicon-aligned prompting in large language mod-els for Tangut–Chinese translation. In Proceedings of the Second Workshop on Ancient Language Pro-cessing , pages 127–136, Albuquerque, New Mexico. Association for Computational Linguistics. Yuxi Zheng, Ziming Zhou, Yongwei Zhang, Bojun Sun, Wanxin Qiao, Junming Hou, and Jingsong Yu. 2025. Research on OCR and Machine Translation for Tangutscript under Low-Resource Conditions. Digi-tal Humanities , (3):113–135. In Chinese. 
+
+A More Details About Our Corpus 
+
+A.1 Textual Sources and Composition 
+
+The annotated corpus is drawn from two Tangut works. The religious portion comes from fascicle 68 of the Tangut translation of the Mah¯ aratnak¯ ut .a S¯ utra (Da Bao Ji Jing ,《大宝积经》), whereas the secular portion comes from Leilin (《类林》), an encyclopaedic collection of stories translated from Chinese. Source-location identifiers preserve traceability to the editions and catalogue records used by the annotators. Due to the lack of an automatic sentence segmen-tation program, each segment is based on a single vertical column in the source rubbing and is asso-ciated with a location identifier, such as 68.1.1 
+
+or 03.01.01 . Segment boundaries were adjusted slightly where necessary to preserve lexical con-tinuity across columns. These units are therefore layout-based textual segments rather than sentences defined by modern punctuation. Multiple Tangut specialists (especially Sen Sun) independently iden-tified word boundaries and linguistic labels using the original context, reconstructed readings, transla-tions, and traditional lexicons. Their analyses were subsequently compared and jointly reviewed to pro-duce the reference annotation. This philological workflow was intended to establish a consolidated expert analysis rather than to measure formal inter-annotator agreement. The two sources are substantially imbalanced. The religious text accounts for approximately 8.5% of the segments and 11.6% of the tokens, while 
+
+Leilin contributes the remainder. This imbalance motivates our genre-specific evaluation. The unlabeled corpus was extracted from the Tangut lines of digitized four-line translation mate-rials based on manuscripts held in Russian collec-tions. It contains 663 page-image records, covering 46 title-level units from seven works and approx-imately 318,000 Tangut characters. The largest source is Mah¯ aratnak¯ ut .a-s¯ utra , whose 38 fascicle-level titles contribute 269,149 characters, or 84.6% of the corpus. None of these records is from the an-notated fascicle 68. Other Buddhist sources include 
+
+《诸说 禅源集都序》, 《注华严法界观门深入
+
+转》, 《中华传心地禅门师资承袭图》, 《修
+
+华严奥旨妄尽还源观》, and 《金师子章云间
+
+类解》. The only clearly secular source is 《六
+
+韬》, represented by its first two volumes and ac-counting for approximately 1.3% of the characters. Only the original Tangut text is used to compute 11 distributional features and to train Char2Vec and TangutEncoder. 
+
+A.2 Overlap and OOV-Coverage Audit 
+
+We normalized both collections with the same Tangut-character filter and split the unlabeled records at non-Tangut symbols. Five exact matches remained, all one- or two-character fragments; no annotated segment of three or more characters was duplicated. Table 6 reports token-level n-gram overlap, defined as the percentage of annotated n-gram occurrences whose character string appears anywhere in the unlabeled collection.               
+
+> Audit unit All Religious Secular Exact segment ( ≥3chars) 0005-gram overlap (%) 0.37 2.66 0.02 10-gram overlap (%) 0.01 0.08 0.00
+
+Table 6: Normalized overlap between annotated and unlabeled text. 
+
+We also audit the resource exposure of labeled-training OOV tokens across the five test folds. The external lexicon covers 53.0%, and 34.8% occur as substrings in the unlabeled corpus; 12.6% occur in both and 24.8% in neither. These overlapping categories confirm that OOV-R is a measure of generalization beyond supervised vocabulary, not exclusively to forms unseen by all system compo-nents. 
+
+A.3 Annotation Examples 
+
+The following examples illustrate the corpus for-mat. Spaces in the raw line are removed, whereas the gold annotation marks word boundaries with vertical bars and appends the linguistic label after a slash. Religious raw 𘴈𘏨𗉋𗖰𗚩 𘐳𗤁𗰗𘉋             
+
+> Religious gold 𘴈 /a | 𘏨 /a | 𗉋 /a | 𗖰𗚩 /n | 𘐳 /q | 𗤁𗰗𘉋 /m Secular raw 𗴮𘊳𘕕𗡪𗱋
+> Secular gold 𗴮 /a | 𘊳 /n | 𘕕 /mc | 𗡪 /mo | 𗱋 /q
+
+Figure 2: Annotation examples from the religious and secular portions of the corpus. Vertical bars indicate expert-annotated word boundaries. 
+
+A.4 POS and Morphosyntactic Labels 
+
+The expert annotation contains both conventional parts of speech and more fine-grained morphosyn-tactic labels. After normalizing minor orthographic variants, the current inventory contains 36 labels. Frequent lexical categories include nouns ( n), verbs (v), adjectives ( a), adverbs ( d), adpositions ( p), con-junctions ( c), pronouns ( r), numerals ( m), quanti-fiers ( q), and particles or auxiliaries ( u). The anno-tation additionally preserves nominal subtypes and labels for grammatical functions, aspect, direction, person, and number.      
+
+> Group Labels Core lexical cat-egories
+> a, c, d, m, n, p, q, r, u, v
+> Fine-grained lex-ical labels
+> b, l, t, nb, nc, nh, nl, no, ns, mc, mo, rd, ri, rp
+> Morphosyntactic labels
+> Dir1., Dir2., Erg., Obj., Quot., Nom., Pfv., Fut., Loc., 1sg., 2sg., pl.
+
+Table 7: Normalized linguistic-label inventory. 
+
+Because this inventory combines lexical classes with morphosyntactic functions and remains under expert revision, the POS experiments in this paper should be regarded as preliminary. We preserve the original fine-grained distinctions rather than collapsing them into a newly designed tagset. 
+
+B Model and Training Parameters 
+
+This appendix reports the architectural and opti-mization settings used in our experiments. Unless otherwise stated, all models use the same data par-titions and BIES tag set. The base random seed is 42, and deterministic CuDNN execution is enabled within each training environment. 
+
+B.1 Linear CRF 
+
+The linear CRF is trained with L-BFGS. All CRF variants use the same optimization parameters and differ only in the external feature groups included in the input. The local feature template covers the current character, the two preceding and following characters, adjacent character bigrams, character-type indicators, and the single-character word in-dicator. Lexicon-lattice and corpus-statistical fea-tures are added as real-valued features. 
+
+B.2 BiLSTM–CRF 
+
+Before introducing external knowledge, we con-ducted a preliminary hyperparameter search for the supervised BiLSTM–CRF. We varied the number of LSTM layers, character-embedding dimension, BiLSTM hidden size, batch size, dropout rate, and learning rate. This search used a fixed 80/10/10 split created before the outer cross-validation and 12 Parameter Value L1 coefficient ( c1) 1.0
+
+L2 coefficient ( c2) 10 −3
+
+Maximum L-BFGS iterations 200 Validation-based stopping Not used All possible transitions Enabled Character context window ±2 characters Inner folds for OOF reliability 5Reliability smoothing ( κ) 5
+
+Table 8: Hyperparameters of the linear CRF. All re-ported CRF results use a fixed budget of 200 L-BFGS iterations. 
+
+was therefore not nested within each outer training fold. The selected configuration was subsequently fixed across all folds. We accordingly treat the BiLSTM as a supporting architectural comparison rather than use it to substantiate the main model-selection claim; the CRF and TangutEncoder com-parisons do not use this search. Table 9 reports the complete search results. A two-layer BiLSTM with 100-dimensional character embeddings and a total hidden size of 64 achieved the highest observed segmentation F 1. Among the tested batch sizes, 512 produced the best F 1, al-though a batch size of 32 yielded a similar result. We therefore selected the former for its higher train-ing throughput.                                                                                                                                                                               
+
+> Layers Emb. Hidden Batch Dropout LR F1
+> 2100 256 512 0.3 5×10 −40.8636 2100 128 512 0.3 5×10 −40.8595
+> 2100 64 512 0.3 5×10 −40.8905
+> 2100 32 512 0.3 5×10 −40.8873 2100 16 512 0.3 5×10 −40.8423 1100 64 512 0.3 5×10 −40.8638 1100 128 512 0.3 5×10 −40.8569 3100 64 512 0.3 5×10 −40.8659 2100 64 1024 0.3 5×10 −40.8829 2100 64 256 0.3 5×10 −40.8822 2100 64 128 0.3 5×10 −40.8861 2100 64 64 0.3 5×10 −40.8870 2100 64 32 0.3 5×10 −40.8900 2100 64 16 0.3 5×10 −40.8854 2100 64 32 0.3 1×10 −40.8847 232 64 512 0.3 5×10 −40.8382 264 64 512 0.3 5×10 −40.8496 2128 64 512 0.3 5×10 −40.8814 2256 64 512 0.3 5×10 −40.8755 2100 64 512 0.1 5×10 −40.8824 2100 64 512 0.5 5×10 −40.8870
+
+Table 9: Preliminary hyperparameter search for the su-pervised BiLSTM–CRF. Emb. denotes the character-embedding dimension, and Hidden denotes the concate-nated output dimension of the two directions. The best segmentation F 1 is highlighted. 
+
+Based on this search, the final BiLSTM– CRF uses randomly initialized and trainable 100-dimensional character embeddings, followed by a two-layer bidirectional LSTM. Each direction has 32 hidden units, producing a 64-dimensional con-textual representation. A linear layer maps this representation to four BIES emission scores, which are globally decoded by a CRF. When external knowledge is enabled, the corre-sponding feature vectors are concatenated directly with the character embeddings before the BiLSTM. The principal lexicon-enhanced model uses the 20-dimensional reliability-calibrated dictionary rep-resentation. A dictionary dropout rate of 0.2 is applied during training to reduce excessive reliance on lexical matches. 
+
+Parameter Selected value Character embedding size 100 BiLSTM layers 2Hidden size 32 per direction BiLSTM output size 64 Emission size 4Model dropout 0.3 Dictionary dropout 0.2 Parameter initialization Xavier uniform Optimizer Adam Learning rate 5 × 10 −4
+
+Batch size 512 sentences Maximum epochs 10,000 Early-stopping patience 3 epochs Selection criterion Development NLL Gradient clipping 5.0 
+
+Table 10: Selected architectural and training parameters of the BiLSTM–CRF. The maximum number of epochs is only an upper bound; the checkpoint with the lowest development loss is restored after early stopping. 
+
+B.3 Transformer–CRF Variants 
+
+Transformer-Random, Transformer-Char2Vec, and TangutEncoder (TEnc) share the same Transformer and CRF architecture. They differ only in pa-rameter initialization: Transformer-Random initial-izes the complete encoder randomly; Transformer-Char2Vec initializes its character-embedding ma-trix with static Skip-gram vectors; and TangutEn-coder loads all encoder parameters from masked-language-model pretraining. The encoder contains three pre-normalized Transformer layers with a hidden size of 192, four attention heads, and a 768-dimensional feed-forward layer. Learned position embeddings sup-port sequences of up to 128 characters. The en-coder output is mapped to four BIES emission scores and decoded by a CRF. With the current 13 vocabulary, the encoder contains approximately 2.5 million parameters, although the exact number varies with vocabulary size.                    
+
+> Parameter Value Character embedding size 192 Maximum sequence length 128 Transformer layers 3Attention heads 4Dimension per head 48 Feed-forward size 768 Activation GELU Normalization Pre-LN Encoder dropout 0.15 Task-head dropout 0.20 Position embeddings Learned Dictionary projection 20 →32
+> Distributional projection 8→16
+> Output layer Linear + CRF
+
+Table 11: Shared architecture of the Transformer–CRF variants. The two external-feature projections are in-cluded only in the corresponding fusion models. 
+
+Char2Vec initialization. Char2Vec is trained on character sequences extracted from the unlabeled corpus using Skip-gram with negative sampling. Its vectors are rescaled to match the standard devi-ation of the randomly initialized Transformer em-beddings before being copied into the embedding matrix. Characters not covered by Char2Vec re-main randomly initialized.           
+
+> Char2Vec parameter Value Training objective Skip-gram Vector size 192 Context window 5Negative samples 10 Minimum frequency 1Training epochs 30 Workers 1Random seed 42 Minimum sequence length 2 characters
+
+Table 12: Training parameters of the static Char2Vec initialization. 
+
+TangutEncoder pretraining. TangutEncoder is pretrained with character-level masked language modeling. Approximately 15% of character posi-tions are selected, with equal probability of single-character masking and contiguous span masking of two to four characters. Selected positions follow the standard 80/10/10 replacement strategy. Se-quences longer than 128 characters are divided into consecutive non-overlapping chunks; all labeled instances are shorter than this limit. The vocabu-lary is constructed from the lexicon and unlabeled corpus.                   
+
+> MLM parameter Value Masking ratio 0.15 Span-masking probability 0.50 Span length 2–4 characters Replacement strategy 80/10/10 Optimizer AdamW Learning rate 3×10 −4
+> Weight decay 0.01 Batch size 32 sequences Maximum steps 5,000 Warm-up steps 500 Learning-rate schedule Warm-up then constant Evaluation interval 200 steps Early-stopping patience 5 evaluations Gradient clipping 1.0 Validation split 5 held-out UUIDs
+
+Table 13: Masked-language-model pretraining parame-ters of TangutEncoder. Pretraining completed the full 5,000 steps, and the checkpoint with the lowest valida-tion loss was retained. 
+
+Downstream fine-tuning. All three Transformer variants use the same two-stage downstream proce-dure. The encoder is first frozen for three epochs while the randomly initialized task head and CRF are trained, and is then jointly fine-tuned. This shared schedule controls the pipeline but is pri-marily designed for pretrained encoders; the ran-dom and Char2Vec variants are therefore initializa-tion controls rather than independently optimized scratch upper bounds.                  
+
+> Fine-tuning parameter Value Frozen-encoder epochs 3Optimizer AdamW Encoder learning rate 5×10 −5
+> Task-head learning rate 5×10 −4
+> Weight decay 0.01 Batch size 32 sentences Maximum fine-tuning epochs 10,000 LR-reduction patience 5 epochs LR-reduction factor 0.3 Early-stopping patience 10 epochs Selection criterion Development NLL Gradient clipping 1.0
+
+Table 14: Downstream training parameters shared by Transformer–Random, Transformer–Char2Vec and TangutEncoder. 
+
+14 C More Experimental Data 
+
+C.1 Comparison of Character Association Measures 
+
+The explicit distributional representation includes an association score for each adjacent character pair. Let f (a, b ) denote the frequency of bigram 
+
+(a, b ), f (a) and f (b) the corresponding unigram frequencies, and N the total number of adjacent character pairs in the unlabeled corpus. We com-pare three association measures. Discounted pointwise mutual information re-duces the disproportionate scores that standard PMI assigns to very rare bigrams: 
+
+dPMI( a, b ) = max 
+
+
+
+0, log (f (a, b ) − δ) Nf (a)f (b)
+
+
+
+.
+
+The subtraction of δ = 0.5 discounts low-frequency observations, while truncation at zero retains only positive association. This measure emphasizes pairs occurring more frequently than expected under character independence. The Dice coefficient measures the normalized overlap between the occurrence distributions of two characters: 
+
+Dice( a, b ) = 2f (a, b )
+
+f (a) + f (b) .
+
+Dice is bounded between zero and one and is less susceptible than PMI to extremely high values caused by rare events. However, it does not explic-itly compare the observed bigram frequency with an independence-based expectation. Finally, the t-score measures the standardized difference between observed and expected co-occurrence: 
+
+t(a, b ) = 
+
+f (a, b ) − f (a)f (b)
+
+Npf (a, b ) .
+
+Unlike positive dPMI, the t-score can preserve negative evidence when a pair occurs less fre-quently than expected. It also tends to favor associ-ations supported by higher absolute frequencies. Table 15 compares these measures under the same CRF, lexicon features, and bigram-frequency features. For each measure, we report results both before and after adding neighbor entropy. Without entropy, dPMI performs slightly bet-ter than Dice and t-score, particularly on OOV words. After adding entropy, however, all three measures converge to nearly identical performance. The results therefore do not establish a statistically meaningful winner. The consistent improvement from neighbor en-tropy also indicates that association strength and contextual diversity provide complementary evi-dence. Association measures estimate whether two adjacent characters tend to form a cohesive unit, whereas entropy indicates whether either character occurs freely with many different neighbors, which is more directly related to potential word bound-aries. We use dPMI in the main experiments be-cause its frequency discount is appropriate for the many low-count bigrams in the Tangut corpus and because it provides a favorable balance between overall performance and OOV recall. 
+
+C.2 Additional Model Variants Dictionary sources. The main text reports maxi-mum matching with the training-corpus vocabulary. We additionally compare three sources: the training vocabulary (D ICT -CORPUS ), the external Tangut dictionary alone (D ICT -DICTIONARY ), and their union (D ICT -ALL ). All three settings use bidirec-tional maximum matching. (Table 16) The training vocabulary provides strong IV re-call but has low recall beyond the labeled vocabu-lary. Conversely, the external dictionary substan-tially increases OOV recall, but its lower precision and IV recall indicate frequent disagreement with corpus boundaries. Thus, greater lexical coverage does not automatically produce better segmenta-tion, motivating the aggregated lattice representa-tion and reliability calibration. 
+
+Alternative CRF lattice features. We also ex-amined candidate-count and maximum-candidate-length features in an earlier lattice design. Adding candidate counts to the BIE lattice produced an F1 of 0.898, compared with 0.897 for BIE alone, while maximum-length features produced an F 1 of 0.897. 
+
+BiLSTM–CRF feature variants. We addition-ally examined two feature blocks that were used only in the BiLSTM–CRF experiments and were therefore excluded from the main framework. 
+
+Internal lattice (IL ). The external dictionary does not contain all corpus-specific words. We therefore construct an internal lexicon from multi-character words observed in the outer training split 15 Association features P R F1 OOV-R IV-R Freq + dPMI 0.906 ±0.003 0.905 ±0.003 0.905 ±0.003 0.486 ±0.009 0.945 ±0.001                            
+
+> Freq + dPMI + Ent 0.907 ±0.004 0.906 ±0.004 0.907 ±0.004 0.491 ±0.016 0.947 ±0.002
+> Freq + Dice 0.905 ±0.003 0.905 ±0.004 0.905 ±0.003 0.485 ±0.010 0.945 ±0.002
+> Freq + Dice + Ent 0.907 ±0.004 0.906 ±0.004 0.906 ±0.004 0.489 ±0.016 0.946 ±0.002
+> Freq + t-score 0.905 ±0.004 0.904 ±0.004 0.904 ±0.004 0.483 ±0.014 0.944 ±0.003
+> Freq + t-score + Ent 0.907 ±0.003 0.906 ±0.004 0.907 ±0.004 0.490 ±0.013 0.946 ±0.002
+
+Table 15: Comparison of association measures under five-fold cross-validation.                     
+
+> Model PRF1OOV-R IV-R Dict-corpus .845 .890 .867 .219 .954 Dict-dictionary .787 .728 .756 .666 .733 Dict-all .821 .740 .779 .665 .748
+
+Table 16: Bidirectional maximum matching with differ-ent dictionary sources. Values are five-fold means. 
+
+but absent from the external dictionary: 
+
+Dint = {w ∈ V train : |w| ≥ 2, w / ∈ D ext } .
+
+All matches from Dint are encoded using the same 11-dimensional BIE-by-length scheme as the ex-ternal lattice ( B2–B5+ , I3–I5+ , and E2–E5+ ). Unlike the external dictionary features, these di-mensions contain no reliability scores, because their entries are derived directly from the annotated corpus. To prevent gold boundaries from being re-vealed during training, the internal lexicon features are generated by inner five-fold out-of-fold estima-tion; development and test features are constructed from the complete outer training split. Combining this 11-dimensional block with Dict all produces a 28-dimensional lexical representation. 
+
+Domain distribution (DD ). To represent the do-main preference of a candidate word, we count its occurrences in the religious and secular portions of the outer training data and define 
+
+q(w) = 
+
+ nrel (w)
+
+nrel (w) + nsec (w) , nsec (w)
+
+nrel (w) + nsec (w)
+
+
+
+.
+
+At each character position, the vectors of all external- and internal-lexicon candidates covering that position are averaged, yielding two additional dimensions. If no matched candidate has an esti-mated distribution, the implementation falls back to the known document genre, represented as [1 , 0] 
+
+for religious texts and [0 , 1] for secular texts. The word distributions and training features are again estimated out of fold. Adding this block to the 28-dimensional lexical representation gives 30 di-mensions in total. The internal lattice is intended to recover corpus-specific IV words missing from the traditional dic-tionary, whereas the domain distribution indicates whether a candidate is associated with religious or secular usage. The latter assumes that document genre is available at inference time; it is therefore treated as an auxiliary analysis rather than part of the main genre-independent model. Table 17 reports the complete progression of ex-ternal features in the BiLSTM–CRF. The feature dimension excludes the 100-dimensional character embedding. The ablations show a clear hierarchy of feature contributions. The BIE lattice provides the largest lexical gain, followed by reliability estima-tion and priors for unseen entries. The internal lat-tice and domain features offer smaller complemen-tary improvements by recovering corpus-specific words and modeling genre preferences. Among the unlabeled-text features, bigram frequency con-tributes most, whereas association and entropy pro-vide little additional benefit, possibly because the BiLSTM already captures part of this local infor-mation. As shown in Table 18, the improvements are more stable on secular texts because they domi-nate the training data. Nevertheless, the internal lattice and domain features also improve religious-text performance, including OOV recall. Since the domain features assume that document genre is known at inference time, they are retained only as an auxiliary variant. 
+
+Additional Transformer controls. Injecting the lexicon lattice into a randomly initialized Trans-former improves both F 1 and OOV recall over the corresponding baseline. However, it remains below the MLM-pretrained encoder, showing that dictio-nary knowledge cannot substitute for contextual pretraining. Conversely, combining MLM pretrain-ing with the lexicon representation produces a sub-stantially stronger model than either source alone. 16 Model External features P R F1 OOV-R IV-R BiLSTM 0 0.862 ±0.008 0.873 ±0.008 0.868 ±0.008 0.472 ±0.014 0.912 ±0.006 
+
+BiLSTM+BIE 11 0.885 ±0.005 0.894 ±0.004 0.889 ±0.004 0.546 ±0.011 0.927 ±0.004 
+
+BiLSTM+BIE+R 14 0.891 ±0.003 0.898 ±0.004 0.894 ±0.004 0.546 ±0.009 0.931 ±0.003 
+
+BiLSTM+ Dict all 17 0.893 ±0.003 0.900 ±0.003 0.897 ±0.003 0.551 ±0.011 0.933 ±0.003 
+
++ Dict all + IL 28 0.896 ±0.003 0.900 ±0.002 0.898 ±0.002 0.557 ±0.009 0.933 ±0.002 
+
++ Dict all + IL + DD 30 0.897 ±0.004 0.904 ±0.003 0.900 ±0.003 0.554 ±0.006 0.938 ±0.002 
+
++ Dict all + IL + DD + Freq 30 + 2 0.902 ±0.004 0.909 ±0.005 0.906 ±0.004 0.560 ±0.008 0.943 ±0.005 
+
++ Dict all + IL + DD + Freq + Coo 30 + 4 0.902 ±0.004 0.909 ±0.004 0.905 ±0.003 0.563 ±0.016 0.941 ±0.004 
+
++ Dict all + IL + DD + Dist all 30 + 8 0.902 ±0.003 0.909 ±0.004 0.905 ±0.003 0.562 ±0.014 0.942 ±0.004 
+
+Table 17: BiLSTM–CRF variants with progressively richer external features. 
+
+Secular Religious Model F1 OOV-R F1 OOV-R BiLSTM 0.875 ±0.007 0.498 ±0.016 0.810 ±0.021 0.244 ±0.028 
+
+BiLSTM+BIE 0.897 ±0.005 0.573 ±0.015 0.830 ±0.018 0.305 ±0.043 
+
+BiLSTM+BIE+R 0.903 ±0.004 0.574 ±0.014 0.829 ±0.013 0.286 ±0.053 
+
+BiLSTM+ Dict all 0.905 ±0.003 0.579 ±0.014 0.835 ±0.016 0.298 ±0.037 
+
++ Dict all + IL 0.905 ±0.002 0.586 ±0.011 0.842 ±0.018 0.300 ±0.043 
+
++ Dict all + IL + DD 0.907 ±0.001 0.586 ±0.008 0.850 ±0.021 0.270 ±0.041 
+
++ Dict all + IL + DD + Freq 0.911 ±0.003 0.588 ±0.012 0.862 ±0.019 0.316 ±0.056 
+
++ Dict all + IL + DD + Freq + Coo 0.911 ±0.002 0.591 ±0.023 0.859 ±0.026 0.322 ±0.076 
+
++ Dict all + IL + DD + Dist all 0.911 ±0.001 0.589 ±0.020 0.860 ±0.021 0.326 ±0.051 
+
+Table 18: Genre-level results for the BiLSTM–CRF feature variants. 
+
+C.3 Lexicon-aware Continued Pretraining 
+
+We additionally continued MLM pretraining on TangutEncoder with a weakly supervised dictionary-span ranking objective. Dictionary en-tries of two to four characters from the structured lexicon and the revised Tongyin (《同音》) were matched against the unlabeled corpus and treated as positive candidate spans. For each positive span, five non-dictionary spans were sampled from the same sequence as negatives. For a span (i, j ), the scoring head concatenates boundary-sensitive states, mean and max pooling, and a length embedding: 
+
+vi,j = [ hi; hj−1; Mean( hi:j ); Max( hi:j ); ej−i+1 ],
+
+and assigns the span a scalar score s(i, j ) =MLP( vi,j ). The pairwise ranking loss is 
+
+Lword = − 1
+
+|P| K
+
+X
+
+> p∈P
+
+X 
+
+> n∈N (p)
+
+log σ(s(p) − s(n)) .
+
+It is combined with MLM as 
+
+L = LMLM + λword Lword ,
+
+where λword = 0 .3. Training continued for at most 3,000 steps, with the word-loss weight linearly warmed up during the first 500 steps. The span head was discarded after pretraining, and only the updated encoder was transferred to the segmenta-tion model. 
+
+Pretraining F1 OOV-R IV-R MLM 0.911 ±0.003 0.608 ±0.014 0.946 ±0.003 
+
+MLM + WordRank 0.912 ±0.003 0.617 ±0.012 0.946 ±0.003 
+
+Table 19: Downstream results of lexicon-aware contin-ued pretraining. Both encoders are evaluated with the same dictionary and distributional features. 
+
+The auxiliary objective provides no improve-ment over the canonical MLM baseline in over-all F 1 or OOV recall. Because it adds weak-supervision assumptions without a consistent down-stream gain, we report it only as a preliminary ap-pendix experiment. 17

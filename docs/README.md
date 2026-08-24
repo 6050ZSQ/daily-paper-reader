@@ -41,17 +41,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-08-23</span>
+      <span class="dpr-home-dashboard-kicker">2026-08-24</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 21 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 17 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>8</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>13</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>9</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-08-23 20:52:05 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-08-24 21:02:30 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -62,7 +62,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读8篇、速读13篇，重点关注大模型长上下文拓扑压缩与跨语言语法电路的可解释性发现；其中两篇9分精读分别揭示LLM对上下文流形的结构压缩规律，以及共享语法电路在不同语言间追踪主谓一致的能力。速读中关于多语言嵌入空间结构、tokenizer联合优化与评估的工作也值得快速浏览。建议普通读者优先精读两篇9分论文，速读可聚焦tokenizer相关的三篇以理解模型底层设计差异。</p>
+<p>今日综述17篇论文，精读2篇、速读9篇，核心聚焦大模型评测与安全。最值得关注的是提示敏感度交互分析（9.0）及多语言长上下文基准MGAL（9.0），揭示模型鲁棒性与跨语言短板。下一步可延伸阅读危险品合规评估与RAG防误导方向，以理解垂直场景风险。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -74,9 +74,9 @@
     <strong class="dpr-home-dashboard-count">8 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Do Large Language Models Play Six Degrees of Separation? Measuring Topological Compression in Long-Context Manifolds">Do Large Language Models Play Six Degrees of Separation? Measuring Topological Compression in Long-Context Manifolds</span></li><li><span class="dpr-home-dashboard-paper-title" title="Shared Circuits for Shared Grammar: Tracing Subject-Verb Agreement Across Languages">Shared Circuits for Shared Grammar: Tracing Subject-Verb Agreement Across Languages</span></li><li><span class="dpr-home-dashboard-paper-title" title="Assessing Quality of Experience in Natural Language Generation of German Text">Assessing Quality of Experience in Natural Language Generation of German Text</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Evaluating and Explaining Prompt Sensitivity of LLMs Using Interactions">Evaluating and Explaining Prompt Sensitivity of LLMs Using Interactions</span></li><li><span class="dpr-home-dashboard-paper-title" title="MGAL: A Multilingual Granularity-Aware Long-Context Benchmark">MGAL: A Multilingual Granularity-Aware Long-Context Benchmark</span></li><li><span class="dpr-home-dashboard-paper-title" title="Free-Text Evaluation of LLMs for 5G Domain Knowledge and Fault Analysis using LLM-as-Judge">Free-Text Evaluation of LLMs for 5G Domain Knowledge and Fault Analysis using LLM-as-Judge</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>4</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>6</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>1</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -84,12 +84,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">13 篇</strong>
+    <strong class="dpr-home-dashboard-count">9 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="There is No Theoretical Curse of Multilinguality For Embedding Space Structure">There is No Theoretical Curse of Multilinguality For Embedding Space Structure</span></li><li><span class="dpr-home-dashboard-paper-title" title="What Tokens are Learned when Tokenization is Optimized Jointly with Language Modeling?">What Tokens are Learned when Tokenization is Optimized Jointly with Language Modeling?</span></li><li><span class="dpr-home-dashboard-paper-title" title="TokEval: A Tokenizer Evaluation Suite">TokEval: A Tokenizer Evaluation Suite</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Evaluating Large Language Model Performance on International Maritime Dangerous Goods Code Compliance">Evaluating Large Language Model Performance on International Maritime Dangerous Goods Code Compliance</span></li><li><span class="dpr-home-dashboard-paper-title" title="MemTrapBench: Benchmarking Cognitive Traps in LLM Memory Use">MemTrapBench: Benchmarking Cognitive Traps in LLM Memory Use</span></li><li><span class="dpr-home-dashboard-paper-title" title="Trustworthy RAG: An Evaluation Agent for Detecting Misinformation and Knowledge Poisoning in Generative AI Systems">Trustworthy RAG: An Evaluation Agent for Detecting Misinformation and Knowledge Poisoning in Generative AI Systems</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>9</strong></span><span class="dpr-home-dashboard-tag">llm-eval <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">llm-eval <strong>5</strong></span><span class="dpr-home-dashboard-tag">llm-lang-rep <strong>3</strong></span><span class="dpr-home-dashboard-tag">llm-ling <strong>1</strong></span></div>
 </section>
 </div>
 
